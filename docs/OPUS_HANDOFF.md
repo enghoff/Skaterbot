@@ -311,8 +311,8 @@ Reported files include:
 
 - `main.kcl`
 - `pose_check.kcl`
-- `NOTES.md`
-- `CHECKLIST.md`
+- `docs/NOTES.md`
+- `docs/CHECKLIST.md`
 
 ## `main.kcl`
 
@@ -721,31 +721,52 @@ before committing the change.
 
 Maintain design intent in human-readable project files.
 
-Recommended structure:
+## Current structure
+
+The KCL sources stay at the repository root because Zoo Design Studio expects
+`project.toml` and `main.kcl` there. All prose documentation lives in `docs/`.
 
 ```text
-torque-biped/
+bipedal/
 ├── README.md
-├── robot_spec.md
-├── NOTES.md
-├── CHECKLIST.md
-├── BOM.md
+├── project.toml
+├── main.kcl
+├── pose_check.kcl
+├── parameters.kcl
+├── actuator.kcl
+├── pitch_yoke.kcl
+├── hip_carrier.kcl
+├── thigh.kcl
+├── shin.kcl
+├── foot.kcl
+├── torso.kcl
+├── payload_envelopes.kcl
 │
-├── reference/
+├── docs/
+│   ├── AGENTS.md
+│   ├── OPUS_HANDOFF.md
+│   ├── NOTES.md
+│   ├── CHECKLIST.md
+│   └── BOM.md
+│
+└── secrets/            (untracked)
+```
+
+Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
+untracked; regenerate them rather than committing them.
+
+## Structure to grow into
+
+As the per-joint detail arrives, add these alongside the above rather than
+relocating `main.kcl`:
+
+```text
+├── reference/          vendor STEP models, bearing and hardware datasheets
 │   ├── dm-j3507.step
 │   ├── bearings/
 │   └── hardware/
 │
-├── cad/
-│   ├── main.kcl
-│   ├── pose_check.kcl
-│   ├── hip/
-│   ├── knee/
-│   ├── ankle/
-│   ├── foot/
-│   └── torso/
-│
-├── exports/
+├── exports/            generated STEP/STL, untracked
 │   ├── step/
 │   └── stl/
 │
@@ -753,6 +774,10 @@ torque-biped/
     ├── urdf/
     └── usd/
 ```
+
+If per-joint KCL grows beyond single files, group it in subdirectories
+(`hip/`, `knee/`, `ankle/`, `foot/`, `torso/`) that `main.kcl` imports, keeping
+`main.kcl` itself at the root.
 
 Keep:
 
@@ -854,4 +879,4 @@ Inspect the generated geometry, check the engineering assumptions, revise it, an
 1. the knee satisfies the stated requirements to a reasonable engineering confidence, or
 2. you identify a specific constraint that prevents this and explain the minimum design change required.
 
-At the end, update `NOTES.md`, `CHECKLIST.md`, and `BOM.md` with the actual decisions made.
+At the end, update `docs/NOTES.md`, `docs/CHECKLIST.md`, and `docs/BOM.md` with the actual decisions made.
