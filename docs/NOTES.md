@@ -49,11 +49,19 @@ Two caveats. The STEP's main body is exported as an open-shell surface model rat
 
 Re-checking `pitch_yoke.kcl` against the measured interface changes the conclusion recorded here previously. The 38.5 mm clear cheek spacing against a 37.9 mm body still gives **0.3 mm of axial clearance per side**, so the envelope fit is sound and unchanged.
 
-The problem is that the fit is not the constraint. Both cheeks are annuli bored to Ø46.6 mm to clear the actuator body, but **both real bolt circles — Ø24 mm at the output and Ø41 mm on the housing — lie inside that bore**. The yoke as drawn has no material anywhere the actuator actually attaches, so the 0.3 mm clearance is measuring a gap that carries no load. Turning each cheek into a bolted hub is the substance of the knee module task:
+The problem is that the fit is not the constraint. Both cheeks are annuli bored to Ø46.6 mm to clear the actuator body, but **both real bolt circles — Ø24 mm and Ø41 mm — lie inside that bore**. The yoke as drawn has no material anywhere the actuator actually attaches, so the 0.3 mm clearance is measuring a gap that carries no load.
 
-- the output-side cheek becomes a disc registering on the Ø30 mm feature and bolting to the 6 x M3 Ø24 pattern;
-- the housing-side cheek picks up the 4 x M3 Ø41 pattern;
-- the opposite support bearing needs a stub axle supplied by the yoke, because **the actuator has no rear spigot to run a bearing on**. This sharpens weakness 2 below from an alignment concern into a missing part.
+**Both bolt circles are on the same face.** Resolving the hole axes against the assembly frame puts the Ø24 pattern at station 0 and the Ø41 pattern at station 1.0, while the opposite end of the actuator carries nothing but internal M2.5 fasteners and the cable exit at station 31.7. So this is a pancake module: one link bolts to the outer circle and the other to the concentric inner circle, on one side, and **the far side offers nothing to attach to or run a bearing on**.
+
+That invalidates the double-shear premise as drawn. Cheeks straddling the actuator cannot pick it up on both sides, because there is only one side. Any genuine second support has to be structure the joint supplies itself, wrapping past the actuator to reach the far side — and the cable exits into exactly that space. Weakness 2 below is therefore not an alignment problem but an unresolved architecture: the joint is inherently a cantilever at the actuator until a support scheme is chosen.
+
+Candidate schemes, none yet evaluated:
+
+- a stub axle cantilevered from the fixed link, carrying a bearing in the moving link past the actuator's far end;
+- a large thin-section bearing running on a ring bolted to the Ø41 circle, keeping the load path short but adding diameter;
+- the moving link supported on the actuator's own Ø46 outside diameter through a clamped bearing ring.
+
+One thing still to confirm on opening the model: **which of the two faces is the output**. The station-0 face carries the Ø24 six-hole pattern with counterbores inside a Ø30 register and concentric Ø8-10 bores, which reads as an output flange, but a stator mounting face with a rotor clearance bore would look similar in geometry alone. The choice decides which link is fixed and which moves, so settle it before designing the cheeks.
 
 The top and bottom cross-straps run the full 44.5 mm width at Ø54, so they need checking against the radial cable exit once the connector's size is known.
 

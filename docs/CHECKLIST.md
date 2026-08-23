@@ -26,8 +26,10 @@
 
 ## Required next refinement
 
-- [ ] Convert both yoke cheeks from Ø46.6 annuli into bolted hubs — neither currently has material at either bolt circle
-- [ ] Add the opposite-bearing stub axle, which the actuator does not provide
+- [ ] **Choose the knee support architecture** — both bolt circles are on one actuator face, so the double-shear yoke as drawn cannot work
+- [ ] Confirm which actuator face is the output before designing either cheek
+- [ ] Convert the driving cheek from a Ø46.6 annulus into a bolted hub on the Ø24 circle
+- [ ] Provide the second support, which the actuator does not offer on its far side
 - [ ] Select exact support bearings, axles, spacers, and retention method
 - [ ] Add real M3 through-holes, nut traps, and service-access fasteners
 - [ ] Convert tube socket blocks into clamped/bolted carbon-tube interfaces
