@@ -51,7 +51,11 @@ deliberately untracked.
 
 ## Development order
 
-1. Characterise 1–2 actuators.
+Steps 1 and 3 need hardware that does not exist yet. The actuator's vendor STEP
+and manual are in hand, so step 2 can proceed now and the measurements from
+step 1 get folded in later.
+
+1. Characterise 1–2 actuators. *(blocked — no hardware)*
 2. Engineer and print one real knee assembly.
 3. Validate loads, stiffness, thermal behaviour and backdrivability.
 4. Build one complete leg.

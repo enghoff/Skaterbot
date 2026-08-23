@@ -5,6 +5,20 @@
 export actuatorDiameter = 46mm
 export actuatorDepth = 37.9mm
 export actuatorClearance = 0.3mm
+
+// DM-J3507-2EC mounting interface, measured from the vendor STEP
+// (gitee.com/kit-miao/DM-J3507-2EC, dm_3507_3d-241021.STEP) and cross-checked
+// against the 2D print and manual V1.0. Axial stations are measured from the
+// output face towards the rear. These replace the guessed flange and boss the
+// proxy used to carry; both bolt circles sit inside the actuator's 46 mm
+// diameter, so a cheek that clears the body at Ø46.6 has no material where the
+// actuator actually attaches.
+export actuatorOutputBoltCircle = 24mm
+export actuatorOutputBoltCount = 6
+export actuatorOutputRegister = 30mm
+export actuatorHousingBoltCircle = 41mm
+export actuatorHousingBoltCount = 4
+export actuatorConnectorStation = 31.7mm
 export hipSpacing = 96mm
 export hipCenterX = hipSpacing / 2
 export ankleAxisHeight = 44mm

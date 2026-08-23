@@ -1,5 +1,18 @@
-// DM-J3507-2EC simplified envelope
-// Replaceable actuator proxy using the requested 46 mm by 37.9 mm authoritative envelope.
+// DM-J3507-2EC envelope
+// Overall envelope taken from the authoritative sources rather than estimated:
+// the vendor STEP (dm_3507_3d-241021.STEP) and user manual V1.0, 2024-11-19.
+//
+// The part is Ø46.0 mm x 37.9 mm overall and NOTHING protrudes beyond that.
+// The earlier proxy added an output flange, an output boss and a rear pilot
+// outside the 37.9 mm body, which made the envelope 48.9 mm long and put the
+// output interface about 7 mm too far out. The real output flange, its register
+// and the stator mounting pattern are all recessed into the two end faces, so
+// the envelope is a plain cylinder and the interface is described by the
+// exported bolt-circle parameters instead of by guessed geometry.
+//
+// +Z is the output face. See actuatorConnectorStation for the radial cable
+// exit, which is a keep-out this proxy deliberately does not model: the
+// connector's radial size has not been measured.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
@@ -13,43 +26,7 @@ motorBodySketch = sketch(on = XY) {
 motorBodyRegion = region(segments = [motorBodySketch.bodyCircle])
 motorBodyRaw = extrude(motorBodyRegion, length = actuatorDepth, symmetric = true)
 
-outputFlangeSketch = sketch(on = XY) {
-  flangeCircle = circle(start = [var 17mm, var 0mm], center = [var 0mm, var 0mm])
-  coincident([flangeCircle.center, ORIGIN])
-  horizontal([
-    flangeCircle.center,
-    flangeCircle.start
-  ])
-  diameter(flangeCircle) == 34mm
-}
-outputFlangeRegion = region(segments = [outputFlangeSketch.flangeCircle])
-outputFlangeRaw = extrude(outputFlangeRegion, length = 3mm, symmetric = true)
-  |> translate(z = actuatorDepth / 2 + 1.5mm, global = true)
-
-outputBossSketch = sketch(on = XY) {
-  bossCircle = circle(start = [var 6mm, var 0mm], center = [var 0mm, var 0mm])
-  coincident([bossCircle.center, ORIGIN])
-  horizontal([bossCircle.center, bossCircle.start])
-  diameter(bossCircle) == 12mm
-}
-outputBossRegion = region(segments = [outputBossSketch.bossCircle])
-outputBossRaw = extrude(outputBossRegion, length = 5mm, symmetric = true)
-  |> translate(z = actuatorDepth / 2 + 5.5mm, global = true)
-
-rearPilotSketch = sketch(on = XY) {
-  pilotCircle = circle(start = [var 8mm, var 0mm], center = [var 0mm, var 0mm])
-  coincident([pilotCircle.center, ORIGIN])
-  horizontal([pilotCircle.center, pilotCircle.start])
-  diameter(pilotCircle) == 16mm
-}
-rearPilotRegion = region(segments = [rearPilotSketch.pilotCircle])
-rearPilotRaw = extrude(rearPilotRegion, length = 3mm, symmetric = true)
-  |> translate(z = -actuatorDepth / 2 - 1.5mm, global = true)
-
 hide(motorBodySketch)
-hide(outputFlangeSketch)
-hide(outputBossSketch)
-hide(rearPilotSketch)
 
 motorBody = appearance(
   motorBodyRaw,
@@ -57,28 +34,5 @@ motorBody = appearance(
   metalness = 62,
   roughness = 34,
 )
-outputFlange = appearance(
-  outputFlangeRaw,
-  color = motorFlange,
-  metalness = 78,
-  roughness = 24,
-)
-outputBoss = appearance(
-  outputBossRaw,
-  color = bearingSteel,
-  metalness = 86,
-  roughness = 18,
-)
-rearPilot = appearance(
-  rearPilotRaw,
-  color = printedDark,
-  metalness = 38,
-  roughness = 40,
-)
 
-export actuatorAssembly = [
-  motorBody,
-  outputFlange,
-  outputBoss,
-  rearPilot
-]
+export actuatorAssembly = [motorBody]

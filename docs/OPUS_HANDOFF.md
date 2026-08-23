@@ -65,16 +65,18 @@ Primary actuator:
 
 ## DAMIAO DM-J3507-2EC
 
-Use the authoritative vendor STEP model when available.
+The authoritative vendor STEP, 2D print and user manual V1.0 are published at
+`gitee.com/kit-miao/DM-J3507-2EC`. These are no longer working assumptions; the
+figures below are confirmed against the manual and the 2025 selection catalogue,
+and the mounting interface is recorded in `parameters.kcl`. See `NOTES.md` for
+the full spec table, the CAN protocol summary and the measured bolt patterns.
 
-Nominal working assumptions:
-
-- Outer diameter: **46 mm**
-- Axial depth: **37.9 mm**
+- Outer diameter: **46 mm** (confirmed Ø46.000 in the STEP)
+- Axial depth: **37.9 mm** overall, with nothing protruding
 - Mass: **~150 g**
 - Gear ratio: **7:1**
-- Rated torque: **~0.8 Nm**
-- Peak torque: **~3 Nm**
+- Rated torque: **0.8 Nm** — continuous, and the binding limit in practice
+- Peak torque: **3 Nm**
 - Integrated BLDC / FOC controller
 - Backdrivable
 - CAN / CAN-FD
@@ -493,6 +495,13 @@ The overall exported STL contains many separate/intersecting bodies and should c
 ---
 
 # 14. Immediate Priority
+
+**Sequencing note.** There is currently no hardware, so the bench
+characterisation this document opens with cannot start. That does not block
+design work: the vendor STEP and manual supply what the CAD was waiting on, so
+the knee module can be engineered now and the measurements folded in when
+hardware arrives. What must not happen is recording an analytical result as
+though it had been validated — see the deferred list in `NOTES.md`.
 
 Do **not** beautify or globally refine the entire robot yet.
 

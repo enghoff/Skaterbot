@@ -50,6 +50,40 @@ Hip roll ±25°, hip pitch −45° to +70°, knee 0° to 110°, ankle ±30°.
 These were tightened from the original request because of interference risk.
 Verify clearance against them; do not widen them to make a design fit.
 
+## Torque duty limit
+
+The actuator is rated **0.8 Nm continuous and 3 Nm peak**. Peak is not a duty
+rating, and the continuous figure is the one that binds. Static single-leg
+stance crosses 0.8 Nm at roughly **47° of knee flexion**, and at three times
+body weight the 3 Nm peak arrives at **60°**.
+
+Keep the mechanical stop at 110° so the robot can crouch and recover, but treat
+sustained loaded stance past about 45° as outside the thermal envelope. Design
+hard stops for the full range and leave the duty limit to the controller. The
+derivation is in [`NOTES.md`](NOTES.md).
+
+## Actuator geometry is now authoritative — use it
+
+The vendor STEP, 2D print and manual are published at
+`gitee.com/kit-miao/DM-J3507-2EC`. Do not re-guess the interface. The output
+face carries **6 × M3 on a Ø24 mm bolt circle** inside a Ø30 mm register; the
+housing carries **4 × M3 on Ø41 mm**; there is **no rear spigot**, so any
+opposite support bearing needs a stub axle you supply. These are exported from
+`parameters.kcl` — reference them rather than restating numbers.
+
+## No hardware exists
+
+Nothing can be bench tested, printed or measured. Do not propose a step whose
+output is a physical measurement, and do not record an analytical result as
+though it were validated. Thermal behaviour, backdrivability, PETG creep,
+layer strength and printed bearing-pocket accuracy are all open; say so
+explicitly rather than designing past them.
+
+Zoo Design Studio here is GUI-only, with no headless command line, so KCL
+cannot be executed or regenerated outside the app. Any CAD change you make is
+unverified until someone opens the project and regenerates it — state that
+plainly instead of implying a geometry check happened.
+
 ## Sourcing constraints
 
 Design around commodity parts available in India:

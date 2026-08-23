@@ -14,9 +14,20 @@
 - [x] Fully constrained solver sketches
 - [x] Project lint, format, execution, and targeted visual reviews
 
+## Actuator data resolved
+
+- [x] Locate authoritative vendor documentation (manual V1.0, 2D print, STEP)
+- [x] Record the real spec table, including the 0.8 Nm continuous rating
+- [x] Correct the proxy envelope to Ø46 x 37.9 mm with nothing protruding
+- [x] Capture the real bolt patterns as parameters: 6 x M3 on Ø24 output, 4 x M3 on Ø41 housing
+- [x] Compute the static torque envelope and the resulting duty limit
+- [ ] Import the vendor STEP itself and regenerate (its body is an open-shell surface model, so it may not import as a solid)
+- [ ] Measure the connector/cable-exit keep-out at the Ø46 rim, 31.7 mm from the output face
+
 ## Required next refinement
 
-- [ ] Replace actuator proxy with authoritative STEP geometry and bolt pattern
+- [ ] Convert both yoke cheeks from Ø46.6 annuli into bolted hubs — neither currently has material at either bolt circle
+- [ ] Add the opposite-bearing stub axle, which the actuator does not provide
 - [ ] Select exact support bearings, axles, spacers, and retention method
 - [ ] Add real M3 through-holes, nut traps, and service-access fasteners
 - [ ] Convert tube socket blocks into clamped/bolted carbon-tube interfaces
