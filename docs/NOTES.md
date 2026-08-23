@@ -144,6 +144,16 @@ A credible route toward 1.8 kg is to rib the torso trays, hollow the hip-carrier
 
 The test verifies a useful walking pose, not every simultaneous extreme. Recommended commissioning limits are hip roll +/-25 degrees, hip pitch -45 to +70 degrees, knee 0 to 110 degrees, and ankle +/-30 degrees. After hard-stop, cable, and interference refinement, the intended mechanical goals are approximately hip roll +/-30 degrees, hip pitch -55 to +80 degrees, knee 0 to 125 degrees, and ankle +/-40 degrees. Simultaneous inward hip-roll extremes near +/-35 degrees are not considered collision-safe in the present layout.
 
+### Regeneration verification — August 23, 2026
+
+`main.kcl` and `pose_check.kcl` were both mock-executed and executed successfully in Design Studio after the actuator proxy was changed to a plain Ø46 x 37.9 mm cylinder. Neutral and crouched multi-view renders show all actuator envelopes and no **visible** self-collision.
+
+The crouched pose still has approximately **21.8 mm** of swing-foot clearance: the right ankle is at about 71.3 mm above the nominal ground plane, and the -5° foot pitch lowers the forward sole corner to about 21.8 mm above it. This confirms the approximately 22 mm claim. It is a single-pose visual/kinematic check, not a full-ROM collision proof.
+
+The yoke's 38.5 mm clear cheek spacing now exceeds the 37.9 mm proxy length by 0.6 mm, leaving the intended 0.3 mm axial clearance per side. The regenerated neutral and crouched views show no apparent motor/yoke/link interference. This verifies envelope clearance only; the yoke remains structurally invalid for the real actuator interface because its Ø46.6 annular cheeks contain neither real bolt circle.
+
+The initial constraint-report attempts for `pose_check.kcl` dropped their modeling connection while resolving imports, but a retry after re-execution succeeded on August 23, 2026. The entrypoint reported no constraint errors or warnings; it reports zero local sketches, so this result does not independently enumerate constraints inside the imported part files.
+
 ## Static torque envelope
 
 A static single-leg-stance model, 1.95 kg on 105 mm links with the hip held above the ankle, gives the knee torque required to hold a given crouch. Knee offset is `105 * sin(angle / 2)`; required torque is weight times that offset.

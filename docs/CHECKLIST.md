@@ -14,6 +14,13 @@
 - [x] Fully constrained solver sketches
 - [x] Project lint, format, execution, and targeted visual reviews
 
+## Regeneration verification — August 23, 2026
+
+- [x] Mock-execute and execute `main.kcl` after the Ø46 x 37.9 mm actuator-proxy correction
+- [x] Mock-execute and execute `pose_check.kcl` after the actuator-proxy correction
+- [x] Reconfirm the crouched-pose claim: approximately 21.8 mm swing-foot clearance and no visible self-collision in the reviewed pose
+- [x] Retry the `pose_check.kcl` entrypoint constraint report: no errors or warnings; the entrypoint reports zero local sketches, so imported part sketches are not independently enumerated
+
 ## Actuator data resolved
 
 - [x] Locate authoritative vendor documentation (manual V1.0, 2D print, STEP)
