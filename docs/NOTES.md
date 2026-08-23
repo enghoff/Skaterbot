@@ -35,15 +35,37 @@ Control is four modes selected through register `0x0A`: MIT on the base CAN ID, 
 
 The vendor STEP confirms Ø46.000 mm and 37.9 mm overall, and confirms that **nothing protrudes beyond that envelope**. The previous proxy in `actuator.kcl` added an output flange, an output boss and a rear pilot outside the 37.9 mm body, making it 48.9 mm long overall and placing the output interface about 7 mm too far out. The proxy is now a plain Ø46 x 37.9 mm cylinder, and the interface is carried by exported parameters in `parameters.kcl` rather than by guessed geometry.
 
-Measured from the STEP and cross-checked against the 2D print:
+Resolving all fifteen assembly transforms into a single frame gives the envelope exactly: **Y from 0.000 to 37.900 mm, maximum diameter Ø46.000 mm**, with no part of the assembly reaching past either bound. Stations below are measured from the front face at Y = 0.
 
-- **Output face: 6 x M3 tapped 5 mm deep on a Ø24 mm bolt circle**, inside a Ø30 mm register and concentric bores around Ø8-10 mm.
-- **Housing: 4 x M3 on a Ø41 mm bolt circle**, at 90° spacing.
-- A three-hole pattern on a Ø17.5 mm circle near the centre of the output face.
-- **Radial cable exit 31.7 mm from the output face**, so roughly 12.8 mm rear of the actuator's mid-plane. Its radial size has not been measured and remains a keep-out to resolve.
-- Four M2.5 screws on a Ø42 mm circle entering the rear face are internal assembly fasteners, not mounting points.
+The part stack, in assembly coordinates:
+
+| Component | Axial station | Diameter |
+|---|---|---|
+| Main body (surface model) | 0.00 - 30.70 | Ø46.00 |
+| Plate `3505_00` | 28.45 - 34.70 | Ø46.00 |
+| Plate `3505_0002` | 34.70 - 37.90 | Ø46.00 |
+| Driver PCB | 31.95 - 36.80 | Ø42.10 |
+| 4 x M2.5 internal screws | 2.00 - 9.00 | on Ø42 PCD |
+| 4 x M2.5 internal screws | 30.90 - 37.90 | on Ø42 PCD |
+| 3 x small screws | 5.65 - 11.21 | on Ø17.5 PCD, 120° apart |
+
+Interface features, all on the **front face**:
+
+- **6 x M3 on a Ø24 mm bolt circle**, at the bottom of a **Ø30 mm register recess** about 3 mm deep, with a shallow concentric Ø8-10 mm bore. This is the rotating output, and the recess makes it a self-centring spigot fit.
+- **4 x M3 on a Ø41 mm bolt circle** at 90° spacing, on the stationary housing outside the register.
+- The Ø42 mm circle carries the actuator's own M2.5 assembly screws. It is not a mounting pattern.
+
+**Which face is the output is now settled.** The rear third of the actuator is a plate / driver-PCB / plate stack, which must be stationary because it is what the cabling terminates on. The Ø41 pattern sits on the outer housing beyond the register, so it is the stationary mount. Everything inside the Ø30 register — the Ø24 bolt circle and the central bore — is the rotating output. So one link bolts to the outer circle and the other to the concentric inner circle, both from the front.
+
+**There is no through-bore.** The central features are only about 3 mm deep from the front face, and the rear face carries nothing within Ø20 mm of the axis. A through-shaft, which would have carried joint bending independently of the actuator, is not available.
 
 Two caveats. The STEP's main body is exported as an open-shell surface model rather than a solid, so it may not import as usable solid geometry. And its internal part names read `3505` rather than `3507` (the 2D print is likewise titled "DM 3508-7"), which appears to be the base stator designation reused, but confirm the envelope on opening it.
+
+### Correction — the cable exit is not radial
+
+An earlier revision of this file recorded a "radial cable exit 31.7 mm from the output face". That was wrong. The figure came from misreading plate `3505_00`'s placement origin as a connector location. **No part of the assembly projects beyond Ø46**, and there is no radial slot in the shell. The driver PCB sits at Ø42.1 inside the rear stack, so the electrical interfaces are on or near the **rear face** and the keep-out is axial rather than radial.
+
+The STEP does not model the connectors themselves, so the exact position and the plug's protrusion are still unknown. They are in the manual's interface figure, which is a diagram rather than extractable text, so this needs someone to look at it or at a photograph of the part.
 
 ## Yoke re-check against the real interface
 
@@ -51,19 +73,39 @@ Re-checking `pitch_yoke.kcl` against the measured interface changes the conclusi
 
 The problem is that the fit is not the constraint. Both cheeks are annuli bored to Ø46.6 mm to clear the actuator body, but **both real bolt circles — Ø24 mm and Ø41 mm — lie inside that bore**. The yoke as drawn has no material anywhere the actuator actually attaches, so the 0.3 mm clearance is measuring a gap that carries no load.
 
-**Both bolt circles are on the same face.** Resolving the hole axes against the assembly frame puts the Ø24 pattern at station 0 and the Ø41 pattern at station 1.0, while the opposite end of the actuator carries nothing but internal M2.5 fasteners and the cable exit at station 31.7. So this is a pancake module: one link bolts to the outer circle and the other to the concentric inner circle, on one side, and **the far side offers nothing to attach to or run a bearing on**.
+**Both bolt circles are on the same face**, as recorded above, so this is a pancake module and **the far side offers nothing to attach to or run a bearing on**. That invalidates the double-shear premise as drawn: cheeks straddling the actuator cannot pick it up on both sides, because there is only one side. Weakness 2 below is therefore not an alignment problem but an architecture question — the joint is a cantilever at the actuator until a second support is designed in.
 
-That invalidates the double-shear premise as drawn. Cheeks straddling the actuator cannot pick it up on both sides, because there is only one side. Any genuine second support has to be structure the joint supplies itself, wrapping past the actuator to reach the far side — and the cable exits into exactly that space. Weakness 2 below is therefore not an alignment problem but an unresolved architecture: the joint is inherently a cantilever at the actuator until a support scheme is chosen.
+## Support architecture — the load case decides it
 
-Candidate schemes, none yet evaluated:
+The governing requirement is the handoff's 100 N side load at 100 mm from the joint axis, which is **10 Nm of bending**. What matters is the span between the two bearings that resist it, because a short span multiplies the reaction:
 
-- a stub axle cantilevered from the fixed link, carrying a bearing in the moving link past the actuator's far end;
-- a large thin-section bearing running on a ring bolted to the Ø41 circle, keeping the load path short but adding diameter;
-- the moving link supported on the actuator's own Ø46 outside diameter through a clamped bearing ring.
+| Bearing span | Reaction per bearing |
+|---:|---:|
+| 8 mm | 1350 N |
+| 12 mm | 933 N |
+| 20 mm | 600 N |
+| 30 mm | 433 N |
+| 40 mm | 350 N |
 
-One thing still to confirm on opening the model: **which of the two faces is the output**. The station-0 face carries the Ø24 six-hole pattern with counterbores inside a Ø30 register and concentric Ø8-10 bores, which reads as an output flange, but a stator mounting face with a rotor clearance bore would look similar in geometry alone. The choice decides which link is fixed and which moves, so settle it before designing the cheeks.
+Since both interfaces are on the front face, a support confined to that face gets only 8-12 mm of span against the actuator's own internal bearing, so roughly **1000-1350 N per bearing**. Reaching past the 37.9 mm body is what buys span, and that is the whole argument.
 
-The top and bottom cross-straps run the full 44.5 mm width at Ø54, so they need checking against the radial cable exit once the connector's size is known.
+Mass matters as much as load. There is 40-80 g of headroom plus the 100-150 g this file already identifies as recoverable, so the realistic ceiling for new joint hardware is **140-230 g, or 18-29 g per joint across all eight**.
+
+### The three schemes, assessed
+
+**A ring bearing on the front face only — rejected on load.** Of the bearings that fit the Ø30-Ø46 annulus, only a 6706 (30 x 37 x 4) is light enough at 6.4 g per joint, 51 g across eight. But a single bearing cannot resist a moment, and paired with the actuator's internal bearing the span is 8-12 mm, so the reaction is around 1000 N — far beyond an extra-thin 4 mm section. Stepping up to a 6806 (30 x 42 x 7) costs 20.5 g per joint, 164 g in total, which is over budget, and it still only buys about 12 mm of span. This fails on load, not on mass.
+
+**A plain bearing on the Ø46 housing — rejected on friction.** The lightest option by far at about 3.2 g per joint, 26 g in total, and running on the outside diameter gives a useful arm. But sliding friction at Ø23 radius under 100 N costs 0.18 Nm even at an optimistic µ = 0.08, rising to 0.35 Nm at a realistic dry µ = 0.15. That is **23% to 43% of the actuator's entire 0.8 Nm continuous rating** lost to friction, in a robot whose premise is backdrivable torque control. It also clamps the stator, which is the heat path.
+
+**A ribbed shroud past the far end, carrying a stub axle — recommended.** Reaching 40-50 mm gives 300-350 N per bearing, comfortably inside a small commodity bearing. A full 2.5 mm cylindrical shroud costs 19.4 g per joint and 155 g overall, which is too much, but ribs covering 30-40% of the annulus cost **4.6-7.7 g per joint, 37-62 g overall**, which fits. It is the only scheme that achieves the span the load case demands at an affordable mass.
+
+Two conditions on that recommendation. The shroud and its stub-axle boss have to clear the rear-face cabling, whose position is still unknown, so this cannot be detailed until the cable exit is located. And if mass gets tight, **double-supporting only the knee and ankle** — the four joints that see landing loads — halves the cost, leaving hip roll and pitch on shorter arms single-supported.
+
+### The question worth asking the vendor
+
+The long span is forced entirely by the 100 N at 100 mm case. If that is a survival case rather than a design case, a modest front bearing sharing load with the actuator's internal bearing becomes viable and much simpler. Deciding that needs **DAMIAO's radial and moment load rating for the output bearing**, which the manual does not publish. Worth asking them directly, because the answer removes or confirms the need for the shroud.
+
+The top and bottom cross-straps run the full 44.5 mm width at Ø54, so they need re-checking against whatever the shroud becomes.
 
 ## Load path
 

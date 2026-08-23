@@ -1,8 +1,11 @@
 # Zookeeper task brief — knee support architecture
 
-**Status:** open, issued 2026-08-23. Supersede or delete this file once the
-report it asks for exists; it is a task brief, not standing guidance. Standing
-guidance lives in [`AGENTS.md`](AGENTS.md).
+**Status:** steps 2 to 4 answered 2026-08-23 by analysis of the vendor STEP; the
+results are in [`NOTES.md`](NOTES.md). **Step 1 is still open** — the KCL has
+never been executed, because Design Studio here is GUI-only with no headless
+command line. Anyone opening the project should still do step 1 and check the
+findings on screen. It is a task brief, not standing guidance; standing guidance
+lives in [`AGENTS.md`](AGENTS.md).
 
 All paths below are relative to the repository root, not to this file.
 

@@ -22,12 +22,15 @@
 - [x] Capture the real bolt patterns as parameters: 6 x M3 on Ø24 output, 4 x M3 on Ø41 housing
 - [x] Compute the static torque envelope and the resulting duty limit
 - [ ] Import the vendor STEP itself and regenerate (its body is an open-shell surface model, so it may not import as a solid)
-- [ ] Measure the connector/cable-exit keep-out at the Ø46 rim, 31.7 mm from the output face
+- [x] Establish that nothing projects past Ø46 and the cable exit is axial at the rear, not radial
+- [ ] Locate the rear-face connectors and the plug's axial protrusion — needs the manual's interface figure or a photo, not the STEP
 
 ## Required next refinement
 
-- [ ] **Choose the knee support architecture** — both bolt circles are on one actuator face, so the double-shear yoke as drawn cannot work
-- [ ] Confirm which actuator face is the output before designing either cheek
+- [x] Confirm which actuator face is the output — the front face, output inside the Ø30 register, housing on Ø41
+- [x] Assess the three support schemes — ribbed shroud plus stub axle recommended; front-face ring fails on load, plain bearing on friction
+- [ ] Ask DAMIAO for the output bearing's radial and moment rating — it decides whether the shroud is needed at all
+- [ ] Detail the ribbed shroud, once the rear cabling is located
 - [ ] Convert the driving cheek from a Ø46.6 annulus into a bolted hub on the Ø24 circle
 - [ ] Provide the second support, which the actuator does not offer on its far side
 - [ ] Select exact support bearings, axles, spacers, and retention method
