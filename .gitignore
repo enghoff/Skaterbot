@@ -1,0 +1,5 @@
+*.stl
+*.step
+*.STEP
+*.FCStd~
+.DS_Store
