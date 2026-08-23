@@ -9,6 +9,7 @@ The current baseline uses DAMIAO DM-J3507-2EC actuators, lightweight carbon-fibr
 All project documentation lives in [`docs/`](docs/):
 
 - [`docs/AGENTS.md`](docs/AGENTS.md) — binding instructions for any agent working this CAD. **Read this first.**
+- [`docs/ZOOKEEPER_TASK.md`](docs/ZOOKEEPER_TASK.md) — the currently open CAD task brief.
 - [`docs/OPUS_HANDOFF.md`](docs/OPUS_HANDOFF.md) — full mechanical engineering handoff and current design state.
 - [`docs/NOTES.md`](docs/NOTES.md) — as-built notes on the current skeleton: dimensions, mass estimates, known weaknesses.
 - [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — what is done and what the next refinement pass must cover.
