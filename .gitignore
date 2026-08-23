@@ -9,5 +9,10 @@ secrets/
 *.stl
 *.step
 *.STEP
+
+# Vendor reference geometry is tracked on purpose — it is an input, not an export
+!reference/**/*.step
+!reference/**/*.STEP
+!reference/**/*.stl
 *.FCStd~
 .DS_Store

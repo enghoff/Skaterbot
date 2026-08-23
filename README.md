@@ -33,11 +33,15 @@ bipedal/
 ├── torso.kcl              torso frame
 ├── payload_envelopes.kcl  reserved battery/electronics volumes
 ├── docs/                  project documentation (see above)
+├── reference/             vendor STEP and datasheets — design inputs
 └── secrets/               local credentials, not committed
 ```
 
 Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
-deliberately untracked.
+deliberately untracked. Vendor geometry under [`reference/`](reference/) is the
+exception: it is an input rather than an export, so it is tracked, and
+[`reference/README.md`](reference/README.md) records where each file came from
+along with its checksum and known caveats.
 
 ## Current baseline
 

@@ -1,0 +1,15 @@
+# CAD geometry must round-trip byte-identical. core.autocrlf is true on the
+# development machine, which would otherwise rewrite LF to CRLF on checkout and
+# invalidate the checksums recorded in reference/README.md.
+*.step  -text
+*.STEP  -text
+*.stl   -text
+*.STL   -text
+*.sldprt -text
+*.SLDPRT -text
+
+# KCL sources and prose keep normal handling, but pin the line ending so the
+# repository looks the same on every platform.
+*.kcl   text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf

@@ -758,11 +758,19 @@ bipedal/
 │   ├── CHECKLIST.md
 │   └── BOM.md
 │
+├── reference/          vendor data — design inputs, tracked on purpose
+│   ├── README.md       provenance, checksums and known caveats
+│   └── dm_3507_3d-241021.STEP
+│
 └── secrets/            (untracked)
 ```
 
 Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
-untracked; regenerate them rather than committing them.
+untracked; regenerate them rather than committing them. Vendor geometry under
+`reference/` is exempt from that rule, because it is an input rather than an
+export — see the negation at the bottom of `.gitignore`. Keep vendor filenames
+as published, so the supplier's own revision date stays visible, and add
+revisions alongside rather than overwriting.
 
 ## Structure to grow into
 
@@ -770,10 +778,9 @@ As the per-joint detail arrives, add these alongside the above rather than
 relocating `main.kcl`:
 
 ```text
-├── reference/          vendor STEP models, bearing and hardware datasheets
-│   ├── dm-j3507.step
-│   ├── bearings/
-│   └── hardware/
+├── reference/
+│   ├── bearings/       datasheets, once bearings are selected
+│   └── hardware/       fastener and shaft data
 │
 ├── exports/            generated STEP/STL, untracked
 │   ├── step/
