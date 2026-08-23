@@ -1,0 +1,40 @@
+// Shared robot layout parameters
+// Global actuator, kinematic, packaging, and material-envelope dimensions.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+export actuatorDiameter = 46mm
+export actuatorDepth = 37.9mm
+export actuatorClearance = 0.3mm
+export hipSpacing = 96mm
+export hipCenterX = hipSpacing / 2
+export ankleAxisHeight = 44mm
+export lowerLegLength = 105mm
+export upperLegLength = 105mm
+export kneeAxisHeight = ankleAxisHeight + lowerLegLength
+export hipPitchAxisHeight = kneeAxisHeight + upperLegLength
+export hipRollAxisHeight = 301mm
+export hipAxisOffset = hipRollAxisHeight - hipPitchAxisHeight
+
+export torsoBottom = 274mm
+export torsoTop = 380mm
+export torsoHeight = torsoTop - torsoBottom
+export torsoCenterHeight = (torsoTop + torsoBottom) / 2
+export torsoWidth = 126mm
+export torsoDepth = 74mm
+
+export footLength = 115mm
+export footWidth = 65mm
+export footCenterY = 8.5mm
+
+export tubeOuter = 8mm
+export tubeWall = 1mm
+export tubeClearLength = 47mm
+
+export printedOrange = "#d9822b"
+export printedDark = "#27313a"
+export carbonBlack = "#15191c"
+export motorGrey = "#59636c"
+export motorFlange = "#aeb7bf"
+export bearingSteel = "#c9d0d5"
+export soleBlack = "#25282b"
+export sensorBlue = "#2aa8d8"

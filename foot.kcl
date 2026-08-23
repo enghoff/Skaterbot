@@ -1,0 +1,275 @@
+// Forgiving prototype foot
+// Open printed frame, replaceable thin sole, four sensor pads, and double-supported ankle risers.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+soleThickness = 2mm
+soleCenterZ = -ankleAxisHeight + soleThickness / 2
+frameBottomZ = -ankleAxisHeight + soleThickness
+frameHeight = 10mm
+sideRailLength = 100mm
+frontRailWidth = footWidth - 6mm
+centralSpineWidth = 16mm
+centralSpineLength = 100mm
+
+soleSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 65mm, var 0mm])
+  edge2 = line(start = [var 65mm, var 0mm], end = [var 65mm, var 115mm])
+  edge3 = line(start = [var 65mm, var 115mm], end = [var 0mm, var 115mm])
+  edge4 = line(start = [var 0mm, var 115mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == footWidth
+  verticalDistance([edge2.start, edge2.end]) == footLength
+}
+soleRegion = region(segments = [soleSketch.edge1, soleSketch.edge2], intersectionIndex = -1, direction = CCW)
+soleRaw = extrude(soleRegion, length = soleThickness, symmetric = true)
+  |> translate(
+       x = -footWidth / 2,
+       y = footCenterY - (footLength / 2),
+       z = soleCenterZ,
+       global = true,
+     )
+
+sideRailSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 3mm, var 0mm])
+  edge2 = line(start = [var 3mm, var 0mm], end = [var 3mm, var 100mm])
+  edge3 = line(start = [var 3mm, var 100mm], end = [var 0mm, var 100mm])
+  edge4 = line(start = [var 0mm, var 100mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 3mm
+  verticalDistance([edge2.start, edge2.end]) == sideRailLength
+}
+sideRailRegion = region(
+  segments = [
+    sideRailSketch.edge1,
+    sideRailSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+leftRailRaw = extrude(sideRailRegion, length = frameHeight)
+  |> translate(
+       x = -footWidth / 2 + 3mm,
+       y = footCenterY - (sideRailLength / 2),
+       z = frameBottomZ,
+       global = true,
+     )
+rightRailRaw = clone(leftRailRaw)
+  |> translate(x = footWidth - 9mm, global = true)
+
+crossRailSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 59mm, var 0mm])
+  edge2 = line(start = [var 59mm, var 0mm], end = [var 59mm, var 3mm])
+  edge3 = line(start = [var 59mm, var 3mm], end = [var 0mm, var 3mm])
+  edge4 = line(start = [var 0mm, var 3mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == frontRailWidth
+  verticalDistance([edge2.start, edge2.end]) == 3mm
+}
+crossRailRegion = region(
+  segments = [
+    crossRailSketch.edge1,
+    crossRailSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+heelRailRaw = extrude(crossRailRegion, length = frameHeight)
+  |> translate(
+       x = -frontRailWidth / 2,
+       y = footCenterY - (sideRailLength / 2),
+       z = frameBottomZ,
+       global = true,
+     )
+toeRailRaw = clone(heelRailRaw)
+  |> translate(y = sideRailLength - 3mm, global = true)
+
+spineSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 16mm, var 0mm])
+  edge2 = line(start = [var 16mm, var 0mm], end = [var 16mm, var 100mm])
+  edge3 = line(start = [var 16mm, var 100mm], end = [var 0mm, var 100mm])
+  edge4 = line(start = [var 0mm, var 100mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == centralSpineWidth
+  verticalDistance([edge2.start, edge2.end]) == centralSpineLength
+}
+spineRegion = region(segments = [spineSketch.edge1, spineSketch.edge2], intersectionIndex = -1, direction = CCW)
+spineRaw = extrude(spineRegion, length = 3mm)
+  |> translate(
+       x = -centralSpineWidth / 2,
+       y = footCenterY - (centralSpineLength / 2),
+       z = frameBottomZ,
+       global = true,
+     )
+
+riserSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
+  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 18mm])
+  edge3 = line(start = [var 8mm, var 18mm], end = [var 0mm, var 18mm])
+  edge4 = line(start = [var 0mm, var 18mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 8mm
+  verticalDistance([edge2.start, edge2.end]) == 18mm
+}
+riserRegion = region(segments = [riserSketch.edge1, riserSketch.edge2], intersectionIndex = -1, direction = CCW)
+leftRiserRaw = extrude(riserRegion, length = 20mm)
+  |> translate(
+       x = -24mm,
+       y = -9mm,
+       z = -32mm,
+       global = true,
+     )
+rightRiserRaw = clone(leftRiserRaw)
+  |> translate(x = 40mm, global = true)
+
+ankleBridgeRailSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 50mm, var 0mm])
+  edge2 = line(start = [var 50mm, var 0mm], end = [var 50mm, var 4mm])
+  edge3 = line(start = [var 50mm, var 4mm], end = [var 0mm, var 4mm])
+  edge4 = line(start = [var 0mm, var 4mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 50mm
+  verticalDistance([edge2.start, edge2.end]) == 4mm
+}
+ankleBridgeRailRegion = region(
+  segments = [
+    ankleBridgeRailSketch.edge1,
+    ankleBridgeRailSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rearAnkleBridgeRaw = extrude(ankleBridgeRailRegion, length = 10mm)
+  |> translate(
+       x = -25mm,
+       y = -9mm,
+       z = -40mm,
+       global = true,
+     )
+frontAnkleBridgeRaw = clone(rearAnkleBridgeRaw)
+  |> translate(y = 14mm, global = true)
+
+sensorSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 10mm, var 0mm])
+  edge2 = line(start = [var 10mm, var 0mm], end = [var 10mm, var 10mm])
+  edge3 = line(start = [var 10mm, var 10mm], end = [var 0mm, var 10mm])
+  edge4 = line(start = [var 0mm, var 10mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 10mm
+  verticalDistance([edge2.start, edge2.end]) == 10mm
+}
+sensorRegion = region(segments = [sensorSketch.edge1, sensorSketch.edge2], intersectionIndex = -1, direction = CCW)
+rearLeftSensorRaw = extrude(sensorRegion, length = 1mm)
+  |> translate(
+       x = -28mm,
+       y = -40mm,
+       z = -ankleAxisHeight + soleThickness,
+       global = true,
+     )
+rearRightSensorRaw = clone(rearLeftSensorRaw)
+  |> translate(x = 46mm, global = true)
+frontLeftSensorRaw = clone(rearLeftSensorRaw)
+  |> translate(y = 91mm, global = true)
+frontRightSensorRaw = clone(rearRightSensorRaw)
+  |> translate(y = 91mm, global = true)
+
+hide(soleSketch)
+hide(sideRailSketch)
+hide(crossRailSketch)
+hide(spineSketch)
+hide(riserSketch)
+hide(ankleBridgeRailSketch)
+hide(sensorSketch)
+
+sole = appearance(
+  soleRaw,
+  color = soleBlack,
+  roughness = 92,
+  metalness = 0,
+)
+footFrame = appearance(
+  [
+    leftRailRaw,
+    rightRailRaw,
+    heelRailRaw,
+    toeRailRaw,
+    spineRaw,
+    leftRiserRaw,
+    rightRiserRaw,
+    rearAnkleBridgeRaw,
+    frontAnkleBridgeRaw
+  ],
+  color = printedOrange,
+  roughness = 76,
+  metalness = 2,
+)
+sensorPads = appearance(
+  [
+    rearLeftSensorRaw,
+    rearRightSensorRaw,
+    frontLeftSensorRaw,
+    frontRightSensorRaw
+  ],
+  color = sensorBlue,
+  roughness = 45,
+  metalness = 8,
+)
+
+export footAssembly = [sole, footFrame, sensorPads]

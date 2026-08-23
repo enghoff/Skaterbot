@@ -1,0 +1,162 @@
+// Torso payload reservation envelopes
+// Non-detailed packaging volumes for battery, controls, optional SBC, and centerline IMU.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+batterySketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 92mm, var 0mm])
+  edge2 = line(start = [var 92mm, var 0mm], end = [var 92mm, var 34mm])
+  edge3 = line(start = [var 92mm, var 34mm], end = [var 0mm, var 34mm])
+  edge4 = line(start = [var 0mm, var 34mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 92mm
+  verticalDistance([edge2.start, edge2.end]) == 34mm
+}
+batteryRegion = region(
+  segments = [
+    batterySketch.edge1,
+    batterySketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+batteryRaw = extrude(batteryRegion, length = 32mm, symmetric = true)
+  |> translate(
+       x = -46mm,
+       y = -17mm,
+       z = -30mm,
+       global = true,
+     )
+
+controllerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 76mm, var 0mm])
+  edge2 = line(start = [var 76mm, var 0mm], end = [var 76mm, var 46mm])
+  edge3 = line(start = [var 76mm, var 46mm], end = [var 0mm, var 46mm])
+  edge4 = line(start = [var 0mm, var 46mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 76mm
+  verticalDistance([edge2.start, edge2.end]) == 46mm
+}
+controllerRegion = region(
+  segments = [
+    controllerSketch.edge1,
+    controllerSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+controllerRaw = extrude(controllerRegion, length = 12mm, symmetric = true)
+  |> translate(
+       x = -38mm,
+       y = -23mm,
+       z = 2mm,
+       global = true,
+     )
+
+sbcSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 85mm, var 0mm])
+  edge2 = line(start = [var 85mm, var 0mm], end = [var 85mm, var 58mm])
+  edge3 = line(start = [var 85mm, var 58mm], end = [var 0mm, var 58mm])
+  edge4 = line(start = [var 0mm, var 58mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 85mm
+  verticalDistance([edge2.start, edge2.end]) == 58mm
+}
+sbcRegion = region(segments = [sbcSketch.edge1, sbcSketch.edge2], intersectionIndex = -1, direction = CCW)
+sbcRaw = extrude(sbcRegion, length = 16mm, symmetric = true)
+  |> translate(
+       x = -42.5mm,
+       y = -29mm,
+       z = 30mm,
+       global = true,
+     )
+
+imuSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 22mm, var 0mm])
+  edge2 = line(start = [var 22mm, var 0mm], end = [var 22mm, var 22mm])
+  edge3 = line(start = [var 22mm, var 22mm], end = [var 0mm, var 22mm])
+  edge4 = line(start = [var 0mm, var 22mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == 22mm
+  verticalDistance([edge2.start, edge2.end]) == 22mm
+}
+imuRegion = region(segments = [imuSketch.edge1, imuSketch.edge2], intersectionIndex = -1, direction = CCW)
+imuRaw = extrude(imuRegion, length = 6mm, symmetric = true)
+  |> translate(
+       x = -11mm,
+       y = -11mm,
+       z = 6mm,
+       global = true,
+     )
+
+hide(batterySketch)
+hide(controllerSketch)
+hide(sbcSketch)
+hide(imuSketch)
+
+batteryEnvelope = appearance(
+  batteryRaw,
+  color = "#7246a8",
+  opacity = 55,
+  roughness = 55,
+  metalness = 0,
+)
+controllerEnvelope = appearance(
+  controllerRaw,
+  color = "#2f8a6d",
+  opacity = 48,
+  roughness = 50,
+  metalness = 4,
+)
+sbcEnvelope = appearance(
+  sbcRaw,
+  color = "#3f6fac",
+  opacity = 42,
+  roughness = 50,
+  metalness = 4,
+)
+imuEnvelope = appearance(
+  imuRaw,
+  color = "#e0c24c",
+  opacity = 72,
+  roughness = 42,
+  metalness = 6,
+)
+
+export payloadEnvelopes = [
+  batteryEnvelope,
+  controllerEnvelope,
+  sbcEnvelope,
+  imuEnvelope
+]

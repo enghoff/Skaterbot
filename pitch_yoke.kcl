@@ -1,0 +1,121 @@
+// Reusable double-shear pitch yoke
+// Lightweight annular cheeks, removable straps, and opposite-side radial bearing placeholder.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+yokeOuterDiameter = 54mm
+yokeInnerDiameter = actuatorDiameter + 0.6mm
+cheekThickness = 3mm
+ringCenterX = actuatorDepth / 2 + actuatorClearance + cheekThickness / 2
+yokeOverallWidth = ringCenterX * 2 + cheekThickness
+strapDepth = 8mm
+strapHeight = 4mm
+
+outerRingSketch = sketch(on = YZ) {
+  outerCircle = circle(start = [var 27mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([outerCircle.center, ORIGIN])
+  horizontal([outerCircle.center, outerCircle.start])
+  diameter(outerCircle) == yokeOuterDiameter
+}
+outerRingRegion = region(segments = [outerRingSketch.outerCircle])
+outerRingBlank = extrude(outerRingRegion, length = cheekThickness, symmetric = true)
+
+innerRingSketch = sketch(on = YZ) {
+  innerCircle = circle(start = [var 23.3mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([innerCircle.center, ORIGIN])
+  horizontal([innerCircle.center, innerCircle.start])
+  diameter(innerCircle) == yokeInnerDiameter
+}
+innerRingRegion = region(segments = [innerRingSketch.innerCircle])
+innerRingCutter = extrude(innerRingRegion, length = cheekThickness + 2mm, symmetric = true)
+ringRaw = subtract(outerRingBlank, tools = [innerRingCutter])
+leftRingRaw = ringRaw
+  |> translate(x = -ringCenterX, global = true)
+rightRingRaw = clone(leftRingRaw)
+  |> translate(x = ringCenterX * 2, global = true)
+
+strapSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 44.5mm, var 0mm])
+  edge2 = line(start = [var 44.5mm, var 0mm], end = [var 44.5mm, var 8mm])
+  edge3 = line(start = [var 44.5mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == yokeOverallWidth
+  verticalDistance([edge2.start, edge2.end]) == strapDepth
+}
+strapRegion = region(segments = [strapSketch.edge1, strapSketch.edge2], intersectionIndex = -1, direction = CCW)
+topStrapRaw = extrude(strapRegion, length = strapHeight, symmetric = true)
+  |> translate(
+       x = -yokeOverallWidth / 2,
+       y = -strapDepth / 2,
+       z = yokeOuterDiameter / 2 - (strapHeight / 2),
+       global = true,
+     )
+bottomStrapRaw = clone(topStrapRaw)
+  |> translate(z = -yokeOuterDiameter + strapHeight, global = true)
+
+bearingSketch = sketch(on = YZ) {
+  bearingCircle = circle(start = [var 11mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([bearingCircle.center, ORIGIN])
+  horizontal([
+    bearingCircle.center,
+    bearingCircle.start
+  ])
+  diameter(bearingCircle) == 22mm
+}
+bearingRegion = region(segments = [bearingSketch.bearingCircle])
+bearingRaw = extrude(bearingRegion, length = 5mm, symmetric = true)
+  |> translate(x = ringCenterX + 2mm, global = true)
+
+hide(outerRingSketch)
+hide(innerRingSketch)
+hide(strapSketch)
+hide(bearingSketch)
+
+leftRing = appearance(
+  leftRingRaw,
+  color = printedOrange,
+  roughness = 72,
+  metalness = 2,
+)
+rightRing = appearance(
+  rightRingRaw,
+  color = printedOrange,
+  roughness = 72,
+  metalness = 2,
+)
+topStrap = appearance(
+  topStrapRaw,
+  color = printedDark,
+  roughness = 68,
+  metalness = 4,
+)
+bottomStrap = appearance(
+  bottomStrapRaw,
+  color = printedDark,
+  roughness = 68,
+  metalness = 4,
+)
+supportBearing = appearance(
+  bearingRaw,
+  color = bearingSteel,
+  metalness = 88,
+  roughness = 20,
+)
+
+export pitchYokeAssembly = [
+  leftRing,
+  rightRing,
+  topStrap,
+  bottomStrap,
+  supportBearing
+]

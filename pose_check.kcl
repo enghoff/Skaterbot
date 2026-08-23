@@ -1,0 +1,264 @@
+// Biped kinematic pose check
+// Crouched stance with one lifted foot for sagittal clearance and joint-chain validation.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import pitchYokeAssembly from "pitch_yoke.kcl"
+import thighAssembly from "thigh.kcl"
+import shinAssembly from "shin.kcl"
+import hipCarrierAssembly from "hip_carrier.kcl"
+import footAssembly from "foot.kcl"
+import torsoAssembly from "torso.kcl"
+import payloadEnvelopes from "payload_envelopes.kcl"
+
+leftHipAngle = -6deg
+leftKneeAngle = 12deg
+leftShinAngle = leftHipAngle - leftKneeAngle
+leftAnkleAngle = 18deg
+leftFootAngle = leftShinAngle + leftAnkleAngle
+
+rightHipAngle = 35deg
+rightKneeAngle = 65deg
+rightShinAngle = rightHipAngle - rightKneeAngle
+rightAnkleAngle = 25deg
+rightFootAngle = rightShinAngle + rightAnkleAngle
+
+leftLegVerticalReach = upperLegLength * cos(leftHipAngle) + lowerLegLength * cos(leftShinAngle)
+crouchDrop = upperLegLength + lowerLegLength - leftLegVerticalReach
+poseHipPitchZ = hipPitchAxisHeight - crouchDrop
+poseHipRollZ = hipRollAxisHeight - crouchDrop
+poseTorsoCenterZ = torsoCenterHeight - crouchDrop
+poseCarrierCenterZ = (poseHipRollZ + poseHipPitchZ) / 2
+
+leftKneeY = upperLegLength * sin(leftHipAngle)
+leftKneeZ = poseHipPitchZ - (upperLegLength * cos(leftHipAngle))
+leftAnkleY = leftKneeY + lowerLegLength * sin(leftShinAngle)
+leftAnkleZ = leftKneeZ - (lowerLegLength * cos(leftShinAngle))
+leftThighCenterY = leftKneeY / 2
+leftThighCenterZ = (poseHipPitchZ + leftKneeZ) / 2
+leftShinCenterY = (leftKneeY + leftAnkleY) / 2
+leftShinCenterZ = (leftKneeZ + leftAnkleZ) / 2
+
+rightKneeY = upperLegLength * sin(rightHipAngle)
+rightKneeZ = poseHipPitchZ - (upperLegLength * cos(rightHipAngle))
+rightAnkleY = rightKneeY + lowerLegLength * sin(rightShinAngle)
+rightAnkleZ = rightKneeZ - (lowerLegLength * cos(rightShinAngle))
+rightThighCenterY = rightKneeY / 2
+rightThighCenterZ = (poseHipPitchZ + rightKneeZ) / 2
+rightShinCenterY = (rightKneeY + rightAnkleY) / 2
+rightShinCenterZ = (rightKneeZ + rightAnkleZ) / 2
+
+actuatorCopy2 = clone(actuatorAssembly)
+actuatorCopy3 = clone(actuatorAssembly)
+actuatorCopy4 = clone(actuatorAssembly)
+actuatorCopy5 = clone(actuatorAssembly)
+actuatorCopy6 = clone(actuatorAssembly)
+actuatorCopy7 = clone(actuatorAssembly)
+actuatorCopy8 = clone(actuatorAssembly)
+
+yokeCopy2 = clone(pitchYokeAssembly)
+yokeCopy3 = clone(pitchYokeAssembly)
+yokeCopy4 = clone(pitchYokeAssembly)
+yokeCopy5 = clone(pitchYokeAssembly)
+yokeCopy6 = clone(pitchYokeAssembly)
+yokeCopy7 = clone(pitchYokeAssembly)
+yokeCopy8 = clone(pitchYokeAssembly)
+
+rightHipCarrierSource = clone(hipCarrierAssembly)
+rightThighSource = clone(thighAssembly)
+rightShinSource = clone(shinAssembly)
+rightFootSource = clone(footAssembly)
+
+leftHipRollMotor = actuatorAssembly
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipRollZ, global = true)
+rightHipRollMotor = actuatorCopy2
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
+
+leftHipPitchMotor = actuatorCopy3
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
+rightHipPitchMotor = actuatorCopy4
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
+
+leftKneeMotor = actuatorCopy5
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftKneeY,
+       z = leftKneeZ,
+       global = true,
+     )
+rightKneeMotor = actuatorCopy6
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightKneeY,
+       z = rightKneeZ,
+       global = true,
+     )
+
+leftAnkleMotor = actuatorCopy7
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftAnkleY,
+       z = leftAnkleZ,
+       global = true,
+     )
+rightAnkleMotor = actuatorCopy8
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightAnkleY,
+       z = rightAnkleZ,
+       global = true,
+     )
+
+leftHipRollYoke = pitchYokeAssembly
+  |> rotate(axis = [0, 0, 1], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipRollZ, global = true)
+rightHipRollYoke = yokeCopy2
+  |> rotate(axis = [0, 0, 1], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
+
+leftHipPitchYoke = yokeCopy3
+  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
+  |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
+rightHipPitchYoke = yokeCopy4
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
+  |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
+
+leftKneeYoke = yokeCopy5
+  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftKneeY,
+       z = leftKneeZ,
+       global = true,
+     )
+rightKneeYoke = yokeCopy6
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightKneeY,
+       z = rightKneeZ,
+       global = true,
+     )
+
+leftAnkleYoke = yokeCopy7
+  |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftAnkleY,
+       z = leftAnkleZ,
+       global = true,
+     )
+rightAnkleYoke = yokeCopy8
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightAnkleY,
+       z = rightAnkleZ,
+       global = true,
+     )
+
+leftHipCarrier = hipCarrierAssembly
+  |> translate(x = -hipCenterX, z = poseCarrierCenterZ, global = true)
+rightHipCarrier = rightHipCarrierSource
+  |> translate(x = hipCenterX, z = poseCarrierCenterZ, global = true)
+
+leftThigh = thighAssembly
+  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftThighCenterY,
+       z = leftThighCenterZ,
+       global = true,
+     )
+rightThigh = rightThighSource
+  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightThighCenterY,
+       z = rightThighCenterZ,
+       global = true,
+     )
+
+leftShin = shinAssembly
+  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftShinCenterY,
+       z = leftShinCenterZ,
+       global = true,
+     )
+rightShin = rightShinSource
+  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightShinCenterY,
+       z = rightShinCenterZ,
+       global = true,
+     )
+
+leftFoot = footAssembly
+  |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftAnkleY,
+       z = leftAnkleZ,
+       global = true,
+     )
+rightFoot = rightFootSource
+  |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightAnkleY,
+       z = rightAnkleZ,
+       global = true,
+     )
+
+bodyFrame = torsoAssembly
+  |> translate(z = poseTorsoCenterZ, global = true)
+reservedPayload = payloadEnvelopes
+  |> translate(z = poseTorsoCenterZ, global = true)
+
+export poseCheckAssembly = [
+  bodyFrame,
+  reservedPayload,
+  leftHipRollMotor,
+  rightHipRollMotor,
+  leftHipPitchMotor,
+  rightHipPitchMotor,
+  leftKneeMotor,
+  rightKneeMotor,
+  leftAnkleMotor,
+  rightAnkleMotor,
+  leftHipRollYoke,
+  rightHipRollYoke,
+  leftHipPitchYoke,
+  rightHipPitchYoke,
+  leftKneeYoke,
+  rightKneeYoke,
+  leftAnkleYoke,
+  rightAnkleYoke,
+  leftHipCarrier,
+  rightHipCarrier,
+  leftThigh,
+  rightThigh,
+  leftShin,
+  rightShin,
+  leftFoot,
+  rightFoot
+]

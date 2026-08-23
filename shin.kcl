@@ -1,0 +1,136 @@
+// Lightweight shin module
+// Narrow twin hollow carbon tubes with printed sockets and protected rear cable space.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+tubeInner = tubeOuter - (tubeWall * 2)
+tubeCenterOffset = 7.5mm
+socketWidth = 27mm
+socketDepth = 18mm
+socketHeight = 8mm
+socketCenterZ = tubeClearLength / 2 + socketHeight / 2
+
+outerTubeSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
+  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 8mm])
+  edge3 = line(start = [var 8mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == tubeOuter
+  verticalDistance([edge2.start, edge2.end]) == tubeOuter
+}
+outerTubeRegion = region(
+  segments = [
+    outerTubeSketch.edge1,
+    outerTubeSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+outerTubeBlank = extrude(outerTubeRegion, length = tubeClearLength, symmetric = true)
+
+innerTubeSketch = sketch(on = XY) {
+  edge1 = line(start = [var 1mm, var 1mm], end = [var 7mm, var 1mm])
+  edge2 = line(start = [var 7mm, var 1mm], end = [var 7mm, var 7mm])
+  edge3 = line(start = [var 7mm, var 7mm], end = [var 1mm, var 7mm])
+  edge4 = line(start = [var 1mm, var 7mm], end = [var 1mm, var 1mm])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([ORIGIN, edge1.start]) == tubeWall
+  verticalDistance([ORIGIN, edge1.start]) == tubeWall
+  horizontalDistance([edge1.start, edge1.end]) == tubeInner
+  verticalDistance([edge2.start, edge2.end]) == tubeInner
+}
+innerTubeRegion = region(
+  segments = [
+    innerTubeSketch.edge1,
+    innerTubeSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+innerTubeCutter = extrude(innerTubeRegion, length = tubeClearLength + 2mm, symmetric = true)
+carbonTubeRaw = subtract(outerTubeBlank, tools = [innerTubeCutter])
+leftTubeRaw = carbonTubeRaw
+  |> translate(x = -tubeCenterOffset - (tubeOuter / 2), y = -tubeOuter / 2, global = true)
+rightTubeRaw = clone(leftTubeRaw)
+  |> translate(x = tubeCenterOffset * 2, global = true)
+
+socketSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 27mm, var 0mm])
+  edge2 = line(start = [var 27mm, var 0mm], end = [var 27mm, var 18mm])
+  edge3 = line(start = [var 27mm, var 18mm], end = [var 0mm, var 18mm])
+  edge4 = line(start = [var 0mm, var 18mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == socketWidth
+  verticalDistance([edge2.start, edge2.end]) == socketDepth
+}
+socketRegion = region(segments = [socketSketch.edge1, socketSketch.edge2], intersectionIndex = -1, direction = CCW)
+topSocketRaw = extrude(socketRegion, length = socketHeight, symmetric = true)
+  |> translate(
+       x = -socketWidth / 2,
+       y = -socketDepth / 2,
+       z = socketCenterZ,
+       global = true,
+     )
+bottomSocketRaw = clone(topSocketRaw)
+  |> translate(z = -socketCenterZ * 2, global = true)
+
+hide(outerTubeSketch)
+hide(innerTubeSketch)
+hide(socketSketch)
+
+leftTube = appearance(
+  leftTubeRaw,
+  color = carbonBlack,
+  metalness = 22,
+  roughness = 30,
+)
+rightTube = appearance(
+  rightTubeRaw,
+  color = carbonBlack,
+  metalness = 22,
+  roughness = 30,
+)
+topSocket = appearance(
+  topSocketRaw,
+  color = printedOrange,
+  roughness = 74,
+  metalness = 2,
+)
+bottomSocket = appearance(
+  bottomSocketRaw,
+  color = printedOrange,
+  roughness = 74,
+  metalness = 2,
+)
+
+export shinAssembly = [
+  leftTube,
+  rightTube,
+  topSocket,
+  bottomSocket
+]

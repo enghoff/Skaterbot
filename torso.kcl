@@ -1,0 +1,188 @@
+// Compact torso structure
+// Open PETG frame with low battery tray, hip beam, electronics deck, cover rails, and corner posts.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+frameWidth = 118mm
+frameDepth = 68mm
+postSize = 8mm
+postHeight = torsoHeight - 7mm
+postCenterZ = -1.5mm
+railHeight = 5mm
+hipBeamWidth = 108mm
+hipBeamDepth = 14mm
+hipBeamHeight = 8mm
+hipBeamZ = hipRollAxisHeight - torsoCenterHeight
+
+traySketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 118mm, var 0mm])
+  edge2 = line(start = [var 118mm, var 0mm], end = [var 118mm, var 68mm])
+  edge3 = line(start = [var 118mm, var 68mm], end = [var 0mm, var 68mm])
+  edge4 = line(start = [var 0mm, var 68mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == frameWidth
+  verticalDistance([edge2.start, edge2.end]) == frameDepth
+}
+trayRegion = region(segments = [traySketch.edge1, traySketch.edge2], intersectionIndex = -1, direction = CCW)
+batteryTrayRaw = extrude(trayRegion, length = 3mm, symmetric = true)
+  |> translate(
+       x = -frameWidth / 2,
+       y = -frameDepth / 2,
+       z = -torsoHeight / 2 + 1.5mm,
+       global = true,
+     )
+
+deckRaw = clone(batteryTrayRaw)
+  |> scale(x = 0.85, y = 0.78, z = 0.67)
+  |> translate(z = 38mm, global = true)
+
+postSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
+  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 8mm])
+  edge3 = line(start = [var 8mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == postSize
+  verticalDistance([edge2.start, edge2.end]) == postSize
+}
+postRegion = region(segments = [postSketch.edge1, postSketch.edge2], intersectionIndex = -1, direction = CCW)
+rearLeftPostRaw = extrude(postRegion, length = postHeight, symmetric = true)
+  |> translate(
+       x = -frameWidth / 2,
+       y = -frameDepth / 2,
+       z = postCenterZ,
+       global = true,
+     )
+rearRightPostRaw = clone(rearLeftPostRaw)
+  |> translate(x = frameWidth - postSize, global = true)
+frontLeftPostRaw = clone(rearLeftPostRaw)
+  |> translate(y = frameDepth - postSize, global = true)
+frontRightPostRaw = clone(rearRightPostRaw)
+  |> translate(y = frameDepth - postSize, global = true)
+
+railSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 118mm, var 0mm])
+  edge2 = line(start = [var 118mm, var 0mm], end = [var 118mm, var 8mm])
+  edge3 = line(start = [var 118mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == frameWidth
+  verticalDistance([edge2.start, edge2.end]) == 8mm
+}
+railRegion = region(segments = [railSketch.edge1, railSketch.edge2], intersectionIndex = -1, direction = CCW)
+topRearRailRaw = extrude(railRegion, length = railHeight, symmetric = true)
+  |> translate(
+       x = -frameWidth / 2,
+       y = -frameDepth / 2,
+       z = torsoHeight / 2 - (railHeight / 2),
+       global = true,
+     )
+topFrontRailRaw = clone(topRearRailRaw)
+  |> translate(y = frameDepth - 8mm, global = true)
+
+hipBeamSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 108mm, var 0mm])
+  edge2 = line(start = [var 108mm, var 0mm], end = [var 108mm, var 14mm])
+  edge3 = line(start = [var 108mm, var 14mm], end = [var 0mm, var 14mm])
+  edge4 = line(start = [var 0mm, var 14mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == hipBeamWidth
+  verticalDistance([edge2.start, edge2.end]) == hipBeamDepth
+}
+hipBeamRegion = region(
+  segments = [
+    hipBeamSketch.edge1,
+    hipBeamSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+hipBeamRaw = extrude(hipBeamRegion, length = hipBeamHeight, symmetric = true)
+  |> translate(
+       x = -hipBeamWidth / 2,
+       y = -hipBeamDepth / 2,
+       z = hipBeamZ,
+       global = true,
+     )
+
+hide(traySketch)
+hide(postSketch)
+hide(railSketch)
+hide(hipBeamSketch)
+
+batteryTray = appearance(
+  batteryTrayRaw,
+  color = printedDark,
+  roughness = 72,
+  metalness = 3,
+)
+electronicsDeck = appearance(
+  deckRaw,
+  color = printedDark,
+  roughness = 72,
+  metalness = 3,
+)
+cornerPosts = appearance(
+  [
+    rearLeftPostRaw,
+    rearRightPostRaw,
+    frontLeftPostRaw,
+    frontRightPostRaw
+  ],
+  color = printedOrange,
+  roughness = 74,
+  metalness = 2,
+)
+coverRails = appearance(
+  [topRearRailRaw, topFrontRailRaw],
+  color = printedOrange,
+  roughness = 74,
+  metalness = 2,
+)
+hipBeam = appearance(
+  hipBeamRaw,
+  color = printedOrange,
+  roughness = 72,
+  metalness = 2,
+)
+
+export torsoAssembly = [
+  batteryTray,
+  electronicsDeck,
+  cornerPosts,
+  coverRails,
+  hipBeam
+]
