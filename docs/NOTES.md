@@ -69,7 +69,9 @@ The manual's page-4 figures resolve where they are. The housing carries a **flat
 
 The pinouts are also worth recording, because the manual contradicts itself. Its parts list says a 3-pin power/CAN cable and an 8-pin tuning cable; its pinout figures show **power/CAN as 8-pin** (3 x VCC, 3 x GND, CAN_L, CAN_H) and the **debug UART as 3-pin** (GND, RX, TX). The figures are authoritative, and tripling the supply pins matches the 4 A peak. `BOM.md` has been corrected accordingly.
 
-Still unmeasured: the angular width of the flat, and how far a mated plug and its strain relief project axially past the rear face.
+The flat is now measured. It is a chord about 19.0 mm from the axis against the 23 mm radius, so it takes roughly 4 mm off one side, is about 25.9 mm wide, and subtends about 69° of arc. The two rear tapped holes that flank it, at 45° and 135°, clear the flat's edges by only about 11°, so a rear bracket can reach them but must not run material across the sector between them.
+
+Still unmeasured: how far a mated plug and its strain relief project axially past the rear face. That needs the physical part or the connector's own datasheet, so it stays open.
 
 ## Yoke re-check against the real interface
 
@@ -103,15 +105,17 @@ Mass matters as much as load. There is 40-80 g of headroom plus the 100-150 g th
 
 **A ribbed shroud past the far end, carrying a stub axle — recommended.** Reaching 40-50 mm gives 300-350 N per bearing, comfortably inside a small commodity bearing. A full 2.5 mm cylindrical shroud costs 19.4 g per joint and 155 g overall, which is too much, but ribs covering 30-40% of the annulus cost **4.6-7.7 g per joint, 37-62 g overall**, which fits. It is the only scheme that achieves the span the load case demands at an affordable mass.
 
-Two conditions on that recommendation. The shroud and its stub-axle boss have to clear the rear-face cabling, whose position is still unknown, so this cannot be detailed until the cable exit is located. And if mass gets tight, **double-supporting only the knee and ankle** — the four joints that see landing loads — halves the cost, leaving hip roll and pitch on shorter arms single-supported.
+Two conditions on that recommendation, which the confirmed rear mounting below makes largely academic. The shroud and its stub-axle boss have to clear the rear-face cabling, and if mass gets tight, **double-supporting only the knee and ankle** — the four joints that see landing loads — halves the cost, leaving hip roll and pitch on shorter arms single-supported.
 
-### A rear-face mount may supersede all three
+### A rear-face mount supersedes all three
 
 The manual's page-4 end view carries an explicit **4 x M3 tapped 4 mm deep** plus 4 x Ø3.20, and its centre is empty — no Ø30 boss and no Ø24 circle. So that view is the **rear** face, and the housing appears to be bolt-mountable from **both** ends: 4 x M3 deep 5 at the front and 4 x M3 deep 4 at the rear. The output is still front-only, but the *housing* is not.
 
 If that holds it changes the answer. Anchor the fixed link to the **rear** face, run arms forward alongside the Ø46 body, and carry the bearing near the front output plane. That gives about 38 mm of span — the 350 N case — without any structure wrapping backwards over the cabling, and the connector flat says which angular sector to leave clear. It is a shorter, stiffer load path than the ribbed shroud and probably lighter, because the arms are loaded in tension and compression rather than as a cantilevered shell.
 
-Treat this as strong but unconfirmed. It is read off a low-resolution raster figure; the empty centre, the flat, and the explicit callout all agree, but two earlier readings in this project have had to be corrected. **Confirm the rear tapped holes on the real print or the part before designing to them.** If they are real, this supersedes the ribbed shroud; if not, the shroud recommendation stands.
+**Both sources now agree, so this is the architecture to build.** The vendor 2D print's rear view carries `4xM3 v4` and `Ø3.20 v3.2` as two callouts on the same four locations, and the STEP matches exactly. The 3.20 mm outer rear cover, part `3505_0002`, has four Ø3.20 clearance holes on a Ø41.00 circle at 45°, 135°, 225° and 315°. The plate immediately beneath it, `3505_00`, has four Ø2.50 tapped holes on the same Ø41.00 circle at the same four angles, and Ø2.50 is the tap drill for M3. So a screw passes through 3.2 mm of cover before it reaches 4 mm of thread. That sets the fastener: bracket thickness plus 3.2 mm plus engagement, so M3 x 10 or M3 x 12 for a 4 mm bracket, and the plain shank must not exceed 3.2 mm plus the bracket if the thread is to engage fully.
+
+**Do not mistake these for the cover screws.** A second four-hole pattern sits on Ø42.00 at 33.5°, 146.5°, 213.5° and 326.5°, Ø2.20 through the cover into Ø2.10 below, and those are the M2.5 screws holding the rear stack together — the STEP ships M2.5 fastener solids at exactly those positions, and they are what the hex-socket symbols in the rear view represent. Undoing them opens the driver compartment.
 
 ### The question worth asking the vendor
 

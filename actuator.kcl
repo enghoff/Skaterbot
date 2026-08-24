@@ -10,9 +10,11 @@
 // the envelope is a plain cylinder and the interface is described by the
 // exported bolt-circle parameters instead of by guessed geometry.
 //
-// +Z is the output face. See actuatorConnectorStation for the radial cable
-// exit, which is a keep-out this proxy deliberately does not model: the
-// connector's radial size has not been measured.
+// +Z is the output face; the connectors are on the -Z rear face, seated against
+// a flat chord on the housing. That flat, the two housing bolt patterns and the
+// rear tapped holes are all keep-outs and interfaces this proxy deliberately
+// does not model -- see the actuatorRear* and actuatorConnectorFlat*
+// parameters, which carry them as numbers instead.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"

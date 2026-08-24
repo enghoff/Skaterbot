@@ -18,7 +18,28 @@ export actuatorOutputBoltCount = 6
 export actuatorOutputRegister = 30mm
 export actuatorHousingBoltCircle = 41mm
 export actuatorHousingBoltCount = 4
-export actuatorConnectorStation = 31.7mm
+
+// Rear face. Confirmed twice over: the vendor 2D print calls out 4xM3 tapped
+// 4 mm deep with 4 x Ø3.20 clearance on the same four locations, and the STEP
+// agrees exactly -- Ø3.20 through the 3.20 mm rear cover (3505_0002) into
+// Ø2.50 tapped holes (the M3 tap drill) in the plate beneath (3505_00), both
+// on Ø41.00 at 45°, 135°, 225° and 315°. A screw therefore crosses the cover
+// before it reaches thread, so useful length is bracket + cover + engagement.
+// Not to be confused with the 4 x M2.5 on Ø42.00 at 33.5°/146.5°/213.5°/326.5°,
+// which hold the driver compartment shut.
+export actuatorRearBoltCircle = 41mm
+export actuatorRearBoltCount = 4
+export actuatorRearBoltPhase = 45deg
+export actuatorRearBoltDepth = 4mm
+export actuatorRearCoverThickness = 3.2mm
+
+// The connector flat: a chord 19.0 mm from the axis, about 25.9 mm wide,
+// subtending about 69°. The connectors sit at the rear end against it. An
+// earlier actuatorConnectorStation = 31.7mm was wrong -- it was plate 3505_00's
+// placement origin misread as a connector -- and has been removed. How far a
+// mated plug projects past the rear face is still unmeasured.
+export actuatorConnectorFlatOffset = 19mm
+export actuatorConnectorFlatArc = 69deg
 export hipSpacing = 96mm
 export hipCenterX = hipSpacing / 2
 export ankleAxisHeight = 44mm

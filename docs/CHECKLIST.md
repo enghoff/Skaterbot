@@ -32,17 +32,18 @@
 - [x] Establish that nothing projects past Ø46 and the cable exit is axial at the rear, not radial
 - [x] Locate the connectors — rear end, against a flat chord on the Ø46 housing, opposite the Ø30 output boss
 - [x] Correct the harness pin counts — power/CAN is 8-pin, debug UART is 3-pin; the manual's parts list has them swapped
-- [ ] Measure the flat's angular width and how far a mated plug projects past the rear face
-- [ ] **Confirm the 4 x M3 deep 4 tapped holes on the rear face** — if real, a rear-anchored bracket supersedes the ribbed shroud
+- [x] Measure the flat's angular width — a chord 19.0 mm from the axis, about 25.9 mm wide, subtending about 69°
+- [ ] Measure how far a mated plug and its strain relief project axially past the rear face (needs the part or the connector datasheet)
+- [x] **Confirm the 4 x M3 deep 4 tapped holes on the rear face** — real, on Ø41.00 at 45°/135°/225°/315°, behind Ø3.20 clearance through the 3.20 mm cover; the 2D print and the STEP agree. A rear-anchored bracket supersedes the ribbed shroud
 
 ## Required next refinement
 
 - [x] Confirm which actuator face is the output — the front face, output inside the Ø30 register, housing on Ø41
 - [x] Assess the three support schemes — ribbed shroud plus stub axle recommended; front-face ring fails on load, plain bearing on friction
 - [ ] Ask DAMIAO for the output bearing's radial and moment rating — it decides whether the shroud is needed at all
-- [ ] Detail the ribbed shroud, once the rear cabling is located
+- [ ] Detail the rear-anchored bracket: bolt to the 4 x M3 on Ø41, run arms forward past the Ø46 body, carry the far bearing near the output plane, keep the 69° connector sector clear
 - [ ] Convert the driving cheek from a Ø46.6 annulus into a bolted hub on the Ø24 circle
-- [ ] Provide the second support, which the actuator does not offer on its far side
+- [ ] Provide the second support, which the actuator does not offer on its far side — now carried by the rear bracket's forward arms
 - [ ] Select exact support bearings, axles, spacers, and retention method
 - [ ] Add real M3 through-holes, nut traps, and service-access fasteners
 - [ ] Convert tube socket blocks into clamped/bolted carbon-tube interfaces
