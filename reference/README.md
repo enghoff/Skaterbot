@@ -57,11 +57,43 @@ print, not from a dimensioned drawing directly, so confirm them on screen.
 - There is **no rear spigot**, so an opposite support bearing needs a stub axle
   supplied by the surrounding structure.
 
+## `DM-J3507-2EC减速电机说明书V1.0.pdf`
+
+The vendor user manual, V1.0 dated 2024-11-19, from `说明书/` in the same Gitee
+repository. Chinese only. This is the most reliable of the three vendor sources:
+where it and the STEP have disagreed, the manual has been right.
+
+## `DM-J3507-2EC_manual_V1.0_EN.pdf`
+
+An **unofficial English translation** of the above, produced here for working use.
+Not from the vendor, and not authoritative — where a number matters, check it
+against the Chinese original sitting beside it.
+
+The translation is layout-preserving rather than a re-typeset document. Original
+text runs were removed and English inserted into the same boxes, so pagination,
+tables, gridlines and all eleven figures are unchanged and the two documents can
+be read side by side. All 15 pages are translated with no Chinese text remaining.
+
+Two things to expect. Font size varies within a paragraph, because each source
+line was fitted to its own box and English is wider than Chinese at the same
+point size. And text baked into the figures is untouched — which costs nothing
+here, since the pinout labels (VCC, GND, CAN_L, CAN_H, RX, TX) and the dimension
+callouts were already Latin.
+
+Reproducible from the original with the two files kept alongside:
+
+- `translate_manual.py` — extracts text cells with their bounding boxes, removes
+  them without disturbing line art or images, and refits the English. Needs
+  PyMuPDF.
+- `manual_translation_map.json` — the 345 source-string to English pairs. Correct
+  a translation here and re-run rather than editing the PDF.
+
+Run as `python translate_manual.py <chinese.pdf> <english.pdf>` with the JSON
+files from the script's own directory.
+
 ## Not yet mirrored here
 
 Also published at the same Gitee repository, and worth adding if needed:
 
-- `说明书/` — user manual V1.0, 2024-11-19. The full spec table, CAN protocol
-  and register map are summarised in [`../docs/NOTES.md`](../docs/NOTES.md).
 - `2D图纸/` — dimensioned print, titled `DM 3508-7减速电机.PDF`.
 - `测试数据/性能曲线/` — performance curves.
