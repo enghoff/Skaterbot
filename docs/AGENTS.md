@@ -16,8 +16,10 @@ Build **one complete, manufacturable knee module**. Nothing else.
 
 There is an open task brief at [`ZOOKEEPER_TASK.md`](ZOOKEEPER_TASK.md) that
 scopes the immediate step. If it is still marked open, do that rather than
-starting the knee design — the support architecture is not settled yet, and one
-premise has already had to be corrected for being built on unverified geometry.
+inventing your own starting point. The support architecture is now settled — the
+fixed link anchors to the actuator's rear face — so that brief is an
+implementation task, and it lists what has already been established and must not
+be re-opened.
 
 Do not beautify, globally refine, or re-proportion the rest of the robot. The
 architecture is being proven at a single joint first. If a whole-robot change

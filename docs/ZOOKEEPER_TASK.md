@@ -1,122 +1,179 @@
-# Zookeeper task brief — knee support architecture
+# Zookeeper task brief — build the knee actuator interface
 
-**Status:** steps 2 to 4 answered 2026-08-23 by analysis of the vendor STEP; the
-results are in [`NOTES.md`](NOTES.md). **Step 1 is still open** — the KCL has
-never been executed, because Design Studio here is GUI-only with no headless
-command line. Anyone opening the project should still do step 1 and check the
-findings on screen. It is a task brief, not standing guidance; standing guidance
-lives in [`AGENTS.md`](AGENTS.md).
+**Status:** open, written 2026-08-24. This replaces the previous brief, which
+asked for the actuator envelope to be verified and the support architecture to be
+chosen. Both are now settled and the results are in [`NOTES.md`](NOTES.md); the
+old brief is in git history if you want to see what it asked. Nothing in it is
+still outstanding except the one item repeated under "What is still unknown"
+below.
 
 All paths below are relative to the repository root, not to this file.
 
 ---
 
-Read `docs/AGENTS.md` first — it is binding, and its frozen parameters, mass
-budget, duty limit and sourcing constraints all apply here.
+Read [`AGENTS.md`](AGENTS.md) first — it is binding, and its frozen parameters,
+mass budget, joint limits, duty limit and sourcing constraints all apply here.
 
-This is an **investigation and verification** task. Do not redesign the knee, do
-not modify the yoke, and do not pick the support architecture and build it. The
-deliverable is a report that lets a human make that choice. Stop where the task
-says to stop.
+Unlike the last brief, **this one is an implementation task.** You are being
+asked to build geometry, not to investigate and report. The reason it is going to
+you rather than being done outside Design Studio is simple: Design Studio here is
+GUI-only with no headless command line, so an external agent can write KCL but
+cannot execute it. You can. Everything below therefore ends in "and confirm it
+builds", and a change that has not been regenerated is not finished.
 
-## Why you are being asked
+## What is already settled — do not re-open these
 
-Three things were established outside Design Studio, by reading the vendor STEP
-and manual as text. None of it has been regenerated or seen on screen, and the
-method has already produced one wrong answer that had to be corrected. Treat
-every number below as a claim to check, not a fact to build on. If you find any
-of it wrong, say so plainly and stop rather than working around it.
+The actuator interface has been read off the vendor STEP
+(`reference/dm_3507_3d-241021.STEP`) and the vendor 2D print, cross-checked
+against manual V1.0, and the numbers now live in `parameters.kcl` with their
+provenance in comments. In summary:
 
-The relevant files: `reference/dm_3507_3d-241021.STEP` is the vendor model, with
-provenance and known caveats in `reference/README.md`. The claims are recorded in
-`docs/NOTES.md` under "Corrected actuator envelope" and "Yoke re-check against
-the real interface".
+- The part is **Ø46.0 × 37.9 mm** overall and **nothing protrudes** beyond it.
+- **Output face:** 6 × M3 tapped 5 mm deep on a Ø24 bolt circle, inside a **Ø30
+  boss raised 1 mm** above the surrounding face. The boss is a register — use it
+  to locate the hub, do not ignore it. There is **no through-bore**.
+- **Housing, same face:** 4 × M3 tapped 5 mm deep on Ø41.
+- **Rear face:** 4 × M3 tapped **4 mm** deep on Ø41 at 45°, 135°, 225° and 315°,
+  each behind a Ø3.20 clearance hole through the 3.20 mm rear cover. A screw
+  therefore crosses 3.2 mm of cover before it reaches any thread.
+- **Not for mounting:** 4 × M2.5 on Ø42 at 33.5°, 146.5°, 213.5° and 326.5°.
+  Those hold the driver compartment shut. Leave them alone.
+- **Connector flat:** one chord 19.0 mm from the axis, about 25.9 mm wide,
+  subtending about 69° and centred between the 45° and 135° tapped holes, which
+  clear its edges by roughly 11°. The connectors sit at the rear end against this
+  flat and project rearward by an unmeasured amount.
 
-## Step 1 — regenerate what has already changed
+The architecture that follows from this is also settled: **anchor the fixed link
+to the rear face and run arms forward past the body to carry the far bearing.**
+The alternatives were assessed and rejected — a front-face ring bearing fails on
+load, and a plain bearing clamped on the Ø46 housing burns 23–43% of the 0.8 Nm
+continuous rating in friction. The reasoning is in `NOTES.md` under "The three
+schemes, assessed". Do not revisit the choice; build it.
 
-`actuator.kcl` was rewritten and `parameters.kcl` gained actuator interface
-constants, both without ever being executed.
+## Why the existing yoke cannot be reused as drawn
 
-Regenerate `main.kcl` and `pose_check.kcl`. Report whether they build clean, and
-whether the neutral assembly and the crouched pose check still show what
-`docs/NOTES.md` describes — in particular the roughly 22 mm swing-foot clearance
-and no self-collision. The actuator proxy is now a plain Ø46 × 37.9 mm cylinder
-where it used to be 48.9 mm long overall, so joint spacing that previously looked
-clear may have changed.
+`pitch_yoke.kcl` is a double-shear yoke whose two cheeks are Ø54/Ø46.6 annuli
+3 mm thick, sitting at x = ±20.75 mm. Both bolt circles that could drive it are
+**inside** Ø46, so an annulus bored to Ø46.6 has no material anywhere the
+actuator actually attaches. It also assumes a spigot on the far face for the
+second bearing, and there is none. The Ø22 × 5 mm `supportBearing` in that file
+is a placeholder running on nothing.
 
-Do not fix anything you find here yet. Report it.
+## Work to do
 
-## Step 2 — verify the actuator envelope against the vendor model
+### Step 1 — regenerate before you change anything
 
-Bring `reference/dm_3507_3d-241021.STEP` into the project and check it against
-these claims. Note that its main body is exported as an open-shell surface model
-rather than a solid, so it may not import as usable solid geometry — if that
-blocks you, say so and fall back to measuring what you can.
+`parameters.kcl` gained the rear-face and connector-flat constants, and
+`actuator.kcl` had a stale comment corrected, in the most recent commit. Neither
+has been executed since.
 
-Confirm or correct:
+Regenerate `main.kcl` and `pose_check.kcl` and confirm they still build clean and
+still show what `NOTES.md` describes, in particular roughly 22 mm of swing-foot
+clearance in the crouched pose. Report the result before proceeding. If something
+is already broken, say so and stop — do not build on top of it.
 
-- Overall envelope Ø46.0 × 37.9 mm, with nothing protruding beyond it.
-- Output-side face: 6 × M3 tapped 5 mm deep on a Ø24 mm bolt circle, inside a
-  Ø30 mm register, with concentric bores around Ø8–10 mm.
-- 4 × M3 on a Ø41 mm bolt circle at 90° spacing.
-- Both bolt circles on the **same** face, at axial stations 0 and 1.0.
-- Nothing usable on the opposite face except internal M2.5 fasteners on a Ø42 mm
-  circle.
+### Step 2 — put the new module in its own file
 
-## Step 3 — settle the two unknowns that block the design
+Create **`knee_module.kcl`**. Do not modify `pitch_yoke.kcl`.
 
-**Which face is the output.** The station-0 face carries the Ø24 six-hole pattern
-with counterbores inside a Ø30 register and concentric Ø8–10 bores. That reads as
-an output flange, but a stator mounting face with a rotor clearance bore would
-look similar in geometry alone, and the text analysis could not separate them.
-Determine which it is and give your evidence — concentricity with the rotor,
-which features rotate, wall thickness, whatever actually distinguishes them. This
-decides which link is fixed and which moves, so it gates everything downstream.
+The reason matters: `main.kcl` and `pose_check.kcl` both import
+`pitchYokeAssembly` and clone it seven times, so all eight joints share that one
+part. Editing it would silently re-proportion the whole robot, which `AGENTS.md`
+forbids. Build the knee as a separate part, wire it into `main.kcl` **at the knee
+only**, and leave the other seven joints on the old yoke. That also makes the
+before-and-after visible on screen in one view.
 
-**The cable exit keep-out.** There is a radial cable exit about 31.7 mm from the
-station-0 face. Its radial extent has never been measured and is deliberately
-absent from the CAD. Give it as a keep-out volume: radial projection beyond
-Ø46, angular position and width relative to the bolt patterns, and axial extent.
-Say whether the connector body, the mating plug, or both are included.
+Export an **array**, as `pitch_yoke.kcl` does, so the consuming files keep
+working.
 
-## Step 4 — assess the support architecture, and stop
+### Step 3 — the driving hub
 
-Both actuator interfaces are on one face, so the far side offers nothing to bolt
-to or run a bearing on. The double-shear yoke currently in `pitch_yoke.kcl`
-cannot work as drawn: its cheeks are Ø46.6 mm annuli that clear the body without
-touching either bolt circle, and there is no rear spigot for the second bearing.
+Replace the driven cheek with a disc that actually bolts to the output.
 
-Assess these three candidate schemes against the real geometry:
+- Seat it on the **Ø30 boss**, with a counterbore about 1 mm deep and 0.2–0.4 mm
+  of diametral clearance, so the boss carries the concentricity rather than the
+  bolts.
+- 6 × Ø3.4 clearance holes on Ø24 at 60°. Check M3 cap-head clearance: the heads
+  are Ø5.5 and the arc spacing on Ø24 is 12.6 mm, so they fit, but confirm it
+  against whatever counterbore or recess you add.
+- The threads are 5 mm deep, so state the screw length you are designing for and
+  make sure the hub thickness plus engagement is consistent with it.
+- The hub also has to carry the inner member of the second bearing, so it needs a
+  journal or stub projecting **forward, past the output face**. That axial
+  projection is what buys the support span — see step 5.
 
-1. A stub axle cantilevered from the fixed link, carrying a bearing in the
-   moving link past the actuator's far end.
-2. A large thin-section bearing running on a ring bolted to the Ø41 mm circle.
-3. The moving link supported on the actuator's own Ø46 mm outside diameter
-   through a clamped bearing ring.
+### Step 4 — the rear-anchored bracket
 
-For each, report the load path from ground reaction to the fixed link, whether it
-physically fits given the cable exit you measured in step 3, the bearing family
-it implies and whether that size is commodity in India, an estimated mass delta
-against the 40–80 g of headroom in the budget, and its main failure mode in PETG.
+- Bolt to the 4 × M3 on Ø41 at 45°, 135°, 225°, 315°.
+- Screw length is bracket thickness + 3.2 mm of cover + engagement, with
+  engagement not exceeding the 4 mm of available thread. State the length you
+  choose. Do not let a plain shank bottom out before the thread engages.
+- **Leave the 69° connector sector open.** A mated plug projects rearward by an
+  amount nobody has measured, so the bracket must not close that sector off, and
+  it must not need the connectors removed to be fitted or serviced.
+- Arms run forward alongside the Ø46 body to the bearing seat. Keep them clear of
+  Ø46 plus the existing 0.3 mm `actuatorClearance`.
 
-Design for **6 Nm static** at the joint, and remember the duty limit in
-`docs/AGENTS.md`: sustained loaded stance past roughly 45° of knee flexion is
-outside the thermal envelope, so the support has to be stiff in the near-straight
-poses the robot will actually hold.
+### Step 5 — the second support, sized to the real load case
 
-Then recommend one, and **stop**. Do not implement it. If none of the three works,
-say what fails and what minimum change would be needed — do not invent a fourth
-and build it.
+The point of the second bearing is to straddle the joint load with the actuator's
+own internal output bearing. If the new bearing sits level with the output face
+the two supports are nearly coincident and it achieves nothing, so the span is a
+design output you have to report, not an afterthought.
+
+- Design for **6 Nm static** at the joint, and separately check the **100 N at
+  100 mm** landing case, which is what forces the long span. `NOTES.md` puts the
+  reaction at roughly 300–350 N for a 40–50 mm span, against 1000–1350 N for the
+  8–12 mm a front-face bearing would give.
+- Report the span you achieved and the reaction that follows from it.
+- Pick a real bearing, not a placeholder. Give the designation, the mass per
+  joint and across eight joints, and whether it is a commodity part in India.
+- Remember the duty limit in `AGENTS.md`: sustained loaded stance past roughly
+  45° of knee flexion is outside the thermal envelope, so this has to be stiff in
+  the near-straight poses the robot will actually hold, not just at full flexion.
+
+### Step 6 — check it in the poses that matter
+
+Regenerate both entrypoints. Confirm the knee module clears the thigh and shin
+across the full **0° to 110°** knee range, that the mechanical stop at 110° is
+still reachable, and that nothing new collides in the crouched pose check. Do not
+widen a joint limit to make the design fit.
+
+## What is still unknown, and how to handle it
+
+Two things are genuinely open, and neither should stop you:
+
+**How far a mated plug projects past the rear face.** Unmeasured, and it needs the
+physical part or the connector's datasheet. Assume a generous keep-out, say what
+you assumed, and make the bracket's rear plate easy to shorten later if the real
+number is smaller.
+
+**The output bearing's radial and moment rating.** DAMIAO does not publish it, and
+it is the one number that could remove the need for the second support entirely.
+Until they answer, the second support stays. Do not design as though the internal
+bearing can take the moment.
 
 ## What to hand back
 
-A report covering: what regenerated and what did not, each claim in step 2
-confirmed or corrected with the measured value, which face is the output and why,
-the cable-exit keep-out, the three schemes assessed, your recommendation with its
-reasoning, and what risk is left open.
+- What regenerated cleanly and what did not, per entrypoint.
+- The mass delta of every new part, per joint and across all eight, against the
+  40–80 g of headroom in `AGENTS.md`.
+- The fastener list: size, length, count and engagement depth for the output hub
+  and the rear bracket separately.
+- The bearing designation, span achieved, resulting reaction, and sourcing.
+- Any interference you found, and what you assumed for the connector keep-out.
+- What is still open.
 
-Update `docs/NOTES.md` and `docs/CHECKLIST.md` with what you actually established.
-Where you correct one of the claims above, say so explicitly rather than quietly
-editing the number — the provenance of the error matters.
+Update [`NOTES.md`](NOTES.md), [`CHECKLIST.md`](CHECKLIST.md) and
+[`BOM.md`](BOM.md) with what you actually established.
+
+One request about the report itself. The last handback contained a claim that
+turned out to be false — that the yoke's clear span had gone from 49.5 mm to
+38.5 mm and the cheeks had moved inward, when `pitch_yoke.kcl` had not been
+touched since the baseline commit and the span had always been 38.5 mm. It came
+from describing project history rather than the model. So: **report only what you
+measured in the model you just built, and say where you read each number.** If
+you did not measure it, do not state it. Corrections are cheap; a confident wrong
+number costs a redesign.
 
 Do not change any frozen parameter. Do not touch anything outside the knee.
