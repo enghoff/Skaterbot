@@ -16,9 +16,9 @@ This BOM is intentionally split between parts that should be sourced early and c
 
 | Subsystem | Qty | Provisional part / specification | Indicative unit price | India availability | Risk | When to buy | Notes |
 |---|---:|---|---:|---|:---:|---|---|
-| Actuator | 8 | **DAMIAO DM-J3507-2EC, 24 V** | Foxtech **US$89–95**; Indian trader listings can be substantially higher | Specialist/import | 🔴 | **Buy 2 now; remaining 6 after actuator/knee validation** | 7:1 low-ratio servo, integrated driver, dual encoders, CAN/CAN-FD, torque feedback/control. Foxtech package includes 3-pin power/CAN and 8-pin tuning cables plus STEP model. |
-| Actuator power/CAN pigtail | 10–12 | SH1.0 3-pin compatible harness, preferably OEM DAMIAO | Usually supplied with actuator | Exact connector is less common locally | 🟠 | **Order spares with motors** | Avoid having the project blocked by tiny proprietary-ish harnesses. |
-| Actuator tuning pigtail | 2–3 | SH1.0 8-pin tuning cable | Usually supplied with actuator | Specialist | 🟠 | With motors | Two/three are enough; not required per joint in the finished robot. |
+| Actuator | 8 | **DAMIAO DM-J3507-2EC, 24 V** | Foxtech **US$89–95**; Indian trader listings can be substantially higher | Specialist/import | 🔴 | **Buy 2 now; remaining 6 after actuator/knee validation** | 7:1 low-ratio servo, integrated driver, dual encoders, CAN/CAN-FD, torque feedback/control. Foxtech package includes the 8-pin power/CAN and 3-pin tuning cables plus STEP model. |
+| Actuator power/CAN pigtail | 10–12 | SH1.0 **8-pin** compatible harness, preferably OEM DAMIAO | Usually supplied with actuator | Exact connector is less common locally | 🟠 | **Order spares with motors** | Avoid having the project blocked by tiny proprietary-ish harnesses. |
+| Actuator tuning pigtail | 2–3 | SH1.0 **3-pin** tuning cable | Usually supplied with actuator | Specialist | 🟠 | With motors | Two/three are enough; not required per joint in the finished robot. |
 | USB-CAN-FD debug interface | 1 | Waveshare USB-CAN/CAN-FD or DAMIAO-compatible interface | ~₹8k class locally for Waveshare | Available in India | 🟠 | With first 2 motors | Development/debug tool. Final robot should use MCU-native CAN-FD rather than depend on this adapter. |
 | Realtime MCU dev board | 2 | **STM32G474** development/core board | ~**₹859** for WeAct board on Robu; Nucleo alternatives ~₹1.9k+ | Easy | 🟢 | Early | Buy two so one can remain on bench while the other is integrated. Native FDCAN is a good fit. |
 | CAN-FD transceiver | 4 | MCP2542FD / TCAN1042-class, 3.3 V MCU compatible | Typically low hundreds of rupees or less per channel | Easy via Indian electronics distributors | 🟢 | Early | Two installed + spares. Consider isolation only if testing shows it useful. |
@@ -61,8 +61,8 @@ Current international reference:
 - Foxtech DM-J3507-2EC: **US$89–95**
 - Product page: https://store.foxtech.com/dm-j3507-2ec-24v-mit-driven-brushless-servo-joint-motor/
 - The listing states that each motor includes:
-  - 1 × SH1.0 3-pin power + CAN cable (200 mm)
-  - 1 × SH1.0 8-pin tuning cable (200 mm)
+  - 1 × SH1.0 8-pin power + CAN cable (200 mm)
+  - 1 × SH1.0 3-pin tuning cable (200 mm)
   - manual
   - STEP file
 
@@ -86,6 +86,12 @@ Robu currently lists:
 This is no longer considered a supply blocker, but actual measured dimensions matter to the printed sockets. Buy two lengths and make the CAD fit the material actually received.
 
 ### C. Exact DAMIAO connector ecosystem
+
+**Pin counts corrected 2026-08-23.** The manual's parts list on page 3 states a 3-pin
+power/CAN cable and an 8-pin tuning cable. Its own pinout figures on page 4 show the
+opposite: power/CAN is **8-pin** (3 x VCC, 3 x GND, CAN_L, CAN_H) and the debug UART is
+**3-pin** (GND, RX, TX). The figures are authoritative, and tripling VCC and GND is
+consistent with the 4 A peak supply current. The rows above use the figure values.
 
 The motors use small SH1.0 harness connectors. The supplied OEM cables solve the immediate problem, but individual housings/crimps and pre-made replacements can be much more annoying to source than XT/JST commodity parts.
 
@@ -160,7 +166,7 @@ A sensible planning figure for the finished V0 robot and core development electr
 Buy now / very soon:
 
 1. **2 × DAMIAO DM-J3507-2EC 24 V**
-2. **2+ spare DAMIAO 3-pin power/CAN pigtails**, if available separately
+2. **2+ spare DAMIAO 8-pin power/CAN pigtails**, if available separately
 3. **1 × USB-CAN-FD interface**
 4. **2 × 1 m 8 × 8 mm Robu carbon-fibre square tubes**
 5. **2 × STM32G474 development boards**

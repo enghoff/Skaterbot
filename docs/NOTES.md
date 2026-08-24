@@ -51,7 +51,7 @@ The part stack, in assembly coordinates:
 
 Interface features, all on the **front face**:
 
-- **6 x M3 on a Ø24 mm bolt circle**, at the bottom of a **Ø30 mm register recess** about 3 mm deep, with a shallow concentric Ø8-10 mm bore. This is the rotating output, and the recess makes it a self-centring spigot fit.
+- **6 x M3 on a Ø24 mm bolt circle** on a **Ø30 mm boss standing 1 mm proud** of the body, with a shallow concentric Ø8-10 mm bore. This is the rotating output. The manual's page-4 drawing dimensions 36.90 mm to the body and 37.90 mm over the boss, so the mating hub needs a Ø30 bore to register **onto** the boss. An earlier revision of this file called it a 3 mm recess, which was wrong — the concentric bores seen in the STEP at that station are internal features, not the register.
 - **4 x M3 on a Ø41 mm bolt circle** at 90° spacing, on the stationary housing outside the register.
 - The Ø42 mm circle carries the actuator's own M2.5 assembly screws. It is not a mounting pattern.
 
@@ -65,7 +65,11 @@ Two caveats. The STEP's main body is exported as an open-shell surface model rat
 
 An earlier revision of this file recorded a "radial cable exit 31.7 mm from the output face". That was wrong. The figure came from misreading plate `3505_00`'s placement origin as a connector location. **No part of the assembly projects beyond Ø46**, and there is no radial slot in the shell. The driver PCB sits at Ø42.1 inside the rear stack, so the electrical interfaces are on or near the **rear face** and the keep-out is axial rather than radial.
 
-The STEP does not model the connectors themselves, so the exact position and the plug's protrusion are still unknown. They are in the manual's interface figure, which is a diagram rather than extractable text, so this needs someone to look at it or at a photograph of the part.
+The manual's page-4 figures resolve where they are. The housing carries a **flat chord across the Ø46 outside diameter at one angular position**, and the connectors sit at the **rear end** against that flat, opposite the Ø30 output boss. Both connector bodies fall inside the 37.9 mm and Ø46 envelope, consistent with the STEP.
+
+The pinouts are also worth recording, because the manual contradicts itself. Its parts list says a 3-pin power/CAN cable and an 8-pin tuning cable; its pinout figures show **power/CAN as 8-pin** (3 x VCC, 3 x GND, CAN_L, CAN_H) and the **debug UART as 3-pin** (GND, RX, TX). The figures are authoritative, and tripling the supply pins matches the 4 A peak. `BOM.md` has been corrected accordingly.
+
+Still unmeasured: the angular width of the flat, and how far a mated plug and its strain relief project axially past the rear face.
 
 ## Yoke re-check against the real interface
 
@@ -100,6 +104,14 @@ Mass matters as much as load. There is 40-80 g of headroom plus the 100-150 g th
 **A ribbed shroud past the far end, carrying a stub axle — recommended.** Reaching 40-50 mm gives 300-350 N per bearing, comfortably inside a small commodity bearing. A full 2.5 mm cylindrical shroud costs 19.4 g per joint and 155 g overall, which is too much, but ribs covering 30-40% of the annulus cost **4.6-7.7 g per joint, 37-62 g overall**, which fits. It is the only scheme that achieves the span the load case demands at an affordable mass.
 
 Two conditions on that recommendation. The shroud and its stub-axle boss have to clear the rear-face cabling, whose position is still unknown, so this cannot be detailed until the cable exit is located. And if mass gets tight, **double-supporting only the knee and ankle** — the four joints that see landing loads — halves the cost, leaving hip roll and pitch on shorter arms single-supported.
+
+### A rear-face mount may supersede all three
+
+The manual's page-4 end view carries an explicit **4 x M3 tapped 4 mm deep** plus 4 x Ø3.20, and its centre is empty — no Ø30 boss and no Ø24 circle. So that view is the **rear** face, and the housing appears to be bolt-mountable from **both** ends: 4 x M3 deep 5 at the front and 4 x M3 deep 4 at the rear. The output is still front-only, but the *housing* is not.
+
+If that holds it changes the answer. Anchor the fixed link to the **rear** face, run arms forward alongside the Ø46 body, and carry the bearing near the front output plane. That gives about 38 mm of span — the 350 N case — without any structure wrapping backwards over the cabling, and the connector flat says which angular sector to leave clear. It is a shorter, stiffer load path than the ribbed shroud and probably lighter, because the arms are loaded in tension and compression rather than as a cantilevered shell.
+
+Treat this as strong but unconfirmed. It is read off a low-resolution raster figure; the empty centre, the flat, and the explicit callout all agree, but two earlier readings in this project have had to be corrected. **Confirm the rear tapped holes on the real print or the part before designing to them.** If they are real, this supersedes the ribbed shroud; if not, the shroud recommendation stands.
 
 ### The question worth asking the vendor
 

@@ -30,7 +30,10 @@
 - [x] Compute the static torque envelope and the resulting duty limit
 - [ ] Import the vendor STEP itself and regenerate (its body is an open-shell surface model, so it may not import as a solid)
 - [x] Establish that nothing projects past Ø46 and the cable exit is axial at the rear, not radial
-- [ ] Locate the rear-face connectors and the plug's axial protrusion — needs the manual's interface figure or a photo, not the STEP
+- [x] Locate the connectors — rear end, against a flat chord on the Ø46 housing, opposite the Ø30 output boss
+- [x] Correct the harness pin counts — power/CAN is 8-pin, debug UART is 3-pin; the manual's parts list has them swapped
+- [ ] Measure the flat's angular width and how far a mated plug projects past the rear face
+- [ ] **Confirm the 4 x M3 deep 4 tapped holes on the rear face** — if real, a rear-anchored bracket supersedes the ribbed shroud
 
 ## Required next refinement
 
