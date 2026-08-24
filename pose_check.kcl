@@ -5,6 +5,7 @@
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import pitchYokeAssembly from "pitch_yoke.kcl"
+import kneeFixedAssembly, kneeMovingAssembly from "knee_module.kcl"
 import thighAssembly from "thigh.kcl"
 import shinAssembly from "shin.kcl"
 import hipCarrierAssembly from "hip_carrier.kcl"
@@ -62,13 +63,13 @@ yokeCopy3 = clone(pitchYokeAssembly)
 yokeCopy4 = clone(pitchYokeAssembly)
 yokeCopy5 = clone(pitchYokeAssembly)
 yokeCopy6 = clone(pitchYokeAssembly)
-yokeCopy7 = clone(pitchYokeAssembly)
-yokeCopy8 = clone(pitchYokeAssembly)
 
 rightHipCarrierSource = clone(hipCarrierAssembly)
 rightThighSource = clone(thighAssembly)
 rightShinSource = clone(shinAssembly)
 rightFootSource = clone(footAssembly)
+rightKneeFixedSource = clone(kneeFixedAssembly)
+rightKneeMovingSource = clone(kneeMovingAssembly)
 
 leftHipRollMotor = actuatorAssembly
   |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
@@ -137,7 +138,17 @@ rightHipPitchYoke = yokeCopy4
   |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
   |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
 
-leftKneeYoke = yokeCopy5
+leftKneeFixedBracket = kneeFixedAssembly
+  |> rotate(axis = [0, 1, 0], angle = 180deg, global = true)
+  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftKneeY,
+       z = leftKneeZ,
+       global = true,
+     )
+leftKneeMovingHub = kneeMovingAssembly
+  |> rotate(axis = [0, 1, 0], angle = 180deg, global = true)
   |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -145,8 +156,15 @@ leftKneeYoke = yokeCopy5
        z = leftKneeZ,
        global = true,
      )
-rightKneeYoke = yokeCopy6
-  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+rightKneeFixedBracket = rightKneeFixedSource
+  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightKneeY,
+       z = rightKneeZ,
+       global = true,
+     )
+rightKneeMovingHub = rightKneeMovingSource
   |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -155,7 +173,7 @@ rightKneeYoke = yokeCopy6
        global = true,
      )
 
-leftAnkleYoke = yokeCopy7
+leftAnkleYoke = yokeCopy5
   |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -163,7 +181,7 @@ leftAnkleYoke = yokeCopy7
        z = leftAnkleZ,
        global = true,
      )
-rightAnkleYoke = yokeCopy8
+rightAnkleYoke = yokeCopy6
   |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
   |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
   |> translate(
@@ -249,8 +267,10 @@ export poseCheckAssembly = [
   rightHipRollYoke,
   leftHipPitchYoke,
   rightHipPitchYoke,
-  leftKneeYoke,
-  rightKneeYoke,
+  leftKneeFixedBracket,
+  rightKneeFixedBracket,
+  leftKneeMovingHub,
+  rightKneeMovingHub,
   leftAnkleYoke,
   rightAnkleYoke,
   leftHipCarrier,

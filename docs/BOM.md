@@ -218,3 +218,16 @@ Checked 2026-08-23:
 - GenX 22.2 V 6S 2200 mAh 40C/80C LiPo — observed around ₹2,659 from Robokits India during sourcing check.
 
 Prices and availability are snapshots, not guarantees. Re-check immediately before ordering.
+
+## 9. Knee actuator-interface hardware — August 24, 2026
+
+| Item | Qty per knee | Current specification | Estimated mass | Sourcing / status | Notes |
+|---|---:|---|---:|---|---|
+| Support bearing | 1 | **6800-2RS**, 10 x 19 x 5 mm | 5.0 g | Commodity; KG Bearing India lists 6800 with 1.83 kN dynamic and 0.925 kN static rating | Current rear-bracket module selection. Use sealed 2RS equivalent from NTN, Koyo, SKF, or a reputable Indian supplier. |
+| Journal | 1 | Ø10 x 8 mm hardened ground-steel stub | 4.93 g | Commodity precision shaft stock | Modelled as an 8 mm stub seated 2.2 mm into the hub. Retention/fit requires printed coupons and hardware review. |
+| Output screws | 6 | M3 x 6 socket-head cap screws | ~2.4 g total | Commodity | Ø6.0 x 3.2 mm hub counterbores; approximately 4.2 mm engagement in the 5 mm output threads. |
+| Rear bracket screws | 4 | M3 x 12 fully threaded socket-head cap screws + 1 mm washers | ~4 g total | Commodity | Approximately 3.8 mm engagement after 4 mm bracket, washer, and 3.2 mm rear cover. |
+| Printed output hub + fixed bracket + stop pads | 1 set | PETG, current `knee_module.kcl` | 18.37 g | Print-test required | KCL volume calculation at 1.27 g/cm³; not a slicer mass. |
+| **Complete module** | **1** | Printed structure + bearing + journal + fasteners | **34–35 g** | Design estimate only | One knee is now modelled. Its all-eight absolute mass is not a robot delta; reconcile it with the legacy yoke's unresolved hardware mass before any rollout. |
+
+**Prototype purchasing recommendation:** buy two 6800-2RS bearings, a short length of 10 mm hardened shaft, and M3 x 6 / M3 x 12 fasteners with washers for one knee plus spares. Do not bulk-buy hardware for all eight joints until the new knee is physically weighed and the mass budget is revisited.

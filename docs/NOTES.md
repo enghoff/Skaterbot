@@ -224,4 +224,42 @@ Items 3 to 5 need printed coupons; items 1 and 2 need a powered actuator on a be
 
 ## Verification status of CAD changes
 
-Zoo Design Studio here is a GUI application with no headless command line, so KCL edits in this repository cannot currently be executed, regenerated or visually inspected outside the app. The envelope correction described above is a reviewed text change and has **not** been regenerated. Open the project in Design Studio and re-run the neutral assembly and pose check before trusting it.
+KCL edits cannot be executed, regenerated or visually inspected outside Zoo Design Studio. The current actuator-interface implementation was regenerated in Design Studio on **August 24, 2026**: `knee_module.kcl`, `main.kcl`, `pose_check.kcl`, `knee_prelimit_check.kcl`, and `knee_limit_check.kcl` all execute successfully. The knee module contains 18 fully constrained sketches and has no lint findings.
+
+## Knee actuator-interface implementation — August 24, 2026
+
+### Scope and assembly integration
+
+`knee_module.kcl` is a separate knee-only module. `main.kcl` and `pose_check.kcl` import it at the two knee locations only; the other six joints continue to import the original `pitch_yoke.kcl` unchanged. The fixed rear bracket follows the thigh-side actuator frame, while the output hub and journal follow the shin-side orientation in the crouched pose.
+
+### Interface and hardware
+
+- **Output hub:** Ø36 mm PETG hub, Ø30.4 mm x 1.2 mm blind register pocket for the Ø30 boss, and 6 x Ø3.4 mm clearance holes on the authoritative Ø24 mm output circle. Six Ø6.0 mm x 3.2 mm cap-head counterbores retain the heads. The 12.6 mm bolt-circle chord spacing leaves about 7.1 mm between Ø5.5 mm M3 cap heads.
+- **Output fasteners:** 6 x M3 x 6 socket-head cap screws. From the modeled counterbore floor to the raised output-boss face is 1.8 mm, giving approximately 4.2 mm engagement in the specified 5 mm-deep output threads. At 6 Nm, equal sharing gives about 83 N tangential demand per output screw.
+- **Rear bracket:** four Ø3.4 mm clearance holes on the authoritative Ø41 mm rear circle at 45°, 135°, 225°, and 315°. Use 4 x M3 x 12 fully threaded socket-head cap screws with 1 mm washers: 4.0 mm bracket + 1.0 mm washer + 3.2 mm rear cover leaves about 3.8 mm engagement in the 4 mm rear thread. At 6 Nm, equal sharing gives about 73 N tangential demand per rear screw.
+- **Connector keep-out:** the bracket leaves the measured 69° rear connector sector open between the upper two rear holes. The mated-plug projection is still unknown; a conservative 25 mm rearward service envelope is assumed for routing and no cross-bracket material is placed in that sector.
+- **Second support:** NTN/Koyo-equivalent **6800-2RS**, 10 x 19 x 5 mm, on a Ø10 x 8 mm hardened-steel journal. The nominal 6800 dimensions, 5 g mass, 1.83 kN dynamic rating, and 0.925 kN static rating are reported by KG Bearing India; source: `https://kgbearing.com/pdd/deep-groove-ball-bearing/single-row-deep-groove-ball-bearing/6800`.
+
+### Load path and checks
+
+The fixed link reacts through the rear Ø41 mounting circle into two side arms that clear the Ø46.6 mm envelope, then into the forward bearing housing. The moving link reacts through the output hub, steel journal, and 6800 inner ring. The modeled support-bearing center is **48.4 mm** forward of the actuator rear face (`29.45 - (-18.95) mm`). For the 100 N at 100 mm case, using `R = F + M / span` gives about **307 N** at the outer support (`100 + 10 / 0.0484`), well below the cited 0.925 kN static bearing rating. This is a static analytical screen, not a fatigue, shock, pocket-creep, or FEA result.
+
+The circular stop pads use a 20 mm radius and Ø6 mm contact pads. The moving pad has a modeled 3.4 mm surface gap at 100°; its center-to-center distance equals the 6 mm pad diameter at **110°**, where it reaches the fixed pad. The `knee_prelimit_check.kcl` (100°) and `knee_limit_check.kcl` (110°) renders show the intended pre-limit clearance and end-stop contact. Neutral (0°), low-range (30°), crouched (65°), mid-range (90°), pre-limit (100°), and end-stop (110°) renders show no visible thigh/shin/module interference. This is not a continuous collision sweep or a physical validation.
+
+### Mass impact
+
+`kcl_physical_analysis` with PETG density 1.27 g/cm³ reports 16.114 cm³ / 20.465 g for all modeled knee-module solids, and 8.255 cm³ / 10.483 g for the legacy yoke under the same uniform-material assumption: a **+9.98 g per-knee CAD-solid delta**, or **+79.9 g across eight**. That uniform comparison is only a geometry metric because it treats steel parts as PETG.
+
+| New knee component | Estimated mass per knee | Eight-joint equivalent | Basis |
+|---|---:|---:|---|
+| Printed hub, rear bracket, ties, and stop pads | 18.37 g | 146.9 g | KCL volume after removing modeled steel volumes, PETG at 1.27 g/cm³ |
+| 6800-2RS bearing | 5.0 g | 40.0 g | Catalogue value |
+| Ø10 x 8 mm steel journal | 4.93 g | 39.5 g | Modeled volume, steel at 7.85 g/cm³ |
+| Output/rear M3 fasteners and washers | 6–7 g | 48–56 g | Hardware allowance, not measured |
+| **Complete module estimate** | **34–35 g** | **272–280 g** | Analytical estimate |
+
+Only the two knees are changed in CAD. The defensible eight-joint replacement comparison is the uniform-material KCL result: +79.9 g, which already reaches the upper end of the 40–80 g headroom. The 272–280 g figure is an absolute complete-module estimate, not an additive robot delta, because the legacy yoke used a nonphysical bearing placeholder and has no resolved fastener/metal mass. A wider rollout is therefore not approved until the legacy and new joint hardware are reconciled in one measured mass model.
+
+### Remaining open risks
+
+No hardware exists. The rear plug projection, bearing-pocket print accuracy and creep, layer strength at the arm roots, actual bearing preload/fit, journal retention, actuator output-bearing load rating, fatigue, cable bend radius, and stop impact durability remain unvalidated. The model contains no detailed connector, screw, washer, thread, or cable geometry beyond the functional holes and interfaces.

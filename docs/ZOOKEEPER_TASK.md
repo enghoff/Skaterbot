@@ -1,11 +1,6 @@
 # Zookeeper task brief — build the knee actuator interface
 
-**Status:** open, written 2026-08-24. This replaces the previous brief, which
-asked for the actuator envelope to be verified and the support architecture to be
-chosen. Both are now settled and the results are in [`NOTES.md`](NOTES.md); the
-old brief is in git history if you want to see what it asked. Nothing in it is
-still outstanding except the one item repeated under "What is still unknown"
-below.
+**Status:** completed in Zoo Design Studio on August 24, 2026. The knee actuator-interface module was created, installed at the two knee locations only, and regenerated through neutral, crouched, 100°, and 110° review scenes. The remaining items under "What is still unknown" are physical-validation risks, not uncompleted CAD steps.
 
 All paths below are relative to the repository root, not to this file.
 

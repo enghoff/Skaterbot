@@ -1,0 +1,534 @@
+// Rear-anchored DM-J3507 knee module
+// Output hub, rear bracket, 6800 support bearing, journal, and 110-degree stop.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+hubOuterDiameter = 36mm
+hubThickness = 6mm
+hubRegisterDiameter = actuatorOutputRegister + 0.4mm
+hubRegisterDepth = 1.2mm
+outputBoltClearance = 3.4mm
+outputCapCounterboreDiameter = 6mm
+outputCapCounterboreDepth = 3.2mm
+outputBoltRadius = actuatorOutputBoltCircle / 2
+
+journalDiameter = 10mm
+journalSeatDiameter = 10.2mm
+journalSeatDepth = 2.2mm
+journalLength = 8mm
+
+bearingDesignation = "6800-2RS"
+bearingBore = 10mm
+bearingOuterDiameter = 19mm
+bearingWidth = 5mm
+bearingPocketDiameter = 19.4mm
+bearingHousingOuterDiameter = 30mm
+
+rearBracketThickness = 4mm
+rearBoltClearance = 3.4mm
+rearBoltRadius = actuatorRearBoltCircle / 2
+rearLugDiameter = 10mm
+sideRailWidth = 8mm
+sideRailHeight = 36mm
+sideArmWidth = 6mm
+sideArmHeight = 6mm
+sideArmLength = 50mm
+bearingTieWidth = 16.5mm
+bearingTieHeight = 6mm
+stopRibWidth = 12mm
+stopRibHeight = 6mm
+stopPadDiameter = 6mm
+stopPadRadius = stopPadDiameter / 2
+movingStopRadius = 20mm
+movingStopStartAngle = -20deg
+fixedStopAngle = 107.25deg
+movingStopCenterY = movingStopRadius * sin(movingStopStartAngle)
+movingStopCenterZ = movingStopRadius * cos(movingStopStartAngle)
+fixedStopCenterY = movingStopRadius * sin(fixedStopAngle)
+fixedStopCenterZ = movingStopRadius * cos(fixedStopAngle)
+
+actuatorHalfDepth = actuatorDepth / 2
+hubCenterX = actuatorHalfDepth + hubThickness / 2
+hubOuterFaceX = actuatorHalfDepth + hubThickness
+bearingCenterX = hubOuterFaceX + 2mm + bearingWidth / 2
+rearBracketCenterX = -actuatorHalfDepth - (rearBracketThickness / 2)
+sideArmCenterX = (rearBracketCenterX + bearingCenterX) / 2
+
+hubSketch = sketch(on = YZ) {
+  hubCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([hubCircle.center, ORIGIN])
+  horizontal([hubCircle.center, hubCircle.start])
+  diameter(hubCircle) == hubOuterDiameter
+}
+hubRegion = region(segments = [hubSketch.hubCircle])
+hubBlank = extrude(hubRegion, length = hubThickness, symmetric = true)
+  |> translate(x = hubCenterX, global = true)
+
+registerPocketSketch = sketch(on = YZ) {
+  registerCircle = circle(start = [var 15.2mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([registerCircle.center, ORIGIN])
+  horizontal([
+    registerCircle.center,
+    registerCircle.start
+  ])
+  diameter(registerCircle) == hubRegisterDiameter
+}
+registerPocketRegion = region(segments = [registerPocketSketch.registerCircle])
+registerPocket = extrude(registerPocketRegion, length = hubRegisterDepth, symmetric = true)
+  |> translate(x = actuatorHalfDepth + hubRegisterDepth / 2, global = true)
+
+journalSeatSketch = sketch(on = YZ) {
+  journalSeatCircle = circle(start = [var 5.1mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([journalSeatCircle.center, ORIGIN])
+  horizontal([
+    journalSeatCircle.center,
+    journalSeatCircle.start
+  ])
+  diameter(journalSeatCircle) == journalSeatDiameter
+}
+journalSeatRegion = region(segments = [journalSeatSketch.journalSeatCircle])
+journalSeatCutter = extrude(journalSeatRegion, length = journalSeatDepth, symmetric = true)
+  |> translate(x = hubOuterFaceX - (journalSeatDepth / 2), global = true)
+
+outputBoltToolSketch = sketch(on = YZ) {
+  outputBoltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([outputBoltCircle.center, ORIGIN])
+  horizontal([
+    outputBoltCircle.center,
+    outputBoltCircle.start
+  ])
+  diameter(outputBoltCircle) == outputBoltClearance
+}
+outputBoltToolRegion = region(segments = [outputBoltToolSketch.outputBoltCircle])
+outputBoltTool1 = extrude(outputBoltToolRegion, length = hubThickness + 2mm, symmetric = true)
+  |> translate(x = hubCenterX, y = outputBoltRadius, global = true)
+outputBoltTool2 = clone(outputBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+outputBoltTool3 = clone(outputBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+outputBoltTool4 = clone(outputBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+outputBoltTool5 = clone(outputBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+outputBoltTool6 = clone(outputBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+capCounterboreSketch = sketch(on = YZ) {
+  capCounterboreCircle = circle(start = [var 3mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([capCounterboreCircle.center, ORIGIN])
+  horizontal([
+    capCounterboreCircle.center,
+    capCounterboreCircle.start
+  ])
+  diameter(capCounterboreCircle) == outputCapCounterboreDiameter
+}
+capCounterboreRegion = region(segments = [
+  capCounterboreSketch.capCounterboreCircle
+])
+capCounterbore1 = extrude(capCounterboreRegion, length = outputCapCounterboreDepth, symmetric = true)
+  |> translate(x = hubOuterFaceX - (outputCapCounterboreDepth / 2), y = outputBoltRadius, global = true)
+capCounterbore2 = clone(capCounterbore1)
+  |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+capCounterbore3 = clone(capCounterbore1)
+  |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+capCounterbore4 = clone(capCounterbore1)
+  |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+capCounterbore5 = clone(capCounterbore1)
+  |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+capCounterbore6 = clone(capCounterbore1)
+  |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+hubAfterRegister = subtract(hubBlank, tools = [registerPocket])
+hubAfterJournalSeat = subtract(hubAfterRegister, tools = [journalSeatCutter])
+hubAfterBoltClearance = subtract(
+  hubAfterJournalSeat,
+  tools = [
+    outputBoltTool1,
+    outputBoltTool2,
+    outputBoltTool3,
+    outputBoltTool4,
+    outputBoltTool5,
+    outputBoltTool6
+  ],
+)
+hubRaw = subtract(
+  hubAfterBoltClearance,
+  tools = [
+    capCounterbore1,
+    capCounterbore2,
+    capCounterbore3,
+    capCounterbore4,
+    capCounterbore5,
+    capCounterbore6
+  ],
+)
+
+movingStopSketch = sketch(on = YZ) {
+  movingStopCircle = circle(start = [var 3mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([movingStopCircle.center, ORIGIN])
+  horizontal([
+    movingStopCircle.center,
+    movingStopCircle.start
+  ])
+  diameter(movingStopCircle) == stopPadDiameter
+}
+movingStopRegion = region(segments = [movingStopSketch.movingStopCircle])
+movingStopRaw = extrude(movingStopRegion, length = hubThickness, symmetric = true)
+  |> translate(
+       x = hubCenterX,
+       y = movingStopCenterY,
+       z = movingStopCenterZ,
+       global = true,
+     )
+
+movingHubRaw = union([hubRaw, movingStopRaw])
+
+journalSketch = sketch(on = YZ) {
+  journalCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([journalCircle.center, ORIGIN])
+  horizontal([
+    journalCircle.center,
+    journalCircle.start
+  ])
+  diameter(journalCircle) == journalDiameter
+}
+journalRegion = region(segments = [journalSketch.journalCircle])
+journalRaw = extrude(journalRegion, length = journalLength, symmetric = true)
+  |> translate(x = hubOuterFaceX + journalLength / 2 - 1mm, global = true)
+
+rearLugSketch = sketch(on = YZ) {
+  rearLugCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([rearLugCircle.center, ORIGIN])
+  horizontal([
+    rearLugCircle.center,
+    rearLugCircle.start
+  ])
+  diameter(rearLugCircle) == rearLugDiameter
+}
+rearLugRegion = region(segments = [rearLugSketch.rearLugCircle])
+rearLug1 = extrude(rearLugRegion, length = rearBracketThickness, symmetric = true)
+  |> translate(
+       x = rearBracketCenterX,
+       y = 14.496mm,
+       z = 14.496mm,
+       global = true,
+     )
+rearLug2 = clone(rearLug1)
+  |> rotate(axis = [1, 0, 0], angle = 90deg, global = true)
+rearLug3 = clone(rearLug1)
+  |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+rearLug4 = clone(rearLug1)
+  |> rotate(axis = [1, 0, 0], angle = 270deg, global = true)
+
+sideRailSketch = sketch(on = YZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
+  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 36mm])
+  edge3 = line(start = [var 8mm, var 36mm], end = [var 0mm, var 36mm])
+  edge4 = line(start = [var 0mm, var 36mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == sideRailWidth
+  verticalDistance([edge2.start, edge2.end]) == sideRailHeight
+}
+sideRailRegion = region(
+  segments = [
+    sideRailSketch.edge1,
+    sideRailSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rearRightRail = extrude(sideRailRegion, length = rearBracketThickness, symmetric = true)
+  |> translate(
+       x = rearBracketCenterX,
+       y = 17.5mm,
+       z = -18mm,
+       global = true,
+     )
+rearLeftRail = clone(rearRightRail)
+  |> translate(y = -43mm, global = true)
+
+sideArmSketch = sketch(on = YZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+  edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 6mm])
+  edge3 = line(start = [var 6mm, var 6mm], end = [var 0mm, var 6mm])
+  edge4 = line(start = [var 0mm, var 6mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == sideArmWidth
+  verticalDistance([edge2.start, edge2.end]) == sideArmHeight
+}
+sideArmRegion = region(
+  segments = [
+    sideArmSketch.edge1,
+    sideArmSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rightSideArm = extrude(sideArmRegion, length = sideArmLength, symmetric = true)
+  |> translate(
+       x = sideArmCenterX,
+       y = 23.5mm,
+       z = -3mm,
+       global = true,
+     )
+leftSideArm = clone(rightSideArm)
+  |> translate(y = -53mm, global = true)
+
+bearingHousingSketch = sketch(on = YZ) {
+  housingCircle = circle(start = [var 15mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([housingCircle.center, ORIGIN])
+  horizontal([
+    housingCircle.center,
+    housingCircle.start
+  ])
+  diameter(housingCircle) == bearingHousingOuterDiameter
+}
+bearingHousingRegion = region(segments = [bearingHousingSketch.housingCircle])
+bearingHousingBlank = extrude(bearingHousingRegion, length = bearingWidth, symmetric = true)
+  |> translate(x = bearingCenterX, global = true)
+
+bearingPocketSketch = sketch(on = YZ) {
+  bearingPocketCircle = circle(start = [var 9.7mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([bearingPocketCircle.center, ORIGIN])
+  horizontal([
+    bearingPocketCircle.center,
+    bearingPocketCircle.start
+  ])
+  diameter(bearingPocketCircle) == bearingPocketDiameter
+}
+bearingPocketRegion = region(segments = [
+  bearingPocketSketch.bearingPocketCircle
+])
+bearingPocketCutter = extrude(bearingPocketRegion, length = bearingWidth + 2mm, symmetric = true)
+  |> translate(x = bearingCenterX, global = true)
+bearingHousingRaw = subtract(bearingHousingBlank, tools = [bearingPocketCutter])
+
+bearingTieSketch = sketch(on = YZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 16.5mm, var 0mm])
+  edge2 = line(start = [var 16.5mm, var 0mm], end = [var 16.5mm, var 6mm])
+  edge3 = line(start = [var 16.5mm, var 6mm], end = [var 0mm, var 6mm])
+  edge4 = line(start = [var 0mm, var 6mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == bearingTieWidth
+  verticalDistance([edge2.start, edge2.end]) == bearingTieHeight
+}
+bearingTieRegion = region(
+  segments = [
+    bearingTieSketch.edge1,
+    bearingTieSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rightBearingTie = extrude(bearingTieRegion, length = bearingWidth, symmetric = true)
+  |> translate(
+       x = bearingCenterX,
+       y = 13mm,
+       z = -3mm,
+       global = true,
+     )
+leftBearingTie = clone(rightBearingTie)
+  |> translate(y = -42.5mm, global = true)
+
+stopRibSketch = sketch(on = YZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 12mm, var 0mm])
+  edge2 = line(start = [var 12mm, var 0mm], end = [var 12mm, var 6mm])
+  edge3 = line(start = [var 12mm, var 6mm], end = [var 0mm, var 6mm])
+  edge4 = line(start = [var 0mm, var 6mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == stopRibWidth
+  verticalDistance([edge2.start, edge2.end]) == stopRibHeight
+}
+stopRibRegion = region(
+  segments = [
+    stopRibSketch.edge1,
+    stopRibSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+fixedStopRib = extrude(stopRibRegion, length = bearingWidth, symmetric = true)
+  |> translate(
+       x = bearingCenterX,
+       y = 12mm,
+       z = -8mm,
+       global = true,
+     )
+
+fixedStopSketch = sketch(on = YZ) {
+  fixedStopCircle = circle(start = [var 3mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([fixedStopCircle.center, ORIGIN])
+  horizontal([
+    fixedStopCircle.center,
+    fixedStopCircle.start
+  ])
+  diameter(fixedStopCircle) == stopPadDiameter
+}
+fixedStopRegion = region(segments = [fixedStopSketch.fixedStopCircle])
+fixedStopRaw = extrude(fixedStopRegion, length = bearingWidth + 2mm, symmetric = true)
+  |> translate(
+       x = bearingCenterX - 1mm,
+       y = fixedStopCenterY,
+       z = fixedStopCenterZ,
+       global = true,
+     )
+
+rearBoltToolSketch = sketch(on = YZ) {
+  rearBoltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([rearBoltCircle.center, ORIGIN])
+  horizontal([
+    rearBoltCircle.center,
+    rearBoltCircle.start
+  ])
+  diameter(rearBoltCircle) == rearBoltClearance
+}
+rearBoltToolRegion = region(segments = [rearBoltToolSketch.rearBoltCircle])
+rearBoltTool1 = extrude(rearBoltToolRegion, length = rearBracketThickness + 2mm, symmetric = true)
+  |> translate(
+       x = rearBracketCenterX,
+       y = 14.496mm,
+       z = 14.496mm,
+       global = true,
+     )
+rearBoltTool2 = clone(rearBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 90deg, global = true)
+rearBoltTool3 = clone(rearBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+rearBoltTool4 = clone(rearBoltTool1)
+  |> rotate(axis = [1, 0, 0], angle = 270deg, global = true)
+
+rearFrameRaw = union([
+  rearLug1,
+  rearLug2,
+  rearLug3,
+  rearLug4,
+  rearRightRail,
+  rearLeftRail,
+  rightSideArm,
+  leftSideArm
+])
+frontBridgeRaw = union([
+  bearingHousingRaw,
+  rightBearingTie,
+  leftBearingTie,
+  fixedStopRib,
+  fixedStopRaw
+])
+fixedBracketBlank = union([rearFrameRaw, frontBridgeRaw])
+fixedBracketRaw = subtract(
+  fixedBracketBlank,
+  tools = [
+    rearBoltTool1,
+    rearBoltTool2,
+    rearBoltTool3,
+    rearBoltTool4
+  ],
+)
+
+bearingOuterSketch = sketch(on = YZ) {
+  bearingOuterCircle = circle(start = [var 9.5mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([bearingOuterCircle.center, ORIGIN])
+  horizontal([
+    bearingOuterCircle.center,
+    bearingOuterCircle.start
+  ])
+  diameter(bearingOuterCircle) == bearingOuterDiameter
+}
+bearingOuterRegion = region(segments = [bearingOuterSketch.bearingOuterCircle])
+bearingOuterBlank = extrude(bearingOuterRegion, length = bearingWidth, symmetric = true)
+  |> translate(x = bearingCenterX, global = true)
+
+bearingInnerSketch = sketch(on = YZ) {
+  bearingInnerCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([bearingInnerCircle.center, ORIGIN])
+  horizontal([
+    bearingInnerCircle.center,
+    bearingInnerCircle.start
+  ])
+  diameter(bearingInnerCircle) == bearingBore
+}
+bearingInnerRegion = region(segments = [bearingInnerSketch.bearingInnerCircle])
+bearingInnerCutter = extrude(bearingInnerRegion, length = bearingWidth + 2mm, symmetric = true)
+  |> translate(x = bearingCenterX, global = true)
+supportBearingRaw = subtract(bearingOuterBlank, tools = [bearingInnerCutter])
+
+hide(hubSketch)
+hide(registerPocketSketch)
+hide(journalSeatSketch)
+hide(outputBoltToolSketch)
+hide(capCounterboreSketch)
+hide(movingStopSketch)
+hide(journalSketch)
+hide(rearLugSketch)
+hide(sideRailSketch)
+hide(sideArmSketch)
+hide(bearingHousingSketch)
+hide(bearingPocketSketch)
+hide(bearingTieSketch)
+hide(stopRibSketch)
+hide(fixedStopSketch)
+hide(rearBoltToolSketch)
+hide(bearingOuterSketch)
+hide(bearingInnerSketch)
+
+movingHub = appearance(
+  movingHubRaw,
+  color = printedOrange,
+  roughness = 72,
+  metalness = 2,
+)
+journal = appearance(
+  journalRaw,
+  color = bearingSteel,
+  roughness = 26,
+  metalness = 90,
+)
+fixedBracket = appearance(
+  fixedBracketRaw,
+  color = printedDark,
+  roughness = 68,
+  metalness = 4,
+)
+supportBearing = appearance(
+  supportBearingRaw,
+  color = bearingSteel,
+  roughness = 20,
+  metalness = 88,
+)
+
+export kneeFixedAssembly = [fixedBracket, supportBearing]
+export kneeMovingAssembly = [movingHub, journal]
+export kneeModuleAssembly = [kneeFixedAssembly, kneeMovingAssembly]

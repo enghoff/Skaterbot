@@ -1,0 +1,34 @@
+// Knee 100-degree pre-limit review
+// Same knee assembly immediately before the 110-degree hard-stop contact.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import kneeFixedAssembly, kneeMovingAssembly from "knee_module.kcl"
+import thighAssembly from "thigh.kcl"
+import shinAssembly from "shin.kcl"
+
+kneeReviewAngle = 100deg
+shinReviewAngle = -kneeReviewAngle
+upperLinkCenterZ = upperLegLength / 2
+lowerLinkCenterY = lowerLegLength / 2 * sin(shinReviewAngle)
+lowerLinkCenterZ = -lowerLegLength / 2 * cos(shinReviewAngle)
+
+reviewMotor = actuatorAssembly
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+reviewFixedBracket = kneeFixedAssembly
+reviewMovingHub = kneeMovingAssembly
+  |> rotate(axis = [1, 0, 0], angle = shinReviewAngle, global = true)
+reviewThigh = thighAssembly
+  |> translate(z = upperLinkCenterZ, global = true)
+reviewShin = shinAssembly
+  |> rotate(axis = [1, 0, 0], angle = shinReviewAngle, global = true)
+  |> translate(y = lowerLinkCenterY, z = lowerLinkCenterZ, global = true)
+
+export kneePreLimitAssembly = [
+  reviewMotor,
+  reviewFixedBracket,
+  reviewMovingHub,
+  reviewThigh,
+  reviewShin
+]
