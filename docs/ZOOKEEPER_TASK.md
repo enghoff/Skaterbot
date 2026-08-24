@@ -1,174 +1,141 @@
-# Zookeeper task brief — build the knee actuator interface
+# Zookeeper task brief — fix three defects in the knee module
 
-**Status:** completed in Zoo Design Studio on August 24, 2026. The knee actuator-interface module was created, installed at the two knee locations only, and regenerated through neutral, crouched, 100°, and 110° review scenes. The remaining items under "What is still unknown" are physical-validation risks, not uncompleted CAD steps.
+**Status:** open, written 2026-08-24. The previous brief asked for the knee
+actuator interface to be built; it was, and the delivery is committed as
+`def8540`. This brief fixes three defects found afterwards by checking the axial
+stations in `knee_module.kcl` arithmetically, plus one analysis error that was
+inherited from `NOTES.md` and is not yours.
 
 All paths below are relative to the repository root, not to this file.
 
 ---
 
-Read [`AGENTS.md`](AGENTS.md) first — it is binding, and its frozen parameters,
-mass budget, joint limits, duty limit and sourcing constraints all apply here.
+Read [`AGENTS.md`](AGENTS.md) first — it is binding.
 
-Unlike the last brief, **this one is an implementation task.** You are being
-asked to build geometry, not to investigate and report. The reason it is going to
-you rather than being done outside Design Studio is simple: Design Studio here is
-GUI-only with no headless command line, so an external agent can write KCL but
-cannot execute it. You can. Everything below therefore ends in "and confirm it
-builds", and a change that has not been regenerated is not finished.
+The module is sound in structure, scope and constraint discipline. All three
+defects are the same class of mistake: features whose **X extents** do not do what
+the design intends, in a model where nothing looks wrong on screen because the
+actuator proxy is a plain cylinder that does not carry the 1 mm output boss. They
+were found on paper, not in the viewer, and they will not show up in a render.
+Everything else checked out — the stop angles reproduce exactly, the rear bolt
+stack is consistent, the clearances against Ø46 hold, and the mass estimate is
+about right.
 
-## What is already settled — do not re-open these
+The X convention below is the module's own: the actuator spans −18.95 to +18.95,
+the output face is +X.
 
-The actuator interface has been read off the vendor STEP
-(`reference/dm_3507_3d-241021.STEP`) and the vendor 2D print, cross-checked
-against manual V1.0, and the numbers now live in `parameters.kcl` with their
-provenance in comments. In summary:
+## Defect 1 — the output hub does not touch the actuator
 
-- The part is **Ø46.0 × 37.9 mm** overall and **nothing protrudes** beyond it.
-- **Output face:** 6 × M3 tapped 5 mm deep on a Ø24 bolt circle, inside a **Ø30
-  boss raised 1 mm** above the surrounding face. The boss is a register — use it
-  to locate the hub, do not ignore it. There is **no through-bore**.
-- **Housing, same face:** 4 × M3 tapped 5 mm deep on Ø41.
-- **Rear face:** 4 × M3 tapped **4 mm** deep on Ø41 at 45°, 135°, 225° and 315°,
-  each behind a Ø3.20 clearance hole through the 3.20 mm rear cover. A screw
-  therefore crosses 3.2 mm of cover before it reaches any thread.
-- **Not for mounting:** 4 × M2.5 on Ø42 at 33.5°, 146.5°, 213.5° and 326.5°.
-  Those hold the driver compartment shut. Leave them alone.
-- **Connector flat:** one chord 19.0 mm from the axis, about 25.9 mm wide,
-  subtending about 69° and centred between the 45° and 135° tapped holes, which
-  clear its edges by roughly 11°. The connectors sit at the rear end against this
-  flat and project rearward by an unmeasured amount.
+The hub occupies X 18.95 to 24.95 and the Ø30.4 register pocket is cut from 18.95
+to 20.15.
 
-The architecture that follows from this is also settled: **anchor the fixed link
-to the rear face and run arms forward past the body to carry the far bearing.**
-The alternatives were assessed and rejected — a front-face ring bearing fails on
-load, and a plain bearing clamped on the Ø46 housing burns 23–43% of the 0.8 Nm
-continuous rating in friction. The reasoning is in `NOTES.md` under "The three
-schemes, assessed". Do not revisit the choice; build it.
+But **X = 18.95 is the top of the 1 mm output boss**, not the housing face. The
+37.9 mm overall length is measured over the boss, so the housing face is at 17.95.
+That means:
 
-## Why the existing yoke cannot be reused as drawn
+- the hub's land, Ø30.4 to Ø36, sits 1 mm clear of the housing — which is
+  correct and is exactly the stator relief you want;
+- the pocket roof sits **1.2 mm clear of the boss**, which is the face the six
+  screws thread into.
 
-`pitch_yoke.kcl` is a double-shear yoke whose two cheeks are Ø54/Ø46.6 annuli
-3 mm thick, sitting at x = ±20.75 mm. Both bolt circles that could drive it are
-**inside** Ø46, so an annulus bored to Ø46.6 has no material anywhere the
-actuator actually attaches. It also assumes a spigot on the far face for the
-second bearing, and there is none. The Ø22 × 5 mm `supportBearing` in that file
-is a placeholder running on nothing.
+Nothing contacts anything. The hub is held only by six M3 screws bridging a
+1.2 mm air gap while transmitting 6 Nm. It also makes the reported 4.2 mm thread
+engagement actually 3.2 mm, because the screw crosses 1.6 mm of hub and then
+1.2 mm of nothing.
 
-## Work to do
+**Fix.** Delete the register pocket entirely. A flat hub face at 18.95 seats on
+the boss top and clears the housing by 1 mm without needing any feature — the
+pocket as drawn opens away from the actuator and cannot pilot on anything. Then
+set `hubThickness = 5mm`: the counterbore floor lands at 20.75, leaving 1.8 mm of
+material, and an M3 × 6 gives exactly the 4.2 mm engagement you reported into the
+5 mm of available thread.
 
-### Step 1 — regenerate before you change anything
+If you want a positive pilot, add a lip at ID Ø30.3 projecting about 0.6 mm
+**towards** the actuator, sitting in the annular groove between the boss and the
+housing bore. Check it clears the housing face by at least 0.3 mm.
 
-`parameters.kcl` gained the rear-face and connector-flat constants, and
-`actuator.kcl` had a stale comment corrected, in the most recent commit. Neither
-has been executed since.
+**This cascades.** `hubOuterFaceX` becomes 23.95, so `bearingCenterX` becomes
+28.45 and the span becomes 47.4 mm. Re-report both.
 
-Regenerate `main.kcl` and `pose_check.kcl` and confirm they still build clean and
-still show what `NOTES.md` describes, in particular roughly 22 mm of swing-foot
-clearance in the crouched pose. Report the result before proceeding. If something
-is already broken, say so and stop — do not build on top of it.
+## Defect 2 — the 110° stop pads have no axial overlap
 
-### Step 2 — put the new module in its own file
+The moving pad spans X 18.95 to 24.95. The fixed pad spans X 24.95 to 31.95. They
+share one plane and no volume, so they can never touch.
 
-Create **`knee_module.kcl`**. Do not modify `pitch_yoke.kcl`.
+The angular work is correct and worth keeping — contact reproduces at exactly
+110.00° and surface clearance at 100° at 3.42 mm, from your `movingStopRadius`,
+`movingStopStartAngle` and `fixedStopAngle` unchanged. The render looks right
+because the YZ projection **is** right. Only the axial overlap is missing.
 
-The reason matters: `main.kcl` and `pose_check.kcl` both import
-`pitchYokeAssembly` and clone it seven times, so all eight joints share that one
-part. Editing it would silently re-proportion the whole robot, which `AGENTS.md`
-forbids. Build the knee as a separate part, wire it into `main.kcl` **at the knee
-only**, and leave the other seven joints on the old yoke. That also makes the
-before-and-after visible on screen in one view.
+**Do not fix this by extending the fixed pad rearwards.** At R = 20 with a Ø6 pad
+it reaches inward to r = 17, and the hub disc is Ø36, so it would foul the hub.
+The radial band between the hub OD at r = 18 and the side arms at y = 23.5 is only
+5.5 mm wide, which is not enough to move both pads outwards.
 
-Export an **array**, as `pitch_yoke.kcl` does, so the consuming files keep
-working.
+**Fix.** Give the moving stop a lug on the hub that projects **forward** past the
+hub's outer face, into the fixed pad's X range — roughly X 23.95 to 30 once the
+hub is 5 mm. Keep it at R = 20 and Ø6. That preserves every angle you computed,
+so contact stays at exactly 110°, and both features then live outboard of the hub
+disc where there is room.
 
-### Step 3 — the driving hub
+Check the lug against the side arms through the full sweep. At R = 20 with a Ø6
+pad the outer edge reaches r = 23 and the arms start at y = 23.5, so the clearance
+is **0.5 mm** with full axial overlap. That is real but thin — report it, and say
+whether you think it is enough.
 
-Replace the driven cheek with a disc that actually bolts to the output.
+## Defect 3 — the journal engages 1 mm, not 2.2 mm
 
-- Seat it on the **Ø30 boss**, with a counterbore about 1 mm deep and 0.2–0.4 mm
-  of diametral clearance, so the boss carries the concentricity rather than the
-  bolts.
-- 6 × Ø3.4 clearance holes on Ø24 at 60°. Check M3 cap-head clearance: the heads
-  are Ø5.5 and the arc spacing on Ø24 is 12.6 mm, so they fit, but confirm it
-  against whatever counterbore or recess you add.
-- The threads are 5 mm deep, so state the screw length you are designing for and
-  make sure the hub thickness plus engagement is consistent with it.
-- The hub also has to carry the inner member of the second bearing, so it needs a
-  journal or stub projecting **forward, past the output face**. That axial
-  projection is what buys the support span — see step 5.
+`journalSeatCutter` spans X 22.75 to 24.95, a 2.2 mm seat. `journalRaw` starts at
+23.95, so only 1 mm of the journal is in it and 1.2 mm of the seat is empty air.
 
-### Step 4 — the rear-anchored bracket
+The translate reads `hubOuterFaceX + journalLength / 2 - 1mm` where it wants
+`- journalSeatDepth`.
 
-- Bolt to the 4 × M3 on Ø41 at 45°, 135°, 225°, 315°.
-- Screw length is bracket thickness + 3.2 mm of cover + engagement, with
-  engagement not exceeding the 4 mm of available thread. State the length you
-  choose. Do not let a plain shank bottom out before the thread engages.
-- **Leave the 69° connector sector open.** A mated plug projects rearward by an
-  amount nobody has measured, so the bracket must not close that sector off, and
-  it must not need the connectors removed to be fitted or serviced.
-- Arms run forward alongside the Ø46 body to the bearing seat. Keep them clear of
-  Ø46 plus the existing 0.3 mm `actuatorClearance`.
+Even at full depth, a Ø10 steel stub in 2.2 mm of PETG under a few hundred newtons
+needs a retention feature. You already have that on your open-risk list; this
+brief does not ask you to solve it, only to seat the part correctly and to say
+what you would do about retention.
 
-### Step 5 — the second support, sized to the real load case
+## Item 4 — the support reaction uses the wrong span, and that one is ours
 
-The point of the second bearing is to straddle the joint load with the actuator's
-own internal output bearing. If the new bearing sits level with the output face
-the two supports are nearly coincident and it achieves nothing, so the span is a
-design output you have to report, not an afterthought.
+The 48.4 mm you measured is rear-face-to-bearing. That is the **bracket's** lever
+arm, and it is the right number for the bracket's own stress. It is not the
+bearing's.
 
-- Design for **6 Nm static** at the joint, and separately check the **100 N at
-  100 mm** landing case, which is what forces the long span. `NOTES.md` puts the
-  reaction at roughly 300–350 N for a 40–50 mm span, against 1000–1350 N for the
-  8–12 mm a front-face bearing would give.
-- Report the span you achieved and the reaction that follows from it.
-- Pick a real bearing, not a placeholder. Give the designation, the mass per
-  joint and across eight joints, and whether it is a commodity part in India.
-- Remember the duty limit in `AGENTS.md`: sustained loaded stance past roughly
-  45° of knee flexion is outside the thermal envelope, so this has to be stiff in
-  the near-straight poses the robot will actually hold, not just at full flexion.
+The 6800's reaction is set by its distance to the actuator's **internal output
+bearing**, because those two straddle the moving assembly — hub, journal and shin.
+That span is much shorter, plausibly 15 to 25 mm, which puts the reaction nearer
+500 to 650 N than 307 N, or 55 to 70% of the 6800's 925 N static rating under a
+landing impact.
 
-### Step 6 — check it in the poses that matter
+You took 48.4 mm because `NOTES.md` framed it that way, and that text was written
+outside Design Studio before this module existed. The framing error is inherited,
+not yours.
 
-Regenerate both entrypoints. Confirm the knee module clears the thigh and shin
-across the full **0° to 110°** knee range, that the mechanical stop at 110° is
-still reachable, and that nothing new collides in the crouched pose check. Do not
-widen a joint limit to make the design fit.
-
-## What is still unknown, and how to handle it
-
-Two things are genuinely open, and neither should stop you:
-
-**How far a mated plug projects past the rear face.** Unmeasured, and it needs the
-physical part or the connector's datasheet. Assume a generous keep-out, say what
-you assumed, and make the bracket's rear plate easy to shorten later if the real
-number is smaller.
-
-**The output bearing's radial and moment rating.** DAMIAO does not publish it, and
-it is the one number that could remove the need for the second support entirely.
-Until they answer, the second support stays. Do not design as though the internal
-bearing can take the moment.
+**What to do.** Re-derive the reaction from the moving assembly's actual supports.
+The internal bearing position is unpublished, so give it as a range with your
+assumption stated, and check the 6800 against its static rating at the pessimistic
+end. If it does not survive, say so and propose an alternative — do not silently
+upsize the bearing, because a bigger bearing costs mass and the headroom is
+already at its limit. Correct the span discussion in `NOTES.md` while you are
+there.
 
 ## What to hand back
 
-- What regenerated cleanly and what did not, per entrypoint.
-- The mass delta of every new part, per joint and across all eight, against the
-  40–80 g of headroom in `AGENTS.md`.
-- The fastener list: size, length, count and engagement depth for the output hub
-  and the rear bracket separately.
-- The bearing designation, span achieved, resulting reaction, and sourcing.
-- Any interference you found, and what you assumed for the connector keep-out.
-- What is still open.
+- Each defect: what you changed, and the new X extents that prove it.
+- The revised span and reaction, with the internal-bearing assumption stated.
+- The stop lug's clearance to the side arms, and your judgement on it.
+- The mass delta from the thinner hub and the new lug.
+- Confirmation that all five files still execute and that the 110° stop still
+  meets, now with real contact area.
 
 Update [`NOTES.md`](NOTES.md), [`CHECKLIST.md`](CHECKLIST.md) and
-[`BOM.md`](BOM.md) with what you actually established.
+[`BOM.md`](BOM.md).
 
-One request about the report itself. The last handback contained a claim that
-turned out to be false — that the yoke's clear span had gone from 49.5 mm to
-38.5 mm and the cheeks had moved inward, when `pitch_yoke.kcl` had not been
-touched since the baseline commit and the span had always been 38.5 mm. It came
-from describing project history rather than the model. So: **report only what you
-measured in the model you just built, and say where you read each number.** If
-you did not measure it, do not state it. Corrections are cheap; a confident wrong
-number costs a redesign.
+Report only what you measured in the model you just changed, and say where you
+read each number. The three defects above were all invisible in a render and only
+appeared in the station arithmetic, so a visual confirmation is not evidence that
+a feature engages. Where a number depends on something unpublished, give the range
+and name the assumption rather than picking a single figure.
 
 Do not change any frozen parameter. Do not touch anything outside the knee.
