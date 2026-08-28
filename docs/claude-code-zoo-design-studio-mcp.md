@@ -57,9 +57,22 @@ Zoo MCP expects the token in the environment variable:
 ZOO_API_TOKEN
 ```
 
+Create it at **https://zoo.dev/account/developer**.
+
+> **Use the `zoo.dev` host, not `docs.zoo.dev`.** Both hosts serve the same
+> application, but signing in only works on `zoo.dev`. On `docs.zoo.dev` every
+> login provider dies on a blank page, because the login page there fetches
+> `api.zoo.dev/oauth2/provider/<provider>/consent` and the API's CORS allowlist
+> contains `https://zoo.dev` only — the `docs.zoo.dev` origin gets no
+> `access-control-allow-origin` header at all and its preflight returns
+> `405 Method Not Allowed`. The browser blocks the request, the page never
+> receives the provider URL, and so it never redirects. Nothing is wrong with
+> the OAuth setup itself: requested from `docs.zoo.dev`, the consent endpoint
+> still returns a valid Google URL and Google accepts it. Reading documentation
+> on `docs.zoo.dev` is unaffected; only signing in is broken.
+
 Zoo documentation:
 
-- https://docs.zoo.dev/account/developer
 - https://docs.zoo.dev/docs/developer-tools/mcp
 
 In this repository the token already exists, untracked, at `secrets/zoo.env`.
