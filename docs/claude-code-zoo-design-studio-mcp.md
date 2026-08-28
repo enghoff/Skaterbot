@@ -2,10 +2,9 @@
 
 This guide describes a practical setup for using **Claude Code in VS Code** to create, edit, inspect, and validate CAD models through **Zoo MCP**, while keeping **Zoo Design Studio** open for visual inspection and manual editing.
 
-> Status: installed and wired up in this repository. Claude reaches Zoo MCP and
-> can validate KCL offline. Real engine execution is blocked because the Zoo
-> account has no plan or API credits, not because of anything in this setup —
-> see [Section 6](#6-verify-the-setup).
+> Status: working. Claude reaches Zoo MCP and executes this project's `main.kcl`
+> against the real Zoo CAD engine. See [Section 6](#6-verify-the-setup) for what
+> was verified and for the two failure modes worth recognising.
 
 ## Architecture
 
@@ -315,32 +314,35 @@ curl -H "Authorization: Bearer $env:ZOO_API_TOKEN" https://api.zoo.dev/user
 
 A valid token returns HTTP 200 and your account details.
 
-### 6.1 What is verified working on this machine
+### 6.1 What is verified working
 
 | Check | Result |
 |---|---|
 | `uvx zoo-mcp` resolves and starts | yes |
 | `claude mcp list` reports the server | `zoo: uvx zoo-mcp - ✔ Connected` |
 | Tools exposed to Claude | yes, e.g. `mcp__zoo__execute_kcl` |
-| Token reaches the server process | yes, 40 chars |
+| Token reaches the server process | yes |
 | Token valid over the REST API | yes, HTTP 200 from `/user` |
-| KCL parses (`kcl.parse`) | yes, `main.kcl` OK |
-| Offline validation (`mock_execute`) | yes, `main.kcl` OK |
-| Real engine execution | **no — see 6.2** |
+| KCL parses (`kcl.parse`) | yes |
+| Offline validation (`mock_execute`) | yes |
+| **Real engine execution of `main.kcl`** | **yes** |
 
-### 6.2 Known blocker: the account has no engine credits
+The full setup works: Claude edits KCL and validates it against the real Zoo CAD
+engine.
 
-Real geometry execution fails. The KCL itself is fine — it parses and
-mock-executes — but any tool that needs the Zoo engine gets this back over the
-websocket:
+### 6.2 If the engine reports `auth_token_missing`
+
+Engine work — executing KCL, snapshots, exports, measurements, file conversion —
+is metered. When the account has no plan and no API credits, the websocket
+rejects every engine call with a misleading message:
 
 ```text
 error_code: auth_token_missing
 message: Please send `{ headers: { Authorization: "Bearer <token>" } }` over this websocket.
 ```
 
-**That message is misleading: the cause is billing, not authentication.** The
-same operation attempted over Zoo's REST API returns the real reason, `HTTP 402`:
+**That message is wrong: the cause is billing, not authentication.** The same
+operation over REST returns `HTTP 402` and says so plainly:
 
 ```text
 This request is not included in your current plan, and your account has no API
@@ -348,68 +350,28 @@ credits available. Enable pay as you go or update your plan in your account:
 https://zoo.dev/account/billing
 ```
 
-Engine work — executing KCL, snapshots, exports, measurements, file conversion —
-is metered and needs a plan or pay-as-you-go enabled at
-https://zoo.dev/account/billing. Free-tier REST calls such as `/user` keep
-working, which is why the token looks valid.
+Do not debug the setup against the websocket error. It is not a configuration
+fault, and it is unaffected by the token or how the token is presented — the
+`Authorization: Bearer` header, a bare header, a `?token=` query parameter, and
+the in-band `{"headers": {...}}` message the error text itself asks for are all
+rejected identically. Free REST calls such as `/user` keep working throughout,
+which is why the token looks valid. Fix it at
+https://zoo.dev/account/billing.
 
-Do not spend time debugging the setup against the websocket error. It was
-verified not to be a configuration fault, with a fresh token and against every
-auth mechanism the API offers:
+### 6.3 After rotating the token
 
-- `Authorization: Bearer <token>` header — rejected
-- bare token in the `Authorization` header — rejected
-- `?token=<token>` query parameter — rejected
-- the in-band `{"headers": {"Authorization": "Bearer ..."}}` message the error
-  text itself asks for — rejected
+The MCP server reads `ZOO_API_TOKEN` once, when Claude Code spawns it. Rotating
+the token in `secrets/zoo.env` and re-running `setx` does **not** affect a
+running server, so engine calls keep failing with the stale token while a direct
+`kcl.execute` with the new one succeeds. Restart VS Code after any token change.
 
-The same rejection reproduces with MCP out of the picture entirely, calling
-`kcl.execute_code` directly from Python, and from a raw `curl` websocket upgrade
-that returns `101 Switching Protocols` first. There is no proxy and no TLS
-interception on this machine, and `api.zoo.dev` presents a valid public
-certificate, so nothing local is stripping the header.
+### 6.4 Working without the engine
 
-### 6.3 What Claude can still do meanwhile
-
-Everything that does not touch the engine works today, which is more than it
-sounds:
-
-- `mcp__zoo__mock_execute_kcl` runs the full KCL interpreter without the engine,
-  so it catches genuine semantic errors — bad arguments, type errors, unresolved
-  imports, broken sketch constraints — not merely syntax.
-- KCL parsing, formatting, and linting are local.
-- Design Studio itself signs in separately from this token, so visual inspection
-  is unaffected.
-
-Until the engine is available, prefer mock execution in the working loop below
-and treat step 4 as "validate as far as offline execution allows".
-
-
-Inside Claude Code, `/mcp` inspects MCP servers and lets you reconnect or
-enable/disable them.
-
-Finally, exercise the engine with a non-destructive prompt:
-
-```text
-Use the Zoo MCP tools to inspect this CAD project.
-
-Execute the current main.kcl and tell me whether it builds correctly.
-
-Do not modify anything yet.
-```
-
-Then try a simple change:
-
-```text
-Change the diameter of the mounting holes to 4 mm.
-
-Update the KCL, execute it with Zoo MCP, and verify that the model
-still builds successfully.
-```
-
-The important point is that Claude should use the Zoo MCP tools to validate the design rather than merely editing KCL and assuming the result is correct.
-
----
+If the engine is ever unavailable, `mcp__zoo__mock_execute_kcl` runs the full KCL
+interpreter locally, so it still catches real semantic errors — bad arguments,
+type errors, unresolved imports, broken sketch constraints — rather than merely
+syntax. KCL parsing, formatting, and linting are local too, and Design Studio
+signs in separately from this token, so visual inspection is unaffected.
 
 ## 7. Recommended working loop
 
