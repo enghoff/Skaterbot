@@ -3,9 +3,9 @@
 This guide describes a practical setup for using **Claude Code in VS Code** to create, edit, inspect, and validate CAD models through **Zoo MCP**, while keeping **Zoo Design Studio** open for visual inspection and manual editing.
 
 > Status: installed and wired up in this repository. Claude reaches Zoo MCP and
-> can validate KCL offline, but real engine execution is currently blocked by an
-> account-side authentication failure. See [Section 6](#6-verify-the-setup) for
-> exactly what is verified working and what is not.
+> can validate KCL offline. Real engine execution is blocked because the Zoo
+> account has no plan or API credits, not because of anything in this setup —
+> see [Section 6](#6-verify-the-setup).
 
 ## Architecture
 
@@ -328,34 +328,46 @@ A valid token returns HTTP 200 and your account details.
 | Offline validation (`mock_execute`) | yes, `main.kcl` OK |
 | Real engine execution | **no — see 6.2** |
 
-### 6.2 Known blocker: the modeling engine rejects the token
+### 6.2 Known blocker: the account has no engine credits
 
-Real geometry execution currently fails. The KCL itself is fine — it parses and
-mock-executes — but as soon as a tool needs the Zoo engine, the websocket
-returns:
+Real geometry execution fails. The KCL itself is fine — it parses and
+mock-executes — but any tool that needs the Zoo engine gets this back over the
+websocket:
 
 ```text
 error_code: auth_token_missing
 message: Please send `{ headers: { Authorization: "Bearer <token>" } }` over this websocket.
 ```
 
-This is **not** a misconfiguration of Claude Code, Zoo MCP, or `.mcp.json`. The
-same rejection reproduces outside Claude entirely:
+**That message is misleading: the cause is billing, not authentication.** The
+same operation attempted over Zoo's REST API returns the real reason, `HTTP 402`:
 
-- with the token confirmed present in the engine process (40 characters),
-- calling `kcl.execute_code` directly from Python, bypassing MCP,
-- and from a raw `curl` websocket upgrade, which returns
-  `HTTP/1.1 101 Switching Protocols` and *then* the same `auth_token_missing`,
-- both with the `Authorization` header and with the in-band
-  `{"headers": {"Authorization": "Bearer ..."}}` message the error text asks for.
+```text
+This request is not included in your current plan, and your account has no API
+credits available. Enable pay as you go or update your plan in your account:
+https://zoo.dev/account/billing
+```
 
-So the token authenticates against `api.zoo.dev` over REST but is not accepted
-by the modeling engine. The token itself is a well-formed API token
-(`api-` prefix, listed as `is_valid: true` on the account), which points at an
-account entitlement rather than the token or the setup — this is a free account
-created 2026-08-22. Resolve it on the Zoo side: check the plan/subscription on
-the account, or ask Zoo support why an otherwise valid API token gets
-`auth_token_missing` from `wss://api.zoo.dev/ws/modeling/commands`.
+Engine work — executing KCL, snapshots, exports, measurements, file conversion —
+is metered and needs a plan or pay-as-you-go enabled at
+https://zoo.dev/account/billing. Free-tier REST calls such as `/user` keep
+working, which is why the token looks valid.
+
+Do not spend time debugging the setup against the websocket error. It was
+verified not to be a configuration fault, with a fresh token and against every
+auth mechanism the API offers:
+
+- `Authorization: Bearer <token>` header — rejected
+- bare token in the `Authorization` header — rejected
+- `?token=<token>` query parameter — rejected
+- the in-band `{"headers": {"Authorization": "Bearer ..."}}` message the error
+  text itself asks for — rejected
+
+The same rejection reproduces with MCP out of the picture entirely, calling
+`kcl.execute_code` directly from Python, and from a raw `curl` websocket upgrade
+that returns `101 Switching Protocols` first. There is no proxy and no TLS
+interception on this machine, and `api.zoo.dev` presents a valid public
+certificate, so nothing local is stripping the header.
 
 ### 6.3 What Claude can still do meanwhile
 
