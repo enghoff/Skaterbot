@@ -1,109 +1,106 @@
-// Hip roll to hip pitch carrier
-// Short printed bridge linking the orthogonal joint modules without cantilevering the pitch motor.
+// Hip carrier
+//
+// The one place on the robot where two joint axes are not parallel. The hip roll
+// actuator is held by the torso and drives the carrier, so the carrier's upper
+// end is a rotor hub turned a quarter turn to put its axis fore-and-aft. The
+// carrier then holds the hip pitch actuator, so its lower end is an ordinary
+// stator clevis with its axis across the robot.
+//
+// Both ends are the shared parts from joint.kcl, unchanged. Only the short
+// connector between them is particular to the carrier, because the two joints
+// are 47 mm apart and the two ends nearly meet on their own.
+//
+// Local origin is the midpoint between the two axes, matching how main.kcl
+// places it.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
+import statorClevis, rotorHub from "joint.kcl"
 
 axisHalfOffset = hipAxisOffset / 2
-railWidth = 8mm
-railDepth = 12mm
-railLength = hipAxisOffset - 11mm
-railCenterOffset = 15mm
-bridgeWidth = 40mm
-bridgeDepth = 18mm
-bridgeHeight = 6mm
+connectorHeight = 10mm
+connectorInnerWidth = shellWidth - (shellWall * 2)
+connectorInnerDepth = shellDepth - (shellWall * 2)
 
-hubSketch = sketch(on = XZ) {
-  hubCircle = circle(start = [var 15mm, var 0mm], center = [var 0mm, var 0mm])
-  coincident([hubCircle.center, ORIGIN])
-  horizontal([hubCircle.center, hubCircle.start])
-  diameter(hubCircle) == 30mm
+connectorOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+  edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+  edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == shellWidth
+  verticalDistance([edge2.start, edge2.end]) == shellDepth
 }
-hubRegion = region(segments = [hubSketch.hubCircle])
-rollOutputHubRaw = extrude(hubRegion, length = 12mm, symmetric = true)
+connectorOuterRegion = region(
+  segments = [
+    connectorOuterSketch.edge1,
+    connectorOuterSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+connectorBlank = extrude(connectorOuterRegion, length = connectorHeight, symmetric = true)
+  |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
+
+connectorInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+  edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+  edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+  edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == connectorInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == connectorInnerDepth
+}
+connectorInnerRegion = region(
+  segments = [
+    connectorInnerSketch.edge1,
+    connectorInnerSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+connectorCavity = extrude(connectorInnerRegion, length = connectorHeight + 4mm, symmetric = true)
+  |> translate(x = -connectorInnerWidth / 2, y = -connectorInnerDepth / 2, global = true)
+connectorRaw = subtract(connectorBlank, tools = [connectorCavity])
+
+pitchJoint = statorClevis()
+  |> translate(z = -axisHalfOffset, global = true)
+
+// A quarter turn about Z swings the hub's axis from across the robot to
+// fore-and-aft, which is what makes this the roll joint rather than a pitch one.
+rollJoint = rotorHub()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
   |> translate(z = axisHalfOffset, global = true)
 
-railSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
-  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 12mm])
-  edge3 = line(start = [var 8mm, var 12mm], end = [var 0mm, var 12mm])
-  edge4 = line(start = [var 0mm, var 12mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == railWidth
-  verticalDistance([edge2.start, edge2.end]) == railDepth
-}
-railRegion = region(segments = [railSketch.edge1, railSketch.edge2], intersectionIndex = -1, direction = CCW)
-leftRailRaw = extrude(railRegion, length = railLength, symmetric = true)
-  |> translate(x = -railCenterOffset - (railWidth / 2), y = -railDepth / 2, global = true)
-rightRailRaw = clone(leftRailRaw)
-  |> translate(x = railCenterOffset * 2, global = true)
+hide(connectorOuterSketch)
+hide(connectorInnerSketch)
 
-bridgeSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 40mm, var 0mm])
-  edge2 = line(start = [var 40mm, var 0mm], end = [var 40mm, var 18mm])
-  edge3 = line(start = [var 40mm, var 18mm], end = [var 0mm, var 18mm])
-  edge4 = line(start = [var 0mm, var 18mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == bridgeWidth
-  verticalDistance([edge2.start, edge2.end]) == bridgeDepth
-}
-bridgeRegion = region(segments = [bridgeSketch.edge1, bridgeSketch.edge2], intersectionIndex = -1, direction = CCW)
-pitchBridgeRaw = extrude(bridgeRegion, length = bridgeHeight, symmetric = true)
-  |> translate(
-       x = -bridgeWidth / 2,
-       y = -bridgeDepth / 2,
-       z = -axisHalfOffset + 4mm,
-       global = true,
-     )
-
-hide(hubSketch)
-hide(railSketch)
-hide(bridgeSketch)
-
-rollOutputHub = appearance(
-  rollOutputHubRaw,
-  color = printedOrange,
-  roughness = 72,
-  metalness = 2,
-)
-leftRail = appearance(
-  leftRailRaw,
-  color = printedDark,
-  roughness = 70,
-  metalness = 3,
-)
-rightRail = appearance(
-  rightRailRaw,
-  color = printedDark,
-  roughness = 70,
-  metalness = 3,
-)
-pitchBridge = appearance(
-  pitchBridgeRaw,
-  color = printedOrange,
-  roughness = 72,
-  metalness = 2,
-)
-
+// Left as three overlapping bodies rather than one union. The engine refuses a
+// union of two hollow boxes meeting at right angles here -- the same limitation
+// NOTES.md already records for the foot frame -- and the parts interpenetrate by
+// several millimetres, so any slicer that merges coincident shells prints this
+// as the single part it is. Verify that before printing.
 export hipCarrierAssembly = [
-  rollOutputHub,
-  leftRail,
-  rightRail,
-  pitchBridge
+  appearance(
+    [connectorRaw, pitchJoint, rollJoint],
+    color = printedOrange,
+    roughness = 70,
+    metalness = 3,
+  )
 ]

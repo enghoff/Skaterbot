@@ -1,0 +1,108 @@
+// Stressed-shell limb
+//
+// One parametric limb, used for the thigh, the shin and the hip carrier. The
+// limb is a closed printed box that carries the load itself; there are no carbon
+// tubes and no separate joint brackets.
+//
+// Local frame: the limb axis is Z, both joint axes are X, and the two joint
+// centres sit at z = +/- limbLength/2. The joint ends come from `joint.kcl` --
+// a stator clevis at the bottom, a rotor hub at the top -- so all eight joints
+// on the robot are the same part and the limb only has to supply the beam
+// between them.
+//
+// Two Ø46 actuators 105 mm apart leave only 59 mm of clear span, so the shell is
+// short and the two joint ends do most of the work. That is a property of using
+// pancake actuators on short links, not of this design.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import statorClevis, rotorHub from "joint.kcl"
+
+shellInnerWidth = shellWidth - (shellWall * 2)
+shellInnerDepth = shellDepth - (shellWall * 2)
+
+export fn limbShell(@limbLength) {
+  jointZ = limbLength / 2
+  shellLength = (jointZ - jointKeepOut) * 2
+
+  shellOuterSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+    edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == shellWidth
+    verticalDistance([edge2.start, edge2.end]) == shellDepth
+  }
+  shellOuterRegion = region(
+    segments = [
+      shellOuterSketch.edge1,
+      shellOuterSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  shellBlank = extrude(shellOuterRegion, length = shellLength, symmetric = true)
+    |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
+
+  shellInnerSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+    edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+    edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+    edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == shellInnerWidth
+    verticalDistance([edge2.start, edge2.end]) == shellInnerDepth
+  }
+  shellInnerRegion = region(
+    segments = [
+      shellInnerSketch.edge1,
+      shellInnerSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  // The cavity runs right through: both ends are closed by the joint structures
+  // that overlap them, so a separate end cap would only add mass. It is also the
+  // cable route, which is why it is left clear.
+  shellCavity = extrude(shellInnerRegion, length = shellLength + 4mm, symmetric = true)
+    |> translate(x = -shellInnerWidth / 2, y = -shellInnerDepth / 2, global = true)
+  shellRaw = subtract(shellBlank, tools = [shellCavity])
+
+  hide(shellOuterSketch)
+  hide(shellInnerSketch)
+
+  return shellRaw
+}
+
+export fn limbAssembly(@limbLength) {
+  jointZ = limbLength / 2
+  shell = limbShell(limbLength)
+  lowerJoint = statorClevis()
+    |> translate(z = -jointZ, global = true)
+  upperJoint = rotorHub()
+    |> translate(z = jointZ, global = true)
+  limbRaw = union([shell, lowerJoint, upperJoint])
+  return appearance(
+    limbRaw,
+    color = printedOrange,
+    roughness = 70,
+    metalness = 3,
+  )
+}

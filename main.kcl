@@ -1,11 +1,21 @@
-// Compact torque-controlled biped skeleton
-// Neutral 380 mm assembly with eight actuators, double-supported joints, carbon links, open feet, and torso packaging.
+// Compact torque-controlled biped, stressed-shell build
+//
+// Neutral 380 mm assembly. Each limb is a closed printed shell that carries the
+// load itself, and every one of the eight joints is the same pair of parts from
+// joint.kcl: a stator clevis on the limb above, a rotor hub on the limb below.
+// The actuators hang in the open clevises where they can still radiate.
+//
+// The two legs are deliberately identical rather than mirrored. Every joint part
+// is symmetric front-to-back, so the only asymmetry is which side of the
+// actuator the hub sits on, and that is forced by the actuator. Building both
+// legs the same way halves the number of distinct printed parts -- one thigh,
+// one shin, one foot, one carrier -- which is worth more on a printed robot than
+// a symmetrical silhouette.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
-import pitchYokeAssembly from "pitch_yoke.kcl"
-import kneeFixedAssembly, kneeMovingAssembly from "knee_module.kcl"
+import jointHardware from "hardware.kcl"
 import thighAssembly from "thigh.kcl"
 import shinAssembly from "shin.kcl"
 import hipCarrierAssembly from "hip_carrier.kcl"
@@ -25,18 +35,13 @@ actuatorCopy6 = clone(actuatorAssembly)
 actuatorCopy7 = clone(actuatorAssembly)
 actuatorCopy8 = clone(actuatorAssembly)
 
-yokeCopy2 = clone(pitchYokeAssembly)
-yokeCopy3 = clone(pitchYokeAssembly)
-yokeCopy4 = clone(pitchYokeAssembly)
-yokeCopy5 = clone(pitchYokeAssembly)
-yokeCopy6 = clone(pitchYokeAssembly)
-
 rightHipCarrierSource = clone(hipCarrierAssembly)
 rightThighSource = clone(thighAssembly)
 rightShinSource = clone(shinAssembly)
 rightFootSource = clone(footAssembly)
-rightKneeFixedSource = clone(kneeFixedAssembly)
-rightKneeMovingSource = clone(kneeMovingAssembly)
+
+// ---- actuators -------------------------------------------------------------
+
 
 leftHipRollMotor = actuatorAssembly
   |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
@@ -46,13 +51,13 @@ rightHipRollMotor = actuatorCopy2
   |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
 
 leftHipPitchMotor = actuatorCopy3
-  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = -hipCenterX, z = hipPitchAxisHeight, global = true)
 leftKneeMotor = actuatorCopy4
-  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = -hipCenterX, z = kneeAxisHeight, global = true)
 leftAnkleMotor = actuatorCopy5
-  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = -hipCenterX, z = ankleAxisHeight, global = true)
 
 rightHipPitchMotor = actuatorCopy6
@@ -65,34 +70,33 @@ rightAnkleMotor = actuatorCopy8
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
 
-leftHipRollYoke = pitchYokeAssembly
-  |> rotate(axis = [0, 0, 1], angle = -90deg, global = true)
+// ---- bearing carriers, bearings and journals -------------------------------
+
+
+leftHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
   |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
-rightHipRollYoke = yokeCopy2
-  |> rotate(axis = [0, 0, 1], angle = -90deg, global = true)
+rightHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
   |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
 
-leftHipPitchYoke = yokeCopy3
+leftHipPitchHardware = jointHardware()
   |> translate(x = -hipCenterX, z = hipPitchAxisHeight, global = true)
-leftKneeFixedBracket = kneeFixedAssembly
-  |> rotate(axis = [0, 1, 0], angle = 180deg, global = true)
-  |> translate(x = -hipCenterX, z = kneeAxisHeight, global = true)
-leftKneeMovingHub = kneeMovingAssembly
-  |> rotate(axis = [0, 1, 0], angle = 180deg, global = true)
-  |> translate(x = -hipCenterX, z = kneeAxisHeight, global = true)
-leftAnkleYoke = yokeCopy4
-  |> translate(x = -hipCenterX, z = ankleAxisHeight, global = true)
-
-rightHipPitchYoke = yokeCopy5
-  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+rightHipPitchHardware = jointHardware()
   |> translate(x = hipCenterX, z = hipPitchAxisHeight, global = true)
-rightKneeFixedBracket = rightKneeFixedSource
+
+leftKneeHardware = jointHardware()
+  |> translate(x = -hipCenterX, z = kneeAxisHeight, global = true)
+rightKneeHardware = jointHardware()
   |> translate(x = hipCenterX, z = kneeAxisHeight, global = true)
-rightKneeMovingHub = rightKneeMovingSource
-  |> translate(x = hipCenterX, z = kneeAxisHeight, global = true)
-rightAnkleYoke = yokeCopy6
-  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+
+leftAnkleHardware = jointHardware()
+  |> translate(x = -hipCenterX, z = ankleAxisHeight, global = true)
+rightAnkleHardware = jointHardware()
   |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+
+// ---- printed structure -----------------------------------------------------
+
 
 leftHipCarrier = hipCarrierAssembly
   |> translate(x = -hipCenterX, z = hipCarrierCenterZ, global = true)
@@ -130,16 +134,14 @@ export robotAssembly = [
   rightKneeMotor,
   leftAnkleMotor,
   rightAnkleMotor,
-  leftHipRollYoke,
-  rightHipRollYoke,
-  leftHipPitchYoke,
-  rightHipPitchYoke,
-  leftKneeFixedBracket,
-  rightKneeFixedBracket,
-  leftKneeMovingHub,
-  rightKneeMovingHub,
-  leftAnkleYoke,
-  rightAnkleYoke,
+  leftHipRollHardware,
+  rightHipRollHardware,
+  leftHipPitchHardware,
+  rightHipPitchHardware,
+  leftKneeHardware,
+  rightKneeHardware,
+  leftAnkleHardware,
+  rightAnkleHardware,
   leftHipCarrier,
   rightHipCarrier,
   leftThigh,

@@ -61,9 +61,99 @@ export footLength = 115mm
 export footWidth = 65mm
 export footCenterY = 8.5mm
 
-export tubeOuter = 8mm
-export tubeWall = 1mm
-export tubeClearLength = 47mm
+// ---------------------------------------------------------------------------
+// Tether
+//
+// The robot is tethered: 24 V and CAN arrive down one umbilical from the bench
+// supply, and there is no pack on board. The only dimension the structure needs
+// from that decision is the cable's outside diameter, and this figure follows
+// from the wire the BOM already specifies -- two 14 AWG silicone conductors at
+// about 3.5 mm each, a 24 AWG twisted CAN pair, and a braided sleeve over the
+// lot. It is an estimate from those parts, not a measurement of a made-up
+// cable. The keel's entry slot and its tie-down slots are all derived from it,
+// so a fatter tether is a one-line change here.
+export tetherCableDiameter = 12mm
+
+// ---------------------------------------------------------------------------
+// Stressed-shell limb architecture -- see PLAN.md
+//
+// The carbon tubes and their bonded sockets are gone. Each limb is now a closed
+// printed box that carries the load itself, and the actuator hangs in an open
+// clevis at the limb's lower end so it can still radiate.
+//
+// Section chosen from a stiffness calculation rather than by eye. The old pair
+// of 8 x 8 tubes gave 467 mm^4 in the sagittal plane, because both tubes sat on
+// the centre line and neither helped the other. A closed 30 x 30 box with a
+// 2.4 mm wall gives 33 894 mm^4 -- 73 times as much -- for 29.5 g per 105 mm
+// link, and 0.13 mm of tip deflection at three times body weight in a 45 degree
+// crouch. That is far inside the joint clearances, so there is no case for
+// going heavier.
+//
+// The depth is not free to grow, which is why the section is square rather than
+// the deeper-than-wide shape a leg would otherwise want. The shin has to fold
+// against the thigh's saddle, and a deeper shell reaches it sooner: at 34 mm the
+// shin's rotor arm fouls the saddle at 108.5 degrees, inside the 110 degree
+// commissioning limit. At 30 mm first contact moves to 112.8 degrees, so the
+// structure itself backs up the stop instead of pre-empting it. Any change to
+// shellDepth, jointKeepOut or bridgeHeight moves that contact angle and must be
+// re-checked against knee_limit_check.kcl.
+//
+// 2.4 mm is four perimeters of a 0.6 mm nozzle, which is the practical way to
+// print carbon-filled nylon. Wall thickness is therefore a manufacturing choice
+// as much as a structural one, and must be re-checked if the material changes.
+// Densities: PA12-CF about 1.06 g/cm3, which is lighter than the PETG it
+// replaces, not heavier.
+export shellWidth = 30mm
+export shellDepth = 30mm
+export shellWall = 2.4mm
+
+// The joint clevis. The actuator only offers a grip on two faces -- 4 x M3 on
+// Ø41 at the rear and 6 x M3 on Ø24 at the front -- so the stationary side has
+// to reach around the body to support the moving side, and the moving side is
+// necessarily a single plate on the output face. That is forced by the
+// actuator, not chosen: nothing can pass through it.
+//
+// So every joint is the same shape. The limb below a joint carries a rotor hub
+// on the output face; the limb above carries a two-cheek clevis, anchored on the
+// rear pattern and reaching past the body to a bearing on the far side.
+export cheekThickness = 3mm
+export cheekDiameter = 52mm
+export cheekLighteningDiameter = 26mm
+export cheekNeckWidth = 24mm
+export rearCheekX = -(actuatorDepth / 2 + actuatorClearance + cheekThickness / 2)
+
+export rotorHubThickness = 6mm
+export rotorHubDiameter = 36mm
+export rotorHubInnerX = actuatorDepth / 2
+export rotorHubOuterX = rotorHubInnerX + rotorHubThickness
+export rotorRegisterDiameter = actuatorOutputRegister + 0.4mm
+export rotorRegisterDepth = 1.2mm
+export frontCheekX = rotorHubOuterX + 1mm + cheekThickness / 2
+
+// Far support. The bearing seat is metal, not printed: NOTES.md records printed
+// pockets ovalising, and this one sets the coaxiality of the whole joint. The
+// carrier is a flanged ring bonded into the cheek bore with retaining compound,
+// which avoids putting screws through a 3 mm printed wall.
+export journalDiameter = 10mm
+export journalSeatDiameter = 10.2mm
+export journalSeatDepth = 2.2mm
+export journalLength = 8mm
+export bearingBore = 10mm
+export bearingOuterDiameter = 19mm
+export bearingWidth = 5mm
+export bearingCarrierDiameter = 30mm
+export bearingCarrierBore = 30.2mm
+export bearingCarrierFlangeDiameter = 36mm
+export bearingCarrierFlangeThickness = 1.5mm
+
+// Two Ø46 actuators 105 mm apart leave only 59 mm of clear span between them,
+// so the shell runs joint radius plus 1 mm short of each joint centre and the
+// clevis and rotor arm bridge the rest.
+export jointKeepOut = actuatorDiameter / 2 + 1mm
+
+export m3Clearance = 3.4mm
+export m3CapCounterbore = 6mm
+export m3CapCounterboreDepth = 3.2mm
 
 export printedOrange = "#d9822b"
 export printedDark = "#27313a"

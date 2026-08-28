@@ -1,10 +1,11 @@
 // Knee 110-degree limit review
-// Thigh-fixed bracket and shin-fixed hub at the commissioning knee limit.
+// Thigh held upright with the shin at the commissioning limit, so the shin's
+// rotor arm can be checked against the thigh's clevis and saddle.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
-import kneeFixedAssembly, kneeMovingAssembly from "knee_module.kcl"
+import jointHardware from "hardware.kcl"
 import thighAssembly from "thigh.kcl"
 import shinAssembly from "shin.kcl"
 
@@ -16,9 +17,7 @@ lowerLinkCenterZ = -lowerLegLength / 2 * cos(shinLimitAngle)
 
 limitMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-limitFixedBracket = kneeFixedAssembly
-limitMovingHub = kneeMovingAssembly
-  |> rotate(axis = [1, 0, 0], angle = shinLimitAngle, global = true)
+limitHardware = jointHardware()
 limitThigh = thighAssembly
   |> translate(z = upperLinkCenterZ, global = true)
 limitShin = shinAssembly
@@ -27,8 +26,7 @@ limitShin = shinAssembly
 
 export kneeLimitAssembly = [
   limitMotor,
-  limitFixedBracket,
-  limitMovingHub,
+  limitHardware,
   limitThigh,
   limitShin
 ]

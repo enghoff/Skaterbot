@@ -2,7 +2,9 @@
 
 A compact, approximately 380 mm, 8-DOF, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators.
 
-The current baseline uses DAMIAO DM-J3507-2EC actuators, lightweight carbon-fibre leg members, and a PETG prototype structure. The immediate engineering gate is a manufacturable double-supported knee joint before committing to the complete robot.
+The structure is stressed printed shells: each limb is a closed box that carries the load itself, and the actuators are left exposed at the joints so they can cool.
+
+The current baseline uses DAMIAO DM-J3507-2EC actuators and PA12-CF printed shells. The immediate engineering gate is a printed box coupon: the whole structural case rests on a calculated 73-fold stiffness gain that has not yet been measured.
 
 ## Key documents
 
@@ -10,9 +12,10 @@ All project documentation lives in [`docs/`](docs/):
 
 - [`docs/AGENTS.md`](docs/AGENTS.md) — binding instructions for any agent working this CAD. **Read this first.**
 - [`docs/ZOOKEEPER_TASK.md`](docs/ZOOKEEPER_TASK.md) — the currently open CAD task brief.
-- [`docs/OPUS_HANDOFF.md`](docs/OPUS_HANDOFF.md) — full mechanical engineering handoff and current design state.
-- [`docs/NOTES.md`](docs/NOTES.md) — as-built notes on the current skeleton: dimensions, mass estimates, known weaknesses.
-- [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — what is done and what the next refinement pass must cover.
+- [`docs/OPUS_HANDOFF.md`](docs/OPUS_HANDOFF.md) — the original engineering brief. Objectives and actuator reasoning still stand; its structure, mass and battery figures are superseded by `PLAN.md`.
+- [`docs/NOTES.md`](docs/NOTES.md) — the running engineering log: what was measured, what was found, and what turned out to be wrong. Read it back to front.
+- [`docs/PLAN.md`](docs/PLAN.md) — **the active plan**: overhauling the skeleton into a stressed-shell design.
+- [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — superseded by `PLAN.md`; kept as the record of the skeleton design.
 - [`docs/BOM.md`](docs/BOM.md) — provisional bill of materials with India-focused sourcing notes and supply-risk flags.
 
 ## Repository layout
@@ -25,14 +28,21 @@ bipedal/
 ├── project.toml           Zoo Design Studio project file
 ├── main.kcl               neutral standing assembly
 ├── pose_check.kcl         crouched single-step pose / clearance check
+├── walk_pose_check.kcl    mirrored walking stance, both feet flat
+├── roll_limit_check.kcl   hip roll at the inward limit the feet impose
+├── knee_*_check.kcl       knee at 100 and 110 degrees
+├── limb_check.kcl         single-joint review model
+├── coupon_box.kcl         the Phase 1 bending coupon — print this first
 ├── parameters.kcl         shared dimensions and joint angles
 ├── actuator.kcl           simplified DM-J3507-2EC envelope
-├── pitch_yoke.kcl         reusable double-supported pitch joint
+├── joint.kcl              the joint, designed once, used at all eight
+├── limb.kcl               closed-shell limb, parametric on length
+├── hardware.kcl           bearing carrier, 6800-2RS, journal
 ├── hip_carrier.kcl        orthogonal hip roll/pitch carrier
-├── thigh.kcl, shin.kcl    twin carbon-tube leg modules
-├── foot.kcl               foot frame, sole, sensor seats
-├── torso.kcl              torso frame
-├── payload_envelopes.kcl  reserved battery/electronics volumes
+├── thigh.kcl, shin.kcl    the limb at two lengths
+├── foot.kcl               ribbed foot tray, sole, sensor seats
+├── torso.kcl              pelvis and torso shell, keel, tether entry, cover
+├── payload_envelopes.kcl  reserved power-entry and electronics volumes
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
 └── secrets/               local credentials, not committed
@@ -49,10 +59,16 @@ along with its checksum and known caveats.
 - Height: 380 mm
 - DOF: 8 (hip roll, hip pitch, knee pitch, ankle pitch per leg)
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
-- Target mass: <= 2.0 kg
-- Current estimated mass: ~1.92–1.96 kg
-- Power: provisional 6S LiPo
-- Mechanical prototype: PETG + carbon-fibre tubes
+- Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
+- Current mass, measured from the CAD: **2.165 kg**, which buys a sustained-load
+  knee limit of 42.0° and leaves about 135 g of headroom. Ribbing is still
+  wanted, but it is no longer the only thing standing between the robot and its
+  ceiling, and it cannot be sized until the coupon is measured.
+- Power: **tethered.** 24 V and CAN arrive on one umbilical from a bench supply;
+  there is no pack on board. What the keel holds instead is a bulk capacitor
+  bank, because the battery was also the bus's only sink for regeneration from
+  eight backdrivable actuators, and a tether cannot do that job.
+- Mechanical prototype: PA12-CF printed shells
 
 ## Development order
 

@@ -1,0 +1,22 @@
+// Single-joint review model
+// Phase 2 and 3 gate: one limb, the actuator hanging in its clevis, and the
+// metal hardware that closes the far side of the joint.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import limbAssembly from "limb.kcl"
+import jointHardware from "hardware.kcl"
+import actuatorAssembly from "actuator.kcl"
+
+reviewLimb = limbAssembly(upperLegLength)
+reviewMotor = actuatorAssembly
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(z = -upperLegLength / 2, global = true)
+reviewHardware = jointHardware()
+  |> translate(z = -upperLegLength / 2, global = true)
+
+export limbCheckAssembly = [
+  reviewLimb,
+  reviewMotor,
+  reviewHardware
+]

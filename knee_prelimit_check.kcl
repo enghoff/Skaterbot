@@ -1,34 +1,32 @@
 // Knee 100-degree pre-limit review
-// Same knee assembly immediately before the 110-degree hard-stop contact.
+// Thigh held upright with the shin just short of the commissioning limit, so the shin's
+// rotor arm can be checked against the thigh's clevis and saddle.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
-import kneeFixedAssembly, kneeMovingAssembly from "knee_module.kcl"
+import jointHardware from "hardware.kcl"
 import thighAssembly from "thigh.kcl"
 import shinAssembly from "shin.kcl"
 
-kneeReviewAngle = 100deg
-shinReviewAngle = -kneeReviewAngle
+kneePreLimitAngle = 100deg
+shinPreLimitAngle = -kneePreLimitAngle
 upperLinkCenterZ = upperLegLength / 2
-lowerLinkCenterY = lowerLegLength / 2 * sin(shinReviewAngle)
-lowerLinkCenterZ = -lowerLegLength / 2 * cos(shinReviewAngle)
+lowerLinkCenterY = lowerLegLength / 2 * sin(shinPreLimitAngle)
+lowerLinkCenterZ = -lowerLegLength / 2 * cos(shinPreLimitAngle)
 
 reviewMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-reviewFixedBracket = kneeFixedAssembly
-reviewMovingHub = kneeMovingAssembly
-  |> rotate(axis = [1, 0, 0], angle = shinReviewAngle, global = true)
+reviewHardware = jointHardware()
 reviewThigh = thighAssembly
   |> translate(z = upperLinkCenterZ, global = true)
 reviewShin = shinAssembly
-  |> rotate(axis = [1, 0, 0], angle = shinReviewAngle, global = true)
+  |> rotate(axis = [1, 0, 0], angle = shinPreLimitAngle, global = true)
   |> translate(y = lowerLinkCenterY, z = lowerLinkCenterZ, global = true)
 
 export kneePreLimitAssembly = [
   reviewMotor,
-  reviewFixedBracket,
-  reviewMovingHub,
+  reviewHardware,
   reviewThigh,
   reviewShin
 ]

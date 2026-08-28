@@ -1,0 +1,126 @@
+// Phase 1 bending coupon
+//
+// The whole shell architecture rests on one calculated number -- that a closed
+// 30 x 30 box with a 2.4 mm wall gives 33 894 mm^4 and behaves like material
+// with a 3.5 GPa modulus. FDM parts routinely fall short of that, because of
+// voids between perimeters and weak bonding between them, and no amount of CAD
+// will tell you. This bar is how you find out.
+//
+// It is the real limb section, nothing scaled: same 30 mm outside, same 2.4 mm
+// wall, so whatever it measures is what the limbs will do.
+//
+// HOW TO PRINT IT
+// Lay it along the bed, then roll it 45 degrees about its own axis so it
+// prints as a diamond. Both upper faces then become 45 degree overhangs and
+// need no support, and it is the orientation the real limbs should use. Same
+// material, nozzle, wall count and temperatures you intend for the robot --
+// this is a test of your process as much as the geometry.
+//
+// HOW TO TEST IT
+// Clamp the solid 40 mm root in a vice up to the shoulder. Hang weights from
+// the cross hole at the tip and measure how far the tip drops, ideally with a
+// dial indicator. Work up in steps and plot deflection against load: the slope
+// is the answer, and it is far more trustworthy than any single reading.
+//
+// WHAT TO EXPECT
+// About 0.1 mm of droop per kilogram -- roughly 0.2 mm at 2 kg and 1.0 mm at
+// 10 kg. At 10 kg the root sees about 6.6 MPa against a material that yields
+// near 60, so nothing is being damaged and the bar can be tested repeatedly.
+//
+// If 10 kg gives much beyond 2 mm the printed walls are softer than assumed,
+// and the limb walls or the print settings need revisiting before any more CAD
+// is written. That is the Phase 1 gate in PLAN.md.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+couponRootLength = 40mm
+couponBoxLength = 145mm
+couponTipLength = 15mm
+couponInner = shellWidth - (shellWall * 2)
+hookHoleDiameter = 5mm
+
+// The cavity runs 10 mm back into the root, so the change of section sits inside
+// the vice jaws rather than at the clamp face where the bending is highest.
+cavityStartZ = -10mm
+cavityLength = couponBoxLength - cavityStartZ
+couponTotalLength = couponRootLength + couponBoxLength + couponTipLength
+hookHoleZ = couponBoxLength + couponTipLength / 2
+
+outerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+  edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+  edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == shellWidth
+  verticalDistance([edge2.start, edge2.end]) == shellWidth
+}
+outerRegion = region(segments = [outerSketch.edge1, outerSketch.edge2], intersectionIndex = -1, direction = CCW)
+couponBlank = extrude(outerRegion, length = couponTotalLength, symmetric = true)
+  |> translate(
+       x = -shellWidth / 2,
+       y = -shellWidth / 2,
+       z = couponBoxLength / 2 + couponTipLength / 2 - (couponRootLength / 2),
+       global = true,
+     )
+
+innerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+  edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+  edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+  edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == couponInner
+  verticalDistance([edge2.start, edge2.end]) == couponInner
+}
+innerRegion = region(segments = [innerSketch.edge1, innerSketch.edge2], intersectionIndex = -1, direction = CCW)
+couponCavity = extrude(innerRegion, length = cavityLength, symmetric = true)
+  |> translate(
+       x = -couponInner / 2,
+       y = -couponInner / 2,
+       z = cavityStartZ + cavityLength / 2,
+       global = true,
+     )
+
+hookHoleSketch = sketch(on = YZ) {
+  hookCircle = circle(start = [var 2.5mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([hookCircle.center, ORIGIN])
+  horizontal([hookCircle.center, hookCircle.start])
+  diameter(hookCircle) == hookHoleDiameter
+}
+hookHoleRegion = region(segments = [hookHoleSketch.hookCircle])
+hookHoleCutter = extrude(hookHoleRegion, length = shellWidth + 4mm, symmetric = true)
+  |> translate(z = hookHoleZ, global = true)
+
+couponHollow = subtract(couponBlank, tools = [couponCavity])
+couponRaw = subtract(couponHollow, tools = [hookHoleCutter])
+
+hide(outerSketch)
+hide(innerSketch)
+hide(hookHoleSketch)
+
+export couponAssembly = [
+  appearance(
+    couponRaw,
+    color = printedOrange,
+    roughness = 70,
+    metalness = 3,
+  )
+]

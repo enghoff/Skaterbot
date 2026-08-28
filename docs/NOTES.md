@@ -263,3 +263,510 @@ Only the two knees are changed in CAD. The defensible eight-joint replacement co
 ### Remaining open risks
 
 No hardware exists. The rear plug projection, bearing-pocket print accuracy and creep, layer strength at the arm roots, actual bearing preload/fit, journal retention, actuator output-bearing load rating, fatigue, cable bend radius, and stop impact durability remain unvalidated. The model contains no detailed connector, screw, washer, thread, or cable geometry beyond the functional holes and interfaces.
+
+## Carbon-tube link interface — August 28, 2026
+
+### What changed
+
+The thighs and shins used to end in solid printed blocks that sat against the
+cut ends of the carbon tubes and held them with nothing whatsoever. That was
+priority weakness 3 above. Each block is now a real joint: two square pockets
+16 mm deep that the tubes bond into, a transverse M3 through-bolt per tube with
+a captive nut behind it, and a bleed hole through each pocket floor.
+
+The two files that build the links were also merged. `tube_link.kcl` now holds
+the whole construction and `thigh.kcl` and `shin.kcl` are three-line wrappers
+that pass in the tube spacing — 9 mm half-spacing for the thigh, 7.5 mm for the
+shin. About 260 duplicated lines went away with no change in what either file
+exports.
+
+### The interface
+
+| Feature | Value | Why |
+|---|---|---|
+| Pocket section | 8.3 mm square | 8 mm tube plus 0.15 mm per side, a bondable slip fit |
+| Pocket depth | 16 mm | Two tube widths; 531 mm² of bond area per tube end |
+| Anti-rotation | the square section itself | No extra geometry needed |
+| Clamp bolt | M3 x 20, one per tube per end | Backs up the bond; passes through the tube, which is drilled at assembly |
+| Nut | M3 hex in a 5.6 x 5.6 x 2.6 mm trap on the rear face | A hex nut can only turn about two degrees in it |
+| Nut seat | 3 mm of PETG | Thinner creeps under a steel nut |
+| Bleed hole | Ø2.5 through the floor | Lets air and surplus adhesive out, and shows the tube has bottomed |
+| Block | 32.3 x 19.5 x 22 mm thigh, 29.3 x 19.5 x 22 mm shin | Width follows tube spacing at a 3 mm wall; depth is set by the nut |
+
+The link's overall length is unchanged at 63 mm, which was not a free choice:
+the knee's Ø36 moving hub clears the thigh's lower socket by only about 3 mm, so
+the pockets had to grow inwards. The exposed carbon between the two socket faces
+therefore falls from 47 mm to 19 mm and each tube is cut at 51 mm instead of
+47 mm. Bending stiffness does not suffer — the block's solid section is far
+stiffer than the pair of tubes it holds — but the link is now mostly printed
+part by length.
+
+The 6 mm pocket floor is also set by interference rather than by strength. The
+pitch and ankle yokes are Ø54, so their envelope reaches 27 mm from the joint
+centre while the socket's outer face is only 21 mm from it; 6 mm of floor is
+exactly what keeps the carbon tube outside the yoke.
+
+### Mass impact — this made the robot heavier
+
+| Module | Was | Now | Change |
+|---|---:|---:|---:|
+| Thigh modules, 2 | 30 g | 66 g | +36 g |
+| Shin modules, 2 | 28 g | 60 g | +32 g |
+
+Measured from KCL volume: 22 549 mm³ of PETG per thigh pair and 19 975 mm³ per
+shin pair at 1.27 g/cm³, plus 2 784 mm³ of carbon per link at 1.6 g/cm³.
+
+That is **about 68 g added** against a checklist item asking to recover 100-150 g,
+and it should not be waved away. It is the price of turning four decorative
+blocks into four joints, and most of it is recoverable: the blocks are solid
+slabs with a 6 mm floor and no ribbing at all. They are now the largest single
+piece of removable material outside the torso and belong in the same ribbing
+exercise. The alternative — dropping the captive nut and tightening a bare nut
+with a spanner inside the leg — would save about 34 g and is not worth it.
+
+### The interference nobody had noticed
+
+Every link socket shares space with the actuator next to it. The arithmetic is
+simple: the joints are 105 mm apart, the link module is 63 mm long, so each
+socket's outer face sits 21 mm from the joint centre — inside the Ø46 actuator,
+which reaches 23 mm. The thigh's upper socket and the shin's lower socket also
+pass through their yoke's cross strap, which spans 23 to 27 mm from the joint
+centre across the full yoke width.
+
+This predates this change and is not made worse by it — the socket's outer face
+has not moved, only its width, by about 1.2 mm each side. It is recorded now
+because the deeper pocket made it obvious. It cannot be fixed by shortening the
+link: clearing both the actuator and the yoke strap would leave a 51 mm module
+with 7 mm of exposed tube. The socket has to stop being a free-floating block
+and become the joint's mounting boss, which is the same open item as bolting the
+links to the joints at all.
+
+### An engine quirk worth remembering
+
+The Zoo engine refused the bleed holes with "cannot handle this 3D subtraction
+yet" as long as they were blind cylinders ending inside the block. Cutting the
+full block height instead — the lower part of the cylinder falls inside the
+pocket, which is removed afterwards, so the finished part is identical — is
+accepted. Mock execution passed in both cases, which is a reminder that mock
+execution does not exercise the booleans.
+
+### Verification
+
+`main.kcl`, `pose_check.kcl`, `knee_limit_check.kcl` and `knee_prelimit_check.kcl`
+all mock-execute and all execute on the engine after the change, and the project
+lints and formats clean. The neutral, crouched, 100° and 110° scenes were
+rendered and show the new sockets clearing the knee bracket in all of them. This
+is visual and arithmetic evidence in the reviewed poses, not a swept-volume
+collision proof.
+
+## Stressed-shell rebuild — August 28, 2026
+
+The skeleton described everywhere above has been replaced. The carbon tubes,
+their bonded sockets, the placeholder pitch yoke and the separate knee bracket
+are all gone; `PLAN.md` carries the reasoning and the phase plan, and this
+section records what the robot now is.
+
+### The architecture in one paragraph
+
+Each limb is a closed printed box, 30 x 30 mm with a 2.4 mm wall, that carries
+the load itself. Every one of the eight joints is the same pair of parts: a
+stator clevis on the limb above, straddling the actuator and anchored on its rear
+4 x M3 Ø41 pattern, and a rotor hub on the limb below, bolted to the 6 x M3 Ø24
+output circle and piloted on the Ø30 register. The clevis reaches past the
+actuator to a metal-seated 6800-2RS that takes the moment off the motor's own
+bearing. The actuators sit in open clevises, exposed front, back and below, so
+they still radiate.
+
+### Why the shell, in numbers
+
+The old pair of 8 x 8 mm tubes gave **467 mm⁴** in the sagittal plane, because
+both tubes sat on the centre line and neither contributed to the other's
+fore-aft stiffness. The link was stiff side-to-side and floppy in the plane a
+walking leg is actually loaded. The closed box gives **33 894 mm⁴** — 73 times as
+much — for 29.5 g per 105 mm of link, and it spans the whole bay instead of
+63 mm of it. Tip deflection at three times body weight in a 45° crouch is
+0.13 mm and the slope is 0.10°, both far inside the joint clearances.
+
+### The shape is set by the knee, not by the beam
+
+The section wants to be deeper than wide, because sagittal loads dominate. It
+cannot be. The shin has to fold against the thigh's saddle, and a deeper shell
+reaches it sooner: at 34 mm deep the shin's rotor arm fouls the saddle at
+**108.5°**, inside the 110° commissioning limit. At 30 mm the first contact moves
+to **112.8°**, which makes the structure a backstop rather than a premature stop.
+So the section is square, and `shellDepth`, `jointKeepOut` and `bridgeHeight` are
+now coupled to the knee's travel. Change any of them and re-run
+`knee_limit_check.kcl`.
+
+There is still no *designed* hard stop. 112.8° is structure meeting structure,
+which is a backstop, not a stop, and a pad at 110° on every joint is open work.
+
+### What the actuator forces
+
+Worth writing down because it explains the shape of every joint on the robot: the
+actuator offers a grip on its rear face and a drive on its front face and nothing
+in between, and nothing can pass through it. So the stationary side has to reach
+around the body to support the moving side, and the moving side is necessarily a
+single plate on the output face. Every joint is that same asymmetric shape, and
+no rearrangement avoids it.
+
+That is also why both legs are built identically rather than mirrored. The only
+asymmetry is which side of the actuator the hub sits on, and since it is forced,
+mirroring buys a symmetrical silhouette at the cost of doubling the number of
+distinct printed parts. On a printed robot that trade is the wrong way round.
+
+### Mass
+
+Measured from the CAD at PA12-CF's 1.06 g/cm3, which is lighter than the PETG it
+replaces: limb 48.3 g each, hip carrier 39.8 g, foot 61.6 g including its sole,
+torso 152.5 g with its new hip mounts. Printed structure totals **549 g**, and
+the whole robot comes to about **2.21 kg** against a 2.3 kg ceiling.
+
+That ceiling is not a preference. Inverting the single-leg static model above,
+the knee can hold `0.7767 / sin(θ/2)` kilograms on its 0.8 Nm continuous rating,
+so 2.21 kg buys a sustained-load knee limit of about **41°**. Mass and crouch
+depth are the same decision. The continuous rating binds before the peak does —
+allowing three times body weight for landing against the 3 Nm peak gives a
+ceiling 25 per cent higher at every angle — so the 6 Nm structural target is
+never the constraint.
+
+### Two engine limitations found while building
+
+Both are worked around in the code, and both would have gone unnoticed on mock
+execution, which does not exercise the booleans.
+
+- **Blind pockets cut from a large combined solid are rejected.** Every cut is
+  now made on the simple body it belongs to before anything is unioned.
+- **A union of two hollow boxes meeting at right angles is rejected.** The hip
+  carrier and the torso hip mounts are therefore left as interpenetrating
+  bodies, the same fallback already recorded above for the foot frame. Confirm
+  the slicer merges coincident shells before printing either.
+
+### Verification
+
+`main.kcl`, `pose_check.kcl`, `knee_limit_check.kcl`, `knee_prelimit_check.kcl`
+and the new `limb_check.kcl` all mock-execute and all execute on the engine after
+the rebuild, and the project lints and formats clean. Neutral, crouched, 100° and
+110° scenes were rendered. This is calculation and single-pose evidence, not a
+swept-volume proof, and the stiffness case rests on arithmetic until a printed
+box coupon is measured.
+
+---
+
+## Pelvis, foot and the poses nobody had drawn — August 28, 2026
+
+Phases 4 and 5 of `PLAN.md` are done, and the two missing regression poses now
+exist. Three things came out of it that change decisions rather than just
+geometry.
+
+### The reserved battery could never have been built
+
+Before touching the torso, the payload envelopes were checked against the
+actuators for the first time. The battery reservation, 92 x 34 x 32 lying
+across the torso, sat **21 mm inside both hip roll actuators**. The controller
+board clipped them by 13 mm as well, and the IMU was buried inside the
+controller board.
+
+This was not a modelling slip; it is forced by the kinematics. The roll axis is
+at 301 mm, so a Ø46 actuator necessarily fills 278 to 324 mm at |x| between 25
+and 71, and its clevis cheeks reach in to |x| = 22. Nothing 92 mm wide fits
+across the torso below 337 mm, and there is not enough height above that to
+stack a battery on top of the boards.
+
+So the layout follows the space the actuators leave. The battery is now
+38 x 62 x 46 standing in the keel between them -- 108 000 mm3 against the
+100 000 originally reserved, so no capacity is lost. The controller and the
+optional SBC lie flat above the hip saddles; the IMU sits low and central on the
+shell floor, which is where an IMU wants to be anyway.
+
+### No off-the-shelf pack fits, and the battery mass is the budget's weak point
+
+The keel's longest inside dimension is 63 mm. Every common 6S brick is 70 to
+110 mm long, and even a single 18650 cell is 65 mm, so **the pack cannot be
+bought as a brick** -- it has to be assembled from pouch cells. Six 1300 mAh
+cells make a 6S1P block of roughly 45 x 32 x 39, about 190 g and 29 Wh, which
+drops into the envelope with room to spare.
+
+That 190 g is also the figure the mass budget assumes, and it is the number to
+watch. The bay would physically hold 126 000 mm3, but capacity costs mass at
+about 6.6 g per watt-hour:
+
+| Pack | Mass | Energy | Robot total | Against the 2 300 g ceiling |
+|---|---:|---:|---:|---:|
+| 6S1P, 1300 mAh | 190 g | 29 Wh | 2 295 g | 5 g under |
+| 6S1P, 2000 mAh | 295 g | 44 Wh | 2 400 g | 100 g over |
+
+So the robot can carry about half an hour of the actuators' continuous draw, and
+buying more runtime means finding the mass somewhere else. Until the coupon says
+how much can be ribbed out, 29 Wh is the working figure.
+
+### The pelvis, and what it is worth
+
+The torso is one closed shell now: a keel between the actuators from 274 to
+328 mm, and a full-width box above them from 325 to 380 with a removable cover.
+The battery tray, four corner posts, two cover rails and the hip beam are gone.
+
+The old hip beam offered 14 x 8^3/12 = 597 mm^4 in roll. The keel is a channel --
+a 68 x 3 floor flange over two 2.4 mm webs 51 mm deep -- and works out at about
+98 000 mm^4 about its own centroid, roughly **165 times as much**, with the shell
+above adding to it again. Like every other section figure here that is
+arithmetic, and it inherits whatever the Phase 1 coupon says about modulus.
+
+The hip clevis cheeks are Ø52 discs on the leg axes, so the robot is 148 mm
+across at the hips against a 118 mm torso. That is unchanged from the skeleton
+and is deliberate: the joints are the visible hardware.
+
+### The foot
+
+The nine overlapping rails are gone. The foot is a shallow open-topped tray --
+2.4 mm floor, continuous perimeter wall, two transverse ribs under the ankle
+spreader and a longitudinal rib tying heel to toe. Priority weakness 4, the
+landing load going into printed riser roots, is closed.
+
+The top is open on purpose and it is a printing decision. The foot prints
+sole-face-down, which puts the layer lines across the landing load; in that
+orientation an open top needs no support and a closed one would have to bridge
+60 mm. The floor and the perimeter wall carry the load; a top skin would add
+mass at the neutral axis and buy little.
+
+### Mass: the headroom is gone
+
+| Part | Each | Count | Total |
+|---|---:|---:|---:|
+| Limb, thigh or shin | 48.3 g | 4 | 193 g |
+| Hip carrier | 39.8 g | 2 | 80 g |
+| Foot, tray, sole and pads | 76.6 g | 2 | 153 g |
+| Pelvis and torso shell with cover | 189.0 g | 1 | 189 g |
+| **Printed structure** | | | **615 g** |
+| Actuators | 150 g | 8 | 1 200 g |
+| Bearing, journal, carrier | 16.3 g | 8 | 130 g |
+| Fasteners | | | 60 g |
+| Electronics and wiring | | | 100 g |
+| Battery, 6S1P pouch pack | | | 190 g |
+| **Total** | | | **about 2 295 g** |
+
+That is **5 g under the 2 300 g ceiling**, and it buys a sustained-load knee
+limit of 39.6 degrees, which still meets the 40 degree target but no longer with
+anything to spare. The pelvis cost 37 g and each foot 15 g over what they
+replaced, which is the honest price of closing both sections. Ribbing and
+lightening have gone from a nice-to-have to a requirement, and they cannot be
+sized until the coupon is measured.
+
+### The ankle and hip roll cases, modelled at last
+
+Both were flagged as never having been checked. They now have numbers, on the
+2 295 g robot.
+
+**Ankle.** In single support it carries 2 219 g. On the 0.8 Nm continuous
+rating the centre of pressure may travel only **36.8 mm** from the axis, which
+is 56 per cent of the 66 mm to the toe and 75 per cent of the 49 mm to the heel.
+A full toe load is 1.44 Nm -- 1.8 times continuous, but less than half the 3 Nm
+peak, so push-off is fine and it is *standing* on the toe that is not. The foot
+is the right size; only its continuous working area is smaller than it looks.
+
+**Hip roll.** Standing on one leg, the roll actuator carries 1 623 g at a 48 mm
+lever, which is 0.764 Nm, or **96 per cent of the continuous rating**. Static
+single-leg stance with the body centred is therefore not sustainable. Moving the
+centre of mass 10 mm toward the stance foot -- about 2 degrees of lean -- brings
+it to 75 per cent. That is what a real biped does anyway, but it needs to be in
+the controller rather than assumed.
+
+### Hip roll inward travel is seven degrees, not twenty-five
+
+`roll_limit_check.kcl` renders it. The roll axis is 257 mm above the ankle, so a
+degree of roll moves the foot 4.5 mm sideways, and the two feet are 96 mm apart
+on a 65 mm width -- 31 mm of air:
+
+| What touches | Clearance | Contact |
+|---|---:|---:|
+| The two soles | 31 mm | **6.9 deg** |
+| The two shin shells | 66 mm | 14.9 deg |
+
+With the other leg standing neutral, inward roll runs out at seven degrees. The
+plus or minus 25 degree commissioning limit is only meaningful outward, where
+nothing obstructs the foot at all. This does not stop the machine walking -- the
+swing leg is lifted, and a lateral lean rolls both hips the same way and never
+closes the gap -- but inward roll against a planted neutral leg has to be handled
+as a fault case rather than as available travel.
+
+### The mirrored walking stance
+
+`walk_pose_check.kcl` is the pose the suite never had: mid-stride, both feet
+flat, left leg leading at 25 degrees of hip and 40 of knee, right trailing at
+-10 and 17.5. Both legs must drop the hip equally for the feet to be coplanar,
+so the trailing shin angle follows from the leading leg's reach.
+
+No interference anywhere. The finding is at the ankle: the trailing ankle sits
+at 27.5 degrees against a 30 degree limit, so **a longer stride runs the
+trailing ankle out of travel before anything else moves**. 84 mm is close to the
+usable maximum for this stance.
+
+### Hard stops: why they are not in the joint module
+
+Still not done, and the reason matters. The shared clevis cannot carry them.
+Everything within Ø52 of the joint axis is either the actuator body (radius 23),
+the bearing carrier, or a 3 mm printed cheek; a pin-in-slot through that cheek
+would shear under a full-torque runaway and give false confidence. Widening the
+saddle chord can stop the knee at 110 degrees because the limit is near the
+structural contact at 116, but the same trick cannot reach 25 or 30 degrees.
+
+The stops therefore belong on the **limb parts**, not in `joint.kcl`: a pad on
+the pelvis for hip roll, on the thigh for hip pitch, on the shin saddle for the
+ankle. Those have room and material. Each one needs its own rendered pose at the
+limit, which is why the two poses above had to come first.
+
+### Two more engine notes
+
+- A blind **cylindrical** pocket in the torso shell is rejected, in either
+  order, and unioning the ports into the cavity tool first does not help. A
+  blind **rectangular** pocket in the same place is accepted. The cable ports are
+  slots for that reason, which suits a moulded connector better anyway.
+- A hole through a stepped solid is fine, but it must exit both ends. The cover
+  screw cutters were originally short enough to stop inside the lip, which is
+  the blind-pocket case again.
+
+### Verification
+
+`main.kcl`, `pose_check.kcl`, `knee_limit_check.kcl`, `knee_prelimit_check.kcl`,
+`limb_check.kcl`, `walk_pose_check.kcl` and `roll_limit_check.kcl` all execute on
+the real engine. Neutral, walking, roll-limit and foot geometry were rendered and
+inspected. Project lints and formats clean.
+
+`calculate_kcl_physical_properties` returned a centre of mass and a bounding box
+for the foot that are inconsistent with the rendered geometry -- the bounding box
+was 173 mm in y for a 115 mm foot. Volume and mass agreed with hand calculation
+and are the only outputs from that tool trusted here.
+
+---
+
+## The robot is tethered now — August 28, 2026
+
+The on-board battery is gone. 24 V and CAN come in on a single umbilical from
+the bench supply, and the keel that was drawn as a battery bay is a power-entry
+bay instead.
+
+This was a decision, not something the geometry forced, but the geometry had
+been pushing the same way all day. The keel's longest inside dimension is 63 mm,
+every common 6S brick is 70 to 110 mm long, and a single 18650 cell is 65 mm, so
+an on-board pack could never have been bought -- it would have had to be built
+by hand from six pouch cells. And the 190 g that pack weighed was the entire
+mass headroom.
+
+### What it buys
+
+| | With a battery | Tethered |
+|---|---:|---:|
+| Total mass | 2 295 g | **2 165 g** |
+| Under the 2 300 g ceiling | 5 g | **135 g** |
+| Sustained-load knee limit | 39.6 deg | **42.0 deg** |
+| Ankle CoP travel on continuous | 36.8 mm | **39.0 mm** |
+| Hip roll, single support | 96 % of continuous | **88 %** |
+
+The hip roll line is the one to notice. That joint holds up everything above it,
+so torso mass is exactly what it carries, and taking 130 g out of the torso
+helps it more than it helps anything else. Single-leg stance with the body
+centred is still not comfortable -- it wants about 7 mm of lean, roughly 1.4
+degrees, to sit at 75 per cent -- but it is no longer sitting on the rating.
+
+### What it costs, which is the part that matters
+
+**Dropping the battery is not simply minus 190 g.** The pack was also the DC
+bus's energy store and the only thing on board that could absorb regeneration.
+Eight backdrivable actuators peak near 32 A together, they push current *back*
+whenever a limb is driven by gravity or by the ground, and a bench supply
+generally cannot sink current at all. A tether adds resistance and inductance
+between the robot and whatever is at the far end -- about 0.8 V in each 14 AWG
+conductor at 32 A over 3 m, so 1.6 V round trip off a 24 V bus.
+
+So the low-ESR bulk capacitor bank that `BOM.md` had as "TBD, after actuator
+bench tests" is now required hardware, and it has moved to a red risk. The keel
+reserves it with the main fuse and the tether's terminal as one power-entry
+block, 38 x 62 x 30, reachable from underneath. **It has not been sized** --
+that needs the measured bus excursion and the real tether length -- so the 60 g
+in the mass table is an allowance for the bank, fuse, terminal and clamp
+hardware together, not a measurement. It is the softest line in the budget.
+
+The second cost is a rig requirement rather than a robot one, and it is easy to
+forget: **the umbilical has to be carried on a boom or a spring balancer.** An
+unsupported cable hangs a moving, unmodelled load on a 2.165 kg biped whose hip
+roll actuator is at 88 per cent of continuous in single support. Not designed
+yet.
+
+### Where the tether enters, and why there
+
+The back of the **keel**, not the back of the shell. Two reasons. Down there the
+pull acts within about 10 mm of the hip roll axis instead of at the top of a
+106 mm lever, so tension on the cable is close to a pure force on the pelvis
+rather than a moment about it. And it arrives beside the power-entry block
+instead of having to cross the electronics stack, which at the top of the shell
+it would have had to do -- the SBC envelope leaves only 2.6 mm behind it.
+
+Strain relief is a cable tie, not a clamp and not a threaded insert. The tie
+goes out through one narrow slot, around the tether inside the keel, and back in
+through the other, so a pull is carried in shear by 2.4 mm of wall and never
+reaches the terminal. It also keeps every cut on this part rectangular, which is
+the only blind pocket shape this engine will take out of the shell -- the same
+limitation the cable ports were reshaped for. The slots are cut into the plain
+keel blank before the cavity, which is the ordering that worked for the shell.
+
+The cable diameter, 12 mm, is now `tetherCableDiameter` in `parameters.kcl`, and
+the entry slot and both tie slots are derived from it. **It is an estimate from
+the wire the BOM already specifies** -- two 14 AWG silicone conductors, a 24 AWG
+twisted CAN pair and a braided sleeve -- not a measurement of a cable in hand.
+Measure the made-up umbilical before printing the pelvis.
+
+### The tether went in on the wrong side first
+
+Worth recording because execution would never have caught it. The entry slot was
+first cut at y = +32.8, which put the umbilical in the robot's **front**, between
+its shins. It executed on the engine without complaint -- a slot is a slot -- and
+only a rendered back-and-front pair showed it.
+
+The sign convention is settled by `foot.kcl`, which puts the rear pressure pads
+at y = -40 and the front pads at y = +51, and confirmed by
+`walk_pose_check.kcl`, where the leading leg's knee swings to +Y. So **+Y is
+forward** and the rear face of the torso is at y = -34. The slot now sits there
+and `torso.kcl` carries a comment saying why, because nothing else in the file
+made the direction obvious.
+
+Note that Zoo's *front* camera looks at the -Y face, so the view named "front"
+shows the robot's back. That is the ordinary CAD convention rather than a bug,
+but it is a good way to mislead yourself for ten minutes.
+
+### Verification
+
+All eight models execute on the real engine after the change: `main.kcl`,
+`pose_check.kcl`, `walk_pose_check.kcl`, `roll_limit_check.kcl`,
+`knee_limit_check.kcl`, `knee_prelimit_check.kcl`, `limb_check.kcl` and
+`coupon_box.kcl`, plus `torso.kcl` and `payload_envelopes.kcl` on their own. All
+eight mock-execute. The three changed files format and lint clean.
+
+The keel's three new pockets were the thing worth proving, since a pocket in an
+already-hollowed shell is the case this engine has refused twice before. Cutting
+them into the plain keel blank before the cavity -- the ordering the shell above
+already needed -- works, and the rendered pelvis shows the slot and both tie
+slots where the arithmetic puts them, just under the shell floor.
+
+### A third MCP failure mode: the cold uvx cache
+
+The Zoo MCP server failed to connect at the start of this session, with a
+`CONNECT_TIMEOUT` after 30 seconds. **This is not the billing failure recorded
+above, and it is not an authentication problem either.** The server is launched
+as `uvx zoo-mcp`, and uvx had no cached copy of the package, so the spawn spent
+its whole 30 second budget downloading 53 packages and never got as far as
+speaking MCP.
+
+The fix is to warm the cache once from a shell -- running `uvx zoo-mcp` directly
+installs it in a couple of seconds thereafter -- and then restart VS Code. Worth
+knowing that the diagnosis is visible in the timing: a billing failure comes back
+fast and says `auth_token_missing`, while this one simply runs out the clock.
+
+While the session's own MCP link was down, the server was driven over stdio by a
+throwaway JSON-RPC client instead, which is how the validation above was done. If
+that is ever needed again, the protocol is one JSON object per line: `initialize`,
+then a `notifications/initialized`, then `tools/call`. Nothing about it is
+special to this project.
+
+One transport flake to expect on longer runs: `execute_kcl` on `main.kcl` came
+back once with a `RequestError` against `api.zoo.dev/ws/modeling/commands`. It is
+a dropped request rather than a KCL error, and the same file passed on the retry.

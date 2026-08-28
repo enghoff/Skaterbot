@@ -1,0 +1,672 @@
+# Shell-Structure Overhaul Plan
+
+**Status: active. Phases 2, 3, 4 and 5 are complete, and the Phase 7 poses and
+torque models are done. The robot is now tethered and carries no battery — see
+Phase 5a — and all eight models execute on the engine with that change in.
+Phase 1 is drawn but waits on a printer, about a week out. What remains is hard
+stops, a simultaneous-extremes pose, cable routing, and ribbing. See section 11
+for what has been made. This supersedes `CHECKLIST.md`,** which stays in the repository
+as the record of the skeleton design and of what was learned building it. Every
+item still open there has been carried into this document or explicitly retired
+in section 9.
+
+---
+
+## 1. What is changing, and why
+
+The robot is being rebuilt from a **skeleton** into a **stressed-shell** machine.
+
+Today the load path runs through two 8 × 8 mm carbon tubes per limb, held in
+printed sockets, with the actuators gripped from outside by open yokes. The
+target is the arrangement the BIMO robot reads as: closed printed limb shells
+that carry the load themselves, with the actuator discs left **exposed at the
+joints so they can still cool**. Nothing else on the robot is left visible.
+
+This is not a styling change. The section numbers say the current architecture
+is weak in exactly the direction a walking leg is loaded:
+
+| Section | Area | I, sagittal | I, lateral | Mass per 105 mm link |
+|---|---:|---:|---:|---:|
+| Two 8 × 8 × 1 tubes at ±9 mm | 56 mm² | **467 mm⁴** | 5 003 mm⁴ | 33.1 g (spans only 63 mm) |
+| Closed box, 32 × 24, 2 mm wall | 208 mm² | **18 197 mm⁴** (39×) | 28 949 mm⁴ (5.8×) | 27.7 g |
+| Closed box, 40 × 28, 2 mm wall | 256 mm² | 31 701 mm⁴ (68×) | 56 021 mm⁴ (11×) | 34.1 g |
+
+Both tubes sit on the centre line, so they contribute nothing to each other's
+fore-aft stiffness. The pair is stiff side-to-side and floppy in the sagittal
+plane, which is backwards for a leg. A plain closed box of the same outside size
+is **39 times stiffer where it matters, spans the full 105 mm bay instead of
+63 mm, and still weighs less** than the tube-and-socket module it replaces —
+before counting the 8.2 g of fasteners per link that also disappear.
+
+Add ribs, bosses and a clamshell flange and a real shell will land nearer
+35–45 g rather than 27.7 g. It is still the better structure by a wide margin.
+
+---
+
+## 2. Architecture, stated once
+
+- Each limb is **one closed shell** running joint centre to joint centre, with
+  the joint interface built into the shell ends rather than bolted on.
+- **Carbon tubes are removed entirely.** Carrying both a tube and a shell means
+  paying for the structure twice; that was the mistake the current model was
+  drifting into.
+- The **actuator stays outside the shell**, clamped at the joint, free to
+  radiate. Joints are visible; limbs are not.
+- **Metal goes where printed plastic is untrustworthy**: bearing seats, the
+  journal, and any threaded interface that gets taken apart more than once.
+- Every printed part is a shell, a rib, or a boss. **No solid blocks.**
+
+---
+
+## 3. What survives the overhaul
+
+Keep, unchanged:
+
+- **All of `parameters.kcl`'s actuator provenance.** The Ø46 × 37.9 envelope,
+  the 6 × M3 on Ø24 output circle, the Ø30 register, the 4 × M3 on Ø41 housing
+  and rear patterns, the 3.2 mm rear cover, and the 69° connector flat. This is
+  the hardest-won data in the project and none of it is affected.
+- **The kinematics.** 380 mm overall, 96 mm hip spacing, 105 mm thigh and shin,
+  ankle axis at 44 mm, knee at 149 mm, hip pitch at 254 mm, hip roll at 301 mm.
+- **The static torque envelope and duty analysis** in `NOTES.md`, including the
+  finding that the 0.8 Nm continuous rating is crossed near 47° of knee flexion.
+- **The knee interface logic** in `knee_module.kcl`: drive from the Ø24 output
+  circle, anchor from the rear Ø41 pattern, take the far support on a 6800-2RS
+  over a Ø10 journal, and stop the joint at 110° on a pad. The *interface* is
+  right; only its packaging changes, from a bracket into a shell end.
+- **The four-model regression habit.** Neutral, crouched pose, knee at 100° and
+  knee at 110°. Any change reaches all four.
+- The foot's footprint and sensor layout: 115 × 65 mm, four corner seats.
+
+Retire:
+
+- `pitch_yoke.kcl` — already recorded as structurally invalid because its
+  annular cheeks contain neither of the actuator's real bolt circles, and
+  meaningless in a shell design. **Deleted.**
+- `tube_link.kcl` — the bonded-and-bolted tube joint built on 2026-08-28 goes
+  with the tubes. It solved a real problem correctly for the architecture it was
+  built in; that architecture is being replaced. **Deleted**, along with
+  `knee_module.kcl` and `limb_mass.kcl`.
+- `thigh.kcl` and `shin.kcl` were expected to go too, but survived: they are now
+  three lines each, naming a length and calling the shared `limbAssembly()`.
+  Keeping them means the models still read as thigh and shin rather than as two
+  anonymous limb lengths, at no cost.
+- `hip_carrier.kcl` was to be absorbed into the pelvis shell. It has not been,
+  and cannot be until Phase 5 rebuilds the pelvis: it is still its own file,
+  because the hip roll axis is the only joint that is not across the robot and
+  the quarter-turn belongs somewhere.
+
+---
+
+## 4. Decisions taken
+
+All four were settled on 28 August 2026 and the CAD is built on them.
+
+1. **Material: PA12-CF**, with PA6-CF an acceptable substitute if supply is
+   difficult, and PETG kept only for fit mock-ups. PA12 was chosen over PA6 for
+   moisture stability -- PA6 takes up several times as much water, and this robot
+   will not live in a dry box. SLS PA12 stays open for a final cosmetic set, and
+   nothing in the geometry prevents it. Wall thickness is 2.4 mm because that is
+   four perimeters of a 0.6 mm nozzle, which is how carbon-filled nylon is
+   actually printed. Densities used: PA12-CF 1.06 g/cm3, which is *lighter* than
+   the PETG it replaces.
+2. **No clamshell split.** The earlier recommendation was wrong and has been
+   dropped. A sagittal split puts the seam down the middle of the most-loaded
+   faces, and a frontal split cuts every bearing bore in half. The limb is
+   instead printed as one closed shell with the joint ends integral, and the one
+   part that has to come off for assembly -- the far bearing seat -- is a
+   separate metal carrier bonded into the cheek. That gives no structural seam
+   at all and no split bore.
+3. **Eight actuators at eight joints**, unchanged.
+4. **Mass ceiling 2.3 kg**, accepting a sustained-load knee limit near 40°. See
+   section 8 for why those are the same decision.
+
+Two decisions were added that the plan had not anticipated:
+
+5. **Both legs are identical rather than mirrored.** Every joint part is
+   symmetric front to back, so the only asymmetry is which side of the actuator
+   the rotor hub sits on -- and that is forced by the actuator. Building both
+   legs the same way halves the number of distinct printed parts, which is worth
+   more on a printed robot than a symmetrical silhouette. It is reversible later
+   by mirroring one leg's parts.
+6. **The robot is tethered and carries no battery.** 24 V and CAN come in on one
+   umbilical from the bench supply. This frees 190 g against a 2.3 kg ceiling
+   that had 5 g left in it, and it sidesteps having to hand-build a pouch pack
+   because nothing off the shelf fits between the hip actuators. It is not free:
+   the pack was also the bus's only sink for regeneration, so a bulk capacitor
+   bank becomes required hardware, and the umbilical has to be carried on a boom
+   rather than hung off the machine. Phase 5a has the detail. Reversible in
+   principle -- the keel would take a pouch pack again -- but the mass budget
+   below now assumes the tether.
+
+---
+
+## 5. Phase 1 — material and process selection
+
+**Goal:** know what the shells are made of before designing them, because wall
+thickness, rib pitch and boss design all follow from the material.
+
+The current PETG is the wrong material for a stressed shell. It creeps under
+sustained load, which `NOTES.md` already flags as an open risk for the bearing
+pockets and the hip hub, and it softens near 80 °C right next to a motor that
+runs at its continuous limit.
+
+| Candidate | Case for | Case against |
+|---|---|---|
+| **PETG** (current) | Cheap, prints anywhere, known | Creeps, low Tg, weak layer adhesion — keep only for mock-ups |
+| **PA6-CF / PA12-CF** | 2–3× the strength, far better creep and heat resistance; already named in the handoff as the intended later revision | Needs a hardened nozzle, drying and an enclosed printer; hygroscopic in service |
+| **PC-CF** | Highest Tg of the practical options | Warps badly at these part sizes |
+| **SLS PA12** | Isotropic — no weak layer axis — and thin curved shells print unsupported; this is what a shell architecture really wants | Must be sent out; per-part cost; slower iteration |
+
+The layer axis matters more here than it did before. A stressed shell loads its
+walls in shear along the print direction, and FDM is weakest exactly there, so
+print orientation becomes a design input rather than a slicer setting. That is
+the strongest argument for keeping SLS open for the final set.
+
+- [x] Choose the structural material and record the decision with its reasoning
+      — PA12-CF, section 4, decision 1
+- [x] **Draw the box coupon.** `coupon_box.kcl` is the real limb section at full
+      size: 30 × 30 mm outside, 2.4 mm wall, 200 mm long, with a solid 40 mm root
+      to clamp in a vice and a Ø5 cross hole at the tip to hang weights from. The
+      file carries its own print orientation, test method and expected numbers in
+      its header. Executes on the engine.
+- [ ] **Print and measure the box coupon.** Expect about 0.1 mm of tip droop per
+      kilogram — roughly 0.2 mm at 2 kg and 1.0 mm at 10 kg, against a section of
+      33 894 mm⁴. Plot deflection against load and take the slope; a single
+      reading is not worth much.
+- [ ] Print tensile and interlaminar coupons in the chosen material, in the two
+      orientations the shells will actually use
+- [ ] Print a bearing-seat coupon and a boss coupon; load them and leave them
+      loaded for a week to get a creep number rather than a guess
+- [ ] Decide wall thickness and rib pitch from the coupon results, not from
+      the table above
+
+**Gate:** the box coupon's measured stiffness must land within a factor of two of
+prediction. If 10 kg gives much beyond 2 mm, the printed walls are softer than
+assumed and the wall or the material is wrong.
+
+The gate was originally written as *do not design shells until this passes*. That
+has been relaxed deliberately, and the reason is worth stating: the wall is a
+single named parameter, `shellWall`, and every part on the robot derives from it
+rather than repeating the number. A disappointing coupon is therefore a one-line
+change plus a re-run of the regression suite, not a redesign. What the gate still
+genuinely holds back is **ribbing, lightening and any final mass claim** — none of
+which can be sized honestly against a modulus nobody has measured.
+
+---
+
+## 6. Phase 2 — the joint module, designed once and used eight times
+
+**Goal:** one parametric joint interface that clamps an exposed actuator between
+two shell ends, replacing both the yoke and the knee bracket.
+
+The knee already proves the interface. What changes is that the bracket stops
+being a separate printed part and becomes the moulded end of a limb shell.
+
+- [x] Define the joint as a module taking the two shell ends it joins, so all
+      eight joints share one definition — `joint.kcl`, `statorClevis()` and
+      `rotorHub()`
+- [x] Drive from the 6 × M3 on Ø24, piloting on the Ø30 register — carried over
+      from the retired `knee_module.kcl`
+- [x] Anchor from the 4 × M3 on the rear Ø41 pattern, through the 3.2 mm cover
+- [x] Keep the 69° connector sector clear on every joint, not just the knee
+- [x] Leave the actuator's cylindrical face **fully open to air** — this is the
+      cooling requirement and it is a hard constraint, not a preference
+- [x] Carry the far support on a 6800-2RS in a **metal seat**, not a printed
+      pocket — an aluminium flanged carrier bonded into the cheek with retaining
+      compound, so no screw passes through a 3 mm printed wall. `hardware.kcl`.
+- [ ] Put a hard stop on every joint, not only the knee, at the commissioning
+      limits: hip roll ±25°, hip pitch −45° to +70°, knee 0–110°, ankle ±30°.
+      **Not started.** Nothing in the CAD is a stop; the knee's 112.8° is
+      structure meeting structure, which is a backstop.
+- [ ] Route the actuator's cable into the shell interior at the joint, with a
+      bend radius and a service loop. The cavity is left clear for it, but no
+      routing is modelled, and this is blocked on the Phase 6 plug measurement.
+- [x] Mock-execute, then engine-execute, a single-joint review model —
+      `limb_check.kcl`
+
+**Gate: passed.** One joint module executes on the engine, holds an actuator with
+both bolt circles genuinely engaged, and leaves the motor barrel open to air.
+
+---
+
+## 7. Phase 3 to 6 — building outward
+
+### Phase 3 — the limb shell
+
+**Goal:** one parametric closed shell used for all four links.
+
+- [x] Build the parametric shell — `limb.kcl`, taking length; the joint ends are
+      always a clevis below and a hub above, so orientation is not an argument
+- [x] Closed box section. It is **not** tapered and **not** deeper than wide, for
+      the reason in section 11: the knee fold sets the depth, not stiffness
+- [x] Cable channel: the cavity runs right through and is left clear, closed at
+      both ends by the joint structures that overlap it
+- [x] Thigh and shin differ only in their argument, as the tube links did
+- [x] Verify by section property, not by eye — 33 894 mm⁴ sagittal, 73× the old
+      tube pair
+- [ ] Internal bulkheads at both ends where the joint loads enter. Deferred with
+      the ribbing, because both are sized from the coupon.
+- [ ] Compare the calculated section against the measured coupon. This is the
+      only part of Phase 3 the printer actually gates.
+
+The plan's original "clamshell split with a lap flange" line has been dropped
+rather than left open: decision 2 in section 4 reversed it, and the limb is
+printed as one closed shell with no structural seam.
+
+### Phase 4 — foot and ankle — **done**
+
+- [x] Rebuild the foot as a shell rather than nine overlapping rails — it is now
+      a shallow open-topped tray: 2.4 mm floor, continuous perimeter wall, two
+      transverse ribs under the ankle spreader and a longitudinal rib tying heel
+      to toe
+- [x] Keep 115 × 65 mm and the four sensor seats
+- [x] Carry the landing load into the shell walls, not into printed riser roots —
+      priority weakness 4 in `NOTES.md` is closed
+- [x] Keep the separate replaceable sole
+
+The top is left open deliberately, and it is a printing decision rather than a
+structural one. The foot prints sole-face-down, which is the orientation that
+puts the layer lines across the landing load; in that orientation an open top
+needs no support and a closed one would have to bridge 60 mm. The floor and the
+perimeter wall are what carry the load, and a top skin would add mass at the
+neutral axis.
+
+### Phase 5 — pelvis and torso — **done**
+
+- [x] One pelvis-and-torso shell. The battery tray, four corner posts, two cover
+      rails and the hip beam are gone, replaced by a keel between the hip roll
+      actuators and a full-width closed box above them.
+- [x] Carry the hip roll moment through a closed section — the keel is a channel
+      worth about 98 000 mm⁴ against the old hip beam's 597 mm⁴, roughly 165×
+- [x] Provide a removable cover for electronics access — a 2.4 mm lid on a lip,
+      four M3 into corner bosses
+- [ ] ~~Merge `hip_carrier.kcl` into the shell.~~ **Retired: it was wrong.** The
+      carrier sits on the *moving* side of the hip roll joint, so it can never be
+      part of the pelvis. It stays its own file.
+- [ ] ~~A metal axle for the hip roll hub.~~ Superseded: the hub is not a printed
+      hub any more, and the far support is already the metal bearing carrier from
+      Phase 2.
+- [ ] **The reserved payload volumes could not be kept as they were.** See below.
+
+The payload envelopes had never been checked against the actuators. The battery
+reservation, 92 × 34 × 32 lying across the torso, sat **21 mm inside both hip
+roll actuators**; the controller board clipped them by 13 mm; and the IMU was
+buried inside the controller. This is forced by the kinematics rather than a
+modelling slip — a Ø46 actuator on a 301 mm roll axis necessarily fills 278 to
+324 mm at |x| between 25 and 71 — so the layout now follows the space the
+actuators leave: power low in the keel, everything else stacked above the hip
+saddles.
+
+That repack also exposed a battery problem, which has since been settled a
+different way. The keel's longest inside dimension is 63 mm, every common 6S
+brick is 70–110 mm long, and even a single 18650 cell is 65 mm, so no pack could
+be bought — one would have had to be assembled from pouch cells. **The robot is
+tethered instead, and carries no battery.** See Phase 5a.
+
+### Phase 5a — the tether, and what replaces the battery
+
+The pack is gone. 24 V and CAN arrive on a single umbilical from the bench
+supply, and the keel that was drawn as a battery bay is now a power-entry bay.
+
+This was taken as a decision rather than forced by geometry, but the geometry
+was pushing the same way: no off-the-shelf 6S pack fits between the hip roll
+actuators, so the on-board option was always going to be a hand-built pouch
+pack, and the 190 g it weighed was the whole of the mass headroom.
+
+**Dropping the battery is not simply minus 190 g, and this is the part worth
+understanding.** The pack was also the DC bus's energy store and the only thing
+on board able to absorb regeneration. Eight backdrivable actuators peak at about
+32 A together; they push current *back* when a limb is driven by the ground or
+by gravity; and a bench supply generally cannot sink current at all. A tether
+adds resistance and inductance between the robot and whatever is at the far end.
+So a low-ESR bulk capacitor bank at the robot end stops being the "TBD, after
+bench tests" line it is in `BOM.md` and becomes required hardware. The keel
+reserves it, together with the main fuse and the tether's terminal, as one
+power-entry block of 38 × 62 × 30 reachable from underneath.
+
+**The bank is not sized.** Sizing it needs the measured bus excursion from the
+actuator bench tests and the real tether length. The 60 g carried in the mass
+table below is an allowance for capacitors, fuse, terminal and clamp hardware,
+not a measurement.
+
+Modelled in `torso.kcl`: the umbilical enters the **back of the keel**, not the
+back of the shell. Down there its pull acts within about 10 mm of the hip roll
+axis rather than at the top of a 106 mm lever, and it arrives beside the
+power-entry block instead of having to cross the electronics stack. Strain
+relief is a cable tie through two narrow slots flanking the entry, so a pull is
+carried in shear by 2.4 mm of wall and never reaches the terminal — and every
+cut stays rectangular, which is the only blind pocket shape the engine accepts
+in this shell.
+
+- [ ] **The tether must be carried on a boom, not hung off the robot.** An
+      unsupported umbilical puts an unmodelled and *moving* load on a 2.165 kg
+      biped whose hip roll actuator already sits at 88 per cent of its
+      continuous rating in single support. That is a rig requirement, and it is
+      not yet designed.
+- [ ] Size the bulk capacitance from measured bus excursion and tether length
+- [ ] Measure the real umbilical and check it against `tetherCableDiameter`,
+      currently 12 mm and estimated from the wire the BOM already specifies
+      rather than from a cable in hand
+
+### Phase 6 — assembly, cables and service
+
+- [ ] Every actuator removable without destroying a printed part
+- [ ] Cable runs closed end to end, with strain relief at each joint
+- [ ] **Measure how far a mated plug and its strain relief project past the rear
+      face** — carried over from `CHECKLIST.md` and now blocking, because the
+      shell has to clear it
+- [ ] Full fastener schedule: sizes, lengths, thread engagement, and which are
+      metal-to-metal
+
+---
+
+## 8. Phase 7 — validation and the mass budget
+
+The four-model regression suite is rebuilt against the new geometry and stays
+the standard of evidence. Executing the neutral model alone still proves nothing.
+
+- [x] Rebuild `main.kcl`, `pose_check.kcl`, `knee_limit_check.kcl` and
+      `knee_prelimit_check.kcl` on the shell parts
+- [x] Add the **mirrored walking stance** — `walk_pose_check.kcl`, mid-stride
+      with both feet flat, an 84 mm stride. Nothing interferes, but the trailing
+      ankle sits at 27.5° against a 30° limit, so a longer stride runs the
+      trailing ankle out of travel before anything else moves.
+- [x] Add a **hip-roll extreme scene** — `roll_limit_check.kcl`. The result is
+      worth reading twice: with the other leg standing neutral, inward roll runs
+      out at **6.9°**, not 25°, because the two soles meet. See section 11.
+- [x] Re-derive the static torque envelope on the new masses — the tethered
+      2 165 g robot buys a sustained-load knee limit of 42.0°, against 39.6° for
+      the 2 295 g build that carried a battery
+- [x] Model the ankle and hip-roll cases — both now have numbers, below
+- [ ] Add a **simultaneous joint extremes** scene; each joint has now been taken
+      to a limit on its own, but never together
+- [ ] Thermal check with an actuator in its final mounting: hold 0.8 Nm and
+      measure the shell temperature next to the motor
+
+### The mass ceiling is set by torque, not by a target
+
+Mass is allowed to grow as far as the actuators can reasonably drive it. That
+turns out to be a calculation rather than a preference, and the answer is
+uncomfortable in an interesting way.
+
+Take the single-leg static model already in `NOTES.md` — body mass on 105 mm
+links with the hip above the ankle — and invert it. The knee has to hold
+`m · g · 105 sin(θ/2)`, so the mass the actuator can carry falls as the crouch
+deepens:
+
+| Sustained knee angle | Knee lever | Mass ceiling on the 0.8 Nm continuous rating |
+|---:|---:|---:|
+| 20° | 18.2 mm | 4.47 kg |
+| 30° | 27.2 mm | 3.00 kg |
+| 40° | 35.9 mm | 2.27 kg |
+| 45° | 40.2 mm | 2.03 kg |
+| 50° | 44.4 mm | 1.84 kg |
+| 60° | 52.5 mm | 1.55 kg |
+
+**The continuous rating governs, not the peak.** Allowing three times body
+weight for landing impact against the 3 Nm peak gives a ceiling 25 per cent
+*higher* than the continuous figure at every angle, so the thermal limit binds
+first and the structural 6 Nm target is never the constraint. This confirms from
+the other direction what `NOTES.md` already concluded: the limit is duty, not
+range.
+
+So mass and crouch depth are the same decision. Growing the robot from 1.95 kg
+to 2.4 kg pulls the sustained-load knee limit from about 46° down to about 38°.
+Nothing about the mechanism changes — the 110° hard stop stays, and the robot can
+still fold up to sit down or recover — but it can no longer *hold* a deep crouch
+while loaded.
+
+**Recommended budget: 2.3 kg**, which keeps sustained load to roughly 40°. That
+is still three times the 12° crouch the current pose check uses, and it leaves
+about 250 g of headroom over the estimate below — enough to build the shells
+properly, with metal bearing seats and real ribbing, instead of value-engineering
+them from the first day.
+
+| Group | Target |
+|---|---:|
+| Actuators, 8 | 1 200 g (fixed) |
+| Bearings, journals, metal seats | 90 g |
+| Limb shells with integral joint ends, 4 | 220 g |
+| Feet and soles, 2 | 90 g |
+| Pelvis and torso shell | 130 g |
+| Fasteners and inserts | 60 g |
+| Electronics and wiring | 100 g |
+| Power entry — bulk capacitors, fuse, terminal | 60 g |
+| **Estimate** | **≈ 1 950 g** |
+| **Ceiling** | **2 300 g** |
+
+### The ankle and hip roll, now modelled
+
+Both were open. Both now have numbers, taken on the measured 2 165 g tethered
+robot. The bracketed figures are what the same cases gave at 2 295 g with a
+battery, to show which way losing the pack moves them.
+
+- **Ankle.** In single support it carries 2 088 g. On the continuous rating the
+  centre of pressure may travel **39.0 mm** from the axis (was 36.8 mm) — 59 per
+  cent of the 66 mm to the toe, 80 per cent of the 49 mm to the heel. A full toe
+  load is 1.35 Nm, which is 1.7× continuous but under half the 3 Nm peak. So
+  push-off is fine and it is *standing* on the toe that is not. The foot is the
+  right size; its continuous working area is simply smaller than it looks.
+- **Hip roll.** Standing on one leg, the roll actuator carries 1 493 g at the
+  48 mm half-spacing, which is 0.703 Nm — **88 per cent of the continuous
+  rating** (was 96 per cent). Losing 130 g off the torso helps here more than
+  anywhere else, because torso mass is exactly what this joint holds up. Static
+  single-leg stance with the body centred is still not comfortable: shifting the
+  centre of mass 7 mm toward the stance foot, about 1.4° of lean, brings it to
+  75 per cent. Real bipeds lean anyway, but this has to be in the controller
+  rather than assumed.
+
+---
+
+## 9. Carried over, and retired
+
+Carried into this plan from `CHECKLIST.md`:
+
+- Mated-plug axial projection — now blocking, Phase 6
+- Cable channels, service loops, strain relief — Phases 2, 3 and 6
+- Real M3 holes, nut traps and service fasteners — Phases 2 and 6
+- Ribbing and hollowing to recover mass — the whole premise of the overhaul
+- Full ROM and mirrored-pose validation — Phase 7
+- Printed coupons for creep and layer strength — Phase 1, and now a gate
+- The question to DAMIAO about the output bearing's radial and moment rating —
+  still open, still decides how much the far support has to carry
+
+Retired as no longer applicable:
+
+- Converting tube sockets into clamped interfaces — done, then superseded
+- The three yoke support schemes and the yoke's Ø46.6 cheeks
+- Resolving the link socket against the joint hardware it sits inside — the
+  shell end *is* the joint hardware, so the conflict cannot arise
+
+Settled and not revisited:
+
+- Importing the vendor STEP. The engine rejects it and a direct session import
+  times out after 300 s; the parametric proxy plus the recorded interface
+  numbers stay the only representation.
+
+---
+
+## 10. Order of work
+
+Phases 2, 3, 4 and 5 are done, along with the missing poses and torque models.
+Phase 1 is drawn and waiting on hardware. What follows is the order for the rest.
+
+1. **Designed hard stops.** They belong on the limb parts, not in `joint.kcl` —
+   see section 11 for why the shared clevis cannot carry them. A pad on the
+   pelvis for hip roll, on the thigh for hip pitch, on the shin saddle for the
+   ankle; the knee can be stopped by widening the saddle chord.
+2. **A simultaneous-extremes pose.** Each joint has now been taken to a limit on
+   its own, never together.
+3. **Phase 1, print and measure**, the day the printer lands.
+4. **Ribbing and lightening.** Less urgent since the battery came out — the
+   build is about 135 g under the ceiling rather than 5 g — but still the way to
+   buy margin back. Sized from what the coupon actually measured.
+5. Phase 6, cables and service, once a mated plug can be measured.
+6. Print one complete leg before printing two.
+
+### Waiting on the printer, and what is not
+
+Only the numbers wait. The wall is one named parameter, `shellWall`, and nothing
+on the robot repeats the figure, so a coupon that comes back soft is a one-line
+change and a re-run of the four regression models. Shape, kinematics, joint
+interfaces, mass distribution and pose clearance are all independent of it, and
+all of items 1 to 4 above can be finished before anything is printed.
+
+The two things that genuinely cannot move are the mass claim — quoting a total
+against an unmeasured modulus would be dishonest — and cable routing, which is
+blocked on measuring a mated plug against a real actuator rather than on a print.
+
+---
+
+## 11. Build status — 28 August 2026
+
+The skeleton is gone. `pitch_yoke.kcl`, `knee_module.kcl`, `tube_link.kcl` and
+the carbon tubes have been deleted, and the robot is now built from four files:
+
+| File | What it is |
+|---|---|
+| `joint.kcl` | The joint, designed once. `statorClevis()` and `rotorHub()`, used at all eight joints. |
+| `limb.kcl` | A closed shell with a clevis at the bottom and a hub at the top, parametric on length. |
+| `hardware.kcl` | The bought parts per joint: aluminium bearing carrier, 6800-2RS, Ø10 journal. |
+| `limb_check.kcl` | The single-joint review model that gates Phases 2 and 3. |
+| `coupon_box.kcl` | The Phase 1 bending coupon: the real limb section as a 200 mm test bar. Drawn, not yet printed. |
+| `torso.kcl` | The pelvis and torso shell: a keel between the hip roll actuators, a closed box above them, a removable cover. |
+| `foot.kcl` | The foot as a ribbed tray rather than nine rails. |
+| `walk_pose_check.kcl` | Mirrored walking stance, both feet flat, 84 mm stride. |
+| `roll_limit_check.kcl` | Hip roll at the inward limit the feet actually impose. |
+
+`thigh.kcl` and `shin.kcl` are now three lines each. `hip_carrier.kcl` composes
+the same two joint ends with its upper one turned a quarter turn, because the
+hip roll axis is the only one that is not across the robot. `foot.kcl` lost its
+twin risers and bridge rails and bolts straight to the ankle output through the
+shared hub. `torso.kcl` gained a stator clevis and mount box at each hip.
+
+### Done
+
+- [x] **Phase 2 gate passed.** One joint module executes on the engine, holds the
+      actuator on both of its real bolt circles -- 4 x M3 on Ø41 at the rear,
+      6 x M3 on Ø24 at the front -- and leaves the motor barrel open to air.
+- [x] **Phase 3.** One parametric shell serves all four limbs. Section verified
+      by calculation: 33 894 mm⁴ sagittal, 73x the old tube pair, 0.13 mm tip
+      deflection at three times body weight in a 45° crouch.
+- [x] Metal bearing seat rather than a printed pocket, bonded in, no screws
+      through a 3 mm printed wall.
+- [x] All four regression models rebuilt and executing on the engine, plus the
+      new single-joint model. Project lints and formats clean.
+
+### Found while building
+
+- **Dropping the battery is not just minus 190 g.** The pack was the DC bus's
+  energy store and the only thing on board able to absorb regeneration from
+  eight backdrivable actuators, and a tether is neither — it has resistance and
+  inductance, and a bench supply generally cannot sink current at all. So a
+  low-ESR bulk capacitor bank stops being a deferred line in `BOM.md` and
+  becomes required hardware. It is reserved in the keel and **not yet sized**;
+  the 60 g in the mass table is an allowance. The umbilical also has to be
+  carried on a boom, because an unsupported cable hangs a moving, unmodelled
+  load on the machine.
+- **+Y is forward, and nothing in the torso file said so.** The tether slot was
+  first cut in the robot's front, between its shins. It executed on the engine
+  without complaint — a slot is a slot — and only a rendered front-and-back pair
+  caught it. The convention is settled by `foot.kcl`, whose rear pressure pads
+  sit at y = -40 and front pads at y = +51, and by the leading knee in
+  `walk_pose_check.kcl` swinging to +Y. Note also that Zoo's *front* camera looks
+  at the -Y face, so the view named "front" shows the robot's back.
+- **The shell depth is set by the knee fold, not by stiffness.** At the 34 mm
+  depth the section calculation preferred, the shin's rotor arm fouls the
+  thigh's saddle at 108.5° -- inside the 110° commissioning limit. At 30 mm the
+  first contact moves to 112.8°, so the structure backs the stop up instead of
+  pre-empting it. That is why the section is square rather than the
+  deeper-than-wide shape a leg would otherwise want. Any change to `shellDepth`,
+  `jointKeepOut` or `bridgeHeight` moves that angle and must be re-checked.
+- **Two engine limitations, both worked around and both worth knowing.** Blind
+  pockets cut out of a large combined solid are rejected, so every cut is now
+  made on the simple body it belongs to before anything is unioned. And a union
+  of two hollow boxes meeting at right angles is rejected, so the hip carrier and
+  the torso hip mounts are left as interpenetrating bodies -- the same fallback
+  `NOTES.md` already records for the foot frame. Verify your slicer merges
+  coincident shells before printing those two.
+- Mock execution passes in both those cases. It does not exercise the booleans.
+- **Inward hip roll is limited to 6.9°, not 25°.** The roll axis is 257 mm above
+  the ankle, so a degree of roll moves the foot 4.5 mm sideways, and there are
+  only 31 mm of air between two 65 mm feet on 96 mm centres. With the other leg
+  standing neutral the soles meet at 6.9°; the shin shells would not meet until
+  14.9°. Outward roll is unobstructed. This does not stop the machine walking —
+  the swing leg is lifted, and a lateral lean rolls both hips the same way and
+  never closes the gap — but inward roll against a planted neutral leg is a
+  fault case, not available travel, and the commissioning limits should say so.
+- **The walking stride is limited by the trailing ankle.** In the 84 mm stride
+  of `walk_pose_check.kcl` nothing interferes, but the trailing ankle already
+  sits at 27.5° against its 30° limit. Ankle travel, not clearance, is what caps
+  the stride.
+- **`calculate_kcl_physical_properties` is only trustworthy for volume and
+  mass.** It returned a 173 mm bounding box in y for a 115 mm foot, and a centre
+  of mass to match. Volume and mass agreed with hand calculation; nothing else
+  from that tool is quoted here.
+
+### Mass, measured from the CAD
+
+PA12-CF at 1.06 g/cm3:
+
+| Part | Each | Count | Total |
+|---|---:|---:|---:|
+| Limb, thigh or shin | 48.3 g | 4 | 193 g |
+| Hip carrier | 39.8 g | 2 | 80 g |
+| Foot, tray, sole and pads | 76.6 g | 2 | 153 g |
+| Pelvis and torso shell with cover | 189.0 g | 1 | 189 g |
+| **Printed structure** | | | **615 g** |
+| Actuators | 150 g | 8 | 1 200 g |
+| Bearing, journal, carrier | 16.3 g | 8 | 130 g |
+| Fasteners | | | 60 g |
+| Electronics and wiring | | | 100 g |
+| Power entry — capacitors, fuse, terminal (allowance) | | | 60 g |
+| **Total** | | | **≈ 2 165 g** |
+
+**Going tethered bought the headroom back.** The battery was 190 g and the
+power-entry block replacing it is an estimated 60 g, so the robot is about 135 g
+under the 2 300 g ceiling instead of 5 g, and the sustained-load knee limit
+moves from 39.6° to **42.0°** against a 40° target.
+
+That is a real margin but not a large one, and the 60 g is the soft figure in
+the table, because the capacitor bank has not been sized. Closing the two open
+sections had already cost 37 g at the pelvis and 15 g at each foot, which is the
+honest price of the structure, so ribbing and lightening remain worth doing.
+They are now a way of buying margin rather than the only thing keeping the robot
+legal, and they still cannot be sized until the Phase 1 coupon is measured.
+
+### Still open
+
+- [ ] **Phase 1 coupons.** The box coupon is drawn and executing --
+      `coupon_box.kcl` -- but there is no printer on site and one is roughly a
+      week out. The stiffness case rests on calculation until it is measured.
+      This does not block items 1 to 4 of section 10; see the note there.
+- [x] **Phase 4, properly.** The foot is a closed-perimeter tray with ribs, not
+      nine overlapping rails.
+- [x] **Phase 5, properly.** The torso is one closed shell with a keel and a
+      removable cover, and the payload interference it exposed is fixed.
+- [x] **Phase 7 poses and torque models.** Mirrored walking stance and the
+      hip-roll extreme are rendered; the ankle and hip-roll static cases have
+      numbers.
+- [ ] **Designed hard stops. Not started, and the reason is worth recording.**
+      The shared clevis cannot carry them: everything inside Ø52 of the joint
+      axis is either the actuator body (radius 23), the bearing carrier, or a
+      3 mm printed cheek, and a pin-in-slot through that cheek would shear under
+      a full-torque runaway — which is worse than no stop, because it invites
+      trust. Widening the saddle chord can stop the knee at 110°, since the
+      structural contact is already at 116°, but the same trick cannot reach
+      ±25° or ±30°. **So the stops belong on the limb parts** — a pad on the
+      pelvis for hip roll, on the thigh for hip pitch, on the shin saddle for
+      the ankle — where there is room and material. Each needs its own rendered
+      pose at the limit, which is why the two new poses had to come first.
+- [ ] **A simultaneous-extremes pose.** Each joint has been taken to a limit
+      alone, never together.
+- [ ] **Phase 6.** The shells have a clear internal cavity for cable and the
+      pelvis now has a slot at each hip, but no routing, strain relief or
+      service hatches are modelled. Still blocked on the mated-plug measurement.
+- [ ] **Ribbing and lightening** — no longer the only thing keeping the robot
+      under its ceiling, but still the way to buy margin, and still waiting on
+      the coupon.
+- [ ] **The tether's two loose ends**, both in Phase 5a: the bulk capacitor bank
+      is required hardware and is not sized, and the umbilical needs a boom or
+      balancer to carry it. Neither is geometry, and neither is optional.

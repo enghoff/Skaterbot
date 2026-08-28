@@ -1,5 +1,12 @@
 # Torque-Controlled Biped — Opus Engineering Handoff
 
+> **This is the original brief, not the current design state.** It has not been
+> maintained through the stressed-shell overhaul or the decision to run the robot
+> tethered, so its structure, mass table and battery lines are all superseded.
+> `PLAN.md` is the live plan and `NOTES.md` the running log; read those for what
+> is actually true. Kept because the objectives and the reasoning behind the
+> actuator choice still stand.
+
 ## Purpose
 
 You are the **lead mechanical engineering agent** for a compact, 3D-printable, torque-controlled bipedal robot project.

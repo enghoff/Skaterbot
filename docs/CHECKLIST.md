@@ -1,5 +1,13 @@
 # Biped Development Checklist
 
+> **Superseded on 28 August 2026 by [`PLAN.md`](PLAN.md).**
+>
+> The robot is being rebuilt from this skeleton architecture into a stressed-shell
+> one, so the open items below no longer describe the work. They are carried over
+> or explicitly retired in section 9 of the plan. This file stays as the record of
+> the skeleton design and of what was learned building it — in particular the
+> actuator investigation, which the overhaul keeps in full.
+
 ## Initial skeleton complete
 
 - [x] 380 mm neutral overall layout
@@ -28,7 +36,7 @@
 - [x] Correct the proxy envelope to Ø46 x 37.9 mm with nothing protruding
 - [x] Capture the real bolt patterns as parameters: 6 x M3 on Ø24 output, 4 x M3 on Ø41 housing
 - [x] Compute the static torque envelope and the resulting duty limit
-- [ ] Import the vendor STEP itself and regenerate (its body is an open-shell surface model, so it may not import as a solid)
+- [x] **Import the vendor STEP itself and regenerate — it cannot be done.** `import` of the STEP is rejected by the engine outright (`engine: import failed`), with or without a lowercase extension, and importing the same file directly into a modeling session times out after 300 s. The 4.4 MB open-shell model is beyond what the engine will ingest, so the parametric proxy plus the recorded interface numbers remain the only representation
 - [x] Establish that nothing projects past Ø46 and the cable exit is axial at the rear, not radial
 - [x] Locate the connectors — rear end, against a flat chord on the Ø46 housing, opposite the Ø30 output boss
 - [x] Correct the harness pin counts — power/CAN is 8-pin, debug UART is 3-pin; the manual's parts list has them swapped
@@ -57,9 +65,21 @@
 - [x] Provide the second support, carried by the rear bracket’s forward arms and a 6800-2RS bearing
 - [x] Select current-knee support hardware: 6800-2RS, Ø10 x 8 mm hardened journal, M3 x 6 output screws, and M3 x 12 rear screws with washers
 - [ ] Add real M3 through-holes, nut traps, and service-access fasteners
-- [ ] Convert tube socket blocks into clamped/bolted carbon-tube interfaces
+- [x] Convert tube socket blocks into clamped/bolted carbon-tube interfaces
 - [x] Add a knee-only 110° circular-pad hard stop; 100° pre-limit and 110° limit review scenes execute cleanly
 - [ ] Add protected cable channels, service loops, and strain relief
-- [ ] Rib and hollow torso/hip parts to recover 100-150 g
+- [ ] Rib and hollow torso/hip parts **and the new link sockets** to recover 100-150 g; the sockets added about 68 g and are now the largest single block of removable material outside the torso
 - [ ] Validate all limit combinations and mirrored walking poses; current evidence covers knee 0°, 30°, the 65° crouched pose, 90°, 100°, and 110° only
 - [ ] Print joint coupons and test bearing-pocket creep and layer strength
+
+## Carbon-tube link interface — August 28, 2026
+
+- [x] Replace the butt-jointed socket blocks with bonded square pockets, 16 mm deep, giving 531 mm² of bond area per tube end
+- [x] Add a transverse M3 through-bolt per tube with a captive nut, so the joint survives a failed bond
+- [x] Model the matching cross hole in the carbon tube itself rather than leaving it implied
+- [x] Add a bleed hole through each pocket floor for trapped air and surplus adhesive
+- [x] Fold `thigh.kcl` and `shin.kcl` into one shared `tube_link.kcl`, leaving only the tube spacing to differ
+- [x] Regenerate all four models on the engine after the change
+- [ ] **Resolve the link socket against the joint hardware it sits inside.** Each socket's outer face is 21 mm from the joint centre while the actuator is Ø46 and the yoke Ø54, so every socket shares about 2 mm of space with its actuator, and the thigh's upper and shin's lower sockets also pass through a yoke strap. This predates the change and is not made worse by it, but it cannot be fixed by shortening the link — the socket has to become the joint's mounting boss
+- [ ] Bolt the sockets to the yokes and knee brackets; nothing currently connects a link to a joint
+- [ ] Confirm the 3 mm nut seat is enough in PETG, or move to a metal insert plate, once coupons exist

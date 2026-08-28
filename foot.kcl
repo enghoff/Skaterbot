@@ -1,17 +1,54 @@
-// Forgiving prototype foot
-// Open printed frame, replaceable thin sole, four sensor pads, and double-supported ankle risers.
+// Foot
+//
+// The nine overlapping rails are gone. The foot is now a shallow open-topped
+// tray -- a 2.4 mm floor with a continuous perimeter wall around it -- so a
+// landing load runs into a closed perimeter instead of into the roots of four
+// thin rails. NOTES.md listed that as priority weakness 4; this is the fix.
+//
+// The tray is open at the top on purpose, and it is a printing decision rather
+// than a structural one. The foot prints sole-face-down on the bed, which is the
+// orientation that puts the layer lines across the landing load instead of along
+// it. In that orientation an open top needs no support anywhere, and a closed
+// one would have to bridge 60 mm. The floor and the perimeter wall are what
+// carry the load; a top skin would add mass at the neutral axis and buy little.
+//
+// Two transverse ribs sit directly under the ankle spreader and a longitudinal
+// rib ties heel to toe through it, so the ankle's load reaches all four walls
+// rather than only the floor beneath it.
+//
+// The sole stays a separate replaceable part, and the four sensor seats keep
+// their positions.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
+import rotorHub, rotorEndHeight from "joint.kcl"
 
 soleThickness = 2mm
 soleCenterZ = -ankleAxisHeight + soleThickness / 2
-frameBottomZ = -ankleAxisHeight + soleThickness
-frameHeight = 10mm
-sideRailLength = 100mm
-frontRailWidth = footWidth - 6mm
-centralSpineWidth = 16mm
-centralSpineLength = 100mm
+
+trayBottomZ = -ankleAxisHeight + soleThickness
+trayHeight = 10mm
+trayTopZ = trayBottomZ + trayHeight
+trayCenterZ = (trayBottomZ + trayTopZ) / 2
+trayFloorThickness = shellWall
+trayInnerWidth = footWidth - (shellWall * 2)
+trayInnerLength = footLength - (shellWall * 2)
+trayCavityBottomZ = trayBottomZ + trayFloorThickness
+trayCavityHeight = trayTopZ + 2mm - trayCavityBottomZ
+
+ribThickness = shellWall
+ribHeight = trayTopZ - trayCavityBottomZ
+ribCenterZ = (trayCavityBottomZ + trayTopZ) / 2
+
+spreaderWidth = 52mm
+spreaderThickness = 8mm
+spreaderOverlap = 6mm
+// The two transverse ribs land just inside the spreader's edges, so the
+// spreader bears on rib rather than on unsupported floor.
+transverseRibY = shellDepth / 2 - (ribThickness / 2)
+
+// ---- replaceable sole -------------------------------------------------------
+
 
 soleSketch = sketch(on = XY) {
   edge1 = line(start = [var 0mm, var 0mm], end = [var 65mm, var 0mm])
@@ -39,11 +76,23 @@ soleRaw = extrude(soleRegion, length = soleThickness, symmetric = true)
        global = true,
      )
 
-sideRailSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 3mm, var 0mm])
-  edge2 = line(start = [var 3mm, var 0mm], end = [var 3mm, var 100mm])
-  edge3 = line(start = [var 3mm, var 100mm], end = [var 0mm, var 100mm])
-  edge4 = line(start = [var 0mm, var 100mm], end = [var 0mm, var 0mm])
+// ---- tray -------------------------------------------------------------------
+
+
+trayOuterRegion = region(segments = [soleSketch.edge1, soleSketch.edge2], intersectionIndex = -1, direction = CCW)
+trayBlank = extrude(trayOuterRegion, length = trayHeight, symmetric = true)
+  |> translate(
+       x = -footWidth / 2,
+       y = footCenterY - (footLength / 2),
+       z = trayCenterZ,
+       global = true,
+     )
+
+trayInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 60mm, var 0mm])
+  edge2 = line(start = [var 60mm, var 0mm], end = [var 60mm, var 110mm])
+  edge3 = line(start = [var 60mm, var 110mm], end = [var 0mm, var 110mm])
+  edge4 = line(start = [var 0mm, var 110mm], end = [var 0mm, var 0mm])
   coincident([edge1.start, ORIGIN])
   coincident([edge1.end, edge2.start])
   coincident([edge2.end, edge3.start])
@@ -53,32 +102,34 @@ sideRailSketch = sketch(on = XY) {
   vertical(edge2)
   horizontal(edge3)
   vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == 3mm
-  verticalDistance([edge2.start, edge2.end]) == sideRailLength
+  horizontalDistance([edge1.start, edge1.end]) == trayInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == trayInnerLength
 }
-sideRailRegion = region(
+trayInnerRegion = region(
   segments = [
-    sideRailSketch.edge1,
-    sideRailSketch.edge2
+    trayInnerSketch.edge1,
+    trayInnerSketch.edge2
   ],
   intersectionIndex = -1,
   direction = CCW,
 )
-leftRailRaw = extrude(sideRailRegion, length = frameHeight)
+trayCavity = extrude(trayInnerRegion, length = trayCavityHeight, symmetric = true)
   |> translate(
-       x = -footWidth / 2 + 3mm,
-       y = footCenterY - (sideRailLength / 2),
-       z = frameBottomZ,
+       x = -trayInnerWidth / 2,
+       y = footCenterY - (trayInnerLength / 2),
+       z = trayCavityBottomZ + trayCavityHeight / 2,
        global = true,
      )
-rightRailRaw = clone(leftRailRaw)
-  |> translate(x = footWidth - 9mm, global = true)
+trayRaw = subtract(trayBlank, tools = [trayCavity])
 
-crossRailSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 59mm, var 0mm])
-  edge2 = line(start = [var 59mm, var 0mm], end = [var 59mm, var 3mm])
-  edge3 = line(start = [var 59mm, var 3mm], end = [var 0mm, var 3mm])
-  edge4 = line(start = [var 0mm, var 3mm], end = [var 0mm, var 0mm])
+// ---- ribs -------------------------------------------------------------------
+
+
+transverseRibSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 60mm, var 0mm])
+  edge2 = line(start = [var 60mm, var 0mm], end = [var 60mm, var 2mm])
+  edge3 = line(start = [var 60mm, var 2mm], end = [var 0mm, var 2mm])
+  edge4 = line(start = [var 0mm, var 2mm], end = [var 0mm, var 0mm])
   coincident([edge1.start, ORIGIN])
   coincident([edge1.end, edge2.start])
   coincident([edge2.end, edge3.start])
@@ -88,32 +139,32 @@ crossRailSketch = sketch(on = XY) {
   vertical(edge2)
   horizontal(edge3)
   vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == frontRailWidth
-  verticalDistance([edge2.start, edge2.end]) == 3mm
+  horizontalDistance([edge1.start, edge1.end]) == trayInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == ribThickness
 }
-crossRailRegion = region(
+transverseRibRegion = region(
   segments = [
-    crossRailSketch.edge1,
-    crossRailSketch.edge2
+    transverseRibSketch.edge1,
+    transverseRibSketch.edge2
   ],
   intersectionIndex = -1,
   direction = CCW,
 )
-heelRailRaw = extrude(crossRailRegion, length = frameHeight)
+rearRibRaw = extrude(transverseRibRegion, length = ribHeight, symmetric = true)
   |> translate(
-       x = -frontRailWidth / 2,
-       y = footCenterY - (sideRailLength / 2),
-       z = frameBottomZ,
+       x = -trayInnerWidth / 2,
+       y = -transverseRibY - (ribThickness / 2),
+       z = ribCenterZ,
        global = true,
      )
-toeRailRaw = clone(heelRailRaw)
-  |> translate(y = sideRailLength - 3mm, global = true)
+frontRibRaw = clone(rearRibRaw)
+  |> translate(y = transverseRibY * 2, global = true)
 
-spineSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 16mm, var 0mm])
-  edge2 = line(start = [var 16mm, var 0mm], end = [var 16mm, var 100mm])
-  edge3 = line(start = [var 16mm, var 100mm], end = [var 0mm, var 100mm])
-  edge4 = line(start = [var 0mm, var 100mm], end = [var 0mm, var 0mm])
+longRibSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 2mm, var 0mm])
+  edge2 = line(start = [var 2mm, var 0mm], end = [var 2mm, var 110mm])
+  edge3 = line(start = [var 2mm, var 110mm], end = [var 0mm, var 110mm])
+  edge4 = line(start = [var 0mm, var 110mm], end = [var 0mm, var 0mm])
   coincident([edge1.start, ORIGIN])
   coincident([edge1.end, edge2.start])
   coincident([edge2.end, edge3.start])
@@ -123,80 +174,67 @@ spineSketch = sketch(on = XY) {
   vertical(edge2)
   horizontal(edge3)
   vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == centralSpineWidth
-  verticalDistance([edge2.start, edge2.end]) == centralSpineLength
+  horizontalDistance([edge1.start, edge1.end]) == ribThickness
+  verticalDistance([edge2.start, edge2.end]) == trayInnerLength
 }
-spineRegion = region(segments = [spineSketch.edge1, spineSketch.edge2], intersectionIndex = -1, direction = CCW)
-spineRaw = extrude(spineRegion, length = 3mm)
-  |> translate(
-       x = -centralSpineWidth / 2,
-       y = footCenterY - (centralSpineLength / 2),
-       z = frameBottomZ,
-       global = true,
-     )
-
-riserSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
-  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 18mm])
-  edge3 = line(start = [var 8mm, var 18mm], end = [var 0mm, var 18mm])
-  edge4 = line(start = [var 0mm, var 18mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == 8mm
-  verticalDistance([edge2.start, edge2.end]) == 18mm
-}
-riserRegion = region(segments = [riserSketch.edge1, riserSketch.edge2], intersectionIndex = -1, direction = CCW)
-leftRiserRaw = extrude(riserRegion, length = 20mm)
-  |> translate(
-       x = -24mm,
-       y = -9mm,
-       z = -32mm,
-       global = true,
-     )
-rightRiserRaw = clone(leftRiserRaw)
-  |> translate(x = 40mm, global = true)
-
-ankleBridgeRailSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 50mm, var 0mm])
-  edge2 = line(start = [var 50mm, var 0mm], end = [var 50mm, var 4mm])
-  edge3 = line(start = [var 50mm, var 4mm], end = [var 0mm, var 4mm])
-  edge4 = line(start = [var 0mm, var 4mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == 50mm
-  verticalDistance([edge2.start, edge2.end]) == 4mm
-}
-ankleBridgeRailRegion = region(
+longRibRegion = region(
   segments = [
-    ankleBridgeRailSketch.edge1,
-    ankleBridgeRailSketch.edge2
+    longRibSketch.edge1,
+    longRibSketch.edge2
   ],
   intersectionIndex = -1,
   direction = CCW,
 )
-rearAnkleBridgeRaw = extrude(ankleBridgeRailRegion, length = 10mm)
+spineRibRaw = extrude(longRibRegion, length = ribHeight, symmetric = true)
   |> translate(
-       x = -25mm,
-       y = -9mm,
-       z = -40mm,
+       x = -ribThickness / 2,
+       y = footCenterY - (trayInnerLength / 2),
+       z = ribCenterZ,
        global = true,
      )
-frontAnkleBridgeRaw = clone(rearAnkleBridgeRaw)
-  |> translate(y = 14mm, global = true)
+
+// ---- ankle attachment -------------------------------------------------------
+
+// The foot is the rotor of the ankle joint: it bolts straight to the actuator's
+// output circle through the shared hub in joint.kcl. The spreader takes the
+// hub's bridge into the tray, straddling the two transverse ribs.
+spreaderSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 52mm, var 0mm])
+  edge2 = line(start = [var 52mm, var 0mm], end = [var 52mm, var 30mm])
+  edge3 = line(start = [var 52mm, var 30mm], end = [var 0mm, var 30mm])
+  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == spreaderWidth
+  verticalDistance([edge2.start, edge2.end]) == shellDepth
+}
+spreaderRegion = region(
+  segments = [
+    spreaderSketch.edge1,
+    spreaderSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+spreaderRaw = extrude(spreaderRegion, length = spreaderThickness, symmetric = true)
+  |> translate(
+       x = -spreaderWidth / 2,
+       y = -shellDepth / 2,
+       z = -rotorEndHeight - (spreaderThickness / 2) + spreaderOverlap,
+       global = true,
+     )
+
+ankleHubRaw = rotorHub()
+
+// ---- sensor seats -----------------------------------------------------------
+
 
 sensorSketch = sketch(on = XY) {
   edge1 = line(start = [var 0mm, var 0mm], end = [var 10mm, var 0mm])
@@ -231,11 +269,10 @@ frontRightSensorRaw = clone(rearRightSensorRaw)
   |> translate(y = 91mm, global = true)
 
 hide(soleSketch)
-hide(sideRailSketch)
-hide(crossRailSketch)
-hide(spineSketch)
-hide(riserSketch)
-hide(ankleBridgeRailSketch)
+hide(trayInnerSketch)
+hide(transverseRibSketch)
+hide(longRibSketch)
+hide(spreaderSketch)
 hide(sensorSketch)
 
 sole = appearance(
@@ -244,17 +281,19 @@ sole = appearance(
   roughness = 92,
   metalness = 0,
 )
-footFrame = appearance(
+
+// Tray, ribs, spreader and ankle hub are one printed part, left as
+// interpenetrating bodies for the reason NOTES.md records: the engine refuses
+// some of these unions. Every overlap is millimetres of real solid, so a slicer
+// that merges coincident shells prints them as the single part they are.
+footShell = appearance(
   [
-    leftRailRaw,
-    rightRailRaw,
-    heelRailRaw,
-    toeRailRaw,
-    spineRaw,
-    leftRiserRaw,
-    rightRiserRaw,
-    rearAnkleBridgeRaw,
-    frontAnkleBridgeRaw
+    trayRaw,
+    rearRibRaw,
+    frontRibRaw,
+    spineRibRaw,
+    spreaderRaw,
+    ankleHubRaw
   ],
   color = printedOrange,
   roughness = 76,
@@ -272,4 +311,4 @@ sensorPads = appearance(
   metalness = 8,
 )
 
-export footAssembly = [sole, footFrame, sensorPads]
+export footAssembly = [sole, footShell, sensorPads]

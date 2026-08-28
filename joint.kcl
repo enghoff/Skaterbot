@@ -1,0 +1,399 @@
+// The joint interface, designed once and used at all eight joints
+//
+// The actuator offers a grip on only two faces -- 4 x M3 on Ø41 at the rear and
+// 6 x M3 on Ø24 at the front -- and nothing can pass through it. So the
+// stationary side has to reach around the body to support the moving side, and
+// the moving side is necessarily a single plate on the output face. That is
+// forced by the actuator, not chosen, and it makes every joint the same shape:
+//
+// * `statorClevis` -- two cheeks straddling the actuator, anchored on the rear
+// pattern, reaching past the body to a metal-seated bearing on the far side,
+// with a saddle over the top that carries the load into whatever is above.
+// * `rotorHub` -- a plate bolted to the output circle and piloted on the Ø30
+// register, carrying a Ø10 journal outboard into that bearing, with an arm
+// and bridge that take its offset back to the centre line below.
+//
+// Both are positioned with the joint centre at the origin and the joint axis
+// along X. The clevis rises in +Z, the hub descends in -Z, so a limb is a shell
+// with a clevis at its bottom and a hub at its top.
+//
+// The clevis is open at the front, the back and below on purpose. The actuator
+// sits in free air and can still radiate, which is what lets the limbs be closed
+// shells without cooking the motors.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+outputBoltRadius = actuatorOutputBoltCircle / 2
+rearBoltRadius = actuatorRearBoltCircle / 2
+
+// The rear bolts sit at 45 degrees on Ø41, so both offsets are the same number.
+rearBoltOffset = rearBoltRadius * cos(actuatorRearBoltPhase)
+
+rotorHubCenterX = rotorHubInnerX + rotorHubThickness / 2
+shellInnerDepth = shellDepth - (shellWall * 2)
+
+// Both ends are the same height whatever limb they belong to: the saddle and the
+// bridge each start one actuator radius plus a millimetre clear of the joint.
+export saddleHeight = 12mm
+export bridgeHeight = 8mm
+export statorEndHeight = jointKeepOut + saddleHeight
+export rotorEndHeight = jointKeepOut + bridgeHeight
+
+export fn statorClevis() {
+  saddleWidth = frontCheekX - rearCheekX + cheekThickness
+  saddleCenterX = (frontCheekX + rearCheekX) / 2
+  saddleCenterZ = jointKeepOut + saddleHeight / 2
+
+  cheekDiscSketch = sketch(on = YZ) {
+    cheekCircle = circle(start = [var 26mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([cheekCircle.center, ORIGIN])
+    horizontal([cheekCircle.center, cheekCircle.start])
+    diameter(cheekCircle) == cheekDiameter
+  }
+  cheekDiscRegion = region(segments = [cheekDiscSketch.cheekCircle])
+
+  cheekNeckSketch = sketch(on = YZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 24mm, var 0mm])
+    edge2 = line(start = [var 24mm, var 0mm], end = [var 24mm, var 36mm])
+    edge3 = line(start = [var 24mm, var 36mm], end = [var 0mm, var 36mm])
+    edge4 = line(start = [var 0mm, var 36mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == cheekNeckWidth
+    verticalDistance([edge2.start, edge2.end]) == statorEndHeight
+  }
+  cheekNeckRegion = region(
+    segments = [
+      cheekNeckSketch.edge1,
+      cheekNeckSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+
+  rearCheekDisc = extrude(cheekDiscRegion, length = cheekThickness, symmetric = true)
+    |> translate(x = rearCheekX, global = true)
+  rearCheekNeck = extrude(cheekNeckRegion, length = cheekThickness, symmetric = true)
+    |> translate(x = rearCheekX, y = -cheekNeckWidth / 2, global = true)
+  frontCheekDisc = clone(rearCheekDisc)
+    |> translate(x = frontCheekX - rearCheekX, global = true)
+  frontCheekNeck = clone(rearCheekNeck)
+    |> translate(x = frontCheekX - rearCheekX, global = true)
+
+  // The saddle is the only path the joint load has into the limb above, so it
+  // is a closed box rather than a plate.
+  saddleOuterSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 51mm, var 0mm])
+    edge2 = line(start = [var 51mm, var 0mm], end = [var 51mm, var 12mm])
+    edge3 = line(start = [var 51mm, var 12mm], end = [var 0mm, var 12mm])
+    edge4 = line(start = [var 0mm, var 12mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == saddleWidth
+    verticalDistance([edge2.start, edge2.end]) == saddleHeight
+  }
+  saddleOuterRegion = region(
+    segments = [
+      saddleOuterSketch.edge1,
+      saddleOuterSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  saddleBlank = extrude(saddleOuterRegion, length = shellDepth, symmetric = true)
+    |> translate(x = saddleCenterX - (saddleWidth / 2), z = saddleCenterZ - (saddleHeight / 2), global = true)
+
+  saddleInnerSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 46mm, var 0mm])
+    edge2 = line(start = [var 46mm, var 0mm], end = [var 46mm, var 7mm])
+    edge3 = line(start = [var 46mm, var 7mm], end = [var 0mm, var 7mm])
+    edge4 = line(start = [var 0mm, var 7mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == saddleWidth - (shellWall * 2)
+    verticalDistance([edge2.start, edge2.end]) == saddleHeight - (shellWall * 2)
+  }
+  saddleInnerRegion = region(
+    segments = [
+      saddleInnerSketch.edge1,
+      saddleInnerSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  saddleCavity = extrude(saddleInnerRegion, length = shellInnerDepth, symmetric = true)
+    |> translate(x = saddleCenterX - (saddleWidth / 2) + shellWall, z = saddleCenterZ - (saddleHeight / 2) + shellWall, global = true)
+  saddleRaw = subtract(saddleBlank, tools = [saddleCavity])
+
+  boltSketch = sketch(on = YZ) {
+    boltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boltCircle.center, ORIGIN])
+    horizontal([boltCircle.center, boltCircle.start])
+    diameter(boltCircle) == m3Clearance
+  }
+  boltRegion = region(segments = [boltSketch.boltCircle])
+  rearBolt1 = extrude(boltRegion, length = cheekThickness + 2mm, symmetric = true)
+    |> translate(
+         x = rearCheekX,
+         y = rearBoltOffset,
+         z = rearBoltOffset,
+         global = true,
+       )
+  rearBolt2 = clone(rearBolt1)
+    |> translate(y = -rearBoltOffset * 2, global = true)
+  rearBolt3 = clone(rearBolt1)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+  rearBolt4 = clone(rearBolt2)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+
+  lighteningSketch = sketch(on = YZ) {
+    lighteningCircle = circle(start = [var 13mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([lighteningCircle.center, ORIGIN])
+    horizontal([
+      lighteningCircle.center,
+      lighteningCircle.start
+    ])
+    diameter(lighteningCircle) == cheekLighteningDiameter
+  }
+  lighteningRegion = region(segments = [lighteningSketch.lighteningCircle])
+  rearLightening = extrude(lighteningRegion, length = cheekThickness + 2mm, symmetric = true)
+    |> translate(x = rearCheekX, global = true)
+
+  carrierBoreSketch = sketch(on = YZ) {
+    carrierBoreCircle = circle(start = [var 15.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierBoreCircle.center, ORIGIN])
+    horizontal([
+      carrierBoreCircle.center,
+      carrierBoreCircle.start
+    ])
+    diameter(carrierBoreCircle) == bearingCarrierBore
+  }
+  carrierBoreRegion = region(segments = [carrierBoreSketch.carrierBoreCircle])
+  frontCarrierBore = extrude(carrierBoreRegion, length = cheekThickness + 2mm, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+
+  // Each cut is taken on the simple body it belongs to, before anything is
+  // unioned: the engine rejects pockets cut out of a large combined solid.
+  rearCheekBlank = union([rearCheekDisc, rearCheekNeck])
+  rearCheekAfterBolts = subtract(
+    rearCheekBlank,
+    tools = [
+      rearBolt1,
+      rearBolt2,
+      rearBolt3,
+      rearBolt4
+    ],
+  )
+  rearCheekFinished = subtract(rearCheekAfterBolts, tools = [rearLightening])
+
+  frontCheekBlank = union([frontCheekDisc, frontCheekNeck])
+  frontCheekFinished = subtract(frontCheekBlank, tools = [frontCarrierBore])
+
+  hide(cheekDiscSketch)
+  hide(cheekNeckSketch)
+  hide(saddleOuterSketch)
+  hide(saddleInnerSketch)
+  hide(boltSketch)
+  hide(lighteningSketch)
+  hide(carrierBoreSketch)
+
+  return union([
+    rearCheekFinished,
+    frontCheekFinished,
+    saddleRaw
+  ])
+}
+
+export fn rotorHub() {
+  bridgeWidth = rotorHubOuterX + shellWidth / 2
+  bridgeCenterX = rotorHubOuterX - (bridgeWidth / 2)
+  rotorArmHeight = rotorEndHeight
+
+  hubSketch = sketch(on = YZ) {
+    hubCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([hubCircle.center, ORIGIN])
+    horizontal([hubCircle.center, hubCircle.start])
+    diameter(hubCircle) == rotorHubDiameter
+  }
+  hubRegion = region(segments = [hubSketch.hubCircle])
+  hubRaw = extrude(hubRegion, length = rotorHubThickness, symmetric = true)
+    |> translate(x = rotorHubCenterX, global = true)
+
+  registerSketch = sketch(on = YZ) {
+    registerCircle = circle(start = [var 15.2mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([registerCircle.center, ORIGIN])
+    horizontal([
+      registerCircle.center,
+      registerCircle.start
+    ])
+    diameter(registerCircle) == rotorRegisterDiameter
+  }
+  registerRegion = region(segments = [registerSketch.registerCircle])
+  registerPocket = extrude(registerRegion, length = rotorRegisterDepth, symmetric = true)
+    |> translate(x = rotorHubInnerX + rotorRegisterDepth / 2, global = true)
+
+  journalSeatSketch = sketch(on = YZ) {
+    journalSeatCircle = circle(start = [var 5.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([journalSeatCircle.center, ORIGIN])
+    horizontal([
+      journalSeatCircle.center,
+      journalSeatCircle.start
+    ])
+    diameter(journalSeatCircle) == journalSeatDiameter
+  }
+  journalSeatRegion = region(segments = [journalSeatSketch.journalSeatCircle])
+  journalSeatCutter = extrude(journalSeatRegion, length = journalSeatDepth, symmetric = true)
+    |> translate(x = rotorHubOuterX - (journalSeatDepth / 2), global = true)
+
+  boltSketch = sketch(on = YZ) {
+    boltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boltCircle.center, ORIGIN])
+    horizontal([boltCircle.center, boltCircle.start])
+    diameter(boltCircle) == m3Clearance
+  }
+  boltRegion = region(segments = [boltSketch.boltCircle])
+  outputBolt1 = extrude(boltRegion, length = rotorHubThickness + 2mm, symmetric = true)
+    |> translate(x = rotorHubCenterX, y = outputBoltRadius, global = true)
+  outputBolt2 = clone(outputBolt1)
+    |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+  outputBolt3 = clone(outputBolt1)
+    |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+  outputBolt4 = clone(outputBolt1)
+    |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+  outputBolt5 = clone(outputBolt1)
+    |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+  outputBolt6 = clone(outputBolt1)
+    |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+  counterboreSketch = sketch(on = YZ) {
+    counterboreCircle = circle(start = [var 3mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([counterboreCircle.center, ORIGIN])
+    horizontal([
+      counterboreCircle.center,
+      counterboreCircle.start
+    ])
+    diameter(counterboreCircle) == m3CapCounterbore
+  }
+  counterboreRegion = region(segments = [counterboreSketch.counterboreCircle])
+  outputCbore1 = extrude(counterboreRegion, length = m3CapCounterboreDepth, symmetric = true)
+    |> translate(x = rotorHubOuterX - (m3CapCounterboreDepth / 2), y = outputBoltRadius, global = true)
+  outputCbore2 = clone(outputCbore1)
+    |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+  outputCbore3 = clone(outputCbore1)
+    |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+  outputCbore4 = clone(outputCbore1)
+    |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+  outputCbore5 = clone(outputCbore1)
+    |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+  outputCbore6 = clone(outputCbore1)
+    |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+  hubAfterRegister = subtract(hubRaw, tools = [registerPocket])
+  hubAfterJournalSeat = subtract(hubAfterRegister, tools = [journalSeatCutter])
+  hubAfterBolts = subtract(
+    hubAfterJournalSeat,
+    tools = [
+      outputBolt1,
+      outputBolt2,
+      outputBolt3,
+      outputBolt4,
+      outputBolt5,
+      outputBolt6
+    ],
+  )
+  hubFinished = subtract(
+    hubAfterBolts,
+    tools = [
+      outputCbore1,
+      outputCbore2,
+      outputCbore3,
+      outputCbore4,
+      outputCbore5,
+      outputCbore6
+    ],
+  )
+
+  // The arm carries the hub's offset down past the actuator; the bridge takes
+  // it back to the limb centre line. Both are as deep as the shell, so the
+  // offset is reacted in the stiff direction.
+  rotorArmSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+    edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 32mm])
+    edge3 = line(start = [var 6mm, var 32mm], end = [var 0mm, var 32mm])
+    edge4 = line(start = [var 0mm, var 32mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == rotorHubThickness
+    verticalDistance([edge2.start, edge2.end]) == rotorArmHeight
+  }
+  rotorArmRegion = region(
+    segments = [
+      rotorArmSketch.edge1,
+      rotorArmSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  rotorArmRaw = extrude(rotorArmRegion, length = shellInnerDepth, symmetric = true)
+    |> translate(x = rotorHubInnerX, z = -rotorArmHeight, global = true)
+
+  bridgeSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 40mm, var 0mm])
+    edge2 = line(start = [var 40mm, var 0mm], end = [var 40mm, var 8mm])
+    edge3 = line(start = [var 40mm, var 8mm], end = [var 0mm, var 8mm])
+    edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == bridgeWidth
+    verticalDistance([edge2.start, edge2.end]) == bridgeHeight
+  }
+  bridgeRegion = region(segments = [bridgeSketch.edge1, bridgeSketch.edge2], intersectionIndex = -1, direction = CCW)
+  bridgeRaw = extrude(bridgeRegion, length = shellDepth, symmetric = true)
+    |> translate(x = bridgeCenterX - (bridgeWidth / 2), z = -rotorEndHeight, global = true)
+
+  hide(hubSketch)
+  hide(registerSketch)
+  hide(journalSeatSketch)
+  hide(boltSketch)
+  hide(counterboreSketch)
+  hide(rotorArmSketch)
+  hide(bridgeSketch)
+
+  return union([hubFinished, rotorArmRaw, bridgeRaw])
+}

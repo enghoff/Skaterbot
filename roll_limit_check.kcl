@@ -1,0 +1,193 @@
+// Hip roll, inward travel
+//
+// The scene NOTES.md has been asking for. Hip roll is commissioned at plus or
+// minus 25 degrees, but nothing has ever been drawn at that angle, and the
+// inward direction turns out to be limited by something far closer in.
+//
+// WHAT LIMITS IT
+// The hip roll axis is 257 mm above the ankle axis, so a degree of roll moves
+// the foot 4.5 mm sideways. The two feet are 96 mm apart on a 65 mm width, so
+// there are only 31 mm of air between them:
+//
+// feet, 65 mm wide  ->  31 mm of clearance  ->  they touch at  6.9 degrees
+// shins, 30 mm wide ->  66 mm of clearance  ->  they touch at 14.9 degrees
+//
+// So with the other leg standing neutral, inward roll runs out at SEVEN degrees,
+// not twenty-five. This scene is drawn at exactly that angle, with the right leg
+// left neutral, so the contact can be seen rather than argued about.
+//
+// Outward roll is not limited by anything: at 25 degrees the foot swings 109 mm
+// clear of the leg and the robot simply gets wider. The number that needs a
+// commissioning limit is the inward one.
+//
+// This does not mean the machine cannot roll. In walking the swing leg is off
+// the ground and out of the way, and a lateral lean rolls both hips the same
+// way, which never closes the gap. It means inward roll against a planted
+// neutral leg has to be treated as a fault case, not as available travel.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import jointHardware from "hardware.kcl"
+import thighAssembly from "thigh.kcl"
+import shinAssembly from "shin.kcl"
+import hipCarrierAssembly from "hip_carrier.kcl"
+import footAssembly from "foot.kcl"
+import torsoAssembly from "torso.kcl"
+import payloadEnvelopes from "payload_envelopes.kcl"
+
+// Negative is inward for the left leg: a point below the roll axis swings
+// towards +x. 6.9 degrees is where the two soles meet.
+leftRollAngle = -6.9deg
+
+thighCenterZ = (hipPitchAxisHeight + kneeAxisHeight) / 2
+shinCenterZ = (kneeAxisHeight + ankleAxisHeight) / 2
+hipCarrierCenterZ = (hipRollAxisHeight + hipPitchAxisHeight) / 2
+
+// The whole left leg is one rigid body hanging from the roll axis, so every
+// station on it is just its neutral height swung about that axis.
+fn rolledX(@dropBelowAxis) {
+  return -hipCenterX + dropBelowAxis * sin(leftRollAngle)
+}
+fn rolledZ(@dropBelowAxis) {
+  return hipRollAxisHeight + dropBelowAxis * cos(leftRollAngle)
+}
+
+carrierDrop = hipCarrierCenterZ - hipRollAxisHeight
+hipPitchDrop = hipPitchAxisHeight - hipRollAxisHeight
+thighDrop = thighCenterZ - hipRollAxisHeight
+kneeDrop = kneeAxisHeight - hipRollAxisHeight
+shinDrop = shinCenterZ - hipRollAxisHeight
+ankleDrop = ankleAxisHeight - hipRollAxisHeight
+
+actuatorCopy2 = clone(actuatorAssembly)
+actuatorCopy3 = clone(actuatorAssembly)
+actuatorCopy4 = clone(actuatorAssembly)
+actuatorCopy5 = clone(actuatorAssembly)
+actuatorCopy6 = clone(actuatorAssembly)
+actuatorCopy7 = clone(actuatorAssembly)
+actuatorCopy8 = clone(actuatorAssembly)
+
+rightHipCarrierSource = clone(hipCarrierAssembly)
+rightThighSource = clone(thighAssembly)
+rightShinSource = clone(shinAssembly)
+rightFootSource = clone(footAssembly)
+
+// ---- hip roll joints, which do not move with the leg ------------------------
+
+
+leftHipRollMotor = actuatorAssembly
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
+rightHipRollMotor = actuatorCopy2
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
+
+leftHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
+rightHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
+
+// ---- left leg, rolled -------------------------------------------------------
+
+
+leftHipPitchMotor = actuatorCopy3
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(hipPitchDrop), z = rolledZ(hipPitchDrop), global = true)
+leftKneeMotor = actuatorCopy4
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(kneeDrop), z = rolledZ(kneeDrop), global = true)
+leftAnkleMotor = actuatorCopy5
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(ankleDrop), z = rolledZ(ankleDrop), global = true)
+
+leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(hipPitchDrop), z = rolledZ(hipPitchDrop), global = true)
+leftKneeHardware = jointHardware()
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(kneeDrop), z = rolledZ(kneeDrop), global = true)
+leftAnkleHardware = jointHardware()
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(ankleDrop), z = rolledZ(ankleDrop), global = true)
+
+leftHipCarrier = hipCarrierAssembly
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(carrierDrop), z = rolledZ(carrierDrop), global = true)
+leftThigh = thighAssembly
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(thighDrop), z = rolledZ(thighDrop), global = true)
+leftShin = shinAssembly
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(shinDrop), z = rolledZ(shinDrop), global = true)
+leftFoot = footAssembly
+  |> rotate(axis = [0, 1, 0], angle = leftRollAngle, global = true)
+  |> translate(x = rolledX(ankleDrop), z = rolledZ(ankleDrop), global = true)
+
+// ---- right leg, neutral -----------------------------------------------------
+
+
+rightHipPitchMotor = actuatorCopy6
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = hipPitchAxisHeight, global = true)
+rightKneeMotor = actuatorCopy7
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = kneeAxisHeight, global = true)
+rightAnkleMotor = actuatorCopy8
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+
+rightHipPitchHardware = jointHardware()
+  |> translate(x = hipCenterX, z = hipPitchAxisHeight, global = true)
+rightKneeHardware = jointHardware()
+  |> translate(x = hipCenterX, z = kneeAxisHeight, global = true)
+rightAnkleHardware = jointHardware()
+  |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+
+rightHipCarrier = rightHipCarrierSource
+  |> translate(x = hipCenterX, z = hipCarrierCenterZ, global = true)
+rightThigh = rightThighSource
+  |> translate(x = hipCenterX, z = thighCenterZ, global = true)
+rightShin = rightShinSource
+  |> translate(x = hipCenterX, z = shinCenterZ, global = true)
+rightFoot = rightFootSource
+  |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+
+bodyFrame = torsoAssembly
+  |> translate(z = torsoCenterHeight, global = true)
+reservedPayload = payloadEnvelopes
+  |> translate(z = torsoCenterHeight, global = true)
+
+export rollLimitAssembly = [
+  bodyFrame,
+  reservedPayload,
+  leftHipRollMotor,
+  rightHipRollMotor,
+  leftHipPitchMotor,
+  rightHipPitchMotor,
+  leftKneeMotor,
+  rightKneeMotor,
+  leftAnkleMotor,
+  rightAnkleMotor,
+  leftHipRollHardware,
+  rightHipRollHardware,
+  leftHipPitchHardware,
+  rightHipPitchHardware,
+  leftKneeHardware,
+  rightKneeHardware,
+  leftAnkleHardware,
+  rightAnkleHardware,
+  leftHipCarrier,
+  rightHipCarrier,
+  leftThigh,
+  rightThigh,
+  leftShin,
+  rightShin,
+  leftFoot,
+  rightFoot
+]
