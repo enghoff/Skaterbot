@@ -729,9 +729,17 @@ cent of the box.
       pose at the limit, which is why the two new poses had to come first.
 - [ ] **A simultaneous-extremes pose.** Each joint has been taken to a limit
       alone, never together.
-- [ ] **Phase 6.** The shells have a clear internal cavity for cable and the
-      pelvis now has a slot at each hip, but no routing, strain relief or
-      service hatches are modelled. Still blocked on the mated-plug measurement.
+- [ ] **Phase 6, and it got harder.** The limbs no longer have an internal
+      cavity, because they no longer have an inside: the closed shell that used
+      to carry the cable went when the legs went flat. Routing is now external
+      along the plate, which means clips, a service loop at each joint and
+      abrasion protection where a cable crosses a rotating face -- none of it
+      modelled, and all of it more work than threading a tube. The pelvis slots
+      at each hip are unchanged. Still blocked on the mated-plug measurement.
+- [ ] **Designed hard stops matter more than they did.** The knee fold used to
+      be backed up by structure at 116°. Flat limbs lie in different planes and
+      cannot touch, so there is no longer any structural backstop anywhere on
+      the robot: every limit is a number in software until a pad is drawn.
 - [ ] **Ribbing and lightening** — no longer the only thing keeping the robot
       under its ceiling, but still the way to buy margin, and still waiting on
       the coupon.
