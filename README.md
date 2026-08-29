@@ -17,6 +17,7 @@ All project documentation lives in [`docs/`](docs/):
 - [`docs/PLAN.md`](docs/PLAN.md) — **the active plan**: overhauling the skeleton into a stressed-shell design.
 - [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — superseded by `PLAN.md`; kept as the record of the skeleton design.
 - [`docs/BOM.md`](docs/BOM.md) — provisional bill of materials with India-focused sourcing notes and supply-risk flags.
+- [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) — what this engine refuses, which way the robot faces, and what the failure messages actually mean. Read before designing a pocket, a hole or a union.
 
 ## Repository layout
 
@@ -43,10 +44,30 @@ bipedal/
 ├── foot.kcl               ribbed foot tray, sole, sensor seats
 ├── torso.kcl              pelvis and torso shell, keel, tether entry, cover
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
+├── tools/                 check, mass and render scripts (see below)
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
 └── secrets/               local credentials, not committed
 ```
+
+## Working on the CAD
+
+Three scripts in [`tools/`](tools/), each also available as a slash command in
+Claude Code. They run with `uv run`, which fetches their one dependency —
+Zoo's own KCL interpreter, the same one the MCP server is built on — by itself.
+
+```bash
+uv run tools/check.py              # every .kcl file: mock-execute, lint, format
+uv run tools/mass.py               # mass roll-up against the 2 300 g ceiling
+uv run tools/views.py main.kcl     # render, in views named front/back/left/right
+```
+
+Only the first is free. `check.py` runs entirely on this machine, costs no API
+credits and needs no token, so it can be run after every edit; the other two
+execute on Zoo's engine and are metered. Views are named in the **robot's**
+frame, where `front` is the face it walks towards — the opposite of Zoo's own
+camera named "front", which is one of the traps collected in
+[`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md).
 
 Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
 deliberately untracked. Vendor geometry under [`reference/`](reference/) is the

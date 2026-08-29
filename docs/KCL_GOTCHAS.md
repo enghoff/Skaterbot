@@ -1,0 +1,96 @@
+# KCL and Zoo engine gotchas
+
+Things this project has already learned the hard way, collected so nobody has to
+learn them twice. Each one was hit while building the robot; the engineering log
+in [`NOTES.md`](NOTES.md) has the surrounding story.
+
+Add to this file whenever the engine refuses something, or accepts something and
+produces the wrong thing.
+
+## The one that matters most
+
+**Mock execution does not exercise the booleans.** Every geometry limitation
+below passes `tools/check.py` and the MCP `mock_execute_kcl` without a word of
+complaint, and only fails when the real engine tries to build the solid. Mock
+execution proves the KCL is valid; it does not prove the part exists.
+
+So: mock-execute while iterating, engine-execute before believing anything about
+geometry.
+
+## Geometry the engine refuses
+
+- **Blind pockets cut from a large combined solid.** Rejected. Make every cut on
+  the simple body it belongs to, before anything is unioned.
+- **Blind *cylindrical* pockets, full stop.** Rejected in the torso shell in
+  either order, and unioning the ports into the cavity tool first does not help.
+  A blind ***rectangular*** pocket in the same place is accepted. The cable ports
+  are slots for exactly this reason, which suits a moulded connector anyway.
+- **Holes must exit both ends.** A hole through a stepped solid is fine, but a
+  cutter that stops inside the material is the blind-pocket case again. The cover
+  screw cutters were originally too short and had to be run right through.
+- **Blind cylinders ending inside a block** come back as `cannot handle this 3D
+  subtraction yet`. Cutting the full block height instead is accepted: the lower
+  part of the cylinder falls inside a pocket that is removed afterwards, so the
+  finished part is identical.
+- **A pocket cut into an already-hollowed shell.** Cut the pockets into the plain
+  blank *first*, then hollow it. This is the ordering the torso shell needed and
+  then the keel needed again.
+- **A union of two hollow boxes meeting at right angles.** Rejected. The hip
+  carrier, the torso hip mounts and the foot frame are therefore left as
+  **interpenetrating bodies** rather than single solids. Every overlap is
+  millimetres of real material, so a slicer that merges coincident shells prints
+  each as the single part it is — but that has to be verified in the slicer
+  before printing, and it means the exported STL is not manufacturing-ready on
+  its own.
+
+## Which way the robot faces
+
+**+Y is forward, +Z is up, +X is the robot's right.** Fixed by `foot.kcl`, which
+puts the rear pressure pads at y = −40 and the front pads at y = +51, and
+confirmed by `walk_pose_check.kcl`, where the leading leg's knee swings to +Y.
+
+**Zoo's camera view named "front" shows the robot's back**, because it puts the
+camera on −Y looking back at the origin. That is the ordinary CAD convention
+rather than a bug, and it is a good way to mislead yourself for ten minutes. The
+tether entry was once drawn on the robot's front, between its shins; it executed
+without complaint, and only a rendered back-and-front pair caught it.
+
+`tools/views.py` names its views in the robot's frame instead, so `front` there
+means the robot's front.
+
+## What the measurement API can and cannot tell you
+
+- **Volume and mass are trustworthy.** They have agreed with hand calculation.
+- **The bounding box and centre of mass are not.** The same call returned a
+  bounding box 173 mm long in y for a 115 mm foot. Do not quote extents or a
+  centre of mass from it without checking them against the geometry.
+- **Interpenetrating bodies are counted twice**, so a measured part comes out
+  slightly heavy — which is at least the safe direction when checking a ceiling.
+
+## Engine and MCP failures, and what they actually mean
+
+- **`auth_token_missing` is a billing problem, not an authentication one.** The
+  same call over REST returns HTTP 402 and says so. Check
+  <https://zoo.dev/account/billing> rather than debugging the setup.
+- **`Too many active connections, only 2 allowed per user`** means something else
+  is holding an engine connection — Design Studio, the MCP server's modeling
+  session, or another script. Close one and retry; the limit is per account, not
+  per tool.
+- **A `RequestError` against `api.zoo.dev/ws/modeling/commands`** is a dropped
+  request rather than a KCL error. Retry it; the same file passes.
+- **The MCP server reads `ZOO_API_TOKEN` once, when it is spawned.** After
+  rotating the token, VS Code has to be restarted or calls keep using the old one.
+- **A `CONNECT_TIMEOUT` after 30 s at MCP startup is a cold `uvx` cache**, not a
+  credentials problem — the spawn spends its whole budget downloading packages.
+  Warm it once by running `uvx zoo-mcp` from a shell, then restart VS Code. The
+  timing tells the two apart: a billing failure comes back fast, this one runs
+  out the clock.
+- **The full assembly is slow on the engine.** `main.kcl` has taken over two
+  minutes to execute and snapshot. That is normal, not a hang.
+
+## Local tooling
+
+`tools/check.py` runs the same KCL interpreter locally through the `zoo-kcl`
+package, so mock execution, linting and formatting cost nothing, need no token
+and work when the MCP server does not. `tools/mass.py` and `tools/views.py` do
+use the engine and do spend credits.

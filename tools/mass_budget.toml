@@ -1,0 +1,83 @@
+# Mass budget for the whole robot.
+#
+# The printed parts are measured from the CAD every time tools/mass.py runs, so
+# nothing in this file records their mass. What it records is which files are
+# printed parts, how many of each the robot carries, and the masses of the
+# bought and estimated items the CAD does not model.
+#
+# Provenance for every fixed figure is in the note beside it. Follow that style
+# if a line changes: say where the new number came from.
+
+# docs/PLAN.md section 4: the ceiling is set by actuator torque, not chosen.
+ceiling_g = 2300.0
+
+[material]
+name = "PA12-CF"
+density = 1060.0
+density_unit = "kg/m3"
+# 1.06 g/cm3, from docs/PLAN.md section 4 decision 1. Lighter than the PETG it
+# replaced, which is where part of the current headroom came from.
+
+# ---- printed structure, measured from the CAD ------------------------------
+# Each entry executes on the engine at the density above. Files are measured
+# standalone, so a file must export only printed geometry for its figure to
+# mean anything: actuators, bearings and journals live in their own modules and
+# are counted as bought items below.
+
+[[printed]]
+file = "thigh.kcl"
+label = "Thigh"
+count = 2
+
+[[printed]]
+file = "shin.kcl"
+label = "Shin"
+count = 2
+
+[[printed]]
+file = "hip_carrier.kcl"
+label = "Hip carrier"
+count = 2
+
+[[printed]]
+file = "foot.kcl"
+label = "Foot — tray, sole, pads"
+count = 2
+
+[[printed]]
+file = "torso.kcl"
+label = "Pelvis, torso shell, cover"
+count = 1
+
+# ---- bought and estimated, not modelled at PA12 density ---------------------
+
+[[fixed]]
+label = "Actuators"
+each_g = 150.0
+count = 8
+note = "DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, ~150 g."
+
+[[fixed]]
+label = "Bearing, journal, carrier"
+each_g = 16.3
+count = 8
+note = """6800-2RS, Ø10 journal and the flanged metal carrier from hardware.kcl. \
+Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
+per-joint tally."""
+
+[[fixed]]
+label = "Fasteners"
+total_g = 60.0
+note = "M3 sets across all eight joints and both covers. docs/BOM.md estimate."
+
+[[fixed]]
+label = "Electronics and wiring"
+total_g = 100.0
+note = "SBC, CAN wiring and looms. docs/BOM.md estimate; nothing is in hand."
+
+[[fixed]]
+label = "Power entry — capacitors, fuse, terminal"
+total_g = 60.0
+note = """Allowance, and the softest figure in the table: the robot is tethered \
+and carries no battery, but the capacitor bank that replaces the battery as the \
+bus's regeneration sink has not been sized. docs/PLAN.md."""

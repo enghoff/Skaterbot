@@ -22,19 +22,40 @@ plausible KCL is routinely invalid, and only execution tells you.
 
 ## Validate every change, cheaply first
 
-There are two execution tools and the difference matters:
+There are two kinds of execution and the difference matters:
 
-- `mock_execute_kcl` runs the full KCL interpreter locally. It is free and fast,
+- **Mock execution** runs the full KCL interpreter locally. It is free and fast,
   and it still catches real errors: bad arguments, type errors, unresolved
   imports, broken sketch constraints. Use it as the default check, and on every
-  file you touched.
-- `execute_kcl` runs the real engine and produces geometry. It is **metered
-  against the Zoo account's API credits**, so reach for it when geometry
-  actually has to be correct — a change to a profile, a transform, a clearance —
-  and not as a reflex after every edit.
+  file you touched. `/check` sweeps the whole project this way in a couple of
+  seconds; `mock_execute_kcl` over MCP does one file at a time.
+- **Engine execution** produces real geometry. It is **metered against the Zoo
+  account's API credits**, so reach for it when geometry actually has to be
+  correct — a change to a profile, a transform, a clearance — and not as a
+  reflex after every edit. `execute_kcl` over MCP, or `/views` for a rendered
+  sheet and `/mass` for the mass roll-up.
 
 So: mock-execute while iterating, engine-execute to confirm the result. Resolve
 every execution error before reporting a change as complete.
+
+Mock execution **never evaluates the booleans**, so a cut this engine will
+refuse passes it silently. [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) lists
+every refusal this project has already hit — read it before designing a pocket,
+a hole or a union, and add to it when you find a new one.
+
+## Tools in this repository
+
+Three commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
+what they need on its own:
+
+| | | |
+|---|---|---|
+| `/check` | `tools/check.py` | mock-execute, lint and format-check every KCL file. Free, offline, no token. Works when the MCP server does not. |
+| `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. Engine, metered. |
+| `/views` | `tools/views.py` | render a model from several sides, named in the robot's frame rather than the camera's. Engine, metered. |
+
+Report the mass delta of every geometry change, and make `/check` clean before
+saying a change is done.
 
 ## The four models are the regression suite
 
@@ -72,13 +93,17 @@ summarize dimensional or structural changes after each substantial edit.
 
 Do not commit unless asked.
 
-## Two failure modes worth recognising
+## Failure modes worth recognising
 
 - The engine rejecting work with `auth_token_missing` is **a billing problem, not
   an authentication one**. The same call over REST returns HTTP 402 and says so.
   Check https://zoo.dev/account/billing rather than debugging the setup.
 - The MCP server reads `ZOO_API_TOKEN` once, when it is spawned. After rotating
   the token, VS Code has to be restarted or engine calls keep using the old one.
+- `Too many active connections, only 2 allowed per user` means something else
+  holds an engine connection — Design Studio, an MCP modeling session, or another
+  script. It is a queueing problem, not a fault.
 
-`docs/claude-code-zoo-design-studio-mcp.md` has the full setup and verification
-detail.
+[`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) collects these along with every
+geometry refusal, and `docs/claude-code-zoo-design-studio-mcp.md` has the full
+setup and verification detail.

@@ -13,6 +13,8 @@
 *.kcl   text eol=lf
 *.md    text eol=lf
 *.toml  text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
 
 # PDFs are binary; never eol-convert them
 *.pdf -text

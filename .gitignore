@@ -5,6 +5,12 @@ thumbnail.png
 secrets/
 *.env
 
+# Rendered views from tools/views.py
+renders/
+
+# Python bytecode from tools/
+__pycache__/
+
 # Exported geometry
 *.stl
 *.step

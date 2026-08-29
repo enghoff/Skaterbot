@@ -770,3 +770,67 @@ special to this project.
 One transport flake to expect on longer runs: `execute_kcl` on `main.kcl` came
 back once with a `RequestError` against `api.zoo.dev/ws/modeling/commands`. It is
 a dropped request rather than a KCL error, and the same file passed on the retry.
+
+---
+
+## Local tooling for the CAD — August 29, 2026
+
+### The KCL interpreter runs here, without the engine and without the MCP server
+
+Zoo publish their KCL interpreter as a Python package, `zoo-kcl`, and the MCP
+server is itself built on it. That means mock execution, linting and formatting
+need no token, no network and no MCP link at all. `tools/check.py` sweeps every
+`.kcl` file in the project in about two and a half seconds, and reports the same
+diagnostics the MCP tool does. All 21 files pass, lint clean and format clean.
+
+This matters beyond convenience. Two of the three MCP failure modes recorded
+above — the billing rejection and the cold `uvx` cache — leave the project
+unverifiable for as long as they last. They no longer do: only geometry needs
+the engine now.
+
+Two more scripts sit on the same package and do need the engine, so they are
+metered: `tools/mass.py` measures each printed part and rolls the whole robot up
+against its ceiling, and `tools/views.py` renders a model from several sides.
+Both are also slash commands in Claude Code, as `/check`, `/mass` and `/views`.
+
+`views.py` names its views in the **robot's** frame, so `front` is the face the
+robot walks towards. That is the opposite of Zoo's camera named "front", which
+is what let the tether entry go in on the wrong side.
+
+### The current tree is 2 200 g, not 2 165 g
+
+The first real run of `tools/mass.py` measured 649.4 g of printed structure
+against the 615 g in the table above, putting the robot at **2 199.8 g with
+100.2 g of headroom** rather than 2 165 g with 135 g.
+
+Almost the whole difference is in the limbs: 59.6 g each against the 48.3 g
+recorded, or +45 g across four. The hip carrier, foot and torso have all moved
+by a gram or two in the other direction. The working tree carries uncommitted
+changes to `joint.kcl`, `limb.kcl` and `hardware.kcl`, so the likely explanation
+is that in-progress work has added mass that was never measured — but that is
+inference. The committed geometry was not measured for comparison, because doing
+so costs another five engine runs.
+
+`tools/mass_baseline.json` now holds these figures, so the next run reports the
+delta from here. The tables in `PLAN.md` and `BOM.md` still say 2 165 g and
+should be corrected once the limb work settles.
+
+### A fourth engine failure mode: two connections per user
+
+`Too many active connections, only 2 allowed per user` came back from three
+separate attempts while the render and mass scripts were being tested. It is not
+a KCL error, not a billing error and not an authentication error: something else
+is holding an engine connection — Design Studio, an MCP modeling session, or an
+earlier script whose connection has not been released yet. Close one and retry.
+
+Worth knowing too that the full assembly is slow: `main.kcl` took over two
+minutes to execute and snapshot. That is normal, not a hang.
+
+### Where the traps are written down now
+
+The engine refusals this log had accumulated in five separate places — blind
+cylindrical pockets, holes that must exit both ends, pockets before hollowing,
+unions of hollow boxes meeting at right angles, and the fact that mock execution
+never exercises any of it — are collected in `docs/KCL_GOTCHAS.md`, along with
+the orientation convention and the failure messages above. Add to that file when
+the engine refuses something new.
