@@ -31,6 +31,7 @@ bipedal/
 ├── pose_check.kcl         crouched single-step pose / clearance check
 ├── walk_pose_check.kcl    mirrored walking stance, both feet flat
 ├── roll_limit_check.kcl   hip roll at the inward limit the feet impose
+├── torque_limit_pose.kcl  the deepest crouch the knees can hold indefinitely
 ├── knee_*_check.kcl       knee at 100 and 110 degrees
 ├── limb_check.kcl         single-joint review model
 ├── coupon_box.kcl         the Phase 1 bending coupon — print this first
@@ -81,10 +82,16 @@ along with its checksum and known caveats.
 - DOF: 8 (hip roll, hip pitch, knee pitch, ankle pitch per leg)
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
 - Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
-- Current mass, measured from the CAD: **2.165 kg**, which buys a sustained-load
-  knee limit of 42.0° and leaves about 135 g of headroom. Ribbing is still
-  wanted, but it is no longer the only thing standing between the robot and its
-  ceiling, and it cannot be sized until the coupon is measured.
+- Current mass, measured from the CAD: **2.147 kg**, which buys a sustained-load
+  knee limit of 42.4° and leaves 153 g of headroom. Ribbing is still wanted, but
+  it is no longer the only thing standing between the robot and its ceiling, and
+  it cannot be sized until the coupon is measured. `uv run tools/mass.py`
+  re-measures it.
+- Joints: each limb carries a stator clevis at its lower end and, at its upper
+  end, a plate that bolts straight to the actuator's output — the shell is
+  shifted outboard so that plate is simply its outer wall, with no arm or bridge
+  reaching out to the motor. The limbs are therefore 10 mm off their own joint
+  axes, to the robot's right.
 - Power: **tethered.** 24 V and CAN arrive on one umbilical from a bench supply;
   there is no pack on board. What the keel holds instead is a bulk capacitor
   bank, because the battery was also the bus's only sink for regeneration from

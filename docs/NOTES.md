@@ -834,3 +834,90 @@ unions of hollow boxes meeting at right angles, and the fact that mock execution
 never exercises any of it — are collected in `docs/KCL_GOTCHAS.md`, along with
 the orientation convention and the failure messages above. Add to that file when
 the engine refuses something new.
+
+## The limbs move into the output plane — August 29, 2026
+
+The thigh and the shin no longer reach out to the actuator. Their shell is
+shifted outboard by `shellOffsetX` = 9.95 mm until its outer wall lies in the
+output plane, so the plate that bolts to the rotor is that wall carried on down
+to the disc. The arm and the bridge are gone, and with them the whole business
+of walking the hub's offset back to the limb centre line.
+
+The prompt was a photograph of somebody else's leg, in which the links are flat
+plates bolted straight to the motor faces. The question it raised was whether
+this design's bridge existed for a reason or only because the shell had been
+centred on the joint axis out of habit. It was habit.
+
+### What it buys
+
+A limb is **46.3 g**, against 48.3 g before any of this month's joint work and
+59.6 g with the forked rotor on it. The whole robot is **2 146.7 g** with
+**153 g** of headroom, and the sustained-load knee limit is **42.4°** against a
+40° target. `tools/mass.py` measures it; the numbers above are that script's.
+
+The load path is also better. The joint load now enters the shell wall as
+in-plane shear instead of as a couple across a cantilevered slab, and the plate
+is 30 mm deep where the old arm was 25.2, so its lateral section modulus rises
+from 151 to 180 mm³.
+
+### What it costs
+
+Lateral symmetry. The actuator hangs entirely inboard, so a limb sits 9.95 mm
+off its own joint axis, and since both legs are built identically rather than
+mirrored — see *What the actuator forces*, above — both shift to the robot's
+right. The **gap** between the two legs is unchanged, so `roll_limit_check.kcl`
+is unaffected, but the robot is wider on its right than on its left and the left
+limb passes closer to the keel. It clears: the thigh's shell stops at z = 230
+and the keel starts around the hip pitch axis at 254.
+
+The knee fold is unchanged at the limit that matters. The old bridge was already
+30 mm deep and was already the first thing to touch the thigh's saddle; the new
+plate is 30 mm deep in the same place. `knee_limit_check.kcl` renders clean at
+110°, and a 2D sweep of the rotating rectangles against the saddle puts first
+contact at the same angle for the old bridge and the new plate. The 25.2 mm arm
+was never the limiting body, which means the note in `parameters.kcl` attributing
+the 112.8° contact to the arm was attributing it to the wrong part.
+
+### The forked rotor came off
+
+`rotorYoke` and `rearJointHardware` are still drawn but nothing imports them.
+The straddled joint was curing the second-weakest link.
+
+Work the numbers for a sideways force at the foot. At the hip pitch the lever is
+254 mm, and the printed section that has to carry it is the rotor plate, 6 mm
+thick against 30 mm deep, so Z = 180 mm³ and σ = 1.41 MPa per newton at the
+foot. PA12-CF gives about 75 MPa in the print plane and about 30 across the
+layers, so the plate breaks at **53 N** printed one way and **21 N** printed the
+other. The limb shell, by comparison, would take 267 N, and the clevis's two
+cheeks acting as a pair are stiffer still: the plate is the weak link by more
+than a factor of twelve.
+
+Now the bearing. Without the fork the rotor's two supports — the actuator's own
+output bearing and the 6800 in the front cheek — sit about 20 mm apart on the
+same side, so a foot force is amplified about 7.5× as a couple. At 21 N, the
+force that breaks the plate, the 6800 sees 260 N, which is under a third of its
+static rating. **The printed part fails first, comfortably.** Straddling the
+joint to protect the bearing was therefore fixing the wrong thing, and the 105 g
+it cost is better spent elsewhere or not at all.
+
+That is not a clean bill of health for dropping it. It rests on the plate being
+sound, and the plate's margin is thin the way it is loaded least: in service the
+lateral ground reaction is perhaps 6 N, which is 9× margin printed the good way
+and 3.5× the bad way — and against a fatigue limit of a third of ultimate, the
+bad orientation is marginal. **Print orientation is worth 2.5× here and costs
+nothing**, which makes it the reinforcement to spend first. If more is needed
+after the coupon is measured, 8 mm of plate instead of 6 is another 1.8× for
+about 3 g a joint, growing outboard because the actuator blocks the inboard side.
+
+The reason the yoke is kept in the file rather than deleted is that all of this
+still assumes the DM-J3507's own output bearing will take the moment, and DAMIAO
+have not been asked. That question is unchanged and still open.
+
+### One more thing the engine will not do
+
+A union whose two bodies share both of their faces in one axis is refused. The
+plate is exactly `rotorHubThickness` and sits exactly where the disc sits, so
+both x-faces coincide and `union([outputDisc(), plateRaw])` fails; the arm it
+replaced was tolerated because only its outer face was shared. The limb places
+the disc and the plate as separate interpenetrating bodies instead, which brings
+it to four. Recorded in `docs/KCL_GOTCHAS.md`.

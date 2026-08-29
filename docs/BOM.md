@@ -289,18 +289,23 @@ Printed parts, PA12-CF at 1.06 g/cm3, measured from the CAD:
 
 | Part | Each | Count | Total |
 |---|---:|---:|---:|
-| Limb, thigh or shin — the same part at two lengths | 48.3 g | 4 | 193 g |
-| Hip carrier | 39.8 g | 2 | 80 g |
-| Foot tray with sole and sensor pads | 76.6 g | 2 | 153 g |
-| Pelvis and torso shell with removable cover | 189.0 g | 1 | 189 g |
-| **Printed structure** | | | **615 g** |
+| Limb, thigh or shin — the same part at two lengths | 46.3 g | 4 | 185 g |
+| Hip carrier | 37.2 g | 2 | 74 g |
+| Foot tray with sole and sensor pads | 74.7 g | 2 | 149 g |
+| Pelvis and torso shell with removable cover | 187.3 g | 1 | 187 g |
+| **Printed structure** | | | **596 g** |
 
 With the metal, fasteners, electronics and a 60 g allowance for the power-entry
 block — capacitors, fuse and terminal, since the robot is tethered and carries no
-battery — it comes to about **2 165 g against a 2 300 g ceiling**. That is about
-135 g of headroom, where the battery build had 5 g. Ribbing and lightening are
-still worth doing to buy margin back, and still cannot be sized until the Phase 1
-coupon has been printed and measured.
+battery — it comes to **2 147 g against a 2 300 g ceiling**, which is 153 g of
+headroom where the battery build had 5 g. Run `uv run tools/mass.py` rather than
+trusting this table: it measures every printed part on the engine and rolls the
+whole robot up against the ceiling.
+
+**The bearing count stayed at eight.** A forked rotor was drawn for the hip
+pitch and knee joints, which would have needed twelve sets, and then dropped —
+see `docs/PLAN.md` decision 8. Nothing on this list changed as a result, which
+is the point of having kept the same three bought parts on both sides.
 
 **Material change.** PETG is no longer the structural material. PA12-CF is
 specified instead: it resists creep, tolerates sitting next to a motor at its

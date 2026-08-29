@@ -91,12 +91,19 @@ export tetherCableDiameter = 12mm
 //
 // The depth is not free to grow, which is why the section is square rather than
 // the deeper-than-wide shape a leg would otherwise want. The shin has to fold
-// against the thigh's saddle, and a deeper shell reaches it sooner: at 34 mm the
-// shin's rotor arm fouls the saddle at 108.5 degrees, inside the 110 degree
-// commissioning limit. At 30 mm first contact moves to 112.8 degrees, so the
-// structure itself backs up the stop instead of pre-empting it. Any change to
-// shellDepth, jointKeepOut or bridgeHeight moves that contact angle and must be
-// re-checked against knee_limit_check.kcl.
+// against the thigh's saddle, and a deeper shell reaches it sooner: at 34 mm
+// first contact comes at 108.5 degrees, inside the 110 degree commissioning
+// limit, and at 30 mm it moves out to 112.8 degrees, so the structure backs the
+// stop up instead of pre-empting it.
+//
+// Those angles were originally attributed to the shin's rotor arm, which was
+// wrong: the arm was shellInnerDepth and never the first thing to touch. What
+// governs is whichever body at the rotor end is the full shellDepth -- the
+// bridge then, the rotor plate now -- so the contact angle is unchanged by the
+// move into the output plane. A 2D sweep of the rotating sections against the
+// saddle puts structural contact at 116 degrees, which agrees with the hard-stop
+// note in PLAN.md. Any change to shellDepth, jointKeepOut or rotorEndHeight
+// moves it and must be re-checked against knee_limit_check.kcl.
 //
 // 2.4 mm is four perimeters of a 0.6 mm nozzle, which is the practical way to
 // print carbon-filled nylon. Wall thickness is therefore a manufacturing choice
@@ -118,7 +125,6 @@ export shellWall = 2.4mm
 // rear pattern and reaching past the body to a bearing on the far side.
 export cheekThickness = 3mm
 export cheekDiameter = 52mm
-export cheekLighteningDiameter = 26mm
 export cheekNeckWidth = 24mm
 export rearCheekX = -(actuatorDepth / 2 + actuatorClearance + cheekThickness / 2)
 
@@ -129,6 +135,25 @@ export rotorHubOuterX = rotorHubInnerX + rotorHubThickness
 export rotorRegisterDiameter = actuatorOutputRegister + 0.4mm
 export rotorRegisterDepth = 1.2mm
 export frontCheekX = rotorHubOuterX + 1mm + cheekThickness / 2
+
+// The limbs put their structure in the output plane instead of reaching out to
+// it. The shell is shifted outboard until its outer wall lands on the
+// actuator's output face, so the plate that bolts to the rotor is simply that
+// wall carried down to the disc, and the arm-and-bridge that used to walk the
+// offset back to the centre line is not needed at all. The joint load then
+// enters the wall as in-plane shear rather than as a couple across a
+// cantilevered slab, and about 8 g a joint goes away with the bridge.
+//
+// What it costs is lateral symmetry. The actuator now hangs entirely inboard
+// of the limb, so a limb sits 9.95 mm off its own joint axis. Both legs shift
+// the same way, so the gap between them is unchanged and roll_limit_check is
+// unaffected, but the robot is wider on one side than the other and the
+// inboard limb passes closer to the keel.
+//
+// The hip carrier and the foot keep the offset hub of rotorHub: neither can
+// move its structure into the output plane, the carrier because it straddles
+// two joints at right angles and the foot because its structure is the sole.
+export shellOffsetX = rotorHubOuterX - (shellWidth / 2)
 
 // Far support. The bearing seat is metal, not printed: NOTES.md records printed
 // pockets ovalising, and this one sets the coaxiality of the whole joint. The
@@ -145,6 +170,58 @@ export bearingCarrierDiameter = 30mm
 export bearingCarrierBore = 30.2mm
 export bearingCarrierFlangeDiameter = 36mm
 export bearingCarrierFlangeThickness = 1.5mm
+
+// The rear cheek's central bore. It was a Ø26 lightening hole; it was opened
+// to carrier size when the joints were forked, and it has stayed there now the
+// fork is gone, because it is 0.6 g a joint for nothing and it leaves one bore
+// to machine rather than two. It stays well clear of the Ø41 bolt circle: the
+// bore's edge is at r 15.1 and the nearest bolt hole starts at r 18.8. Sized
+// so a carrier can be bonded in if the straddled joint is ever reinstated.
+export cheekLighteningDiameter = bearingCarrierBore
+
+// ---------------------------------------------------------------------------
+// The forked rotor -- DRAWN BUT NOT FITTED
+//
+// Nothing imports rotorYoke or rearJointHardware any more. The straddled joint
+// is kept because the case for dropping it rests on one unanswered question --
+// what moment the DM-J3507's own output bearing will take -- and if the answer
+// from DAMIAO is unfavourable this is what comes back. The parameters below
+// are what it needs.
+//
+// One rotor arm outboard of the output face leaves the moving assembly a
+// cantilever: its two supports, the actuator's own internal output bearing and
+// the 6800, both sit on the same side of the limb's load line and about 20 mm
+// apart. A sideways load at the foot is then reacted as a couple across that
+// short span, which is where the 500-650 N at the 6800 comes from.
+//
+// A second arm on the far side of the motor makes it a straddle about 53 mm
+// wide with the load line nearly centred, and the couple reaction falls to
+// roughly 240 N -- from 65 per cent of the 6800's static rating to 26.
+//
+// The layout is forced and cannot be a mirror of the front. The stator's rear
+// cheek is bolted flat against the motor's rear face, so the rotor's rear arm
+// has to sit outboard of that cheek and reach back in on a journal. The second
+// bearing therefore lives in the rear cheek itself, which is why every clevis
+// now carries a carrier-sized bore there instead of a plain lightening hole.
+export rearBearingX = rearCheekX - 1.5mm
+// Half a millimetre of air between the arm and the bearing it drives. The front
+// hub has none, which NOTES.md records as a defect rather than a pattern.
+export rearArmInnerX = rearBearingX - (bearingWidth / 2) - 0.5mm
+export rearArmOuterX = rearArmInnerX - rotorHubThickness
+export rearJournalCenterX = rearArmInnerX - journalSeatDepth + journalLength / 2
+// Enough material above the axis to close around the journal seat.
+export rearArmTopZ = 10mm
+// The tie between the two arms passes the Ø52 cheek at every joint angle, so it
+// has to run outside the cheek's radius rather than at the bridge's own height.
+export rearTieTopZ = -(cheekDiameter / 2 + 1mm)
+// Two millimetres of overlap into the bridge, so the union has solid to work on.
+export rearTieInboardX = -(shellWidth / 2) + 2mm
+
+// A sharp re-entrant corner where an arm meets its tie multiplies the bending
+// stress there by roughly 2.5. Four millimetres is not arbitrary: the bridge
+// cantilevers out of the limb shell wall and meets the arm 3.95 mm further out,
+// so this radius closes exactly the unsupported span.
+export rotorFilletRadius = 4mm
 
 // Two Ø46 actuators 105 mm apart leave only 59 mm of clear span between them,
 // so the shell runs joint radius plus 1 mm short of each joint centre and the

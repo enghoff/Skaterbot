@@ -226,11 +226,12 @@ export fn statorClevis() {
   ])
 }
 
-export fn rotorHub() {
-  bridgeWidth = rotorHubOuterX + shellWidth / 2
-  bridgeCenterX = rotorHubOuterX - (bridgeWidth / 2)
-  rotorArmHeight = rotorEndHeight
-
+// The plate that bolts to the actuator's output, kept on its own so that the
+// two rotor ends -- the offset hub the hip carrier and the foot use, and the
+// in-plane plate the limbs use -- are the same disc with different structure
+// hung off it. Ø30 register, Ø10 journal seat, six M3 counterbored into the
+// Ø24 output circle.
+export fn outputDisc() {
   hubSketch = sketch(on = YZ) {
     hubCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
     coincident([hubCircle.center, ORIGIN])
@@ -334,37 +335,70 @@ export fn rotorHub() {
       outputCbore6
     ],
   )
+  hide(hubSketch)
+  hide(registerSketch)
+  hide(journalSeatSketch)
+  hide(boltSketch)
+  hide(counterboreSketch)
+
+  return hubFinished
+}
+
+// The offset rotor end: the disc, an arm carrying its offset down past the
+// actuator, and a bridge taking that offset back to the limb centre line.
+// Used by the hip carrier and the foot, whose own structure cannot be moved
+// into the output plane. The limbs can, and use rotorPlate instead.
+export fn rotorHub() {
+  bridgeWidth = rotorHubOuterX + shellWidth / 2
+  bridgeCenterX = rotorHubOuterX - (bridgeWidth / 2)
+  rotorArmHeight = rotorEndHeight
 
   // The arm carries the hub's offset down past the actuator; the bridge takes
   // it back to the limb centre line. Both are as deep as the shell, so the
   // offset is reacted in the stiff direction.
+  // The arm's root is filleted into the bridge rather than left as a sharp
+  // re-entrant corner. That corner is the peak-stress point for the load the
+  // limb below puts through the offset -- about 11 MPa nominal, which a sharp
+  // angle multiplies by roughly 2.5 -- and the radius costs almost no mass.
+  // Drawn as a profile with an arc in it: the obvious construction, a block
+  // with a cylinder subtracted, leaves the cutter tangent to two faces and the
+  // engine refuses it.
   rotorArmSketch = sketch(on = XZ) {
-    edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
-    edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 32mm])
-    edge3 = line(start = [var 6mm, var 32mm], end = [var 0mm, var 32mm])
-    edge4 = line(start = [var 0mm, var 32mm], end = [var 0mm, var 0mm])
-    coincident([edge1.start, ORIGIN])
-    coincident([edge1.end, edge2.start])
-    coincident([edge2.end, edge3.start])
-    coincident([edge3.end, edge4.start])
-    coincident([edge4.end, edge1.start])
-    horizontal(edge1)
-    vertical(edge2)
-    horizontal(edge3)
-    vertical(edge4)
-    horizontalDistance([edge1.start, edge1.end]) == rotorHubThickness
-    verticalDistance([edge2.start, edge2.end]) == rotorArmHeight
+    armBottom = line(start = [var 0mm, var 0mm], end = [var 10mm, var 0mm])
+    armOuter = line(start = [var 10mm, var 0mm], end = [var 10mm, var 32mm])
+    armTop = line(start = [var 10mm, var 32mm], end = [var 4mm, var 32mm])
+    armInner = line(start = [var 4mm, var 32mm], end = [var 4mm, var 12mm])
+    filletFace = arc(start = [var 0mm, var 8mm], end = [var 4mm, var 12mm], center = [var 0mm, var 12mm])
+    filletBack = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+    coincident([armBottom.start, ORIGIN])
+    coincident([armBottom.end, armOuter.start])
+    coincident([armOuter.end, armTop.start])
+    coincident([armTop.end, armInner.start])
+    coincident([armInner.end, filletFace.end])
+    coincident([filletFace.start, filletBack.start])
+    coincident([filletBack.end, armBottom.start])
+    horizontal(armBottom)
+    vertical(armOuter)
+    horizontal(armTop)
+    vertical(armInner)
+    vertical(filletBack)
+    horizontalDistance([armBottom.start, armBottom.end]) == rotorHubThickness + rotorFilletRadius
+    verticalDistance([armOuter.start, armOuter.end]) == rotorArmHeight
+    horizontalDistance([armTop.end, armTop.start]) == rotorHubThickness
+    verticalDistance([filletBack.end, filletBack.start]) == bridgeHeight
+    horizontalDistance([filletFace.start, filletFace.end]) == rotorFilletRadius
+    verticalDistance([filletFace.start, filletFace.end]) == rotorFilletRadius
   }
   rotorArmRegion = region(
     segments = [
-      rotorArmSketch.edge1,
-      rotorArmSketch.edge2
+      rotorArmSketch.armBottom,
+      rotorArmSketch.armOuter
     ],
     intersectionIndex = -1,
     direction = CCW,
   )
   rotorArmRaw = extrude(rotorArmRegion, length = shellInnerDepth, symmetric = true)
-    |> translate(x = rotorHubInnerX, z = -rotorArmHeight, global = true)
+    |> translate(x = rotorHubInnerX - rotorFilletRadius, z = -rotorArmHeight, global = true)
 
   bridgeSketch = sketch(on = XZ) {
     edge1 = line(start = [var 0mm, var 0mm], end = [var 40mm, var 0mm])
@@ -387,13 +421,187 @@ export fn rotorHub() {
   bridgeRaw = extrude(bridgeRegion, length = shellDepth, symmetric = true)
     |> translate(x = bridgeCenterX - (bridgeWidth / 2), z = -rotorEndHeight, global = true)
 
-  hide(hubSketch)
-  hide(registerSketch)
-  hide(journalSeatSketch)
-  hide(boltSketch)
-  hide(counterboreSketch)
+  // The bridge is a 40 x 30 plate only 8 mm thick and it bends about its own
+  // long axis, so the material at mid-height carries almost nothing. Three
+  // through-slots leave a flange above and below and a rib between each pair,
+  // all at shellWall -- the same four-perimeter rule the shells are drawn to.
+  // That takes about 2 g out of every rotor end, 17 g across the eight joints,
+  // for roughly 6 per cent of the section's second moment.
+  //
+  // The slots stop clear of the rotor arm, which fills the outboard third of
+  // the bridge and would refill anything cut there. Nothing on the outside of
+  // the part moves, so the 112.8 degree knee contact is unaffected. In an
+  // assembled limb the shell walls close the slot ends, so if the final set is
+  // printed SLS rather than FDM the voids will need a vent for the powder.
+  bridgeSlotHeight = bridgeHeight - (shellWall * 2)
+  bridgeSlotInnerX = bridgeCenterX - (bridgeWidth / 2) + shellWall
+  bridgeSlotOuterX = rotorHubInnerX - rotorFilletRadius - shellWall
+  bridgeSlotLength = (bridgeSlotOuterX - bridgeSlotInnerX - (shellWall * 2)) / 3
+  bridgeSlotPitch = bridgeSlotLength + shellWall
+
+  bridgeSlotSketch = sketch(on = XZ) {
+    slotEdge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+    slotEdge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 3mm])
+    slotEdge3 = line(start = [var 6mm, var 3mm], end = [var 0mm, var 3mm])
+    slotEdge4 = line(start = [var 0mm, var 3mm], end = [var 0mm, var 0mm])
+    coincident([slotEdge1.start, ORIGIN])
+    coincident([slotEdge1.end, slotEdge2.start])
+    coincident([slotEdge2.end, slotEdge3.start])
+    coincident([slotEdge3.end, slotEdge4.start])
+    coincident([slotEdge4.end, slotEdge1.start])
+    horizontal(slotEdge1)
+    vertical(slotEdge2)
+    horizontal(slotEdge3)
+    vertical(slotEdge4)
+    horizontalDistance([slotEdge1.start, slotEdge1.end]) == bridgeSlotLength
+    verticalDistance([slotEdge2.start, slotEdge2.end]) == bridgeSlotHeight
+  }
+  bridgeSlotRegion = region(
+    segments = [
+      bridgeSlotSketch.slotEdge1,
+      bridgeSlotSketch.slotEdge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  bridgeSlot1 = extrude(bridgeSlotRegion, length = shellDepth + 4mm, symmetric = true)
+    |> translate(x = bridgeSlotInnerX, z = -rotorEndHeight + shellWall, global = true)
+  bridgeSlot2 = clone(bridgeSlot1)
+    |> translate(x = bridgeSlotPitch, global = true)
+  bridgeSlot3 = clone(bridgeSlot1)
+    |> translate(x = bridgeSlotPitch * 2, global = true)
+
+  // Cut on the simple body, before the union, as everywhere else here.
+  bridgeLightened = subtract(bridgeRaw, tools = [bridgeSlot1, bridgeSlot2, bridgeSlot3])
+
+  hide(bridgeSlotSketch)
   hide(rotorArmSketch)
   hide(bridgeSketch)
 
-  return union([hubFinished, rotorArmRaw, bridgeRaw])
+  return union([
+    outputDisc(),
+    rotorArmRaw,
+    bridgeLightened
+  ])
+}
+
+// The web of the in-plane rotor end, used by the limbs. The limb's shell is
+// shifted
+// outboard until its outer wall lies in the output plane, so this is that wall
+// carried on down to meet outputDisc: one plate, no arm and no bridge. See
+// shellOffsetX in parameters.kcl for what that costs.
+//
+// It runs bridgeHeight past the top of the shell rather than butting against
+// it, so the two lap. Through that band the plate stands 3.6 mm proud of the
+// 2.4 mm wall on the inside, which is the gusset the thickness step needs.
+//
+// The weak axis is lateral: 6 mm of plate against 30 mm of depth. That is the
+// binding strength case for the whole limb -- see NOTES.md -- and it is why the
+// plate is as deep as the shell rather than as deep as the old arm.
+export fn rotorPlate() {
+  plateSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+    edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 32mm])
+    edge3 = line(start = [var 6mm, var 32mm], end = [var 0mm, var 32mm])
+    edge4 = line(start = [var 0mm, var 32mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == rotorHubThickness
+    verticalDistance([edge2.start, edge2.end]) == rotorEndHeight
+  }
+  plateRegion = region(segments = [plateSketch.edge1, plateSketch.edge2], intersectionIndex = -1, direction = CCW)
+  plateRaw = extrude(plateRegion, length = shellDepth, symmetric = true)
+    |> translate(x = rotorHubInnerX, z = -rotorEndHeight, global = true)
+
+  hide(plateSketch)
+
+  // Returned on its own rather than unioned with the disc. The plate is exactly
+  // rotorHubThickness and sits exactly where the disc does, so both of its
+  // faces are coplanar with the disc's and the engine refuses the union -- the
+  // old arm got away with it because only its outer face was shared. The limb
+  // places the two side by side, which is the interpenetrating-bodies fallback
+  // used for the foot frame, the hip carrier and the torso.
+  return plateRaw
+}
+
+// The forked rotor -- drawn but not fitted; see parameters.kcl.
+// It was fitted where the joint was worth straddling -- the hip pitch
+// and the knee. It is `rotorHub` with a second arm on the far side of the
+// motor, tied to the first under the actuator, so the moving assembly is
+// supported either side instead of cantilevered off one.
+//
+// The layout cannot mirror the front, because the stator's rear cheek is bolted
+// flat to the motor's rear face. So the rear arm sits outboard of that cheek
+// and reaches back in on a journal, and the bearing lives in the cheek itself.
+// See the note in parameters.kcl for the numbers this buys.
+//
+// The tie is shallower than the bridge and deliberately so: it has to pass the
+// Ø52 cheek at every joint angle, so it runs outside the cheek's radius rather
+// than at the bridge's height. It is the only part of this that is not free --
+// the bridge would rather have been continued at full depth.
+export fn rotorYoke() {
+  rearLegSketch = sketch(on = XZ) {
+    tieBottom = line(start = [var 0mm, var 0mm], end = [var 18.25mm, var 0mm])
+    tieEnd = line(start = [var 18.25mm, var 0mm], end = [var 18.25mm, var 5mm])
+    tieTop = line(start = [var 18.25mm, var 5mm], end = [var 10mm, var 5mm])
+    filletFace = arc(start = [var 6mm, var 9mm], end = [var 10mm, var 5mm], center = [var 10mm, var 9mm])
+    armInner = line(start = [var 6mm, var 9mm], end = [var 6mm, var 42mm])
+    armTop = line(start = [var 6mm, var 42mm], end = [var 0mm, var 42mm])
+    armOuter = line(start = [var 0mm, var 42mm], end = [var 0mm, var 0mm])
+    coincident([tieBottom.start, ORIGIN])
+    coincident([tieBottom.end, tieEnd.start])
+    coincident([tieEnd.end, tieTop.start])
+    coincident([tieTop.end, filletFace.end])
+    coincident([filletFace.start, armInner.start])
+    coincident([armInner.end, armTop.start])
+    coincident([armTop.end, armOuter.start])
+    coincident([armOuter.end, tieBottom.start])
+    horizontal(tieBottom)
+    vertical(tieEnd)
+    horizontal(tieTop)
+    vertical(armInner)
+    horizontal(armTop)
+    vertical(armOuter)
+    horizontalDistance([tieBottom.start, tieBottom.end]) == rearTieInboardX - rearArmOuterX
+    verticalDistance([tieEnd.start, tieEnd.end]) == rearTieTopZ + rotorEndHeight
+    verticalDistance([armOuter.end, armOuter.start]) == rotorEndHeight + rearArmTopZ
+    horizontalDistance([armTop.end, armTop.start]) == rotorHubThickness
+    horizontalDistance([filletFace.end, filletFace.start]) == rotorFilletRadius
+    verticalDistance([filletFace.end, filletFace.start]) == rotorFilletRadius
+  }
+  rearLegRegion = region(
+    segments = [
+      rearLegSketch.tieBottom,
+      rearLegSketch.tieEnd
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  rearLegBlank = extrude(rearLegRegion, length = shellDepth, symmetric = true)
+    |> translate(x = rearArmOuterX, z = -rotorEndHeight, global = true)
+
+  rearSeatSketch = sketch(on = YZ) {
+    seatCircle = circle(start = [var 5.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([seatCircle.center, ORIGIN])
+    horizontal([seatCircle.center, seatCircle.start])
+    diameter(seatCircle) == journalSeatDiameter
+  }
+  rearSeatRegion = region(segments = [rearSeatSketch.seatCircle])
+  rearSeatCutter = extrude(rearSeatRegion, length = journalSeatDepth, symmetric = true)
+    |> translate(x = rearArmInnerX - (journalSeatDepth / 2), global = true)
+
+  // Cut on the simple body before anything is unioned, as everywhere else here.
+  rearLeg = subtract(rearLegBlank, tools = [rearSeatCutter])
+
+  hide(rearLegSketch)
+  hide(rearSeatSketch)
+
+  return union([rotorHub(), rearLeg])
 }

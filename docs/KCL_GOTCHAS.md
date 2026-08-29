@@ -35,6 +35,18 @@ geometry.
 - **A pocket cut into an already-hollowed shell.** Cut the pockets into the plain
   blank *first*, then hollow it. This is the ordering the torso shell needed and
   then the keel needed again.
+- **A union whose two bodies share *both* of their faces in one axis.**
+  Rejected as `cannot handle this 3D union yet`. The limb's rotor plate is
+  exactly `rotorHubThickness` and sits exactly where the output disc sits, so
+  its two x-faces are coplanar with the disc's; unioning them fails. The arm it
+  replaced got away with the same construction because only its outer face was
+  shared. One coincident face is tolerated, two are not — and this is the same
+  family as the fillet cutter that was refused for being tangent to two faces of
+  a block. The workaround is either to make one body wider than the other, or to
+  leave them as interpenetrating bodies, which is what `limb.kcl` does.
+- **A cutter tangent to two faces of a block.** Rejected. A fillet drawn as a
+  block minus a cylinder hits this every time; draw the profile with an `arc` in
+  it instead and no boolean is needed at all.
 - **A union of two hollow boxes meeting at right angles.** Rejected. The hip
   carrier, the torso hip mounts and the foot frame are therefore left as
   **interpenetrating bodies** rather than single solids. Every overlap is

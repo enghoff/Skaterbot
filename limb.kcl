@@ -6,9 +6,15 @@
 //
 // Local frame: the limb axis is Z, both joint axes are X, and the two joint
 // centres sit at z = +/- limbLength/2. The joint ends come from `joint.kcl` --
-// a stator clevis at the bottom, a rotor hub at the top -- so all eight joints
-// on the robot are the same part and the limb only has to supply the beam
-// between them.
+// a stator clevis at the bottom, a rotor plate at the top -- so the limb only
+// has to supply the beam between them.
+//
+// The shell is not centred on the joint axis. It is shifted outboard by
+// shellOffsetX until its outer wall lies in the actuator's output plane, which
+// is what lets the rotor end be a plate in that same wall rather than an arm
+// and a bridge reaching out to it. The actuator hangs entirely inboard; it
+// clears the shell because the shell starts jointKeepOut = 24 mm from the axis
+// and the actuator's radius is 23.
 //
 // Two Ø46 actuators 105 mm apart leave only 59 mm of clear span, so the shell is
 // short and the two joint ends do most of the work. That is a property of using
@@ -16,7 +22,7 @@
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import statorClevis, rotorHub from "joint.kcl"
+import statorClevis, outputDisc, rotorPlate from "joint.kcl"
 
 shellInnerWidth = shellWidth - (shellWall * 2)
 shellInnerDepth = shellDepth - (shellWall * 2)
@@ -51,7 +57,7 @@ export fn limbShell(@limbLength) {
     direction = CCW,
   )
   shellBlank = extrude(shellOuterRegion, length = shellLength, symmetric = true)
-    |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
+    |> translate(x = shellOffsetX - (shellWidth / 2), y = -shellDepth / 2, global = true)
 
   shellInnerSketch = sketch(on = XY) {
     edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
@@ -82,7 +88,7 @@ export fn limbShell(@limbLength) {
   // that overlap them, so a separate end cap would only add mass. It is also the
   // cable route, which is why it is left clear.
   shellCavity = extrude(shellInnerRegion, length = shellLength + 4mm, symmetric = true)
-    |> translate(x = -shellInnerWidth / 2, y = -shellInnerDepth / 2, global = true)
+    |> translate(x = shellOffsetX - (shellInnerWidth / 2), y = -shellInnerDepth / 2, global = true)
   shellRaw = subtract(shellBlank, tools = [shellCavity])
 
   hide(shellOuterSketch)
@@ -96,11 +102,22 @@ export fn limbAssembly(@limbLength) {
   shell = limbShell(limbLength)
   lowerJoint = statorClevis()
     |> translate(z = -jointZ, global = true)
-  upperJoint = rotorHub()
+  upperDisc = outputDisc()
     |> translate(z = jointZ, global = true)
-  limbRaw = union([shell, lowerJoint, upperJoint])
+  upperPlate = rotorPlate()
+    |> translate(z = jointZ, global = true)
+  // Left as four interpenetrating bodies rather than one union, which is the
+  // same fallback NOTES.md already records for the foot frame, the hip carrier
+  // and the torso. Every overlap here is several millimetres of solid, so a
+  // slicer that merges coincident shells prints this as the single part it is.
+  // Verify that before printing.
   return appearance(
-    limbRaw,
+    [
+      shell,
+      lowerJoint,
+      upperDisc,
+      upperPlate
+    ],
     color = printedOrange,
     roughness = 70,
     metalness = 3,
