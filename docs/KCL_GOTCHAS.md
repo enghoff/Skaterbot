@@ -55,6 +55,18 @@ geometry.
   before printing, and it means the exported STL is not manufacturing-ready on
   its own.
 
+## Mirroring
+
+- **`mirror3d` copies, it does not transform.** The original stays in the scene,
+  even in pipeline form, so a mirrored part measures double. `hide()` the source
+  afterwards; the mirrored body survives and the hidden one drops out of both the
+  render and the mass. `delete()` works too but lints as experimental.
+- **`scale(x = -1)` is not a mirror.** It appears to reflect about the body's own
+  centroid and leaves it where it started.
+- **A 180° spin about Z is a true mirror only for a fore-and-aft symmetric part.**
+  It flips X and Y together. The limb fails that test — its stator plate has a
+  connector relief on one side — so the limbs are mirrored with `mirror3d`.
+
 ## Which way the robot faces
 
 **+Y is forward, +Z is up, +X is the robot's right.** Fixed by `foot.kcl`, which

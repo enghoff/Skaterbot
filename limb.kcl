@@ -1,40 +1,40 @@
-// Stressed-shell limb
+// Flat-plate limb
 //
-// One parametric limb, used for the thigh, the shin and the hip carrier. The
-// limb is a closed printed box that carries the load itself; there are no carbon
-// tubes and no separate joint brackets.
+// One parametric limb, used for the thigh and the shin. It is a plate lying in
+// a single plane: a Ø52 disc bolted flat to one actuator's rear cover, a Ø36
+// disc bolted to the next actuator's output, and a channel waist between them.
+// There is no clevis, no saddle and no closed shell, and nothing reaches around
+// an actuator any more.
 //
 // Local frame: the limb axis is Z, both joint axes are X, and the two joint
-// centres sit at z = +/- limbLength/2. The joint ends come from `joint.kcl` --
-// a stator clevis at the bottom, a rotor plate at the top -- so the limb only
-// has to supply the beam between them.
+// centres sit at z = +/- limbLength/2. The plate lies on the +X side with both
+// actuators inboard of it. That works because the knee actuator is turned round
+// -- see the note in parameters.kcl -- so the upper joint presents its output
+// face and the lower joint presents its rear cover on the same side.
 //
-// The shell is not centred on the joint axis. It is shifted outboard by
-// shellOffsetX until its outer wall lies in the actuator's output plane, which
-// is what lets the rotor end be a plate in that same wall rather than an arm
-// and a bridge reaching out to it. The actuator hangs entirely inboard; it
-// clears the shell because the shell starts jointKeepOut = 24 mm from the axis
-// and the actuator's radius is 23.
+// A limb for the other hand is this one spun 180 degrees about Z, which is a
+// true mirror here because every feature is symmetric fore and aft. thigh.kcl
+// and shin.kcl each export both hands; and because the two leg segments are the
+// same 105 mm, the right thigh and the left shin are the same print, as are the
+// right shin and the left thigh. Two distinct limb parts, as before.
 //
-// Two Ø46 actuators 105 mm apart leave only 59 mm of clear span, so the shell is
-// short and the two joint ends do most of the work. That is a property of using
-// pancake actuators on short links, not of this design.
+// The waist is a channel rather than a strip. A bare plate is sixty times
+// softer sideways than the closed box this replaces, and the two flanges take
+// that back to under a millimetre of sway for about 5 g. They point inboard,
+// towards the joint axis, into space no actuator reaches: each body stops
+// 29.5 mm from its own joint centre and the flanges stop at 25.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import statorClevis, outputDisc, rotorPlate from "joint.kcl"
+import outputDisc, statorPlate from "joint.kcl"
 
-shellInnerWidth = shellWidth - (shellWall * 2)
-shellInnerDepth = shellDepth - (shellWall * 2)
-
-export fn limbShell(@limbLength) {
+export fn limbAssembly(@limbLength) {
   jointZ = limbLength / 2
-  shellLength = (jointZ - jointKeepOut) * 2
 
-  shellOuterSketch = sketch(on = XY) {
-    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
-    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
-    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+  waistSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+    edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 30mm])
+    edge3 = line(start = [var 6mm, var 30mm], end = [var 0mm, var 30mm])
     edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
     coincident([edge1.start, ORIGIN])
     coincident([edge1.end, edge2.start])
@@ -45,25 +45,18 @@ export fn limbShell(@limbLength) {
     vertical(edge2)
     horizontal(edge3)
     vertical(edge4)
-    horizontalDistance([edge1.start, edge1.end]) == shellWidth
-    verticalDistance([edge2.start, edge2.end]) == shellDepth
+    horizontalDistance([edge1.start, edge1.end]) == limbPlateThickness
+    verticalDistance([edge2.start, edge2.end]) == limbWaistDepth
   }
-  shellOuterRegion = region(
-    segments = [
-      shellOuterSketch.edge1,
-      shellOuterSketch.edge2
-    ],
-    intersectionIndex = -1,
-    direction = CCW,
-  )
-  shellBlank = extrude(shellOuterRegion, length = shellLength, symmetric = true)
-    |> translate(x = shellOffsetX - (shellWidth / 2), y = -shellDepth / 2, global = true)
+  waistRegion = region(segments = [waistSketch.edge1, waistSketch.edge2], intersectionIndex = -1, direction = CCW)
+  waistPlate = extrude(waistRegion, length = limbWaistHalfLength * 2, symmetric = true)
+    |> translate(x = rotorHubInnerX, y = -(limbWaistDepth / 2), global = true)
 
-  shellInnerSketch = sketch(on = XY) {
-    edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
-    edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
-    edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
-    edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+  flangeSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 12mm, var 0mm])
+    edge2 = line(start = [var 12mm, var 0mm], end = [var 12mm, var 4mm])
+    edge3 = line(start = [var 12mm, var 4mm], end = [var 0mm, var 4mm])
+    edge4 = line(start = [var 0mm, var 4mm], end = [var 0mm, var 0mm])
     coincident([edge1.start, ORIGIN])
     coincident([edge1.end, edge2.start])
     coincident([edge2.end, edge3.start])
@@ -73,50 +66,40 @@ export fn limbShell(@limbLength) {
     vertical(edge2)
     horizontal(edge3)
     vertical(edge4)
-    horizontalDistance([edge1.start, edge1.end]) == shellInnerWidth
-    verticalDistance([edge2.start, edge2.end]) == shellInnerDepth
+    horizontalDistance([edge1.start, edge1.end]) == limbFlangeReach
+    verticalDistance([edge2.start, edge2.end]) == limbFlangeThickness
   }
-  shellInnerRegion = region(
-    segments = [
-      shellInnerSketch.edge1,
-      shellInnerSketch.edge2
-    ],
-    intersectionIndex = -1,
-    direction = CCW,
-  )
-  // The cavity runs right through: both ends are closed by the joint structures
-  // that overlap them, so a separate end cap would only add mass. It is also the
-  // cable route, which is why it is left clear.
-  shellCavity = extrude(shellInnerRegion, length = shellLength + 4mm, symmetric = true)
-    |> translate(x = shellOffsetX - (shellInnerWidth / 2), y = -shellInnerDepth / 2, global = true)
-  shellRaw = subtract(shellBlank, tools = [shellCavity])
+  flangeRegion = region(segments = [flangeSketch.edge1, flangeSketch.edge2], intersectionIndex = -1, direction = CCW)
+  flangeFront = extrude(flangeRegion, length = limbFlangeHalfLength * 2, symmetric = true)
+    |> translate(x = rotorHubInnerX - limbFlangeReach, y = limbWaistDepth / 2 - limbFlangeThickness, global = true)
+  flangeRear = clone(flangeFront)
+    |> translate(y = -(limbWaistDepth - limbFlangeThickness), global = true)
 
-  hide(shellOuterSketch)
-  hide(shellInnerSketch)
-
-  return shellRaw
-}
-
-export fn limbAssembly(@limbLength) {
-  jointZ = limbLength / 2
-  shell = limbShell(limbLength)
-  lowerJoint = statorClevis()
-    |> translate(z = -jointZ, global = true)
   upperDisc = outputDisc()
     |> translate(z = jointZ, global = true)
-  upperPlate = rotorPlate()
-    |> translate(z = jointZ, global = true)
-  // Left as four interpenetrating bodies rather than one union, which is the
-  // same fallback NOTES.md already records for the foot frame, the hip carrier
-  // and the torso. Every overlap here is several millimetres of solid, so a
-  // slicer that merges coincident shells prints this as the single part it is.
-  // Verify that before printing.
+  // The stator plate is drawn behind an actuator whose output faces +X. This
+  // limb's lower actuator is turned round, so the plate is spun to the near side
+  // to land on the rear cover that now faces +X with everything else.
+  lowerPlate = statorPlate()
+    |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+    |> translate(z = -jointZ, global = true)
+
+  hide(waistSketch)
+  hide(flangeSketch)
+
+  // Five interpenetrating bodies rather than one solid. The waist plate occupies
+  // exactly the same band in X as both discs, which is the union the engine
+  // refuses -- see docs/KCL_GOTCHAS.md -- and the flanges share a face with the
+  // waist for the same reason. Every overlap is millimetres of real material, so
+  // a slicer that merges coincident shells prints this as the single plate it
+  // is. Verify that before printing.
   return appearance(
     [
-      shell,
-      lowerJoint,
+      waistPlate,
+      flangeFront,
+      flangeRear,
       upperDisc,
-      upperPlate
+      lowerPlate
     ],
     color = printedOrange,
     roughness = 70,

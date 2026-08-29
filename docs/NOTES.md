@@ -921,3 +921,101 @@ both x-faces coincide and `union([outputDisc(), plateRaw])` fails; the arm it
 replaced was tolerated because only its outer face was shared. The limb places
 the disc and the plate as separate interpenetrating bodies instead, which brings
 it to four. Recorded in `docs/KCL_GOTCHAS.md`.
+
+
+## The legs go flat, and one of them gets mirrored — August 29, 2026
+
+The limbs are no longer beams between two clevises. Each is a plate lying in one
+plane: a Ø52 disc bolted flat to one actuator's rear cover, a Ø36 disc bolted to
+the next actuator's output, and a channel waist between them. Nothing reaches
+around an actuator any more, so the clevis, the saddle, the closed shell and the
+far bearing at the knee and the ankle are all gone.
+
+### The knee actuator is turned round, and that is what makes it work
+
+Follow the chain. The thigh's upper end meets the hip pitch rotor; with the knee
+actuator reversed, its rear cover now faces the same way, so the thigh's lower
+end meets that — one plate, one plane. The shin's upper end meets the knee rotor
+on the far side, and the ankle actuator below it presents its rear cover the same
+way, so the shin is a plate too, in the opposite plane. Thigh and shin end up in
+disjoint slabs of X on either side of the knee actuator.
+
+Every attachment is either the six-bolt Ø24 output circle or the four-bolt Ø41
+rear pattern. Both are confirmed twice over against the vendor 2D print and the
+STEP. The Ø41 *front-housing* pattern that `parameters.kcl` carries with no
+provenance is not needed by any of it, which is worth saying plainly, because
+building on it would have been building on a guess.
+
+### What it is worth
+
+| | Before | After |
+|---|---:|---:|
+| Limb, each | 46.3 g | **32.1 g** |
+| Printed structure | 596 g | **539 g** |
+| Whole robot | 2 147 g | **2 025 g** |
+| Headroom under 2 300 g | 153 g | **275 g** |
+| Sustained-load knee | 42.4° | **45.1°** |
+| Bearing/journal/carrier sets | 8 | **4** |
+
+Two things come free with it. The knee fold limit stops being structural: thigh
+and shin are in different planes and cannot touch, so the 112.8° contact that
+set `shellDepth` is simply gone. And the flanged bearing carrier — the only
+non-commodity item on the BOM — drops from eight to four.
+
+### The waist is a channel, and that is the support the plate needed
+
+A bare 6 mm plate is sixty times softer sideways than the closed box it replaces:
+`Iyy` 540 mm⁴ against 33 894, which is about 7.7 mm of sway at the hip in single
+support. Two flanges, 12 mm out and 4 mm thick, pointing inboard towards the
+joint axis, take that to **9 468 mm⁴ and 0.44 mm** for about 5 g a limb. In the
+sagittal direction the same section gives 29 852 mm⁴, within twelve per cent of
+the box. The flanges point inboard because that space is empty: each actuator
+body reaches only 29.5 mm from its own joint centre and the flanges stop at 25.
+
+What the channel does *not* fix is the short unflanged run where the waist meets
+each disc. That section is the bare plate, 6 × 30, and it remains the weakest
+printed thing on the robot at 21 N sideways at the foot across the layers or
+53 N in the print plane. Unchanged from the previous build, and print
+orientation is still worth 2.5× on it for nothing.
+
+### What it assumes, and it is not confirmed
+
+Nothing straddles the knee or the ankle now, so the actuator's own output bearing
+takes the joint moment. The plate sits about 22 mm off the joint axis, so every
+load down the leg arrives as an overhung moment: **0.45 Nm standing on one foot,
+about 1.35 Nm landing at three times body weight.** DAMIAO have not been asked
+whether the bearing will take it. The decision was to proceed on the assumption
+that it will, and to send them those two numbers rather than the open-ended
+question the project had been sitting on. `rotorYoke` and `rearJointHardware`
+remain drawn with nothing importing them if the answer comes back badly.
+
+### The robot is mirror-symmetric now, which reverses an earlier decision
+
+Decision 5 in `PLAN.md` was that both legs are built identically rather than
+mirrored, on the grounds that mirroring doubles the number of distinct printed
+parts. That was right when the only asymmetry was which side of an actuator a
+hub sat on. It is wrong now: a flat limb sticks out 25 mm to one side, and two
+identical legs put the thigh outboard on one and inboard on the other.
+
+So the legs are mirrored, and the count of distinct prints barely moves. Both
+leg segments are 105 mm, so **the right thigh and the left shin are the same
+part**, and so are the left thigh and the right shin — two limb prints, exactly
+as before. The foot and the hip carrier do become a left and a right, which is
+two extra prints on the whole robot.
+
+Handedness in the models: the pitch-axis actuators drive towards +X on the right
+leg's hip pitch and ankle and towards -X on its knee, and the left leg reverses
+all three. The hip roll is unaffected, its axis being fore-and-aft.
+
+### Mirroring in KCL
+
+`mirror3d` **copies rather than transforms**: it leaves the original standing in
+the scene, so a mirrored part measures double unless the source is disposed of.
+`hide()` on the source is enough — the mirrored body survives and the hidden one
+drops out of both the render and the mass. `delete()` also works but lints as
+experimental. `scale(x = -1)` is not a mirror; it appears to reflect about the
+body's own centroid and leaves it where it started.
+
+Spinning a part 180° about Z is a true mirror **only if the part is symmetric
+fore and aft**, which the limb is not: the stator plate's connector relief sits
+on one side. So the limbs are mirrored properly rather than spun.

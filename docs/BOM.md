@@ -289,23 +289,34 @@ Printed parts, PA12-CF at 1.06 g/cm3, measured from the CAD:
 
 | Part | Each | Count | Total |
 |---|---:|---:|---:|
-| Limb, thigh or shin — the same part at two lengths | 46.3 g | 4 | 185 g |
-| Hip carrier | 37.2 g | 2 | 74 g |
-| Foot tray with sole and sensor pads | 74.7 g | 2 | 149 g |
+| Limb plate, thigh or shin — two distinct prints, used crosswise | 32.1 g | 4 | 128 g |
+| Hip carrier — now a left and a right | 37.2 g | 2 | 74 g |
+| Foot tray with sole and sensor pads — a left and a right | 74.7 g | 2 | 149 g |
 | Pelvis and torso shell with removable cover | 187.3 g | 1 | 187 g |
-| **Printed structure** | | | **596 g** |
+| **Printed structure** | | | **539 g** |
 
 With the metal, fasteners, electronics and a 60 g allowance for the power-entry
 block — capacitors, fuse and terminal, since the robot is tethered and carries no
-battery — it comes to **2 147 g against a 2 300 g ceiling**, which is 153 g of
+battery — it comes to **2 025 g against a 2 300 g ceiling**, which is 275 g of
 headroom where the battery build had 5 g. Run `uv run tools/mass.py` rather than
 trusting this table: it measures every printed part on the engine and rolls the
 whole robot up against the ceiling.
 
-**The bearing count stayed at eight.** A forked rotor was drawn for the hip
-pitch and knee joints, which would have needed twelve sets, and then dropped —
-see `docs/PLAN.md` decision 8. Nothing on this list changed as a result, which
-is the point of having kept the same three bought parts on both sides.
+**The bearing count halved, from eight to four.** The limbs are now flat plates
+that bolt straight to the actuator at the knee and the ankle, so only the hip
+roll and the hip pitch are straddled and only they need a carrier, a bearing and
+a journal. Buy four sets, not eight. The flanged carrier was the only
+non-commodity item on this list, so that is the single biggest simplification
+here — see `docs/PLAN.md` decisions 7 and 8.
+
+**Two screw lengths change.** The limb's stator plate is 6 mm where the old
+cheek was 3, and it still crosses the actuator's 3.2 mm rear cover into 4 mm of
+thread, so the rear fasteners go from M3 x 12 to **M3 x 14** at the knee and the
+ankle. The hip roll and hip pitch clevises are unchanged at M3 x 12.
+
+**Mirroring adds two prints, not four.** Both leg segments are 105 mm, so the
+right thigh and the left shin are the same part and there are still two limb
+prints. The foot and the hip carrier become a left and a right.
 
 **Material change.** PETG is no longer the structural material. PA12-CF is
 specified instead: it resists creep, tolerates sitting next to a motor at its

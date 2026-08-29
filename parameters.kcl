@@ -136,24 +136,52 @@ export rotorRegisterDiameter = actuatorOutputRegister + 0.4mm
 export rotorRegisterDepth = 1.2mm
 export frontCheekX = rotorHubOuterX + 1mm + cheekThickness / 2
 
-// The limbs put their structure in the output plane instead of reaching out to
-// it. The shell is shifted outboard until its outer wall lands on the
-// actuator's output face, so the plate that bolts to the rotor is simply that
-// wall carried down to the disc, and the arm-and-bridge that used to walk the
-// offset back to the centre line is not needed at all. The joint load then
-// enters the wall as in-plane shear rather than as a couple across a
-// cantilevered slab, and about 8 g a joint goes away with the bridge.
+// ---------------------------------------------------------------------------
+// The flat limb
 //
-// What it costs is lateral symmetry. The actuator now hangs entirely inboard
-// of the limb, so a limb sits 9.95 mm off its own joint axis. Both legs shift
-// the same way, so the gap between them is unchanged and roll_limit_check is
-// unaffected, but the robot is wider on one side than the other and the
-// inboard limb passes closer to the keel.
+// A limb is a plate in one plane, not a beam between two clevises. It works
+// because the knee actuator is turned round: with the knee's output facing the
+// robot's left, the thigh meets the hip pitch rotor and the knee's rear face on
+// the same side, and the shin meets the knee rotor and the ankle's rear face on
+// the other. Every attachment is either the six-bolt Ø24 output circle or the
+// four-bolt Ø41 rear pattern -- the two the vendor 2D print and the STEP both
+// confirm. The unused Ø41 front-housing pattern is not needed for any of it.
 //
-// The hip carrier and the foot keep the offset hub of rotorHub: neither can
-// move its structure into the output plane, the carrier because it straddles
-// two joints at right angles and the foot because its structure is the sole.
-export shellOffsetX = rotorHubOuterX - (shellWidth / 2)
+// What it deletes: the two-cheek clevis, the saddle, the closed shell, the
+// arm-and-bridge, and the far bearing at the knee and the ankle.
+//
+// What it assumes: that the actuator's own output bearing carries the joint
+// moment, because nothing reaches around the motor any more. The plate sits
+// about 22 mm off the joint axis, so the overhung moment is 0.45 Nm standing on
+// one foot and about 1.35 Nm landing at three times body weight. DAMIAO have
+// not confirmed the bearing will take it. That question is open and the design
+// is proceeding on the assumption it is answered favourably -- see NOTES.md.
+export limbPlateThickness = rotorHubThickness
+export statorPlateDiameter = cheekDiameter
+// The plate lands flat on the rear cover; there is no clearance to give, this
+// is a mating face. Screws cross 3.2 mm of cover into 4 mm of thread, so a
+// 6 mm plate wants M3 x 14 where the old 3 mm cheek wanted M3 x 12.
+export statorPlateInnerX = -(actuatorDepth / 2)
+export statorPlateOuterX = statorPlateInnerX - limbPlateThickness
+export statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
+// The connectors seat against a flat chord 19 mm from the axis, so the plate is
+// truncated on that chord rather than covering them. All four bolts sit at
+// 14.5 mm in each axis and survive the cut with room to spare.
+export statorPlateFlatOffset = actuatorConnectorFlatOffset
+
+// The waist between the two discs. Its flanges point back towards the joint
+// axis, into space that is empty: each actuator body reaches only 29.5 mm from
+// its own joint centre and the flanges stop at 25.
+export limbWaistDepth = shellDepth
+export limbWaistHalfLength = 38.5mm
+export limbFlangeReach = 12mm
+export limbFlangeThickness = 4mm
+export limbFlangeHalfLength = 25mm
+// A bare plate is sixty times softer sideways than the closed box it replaces --
+// roughly 8 mm of sway at the hip in single support against 0.12 mm. The two
+// flanges take that back to under a millimetre for about 5 g a limb, which is
+// the whole reason the waist is a channel and not a strip. They also leave the
+// sagittal section within a quarter of the old box's.
 
 // Far support. The bearing seat is metal, not printed: NOTES.md records printed
 // pockets ovalising, and this one sets the coaxiality of the whole joint. The

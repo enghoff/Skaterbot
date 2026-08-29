@@ -7,10 +7,10 @@
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
-import thighAssembly from "thigh.kcl"
-import shinAssembly from "shin.kcl"
-import hipCarrierAssembly from "hip_carrier.kcl"
-import footAssembly from "foot.kcl"
+import thighRight, thighLeft from "thigh.kcl"
+import shinRight, shinLeft from "shin.kcl"
+import hipCarrierRight, hipCarrierLeft from "hip_carrier.kcl"
+import footRight, footLeft from "foot.kcl"
 import torsoAssembly from "torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
 
@@ -59,11 +59,6 @@ actuatorCopy6 = clone(actuatorAssembly)
 actuatorCopy7 = clone(actuatorAssembly)
 actuatorCopy8 = clone(actuatorAssembly)
 
-rightHipCarrierSource = clone(hipCarrierAssembly)
-rightThighSource = clone(thighAssembly)
-rightShinSource = clone(shinAssembly)
-rightFootSource = clone(footAssembly)
-
 // ---- actuators -------------------------------------------------------------
 
 
@@ -75,7 +70,7 @@ rightHipRollMotor = actuatorCopy2
   |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
 
 leftHipPitchMotor = actuatorCopy3
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
 rightHipPitchMotor = actuatorCopy4
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
@@ -90,7 +85,7 @@ leftKneeMotor = actuatorCopy5
        global = true,
      )
 rightKneeMotor = actuatorCopy6
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = hipCenterX,
        y = rightKneeY,
@@ -99,7 +94,7 @@ rightKneeMotor = actuatorCopy6
      )
 
 leftAnkleMotor = actuatorCopy7
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = -hipCenterX,
        y = leftAnkleY,
@@ -126,53 +121,20 @@ rightHipRollHardware = jointHardware()
   |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
 
 leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
   |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
 rightHipPitchHardware = jointHardware()
   |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
 
-leftKneeHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
-  |> translate(
-       x = -hipCenterX,
-       y = leftKneeY,
-       z = leftKneeZ,
-       global = true,
-     )
-rightKneeHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
-  |> translate(
-       x = hipCenterX,
-       y = rightKneeY,
-       z = rightKneeZ,
-       global = true,
-     )
-
-leftAnkleHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
-  |> translate(
-       x = -hipCenterX,
-       y = leftAnkleY,
-       z = leftAnkleZ,
-       global = true,
-     )
-rightAnkleHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
-  |> translate(
-       x = hipCenterX,
-       y = rightAnkleY,
-       z = rightAnkleZ,
-       global = true,
-     )
-
 // ---- printed structure -----------------------------------------------------
 
 
-leftHipCarrier = hipCarrierAssembly
+leftHipCarrier = hipCarrierLeft
   |> translate(x = -hipCenterX, z = poseCarrierCenterZ, global = true)
-rightHipCarrier = rightHipCarrierSource
+rightHipCarrier = hipCarrierRight
   |> translate(x = hipCenterX, z = poseCarrierCenterZ, global = true)
 
-leftThigh = thighAssembly
+leftThigh = thighLeft
   |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -180,7 +142,7 @@ leftThigh = thighAssembly
        z = leftThighCenterZ,
        global = true,
      )
-rightThigh = rightThighSource
+rightThigh = thighRight
   |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -189,7 +151,7 @@ rightThigh = rightThighSource
        global = true,
      )
 
-leftShin = shinAssembly
+leftShin = shinLeft
   |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -197,7 +159,7 @@ leftShin = shinAssembly
        z = leftShinCenterZ,
        global = true,
      )
-rightShin = rightShinSource
+rightShin = shinRight
   |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -206,7 +168,7 @@ rightShin = rightShinSource
        global = true,
      )
 
-leftFoot = footAssembly
+leftFoot = footLeft
   |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -214,7 +176,7 @@ leftFoot = footAssembly
        z = leftAnkleZ,
        global = true,
      )
-rightFoot = rightFootSource
+rightFoot = footRight
   |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -243,10 +205,6 @@ export poseCheckAssembly = [
   rightHipRollHardware,
   leftHipPitchHardware,
   rightHipPitchHardware,
-  leftKneeHardware,
-  rightKneeHardware,
-  leftAnkleHardware,
-  rightAnkleHardware,
   leftHipCarrier,
   rightHipCarrier,
   leftThigh,

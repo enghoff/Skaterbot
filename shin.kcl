@@ -1,9 +1,21 @@
 // Shin
-// A stressed-shell limb spanning the knee and ankle joints. Identical to the
-// thigh apart from its length; both come from limb.kcl.
+// A flat-plate limb spanning the knee and ankle joints. All of the geometry
+// lives in limb.kcl and joint.kcl; the shin only chooses its length and its
+// hand. See thigh.kcl for why the two hands are made with `mirror3d` rather
+// than by spinning the part.
+//
+// The hands are the other way round here. limbAssembly builds the plate on +X,
+// and on the right leg the shin's plate is on -X: its knee actuator is turned
+// round so its output drives towards -X, and the ankle actuator below it
+// presents its rear cover the same way. So the as-built limb is the *left*
+// shin, and the right shin is its mirror.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import limbAssembly from "limb.kcl"
 
-export shinAssembly = [limbAssembly(lowerLegLength)]
+export shinLeft = [limbAssembly(lowerLegLength)]
+
+shinMirrorSource = limbAssembly(lowerLegLength)
+export shinRight = mirror3d(shinMirrorSource, across = YZ)
+hide(shinMirrorSource)

@@ -123,12 +123,10 @@ All four were settled on 28 August 2026 and the CAD is built on them.
 
 Two decisions were added that the plan had not anticipated:
 
-5. **Both legs are identical rather than mirrored.** Every joint part is
-   symmetric front to back, so the only asymmetry is which side of the actuator
-   the rotor hub sits on -- and that is forced by the actuator. Building both
-   legs the same way halves the number of distinct printed parts, which is worth
-   more on a printed robot than a symmetrical silhouette. It is reversible later
-   by mirroring one leg's parts.
+5. ~~**Both legs are identical rather than mirrored.**~~ **Reversed on
+   29 August 2026 -- see decision 9.** It was the right call while the only
+   asymmetry was which side of an actuator a hub sat on. It stopped being right
+   when the limbs became flat plates that stand 25 mm off to one side.
 6. **The robot is tethered and carries no battery.** 24 V and CAN come in on one
    umbilical from the bench supply. This frees 190 g against a 2.3 kg ceiling
    that had 5 g left in it, and it sidesteps having to hand-build a pouch pack
@@ -138,29 +136,40 @@ Two decisions were added that the plan had not anticipated:
    rather than hung off the machine. Phase 5a has the detail. Reversible in
    principle -- the keel would take a pouch pack again -- but the mass budget
    below now assumes the tether.
-7. **The limbs put their structure in the actuator's output plane.** A limb's
-   shell used to be centred on the joint axis, so the plate that bolts to the
-   rotor sat 22 mm outboard of the beam and an arm and a bridge walked that
-   offset back to the centre line. The shell is now shifted outboard by 9.95 mm
-   until its outer wall lies in the output plane, and the plate is that wall
-   carried on down. The arm and the bridge are gone, the joint load enters the
-   wall as in-plane shear rather than as a couple across a cantilevered slab,
-   and a limb drops from 48.3 g to 46.3 g. What it costs is lateral symmetry:
-   the actuator hangs entirely inboard, so every limb sits 9.95 mm to the
-   robot's right of its own joint axis. Both legs shift the same way, so the gap
-   between them -- and `roll_limit_check.kcl` with it -- does not move. The hip
-   carrier and the foot keep the offset hub, because neither can put its
-   structure in the output plane.
-8. **The joints are not straddled, on the evidence that the printed part fails
-   first.** A forked rotor was drawn, fitted at the hip pitch and the knee, and
-   then removed. It halved the couple on the far bearing, but working the
-   numbers for a sideways load at the foot showed the bearing was never what
-   gives way: the rotor plate breaks at 21-53 N depending on print orientation,
-   and at that load the 6800 is under a third of its static rating. The fork was
-   reinforcing the second-weakest link for 105 g. `rotorYoke` and
-   `rearJointHardware` are left drawn in the files with nothing importing them,
-   because all of this assumes the DM-J3507's own output bearing takes the
-   moment and DAMIAO have not been asked. See section 8 and `NOTES.md`.
+7. **A limb is a flat plate, and the knee actuator is turned round to allow
+   it.** This went in two steps. First the shell was shifted outboard so its
+   outer wall lay in the output plane, which deleted the arm and the bridge.
+   Then the shell went too: with the knee actuator reversed, the thigh meets the
+   hip pitch rotor and the knee's rear cover on the same side, and the shin
+   meets the knee rotor and the ankle's rear cover on the other, so each limb is
+   a Ø52 disc, a Ø36 disc and a channel waist lying in one plane. Every
+   attachment is the confirmed Ø24 output circle or the confirmed Ø41 rear
+   pattern; the unprovenanced front-housing pattern is not used. A limb is
+   **32.1 g** against 48.3 g before this month's joint work. The knee fold limit
+   stops being structural as well, since thigh and shin now lie in different
+   planes and cannot touch.
+8. **No joint is straddled, and the knee and ankle have no far bearing at
+   all.** A forked rotor was drawn, fitted, and removed on the evidence that the
+   printed part fails long before the bearing does: the plate breaks at 21-53 N
+   of sideways load at the foot depending on print orientation, and at that load
+   the 6800 is under a third of its static rating. The flat limb then removed
+   the clevis as well, so only the hip roll and the hip pitch are straddled and
+   the bearing count is four rather than eight.
+
+   **This rests on an unanswered question and is proceeding anyway.** With
+   nothing reaching around the actuator, its own output bearing takes the joint
+   moment -- 0.45 Nm standing on one foot, about 1.35 Nm landing at three times
+   body weight, because the plate sits 22 mm off the axis. DAMIAO have not
+   confirmed it. The decision was to build on the assumption and send them those
+   two numbers rather than keep waiting. `rotorYoke` and `rearJointHardware`
+   stay drawn, with nothing importing them, in case the answer is unfavourable.
+9. **The two legs are mirrored, and the robot is symmetric about its midline.**
+   This reverses decision 5. A flat limb stands 25 mm off to one side, so two
+   identical legs would put the thigh outboard on one and inboard on the other.
+   The cost is smaller than decision 5 feared: both leg segments are 105 mm, so
+   the right thigh and the left shin are the same print and there are still only
+   two distinct limb parts. The foot and the hip carrier do become a left and a
+   right, which is two extra prints on the robot.
 
 ---
 
@@ -462,8 +471,9 @@ them from the first day.
 ### The ankle and hip roll, now modelled
 
 Both were open. Both now have numbers, taken on the measured 2 165 g tethered
-robot. The robot has since come down to 2 147 g, which moves every figure below
-by under one per cent and changes none of the conclusions. The bracketed figures are what the same cases gave at 2 295 g with a
+robot. The robot has since come down to 2 025 g, which eases every figure below
+by about six per cent and changes none of the conclusions -- each case gets a
+little more margin, not less. The bracketed figures are what the same cases gave at 2 295 g with a
 battery, to show which way losing the pack moves them.
 
 - **Ankle.** In single support it carries 2 088 g. On the continuous rating the
@@ -597,21 +607,16 @@ shared hub. `torso.kcl` gained a stator clevis and mount box at each hip.
   sit at y = -40 and front pads at y = +51, and by the leading knee in
   `walk_pose_check.kcl` swinging to +Y. Note also that Zoo's *front* camera looks
   at the -Y face, so the view named "front" shows the robot's back.
-- **The shell depth is set by the knee fold, not by stiffness.** At the 34 mm
-  depth the section calculation preferred, first contact with the thigh's saddle
-  comes at 108.5° -- inside the 110° commissioning limit. At 30 mm it moves out
-  to 112.8°, so the structure backs the stop up instead of pre-empting it. That
-  is why the section is square rather than the deeper-than-wide shape a leg
-  would otherwise want. Any change to `shellDepth`, `jointKeepOut` or
-  `rotorEndHeight` moves that angle and must be re-checked.
-
-  Those angles were first attributed to the shin's rotor *arm*, which was wrong.
-  The arm was `shellInnerDepth` and never the first thing to touch; what governs
-  is whichever body at the rotor end is the full `shellDepth` -- the bridge
-  then, the rotor plate now. So the fold limit did not move when the limbs went
-  into the output plane, and a 2D sweep of the rotating sections against the
-  saddle puts structural contact at 116°, which is the figure the hard-stop note
-  in *Still open* already used.
+- **The knee fold used to be limited by structure, and no longer is.** While
+  the limbs were shells, the shin's rotor end fouled the thigh's saddle: 108.5°
+  at a 34 mm section, 112.8° at 30 mm, which is why the section was square
+  rather than the deeper-than-wide shape a leg would otherwise want. Those
+  angles were first attributed to the rotor *arm*, which was wrong -- the arm
+  was `shellInnerDepth` and never the first thing to touch. With flat limbs the
+  question disappears: the thigh and the shin lie in different planes on either
+  side of the knee actuator and cannot reach each other at any angle. The
+  110° commissioning limit is now purely a control decision, which makes the
+  designed hard stops below more important, not less.
 - **Two engine limitations, both worked around and both worth knowing.** Blind
   pockets cut out of a large combined solid are rejected, so every cut is now
   made on the simple body it belongs to before anything is unioned. And a union
@@ -639,60 +644,64 @@ shared hub. `torso.kcl` gained a stator clevis and mount box at each hip.
 
 ### Mass, measured from the CAD
 
-`tools/mass.py`, PA12-CF at 1.06 g/cm3:
+`tools/mass.py`, PA12-CF at 1.06 g/cm3. The four leg files each build both hands
+now, so their figure is the pair.
 
 | Part | Each | Count | Total |
 |---|---:|---:|---:|
-| Thigh | 46.3 g | 2 | 92.6 g |
-| Shin | 46.3 g | 2 | 92.6 g |
-| Hip carrier | 37.2 g | 2 | 74.4 g |
-| Foot, tray, sole and pads | 74.7 g | 2 | 149.3 g |
+| Thighs, the pair | 64.2 g | 1 | 64.2 g |
+| Shins, the pair | 64.2 g | 1 | 64.2 g |
+| Hip carriers, the pair | 74.4 g | 1 | 74.4 g |
+| Feet, the pair | 149.3 g | 1 | 149.3 g |
 | Pelvis and torso shell with cover | 187.3 g | 1 | 187.3 g |
-| **Printed structure** | | | **596 g** |
+| **Printed structure** | | | **539 g** |
 | Actuators | 150 g | 8 | 1 200 g |
-| Bearing, journal, carrier | 16.3 g | 8 | 130 g |
+| Bearing, journal, carrier | 16.3 g | 4 | 65 g |
 | Fasteners | | | 60 g |
 | Electronics and wiring | | | 100 g |
 | Power entry — capacitors, fuse, terminal (allowance) | | | 60 g |
-| **Total** | | | **2 147 g** |
+| **Total** | | | **2 025 g** |
 
-**Two changes bought the margin, in this order.** Going tethered removed a 190 g
-battery and replaced it with a 60 g power-entry allowance, taking the robot from
-5 g under the ceiling to about 135 g. Then the limbs moved their structure into
-the actuator's output plane, which deleted the arm and the bridge at four
-joints, and the forked rotor came off with its four extra bearing sets. The
-robot is now **2 147 g with 153 g of headroom**, and the sustained-load knee
-limit is **42.4°** against a 40° target — the first time it has cleared it.
+**Three changes bought the margin, in this order.** Going tethered removed a
+190 g battery for a 60 g power-entry allowance, taking the robot from 5 g under
+the ceiling to about 135 g. Then the limbs moved their structure into the
+actuator's output plane, deleting the arm and the bridge, and the forked rotor
+came off with its four extra bearing sets. Then the limbs went flat: no clevis,
+no saddle, no shell, and no far bearing at the knee or the ankle. The robot is
+now **2 025 g with 275 g of headroom**, and the sustained-load knee limit is
+**45.1°** against a 40° target.
 
-The 60 g power-entry figure is still the softest number in the table, because
-the capacitor bank has not been sized. Ribbing and lightening remain worth
-doing, but they are now a way of buying margin rather than the only thing
-keeping the robot legal, and they still cannot be sized until the Phase 1 coupon
-is measured.
+A limb is 32.1 g, against 48.3 g before any of this month's joint work. The 60 g
+power-entry figure is still the softest number in the table, because the
+capacitor bank has not been sized.
 
 ### How much sideways load the printed parts take
 
 Hand calculation from the sections, with nothing measured behind it. The binding
-case is a sideways force at the foot, and the part that gives is the rotor plate
-at the hip pitch: 6 mm thick against 30 mm deep on a 254 mm lever, so
-Z = 180 mm³ and stress is 1.41 MPa per newton at the foot.
+case is a sideways force at the foot, and the part that gives is the limb plate
+where it meets a disc, in the short run the waist flanges cannot reach: 6 mm
+thick against 30 mm deep on a 254 mm lever at the hip pitch, so Z = 180 mm³ and
+stress is 1.41 MPa per newton at the foot.
 
 | Printed section | Z | Across layers, 30 MPa | In print plane, 75 MPa |
 |---|---:|---:|---:|
-| Rotor plate, hip pitch — 6 × 30 | 180 mm³ | **21 N** | **53 N** |
-| The arm it replaced — 6 × 25.2 | 151 mm³ | 18 N | 45 N |
+| Limb plate at a disc — 6 × 30 | 180 mm³ | **21 N** | **53 N** |
 | The same plate at 8 mm thick | 320 mm³ | 38 N | 95 N |
-| Limb shell — 30 × 30 box, 2.4 wall | 2 260 mm³ | 267 N | 667 N |
 
-Nothing else is close: the shell would take five times as much and the clevis's
-two cheeks, acting as a pair, more still. The robot weighs 21 N and the lateral
-ground reaction in single support is perhaps 6 N, so the margin is about nine
-times printed one way and three and a half the other. Against a fatigue limit of
-roughly a third of ultimate the bad orientation is marginal and the good one is
-not, **which makes print orientation the reinforcement to spend first: it is
-worth 2.5× here and costs nothing.** If the coupon then says more is needed,
-8 mm of plate instead of 6 is another 1.8× for about 3 g a joint, growing
-outboard because the actuator blocks the inboard side.
+The robot weighs 20 N and the lateral ground reaction in single support is
+perhaps 6 N, so the margin is about nine times printed one way and three and a
+half the other. Against a fatigue limit of roughly a third of ultimate the bad
+orientation is marginal and the good one is not, **which makes print orientation
+the reinforcement to spend first: it is worth 2.5× here and costs nothing.** If
+the coupon then says more is needed, 8 mm of plate instead of 6 is another 1.8×
+for about 3 g a joint.
+
+**Stiffness is a separate question and it is where the waist flanges earn their
+keep.** A bare plate is sixty times softer sideways than the closed box it
+replaces — 540 mm⁴ against 33 894, which is 7.7 mm of sway at the hip in single
+support. The two 12 × 4 mm flanges take the waist to 9 468 mm⁴ and 0.44 mm for
+about 5 g a limb, and leave the sagittal section at 29 852 mm⁴, within twelve per
+cent of the box.
 
 ### Still open
 

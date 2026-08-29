@@ -311,4 +311,12 @@ sensorPads = appearance(
   metalness = 8,
 )
 
-export footAssembly = [sole, footShell, sensorPads]
+// The two hands. The robot is mirror-symmetric about its midline, so this part
+// exists left and right. `mirror3d` copies rather than transforms -- it leaves
+// the original standing in the scene -- so the source is hidden afterwards.
+// See docs/KCL_GOTCHAS.md.
+export footRight = [sole, footShell, sensorPads]
+
+footMirrorSource = clone(footRight)
+export footLeft = mirror3d(footMirrorSource, across = YZ)
+hide(footMirrorSource)

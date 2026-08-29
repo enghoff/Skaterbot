@@ -485,25 +485,35 @@ export fn rotorHub() {
   ])
 }
 
-// The web of the in-plane rotor end, used by the limbs. The limb's shell is
-// shifted
-// outboard until its outer wall lies in the output plane, so this is that wall
-// carried on down to meet outputDisc: one plate, no arm and no bridge. See
-// shellOffsetX in parameters.kcl for what that costs.
+// The stator plate: the flat limb's lower end, bolted straight to the
+// actuator's rear cover on the four-bolt Ø41 pattern. It replaces the two-cheek
+// clevis wherever the limb can lie in one plane, which is the knee and the
+// ankle. The hip roll and the hip pitch keep `statorClevis`, because the torso
+// and the hip carrier cannot put their structure in the joint's plane.
 //
-// It runs bridgeHeight past the top of the shell rather than butting against
-// it, so the two lap. Through that band the plate stands 3.6 mm proud of the
-// 2.4 mm wall on the inside, which is the gusset the thickness step needs.
-//
-// The weak axis is lateral: 6 mm of plate against 30 mm of depth. That is the
-// binding strength case for the whole limb -- see NOTES.md -- and it is why the
-// plate is as deep as the shell rather than as deep as the old arm.
-export fn rotorPlate() {
-  plateSketch = sketch(on = XZ) {
-    edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
-    edge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 32mm])
-    edge3 = line(start = [var 6mm, var 32mm], end = [var 0mm, var 32mm])
-    edge4 = line(start = [var 0mm, var 32mm], end = [var 0mm, var 0mm])
+// Drawn in the same frame as everything else here -- joint centre at the origin,
+// axis along X, actuator output towards +X -- so the plate sits behind the
+// motor at -X. A limb whose lower actuator is turned round spins it 180 degrees
+// about Z to bring it to +X, which is a true mirror here because every feature
+// is symmetric fore and aft except the connector flat, and where that flat
+// points is a mounting choice.
+export fn statorPlate() {
+  plateSketch = sketch(on = YZ) {
+    plateCircle = circle(start = [var 26mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([plateCircle.center, ORIGIN])
+    horizontal([plateCircle.center, plateCircle.start])
+    diameter(plateCircle) == statorPlateDiameter
+  }
+  plateRegion = region(segments = [plateSketch.plateCircle])
+  plateBlank = extrude(plateRegion, length = limbPlateThickness, symmetric = true)
+    |> translate(x = statorPlateCenterX, global = true)
+
+  // The connector relief, taken as a straight cut on the housing's own flat.
+  flatSketch = sketch(on = YZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+    edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
     coincident([edge1.start, ORIGIN])
     coincident([edge1.end, edge2.start])
     coincident([edge2.end, edge3.start])
@@ -513,22 +523,71 @@ export fn rotorPlate() {
     vertical(edge2)
     horizontal(edge3)
     vertical(edge4)
-    horizontalDistance([edge1.start, edge1.end]) == rotorHubThickness
-    verticalDistance([edge2.start, edge2.end]) == rotorEndHeight
+    horizontalDistance([edge1.start, edge1.end]) == statorPlateDiameter
+    verticalDistance([edge2.start, edge2.end]) == statorPlateDiameter
   }
-  plateRegion = region(segments = [plateSketch.edge1, plateSketch.edge2], intersectionIndex = -1, direction = CCW)
-  plateRaw = extrude(plateRegion, length = shellDepth, symmetric = true)
-    |> translate(x = rotorHubInnerX, z = -rotorEndHeight, global = true)
+  flatRegion = region(segments = [flatSketch.edge1, flatSketch.edge2], intersectionIndex = -1, direction = CCW)
+  flatCutter = extrude(flatRegion, length = limbPlateThickness + 4mm, symmetric = true)
+    |> translate(
+         x = statorPlateCenterX,
+         y = -(statorPlateFlatOffset + statorPlateDiameter),
+         z = -(statorPlateDiameter / 2),
+         global = true,
+       )
+
+  boreSketch = sketch(on = YZ) {
+    boreCircle = circle(start = [var 15.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boreCircle.center, ORIGIN])
+    horizontal([boreCircle.center, boreCircle.start])
+    diameter(boreCircle) == cheekLighteningDiameter
+  }
+  boreRegion = region(segments = [boreSketch.boreCircle])
+  boreCutter = extrude(boreRegion, length = limbPlateThickness + 4mm, symmetric = true)
+    |> translate(x = statorPlateCenterX, global = true)
+
+  plateBoltSketch = sketch(on = YZ) {
+    plateBoltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([plateBoltCircle.center, ORIGIN])
+    horizontal([
+      plateBoltCircle.center,
+      plateBoltCircle.start
+    ])
+    diameter(plateBoltCircle) == m3Clearance
+  }
+  plateBoltRegion = region(segments = [plateBoltSketch.plateBoltCircle])
+  plateBolt1 = extrude(plateBoltRegion, length = limbPlateThickness + 4mm, symmetric = true)
+    |> translate(
+         x = statorPlateCenterX,
+         y = rearBoltOffset,
+         z = rearBoltOffset,
+         global = true,
+       )
+  plateBolt2 = clone(plateBolt1)
+    |> translate(y = -rearBoltOffset * 2, global = true)
+  plateBolt3 = clone(plateBolt1)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+  plateBolt4 = clone(plateBolt2)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+
+  // Every cut on the plain disc, before anything else, as everywhere here.
+  plateFlatted = subtract(plateBlank, tools = [flatCutter])
+  plateBored = subtract(plateFlatted, tools = [boreCutter])
+  plateFinished = subtract(
+    plateBored,
+    tools = [
+      plateBolt1,
+      plateBolt2,
+      plateBolt3,
+      plateBolt4
+    ],
+  )
 
   hide(plateSketch)
+  hide(flatSketch)
+  hide(boreSketch)
+  hide(plateBoltSketch)
 
-  // Returned on its own rather than unioned with the disc. The plate is exactly
-  // rotorHubThickness and sits exactly where the disc does, so both of its
-  // faces are coplanar with the disc's and the engine refuses the union -- the
-  // old arm got away with it because only its outer face was shared. The limb
-  // places the two side by side, which is the interpenetrating-bodies fallback
-  // used for the foot frame, the hip carrier and the torso.
-  return plateRaw
+  return plateFinished
 }
 
 // The forked rotor -- drawn but not fitted; see parameters.kcl.

@@ -2,7 +2,7 @@
 
 A compact, approximately 380 mm, 8-DOF, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators.
 
-The structure is stressed printed shells: each limb is a closed box that carries the load itself, and the actuators are left exposed at the joints so they can cool.
+The structure is flat printed plates lying in the actuators' own planes, with the actuators sandwiched between them and left exposed so they can cool.
 
 The current baseline uses DAMIAO DM-J3507-2EC actuators and PA12-CF printed shells. The immediate engineering gate is a printed box coupon: the whole structural case rests on a calculated 73-fold stiffness gain that has not yet been measured.
 
@@ -82,16 +82,18 @@ along with its checksum and known caveats.
 - DOF: 8 (hip roll, hip pitch, knee pitch, ankle pitch per leg)
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
 - Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
-- Current mass, measured from the CAD: **2.147 kg**, which buys a sustained-load
-  knee limit of 42.4° and leaves 153 g of headroom. Ribbing is still wanted, but
-  it is no longer the only thing standing between the robot and its ceiling, and
-  it cannot be sized until the coupon is measured. `uv run tools/mass.py`
+- Current mass, measured from the CAD: **2.025 kg**, which buys a sustained-load
+  knee limit of 45.1° and leaves 275 g of headroom. `uv run tools/mass.py`
   re-measures it.
-- Joints: each limb carries a stator clevis at its lower end and, at its upper
-  end, a plate that bolts straight to the actuator's output — the shell is
-  shifted outboard so that plate is simply its outer wall, with no arm or bridge
-  reaching out to the motor. The limbs are therefore 10 mm off their own joint
-  axes, to the robot's right.
+- Limbs: each is a flat plate in one plane — a Ø52 disc bolted to one actuator's
+  rear cover, a Ø36 disc bolted to the next actuator's output, and a channel
+  waist between them. Nothing reaches around an actuator, so there is no clevis
+  and no far bearing at the knee or the ankle. This works because the knee
+  actuator is turned round; it assumes the actuator's own output bearing carries
+  the joint moment, which DAMIAO have not yet confirmed.
+- The two legs are mirrored about the midline. Both leg segments are 105 mm, so
+  the right thigh and the left shin are the same print: two limb parts, as
+  before, plus a left and a right foot and hip carrier.
 - Power: **tethered.** 24 V and CAN arrive on one umbilical from a bench supply;
   there is no pack on board. What the keel holds instead is a bulk capacitor
   bank, because the battery was also the bus's only sink for regeneration from

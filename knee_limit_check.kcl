@@ -1,13 +1,13 @@
 // Knee 110-degree limit review
 // Thigh held upright with the shin at the commissioning limit, so the shin's
-// rotor arm can be checked against the thigh's clevis and saddle.
+// plate can be checked against the thigh's. They lie in different planes
+// now, on opposite sides of the knee actuator, so nothing can touch.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
-import jointHardware from "hardware.kcl"
-import thighAssembly from "thigh.kcl"
-import shinAssembly from "shin.kcl"
+import thighRight from "thigh.kcl"
+import shinRight from "shin.kcl"
 
 kneeLimitAngle = 110deg
 shinLimitAngle = -kneeLimitAngle
@@ -16,17 +16,11 @@ lowerLinkCenterY = lowerLegLength / 2 * sin(shinLimitAngle)
 lowerLinkCenterZ = -lowerLegLength / 2 * cos(shinLimitAngle)
 
 limitMotor = actuatorAssembly
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-limitHardware = jointHardware()
-limitThigh = thighAssembly
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+limitThigh = thighRight
   |> translate(z = upperLinkCenterZ, global = true)
-limitShin = shinAssembly
+limitShin = shinRight
   |> rotate(axis = [1, 0, 0], angle = shinLimitAngle, global = true)
   |> translate(y = lowerLinkCenterY, z = lowerLinkCenterZ, global = true)
 
-export kneeLimitAssembly = [
-  limitMotor,
-  limitHardware,
-  limitThigh,
-  limitShin
-]
+export kneeLimitAssembly = [limitMotor, limitThigh, limitShin]

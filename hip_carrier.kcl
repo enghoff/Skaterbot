@@ -96,7 +96,11 @@ hide(connectorInnerSketch)
 // NOTES.md already records for the foot frame -- and the parts interpenetrate by
 // several millimetres, so any slicer that merges coincident shells prints this
 // as the single part it is. Verify that before printing.
-export hipCarrierAssembly = [
+// The two hands. The robot is mirror-symmetric about its midline, so this part
+// exists left and right. `mirror3d` copies rather than transforms -- it leaves
+// the original standing in the scene -- so the source is hidden afterwards.
+// See docs/KCL_GOTCHAS.md.
+export hipCarrierRight = [
   appearance(
     [connectorRaw, pitchJoint, rollJoint],
     color = printedOrange,
@@ -104,3 +108,7 @@ export hipCarrierAssembly = [
     metalness = 3,
   )
 ]
+
+hipCarrierMirrorSource = clone(hipCarrierRight)
+export hipCarrierLeft = mirror3d(hipCarrierMirrorSource, across = YZ)
+hide(hipCarrierMirrorSource)

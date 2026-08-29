@@ -23,26 +23,31 @@ density_unit = "kg/m3"
 # standalone, so a file must export only printed geometry for its figure to
 # mean anything: actuators, bearings and journals live in their own modules and
 # are counted as bought items below.
+#
+# Since the robot became mirror-symmetric the four leg files each build both
+# hands, so their count is 1 and the measured figure is the pair. The two limb
+# files still describe only two distinct prints between them: both leg segments
+# are 105 mm, so the right thigh and the left shin are the same part.
 
 [[printed]]
 file = "thigh.kcl"
-label = "Thigh"
-count = 2
+label = "Thighs, the pair"
+count = 1
 
 [[printed]]
 file = "shin.kcl"
-label = "Shin"
-count = 2
+label = "Shins, the pair"
+count = 1
 
 [[printed]]
 file = "hip_carrier.kcl"
-label = "Hip carrier"
-count = 2
+label = "Hip carriers, the pair"
+count = 1
 
 [[printed]]
 file = "foot.kcl"
-label = "Foot — tray, sole, pads"
-count = 2
+label = "Feet, the pair — tray, sole, pads"
+count = 1
 
 [[printed]]
 file = "torso.kcl"
@@ -60,7 +65,7 @@ note = "DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, ~150
 [[fixed]]
 label = "Bearing, journal, carrier"
 each_g = 16.3
-count = 8
+count = 4
 note = """6800-2RS, Ø10 journal and the flanged metal carrier from hardware.kcl. \
 Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
 per-joint tally."""

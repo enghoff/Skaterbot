@@ -7,9 +7,9 @@
 //
 // knee = 2 * asin(0.8 / (m * g * upperLegLength))
 //
-// which at 2 147 g comes to 42.4 degrees. Both legs take the same angles, the
+// which at 2 025 g comes to 45.1 degrees. Both legs take the same angles, the
 // hip sits directly above the ankle and both feet stay flat, so what the render
-// shows is the whole of the robot's static squat -- about 14 mm of drop out of
+// shows is the whole of the robot's static squat -- about 16 mm of drop out of
 // a 210 mm leg. Anything deeper is a peak-torque move, not a posture it can be
 // left in.
 //
@@ -20,18 +20,18 @@
 import * from "parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
-import thighAssembly from "thigh.kcl"
-import shinAssembly from "shin.kcl"
-import hipCarrierAssembly from "hip_carrier.kcl"
-import footAssembly from "foot.kcl"
+import thighRight, thighLeft from "thigh.kcl"
+import shinRight, shinLeft from "shin.kcl"
+import hipCarrierRight, hipCarrierLeft from "hip_carrier.kcl"
+import footRight, footLeft from "foot.kcl"
 import torsoAssembly from "torso.kcl"
 
-// 2 * asin(0.8 Nm / (2.147 kg * 9.81 m/s2 * 0.105 m)). Recompute this whenever
+// 2 * asin(0.8 Nm / (2.025 kg * 9.81 m/s2 * 0.105 m)). Recompute this whenever
 // the mass budget moves: 39.6 deg with the battery, 42.0 deg once the robot
-// went tethered, 39.8 deg when the forked rotor was added, 40.1 deg after the
-// bridge slots, and 42.4 deg once the fork came off and the limbs moved their
-// structure into the output plane.
-sustainedKneeAngle = 42.4deg
+// went tethered, 39.8 deg with the forked rotor, 40.1 deg after the bridge
+// slots, 42.4 deg once the fork came off, and 45.1 deg now the limbs are flat
+// plates in the actuators' own planes.
+sustainedKneeAngle = 45.1deg
 // Symmetric: the thigh leans forward by half the knee angle and the shin leans
 // back by the same, which puts the hip axis directly over the ankle. The ankle
 // then takes that half angle back out again, so both feet stay flat.
@@ -82,11 +82,6 @@ actuatorCopy6 = clone(actuatorAssembly)
 actuatorCopy7 = clone(actuatorAssembly)
 actuatorCopy8 = clone(actuatorAssembly)
 
-rightHipCarrierSource = clone(hipCarrierAssembly)
-rightThighSource = clone(thighAssembly)
-rightShinSource = clone(shinAssembly)
-rightFootSource = clone(footAssembly)
-
 // ---- actuators -------------------------------------------------------------
 
 
@@ -98,7 +93,7 @@ rightHipRollMotor = actuatorCopy2
   |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
 
 leftHipPitchMotor = actuatorCopy3
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
 rightHipPitchMotor = actuatorCopy4
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
@@ -113,7 +108,7 @@ leftKneeMotor = actuatorCopy5
        global = true,
      )
 rightKneeMotor = actuatorCopy6
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = hipCenterX,
        y = rightKneeY,
@@ -122,7 +117,7 @@ rightKneeMotor = actuatorCopy6
      )
 
 leftAnkleMotor = actuatorCopy7
-  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = -hipCenterX,
        y = leftAnkleY,
@@ -149,53 +144,20 @@ rightHipRollHardware = jointHardware()
   |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
 
 leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
   |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
 rightHipPitchHardware = jointHardware()
   |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
 
-leftKneeHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
-  |> translate(
-       x = -hipCenterX,
-       y = leftKneeY,
-       z = leftKneeZ,
-       global = true,
-     )
-rightKneeHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
-  |> translate(
-       x = hipCenterX,
-       y = rightKneeY,
-       z = rightKneeZ,
-       global = true,
-     )
-
-leftAnkleHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
-  |> translate(
-       x = -hipCenterX,
-       y = leftAnkleY,
-       z = leftAnkleZ,
-       global = true,
-     )
-rightAnkleHardware = jointHardware()
-  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
-  |> translate(
-       x = hipCenterX,
-       y = rightAnkleY,
-       z = rightAnkleZ,
-       global = true,
-     )
-
 // ---- printed structure -----------------------------------------------------
 
 
-leftHipCarrier = hipCarrierAssembly
+leftHipCarrier = hipCarrierLeft
   |> translate(x = -hipCenterX, z = poseCarrierCenterZ, global = true)
-rightHipCarrier = rightHipCarrierSource
+rightHipCarrier = hipCarrierRight
   |> translate(x = hipCenterX, z = poseCarrierCenterZ, global = true)
 
-leftThigh = thighAssembly
+leftThigh = thighLeft
   |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -203,7 +165,7 @@ leftThigh = thighAssembly
        z = leftThighCenterZ,
        global = true,
      )
-rightThigh = rightThighSource
+rightThigh = thighRight
   |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -212,7 +174,7 @@ rightThigh = rightThighSource
        global = true,
      )
 
-leftShin = shinAssembly
+leftShin = shinLeft
   |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -220,7 +182,7 @@ leftShin = shinAssembly
        z = leftShinCenterZ,
        global = true,
      )
-rightShin = rightShinSource
+rightShin = shinRight
   |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -229,7 +191,7 @@ rightShin = rightShinSource
        global = true,
      )
 
-leftFoot = footAssembly
+leftFoot = footLeft
   |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
   |> translate(
        x = -hipCenterX,
@@ -237,7 +199,7 @@ leftFoot = footAssembly
        z = leftAnkleZ,
        global = true,
      )
-rightFoot = rightFootSource
+rightFoot = footRight
   |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
   |> translate(
        x = hipCenterX,
@@ -262,10 +224,6 @@ export torqueLimitAssembly = [
   rightHipRollHardware,
   leftHipPitchHardware,
   rightHipPitchHardware,
-  leftKneeHardware,
-  rightKneeHardware,
-  leftAnkleHardware,
-  rightAnkleHardware,
   leftHipCarrier,
   rightHipCarrier,
   leftThigh,
