@@ -1019,3 +1019,183 @@ body's own centroid and leaves it where it started.
 Spinning a part 180° about Z is a true mirror **only if the part is symmetric
 fore and aft**, which the limb is not: the stator plate's connector relief sits
 on one side. So the limbs are mirrored properly rather than spun.
+
+
+## Four bolt holes that were never there — August 29, 2026
+
+Three defects, all of the same kind: a body drawn in another body's plane, and a
+bolt pattern underneath it.
+
+**The knee and ankle bolts.** The flat limb's waist ran symmetrically to 38.5 mm
+either side of the limb centre. At the stator end that put its corner 0.7 mm from
+the two rear bolts nearest the waist, filling 46 % of each hole and leaving a
+1.2 mm crescent no screw could pass. The waist is now derived from the bolt
+circle at that end and stops at 34.6 mm, which leaves 1.7 mm of wall to each hole
+and 0.4 mm round the cap head, and costs nothing: the Ø52 plate is still 38 mm
+wide there, so the section never narrows. The rotor end is unchanged at 38.5 mm,
+because it only just reaches the Ø36 disc as it is and the nearest counterbore
+clears it by 0.6 mm. The waist is therefore no longer symmetric about the limb
+centre, and each end is now set by the pattern it has to miss.
+
+**The stator plate's bore.** It inherited the clevis's Ø30.2 lightening hole. On
+a 3 mm cheek that is 0.6 g for nothing; on a 6 mm plate it left 14.8 mm of the
+available 45 mm of width at the joint axis, and 266 mm⁴ out of plane against the
+540 mm⁴ of the bare waist this file already calls the weakest printed thing on
+the robot. It is filled: 810 mm⁴ for 4.6 g a plate. Nothing needed it — the rear
+cover is a flat static face the plate lands on, and the knee and ankle have had
+no far bearing since the clevis went. The bore stays on the clevis, where it is
+cheap and is still the way a carrier could be bonded in.
+
+**The rotor hub's output pattern, which is the serious one.** `rotorHub` unioned
+its arm onto the output disc after the disc had been drilled. The arm lies in the
+disc's own plane and ran up to the joint centre, so it filled four of the six
+M3 holes: the pair below the axis buried outright, the pair on it half filled
+with their counterbores ruined. Two usable bolts out of six, side by side on a
+12 mm chord, on the ankle and hip roll joints — the ones carrying the actuator's
+whole output torque. It had been like that through several rebuilds. Nothing in
+the repository could see it: mock execution does not evaluate booleans, the
+engine built it without complaint, and the mass was plausible. It was spotted by
+eye in Design Studio.
+
+Every way of drilling through the overlap was refused, and one was worse than
+refused — an oversized relief in the arm was *accepted* and came back with five
+holes open and one filled. Those are recorded in `KCL_GOTCHAS.md`. What works is
+not to overlap: the arm now seats below the bolt circle, its top corners just
+inside the disc's edge at 52°, 14.2 mm below the axis and 0.8 mm clear of the
+counterbores. Its top face has to sit wholly inside the disc or the union fails
+outright, and that is what sets its width — 21.2 mm where the disc is 22.2. The
+arm gives up 4 mm of width for six bolts instead of two, which is not a close
+call, but it is a real reduction in a load-carrying member and is worth
+re-checking if the ankle is ever found wanting.
+
+**The hip connector relief.** Unrelated, found in the same pass. The limb plate
+had been truncated on the connector chord at 19 mm since it was drawn; the clevis
+never was, so both hip rolls and both hip pitches had a full Ø52 cheek sitting
+0.3 mm off the rear face and over the connectors. The cheek now takes the same
+chord. The plug projection behind it, 8 mm, is an **estimate**, not a
+measurement: the manual gives the connectors as an SH1.0 3-pin for supply and CAN
+and an SH1.0 8-pin for debug serial, both on 200 mm flying leads, and JST SH
+mated housings stand about 3 mm off their header with 28 AWG needing roughly
+5 mm to turn. Measure it on the first actuator that arrives.
+
+One thing that follows from the relief and is not settled: `torso.kcl` places
+both hip roll clevises with the same quarter turn rather than as a mirrored pair,
+so both reliefs face the robot's right — cables exit outboard on the right leg
+and inboard, into the torso, on the left. The knees and ankles all face forward
+and the hip pitches all face aft, which are both symmetric.
+
+| | Before | After |
+|---|---:|---:|
+| Thighs, the pair | 64.2 g | **71.8 g** |
+| Shins, the pair | 64.2 g | **71.8 g** |
+| Hip carriers, the pair | 74.4 g | **71.2 g** |
+| Feet, the pair | 149.3 g | **147.2 g** |
+| Torso | 187.3 g | **186.2 g** |
+| Whole robot | 2 024.6 g | **2 033.4 g** |
+| Headroom under 2 300 g | 275.4 g | **266.6 g** |
+
+
+## The hips get their mirror, and the limbs get their ribs back — August 29, 2026
+
+Four changes, all of them things that were spotted by looking at the model
+rather than by anything the tooling reports.
+
+**The left hip roll was never mirrored.** `torso.kcl` gave both hip roll
+clevises the same quarter turn about Z, which is a translation of the right one
+rather than a reflection, so both rear cheeks carried their connector relief on
+the same side of the robot: outboard on the right leg, and inboard, into the
+torso, on the left. That is the loose end the previous entry left open. The left
+clevis is now `mirror3d` of the right, which is the same thing as installing the
+left actuator spun 180 degrees about its own axis so its connector flat faces
+away from the keel.
+
+No rotation can do this. Half a turn about the roll axis takes the saddle with
+it and puts it underneath; the quarter turn the other way swaps the front and
+rear cheeks end for end and would drag the bearing, the carrier's hub and the
+actuator round with it. Reflection leaves Y alone, so the front cheek and its
+bearing stay forward on both legs and the hip carriers are untouched.
+
+**The keel only ever touched the hip cheeks along a line.** The keel is 44 mm
+wide precisely so that its walls land on the Ø52 cheeks, but a flat wall meets a
+circle at a tangent and nothing more — a 3 mm line of contact. Above and below
+that tangent the cheek's arc curves away and left an open curved triangle, one
+under the shell floor and one at the torso's bottom edge, on both cheeks of both
+hips. Four of them, and the only path from a hip into the keel ran up through the
+saddle and along the shell floor instead.
+
+Each is now closed by a web in its own cheek's plane and of the cheek's own
+3 mm, from the keel's inner wall face out to the joint axis, with its outer edge
+a semicircle at the actuator keep-out radius. That radius does two things at
+once: it laps 2 mm over the cheek, which is enough for a slicer to merge the two
+shells, and it keeps 1.8 mm away from the four M3 rear bolt holes on their Ø41
+circle. Cut as a plain rectangle minus a cylinder, with the cylinder crossing
+the rectangle's outboard edge and clear of the other three — a cutter tangent to
+a face is the case this engine refuses.
+
+Verified both ways the previous entry asks for, because the web lives in the
+cheek's own plane and would fill the bolt pattern back in if the cut had failed.
+The torso rendered on its own, straight down the joint axis, shows the Ø30.2
+bores open and all four bolt holes standing; and the torso gained 7.6 g against
+7.64 g predicted for the web with its semicircle cut, where a web without it
+would have been 19.1 g.
+
+**The rotor arm's fillet was inside the motor.** The corner it fills is between
+the arm's inner face, which lies in the actuator's own end plane, and the top of
+the bridge, which sits at `jointKeepOut`. A fillet there can only grow into the
+gap between those two, and that gap is the one millimetre by which `jointKeepOut`
+clears the Ø46 body. At 4 mm it climbed three millimetres past that and cut
+about half a millimetre into the bottom rim of the housing over roughly 13 mm of
+its width, on both hip rolls and both ankles. It is now 1 mm, which is the whole
+of the clearance there is.
+
+The 4 mm was not arbitrary — it closed exactly the 3.95 mm of bridge that
+cantilevers unsupported between the hip carrier's connector wall and the arm
+root — it was simply sized against the wrong constraint. That span is now left
+open, because there is nowhere to put material that is not inside the actuator.
+
+**The limb flanges move outboard, and grow along the limb instead of across
+it.** They used to point inboard, into the gap between the plate and the
+actuator, which is the one piece of space on the limb that anything else has to
+share: the joint hardware and the actuator's own leads both live there. They now
+stand on the plate's outboard face, where the only thing they can reach is the
+hip carrier's front cheek. Reach drops from 12 mm to 8.4, and the length goes
+from a 50 mm band in the middle of the limb to the whole 60 mm span between the
+two clearances, with both ends running out into the plate on an arc of the
+flange's own reach rather than stopping in a square shoulder.
+
+The section pays for the narrower flange. Sideways, the channel was about
+6 800 mm⁴ with a 12 mm flange inboard and is about 3 500 with an 8.4 mm one
+outboard, because the shallower flange sits nearer the centroid as well as being
+smaller. Covering the whole span rather than its middle half wins a good deal of
+that back, but not all of it, so sway at the hip should be expected to be
+somewhat worse than the millimetre the old flange bought. Arithmetic, not
+measurement, and still never tested on a coupon.
+
+What stops the flange at the rotor end is the hip carrier's front cheek: a Ø52
+disc on the hip pitch axis whose inner face is 1 mm outboard of the limb plate.
+The flange stops a cheek radius and a millimetre short of that joint centre. It
+costs the shin, which has no cheek at its knee end and could have run on to the
+waist's own end at 38.5 mm. That is deliberate — the right thigh and the left
+shin are the same print, so giving the shin the longer flange would make four
+distinct limb parts out of two. Say so if the stiffness is wanted more than the
+part count.
+
+Two KCL lessons came out of drawing that profile, both now in `KCL_GOTCHAS.md`:
+`arc` always sweeps counter-clockwise from start to end, and `region` needs its
+two segments to touch and its `direction` to match the way the outline is
+written. Getting either wrong builds a solid without complaint — the first
+attempt was a dumbbell and the second was empty.
+
+| | Before | After |
+|---|---:|---:|
+| Thighs, the pair | 71.8 g | **68.3 g** |
+| Shins, the pair | 71.8 g | **68.3 g** |
+| Hip carriers, the pair | 71.2 g | **70.5 g** |
+| Feet, the pair | 147.2 g | **146.4 g** |
+| Torso | 186.2 g | **193.8 g** |
+| Whole robot | 2 033.4 g | **2 032.6 g** |
+| Headroom under 2 300 g | 266.6 g | **267.4 g** |
+
+The torso's 7.6 g is the four cheek webs, and it is measured with the overlaps
+counted twice as `mass.py` always does: the material that is actually new, the
+part outside the cheeks and the keel, is about 3 g.

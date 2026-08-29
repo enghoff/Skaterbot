@@ -17,6 +17,34 @@ execution proves the KCL is valid; it does not prove the part exists.
 So: mock-execute while iterating, engine-execute before believing anything about
 geometry.
 
+## The one that is worse than a refusal
+
+**A boolean the engine accepts can still have built the wrong solid, and nothing
+will tell you.** The rotor hub unioned its arm onto the output disc *after* the
+disc had been drilled. The arm lies in the disc's own plane, so it filled four of
+the six M3 holes straight back in — two buried outright, two half filled with
+their counterbores ruined — leaving two usable bolts out of six on the joint that
+carries the actuator's whole output torque. `tools/check.py` was clean. The
+engine executed it without a murmur. `tools/mass.py` printed a number. It
+survived several rebuilds that way and was found by eye in Design Studio.
+
+A refusal is the good case: it stops you. This does not.
+
+**So any feature that lives where two bodies overlap has to be looked at, not
+assumed.** If you cut a hole, a pocket or a relief into a body that something
+else is unioned to or interpenetrates, execution is not evidence. Get one of
+these two before believing it:
+
+- **See through it.** Render the part *on its own*, looking straight down the
+  feature's axis, so empty background shows through. On its own matters: three
+  renders of this hub were read wrongly because other structure sat behind the
+  holes and made open ones look closed. `renders/` is untracked, so a one-line
+  throwaway model that exports just the part is the cheapest way to isolate it.
+- **Or measure across the change.** Take the volume before and after and check
+  the difference is the size *and the sign* of the feature you meant to make.
+  Wrong size or wrong sign means the engine did something else, whatever the
+  picture looks like.
+
 ## Geometry the engine refuses
 
 - **Blind pockets cut from a large combined solid.** Rejected. Make every cut on
@@ -44,6 +72,23 @@ geometry.
   family as the fillet cutter that was refused for being tangent to two faces of
   a block. The workaround is either to make one body wider than the other, or to
   leave them as interpenetrating bodies, which is what `limb.kcl` does.
+- **Any feature cut through the plane where two bodies join.** The rotor hub's
+  arm is coplanar with its output disc and used to cross the bolt circle, and
+  every way of drilling that pattern was refused but one. Cut the pattern into
+  both bodies and then union: refused, because the two then meet on the walls of
+  six coincident cylinders. Union first and drill the result: `cannot handle this
+  3D subtraction yet` — with the holes pre-cut or not, and with the bridge in the
+  union or not. Cut an *oversized* relief into the crossing body so that no wall
+  coincides and the disc's own material closes it back down: the union is
+  **accepted**, and returns five holes open and one filled. That is the worst
+  outcome of the three, because it looks like it worked. What works is not to
+  have the overlap at all — the arm now stops below the bolt circle.
+- **A union where one body's end face is part buried and part proud.** Rejected
+  as `cannot handle this 3D union yet`. Truncating the rotor arm below the bolt
+  circle left its top corners just outside the disc's edge while the middle of
+  the same face was inside, and the union failed; narrowing the arm until the
+  whole face sat inside the disc fixed it. Wholly inside is fine — the arm did
+  that for years — and so is wholly outside. Half and half is not.
 - **A cutter tangent to two faces of a block.** Rejected. A fillet drawn as a
   block minus a cylinder hits this every time; draw the profile with an `arc` in
   it instead and no boolean is needed at all.
@@ -54,6 +99,27 @@ geometry.
   each as the single part it is — but that has to be verified in the slicer
   before printing, and it means the exported STL is not manufacturing-ready on
   its own.
+
+## Profiles that build the wrong shape
+
+Both of these produce a solid, silently, so `tools/check.py` and the engine are
+both happy and only a render shows the mistake.
+
+- **`arc(start, end, center)` always sweeps counter-clockwise from start to
+  end.** Write a quarter arc the other way round and you get the other three
+  quarters of the same circle. A flange with a blend at each end, written
+  backwards, came back as a dumbbell: a disc at each end joined by a thin bar.
+  Check the sweep by taking the angle of `start` about `center`, the angle of
+  `end`, and reading counter-clockwise between them. It costs nothing to put the
+  arc in the sketch "backwards" relative to the way the outline is traversed --
+  `coincident` is what wires the loop together, not declaration order -- so write
+  each arc whichever way makes its counter-clockwise sweep the one you want.
+- **`region(segments = [a, b])` traces `a` from its start to where it meets `b`,
+  then turns `direction` at every corner until it comes back.** So the two
+  segments have to *touch*, and `direction` has to be the way the outline is
+  actually written: `CCW` for a counter-clockwise loop, `CW` for a clockwise one.
+  Give it two segments on opposite sides of the profile and it still returns a
+  region -- some other region -- and the part comes out empty or wrong.
 
 ## Mirroring
 

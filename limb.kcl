@@ -19,10 +19,16 @@
 // right shin and the left thigh. Two distinct limb parts, as before.
 //
 // The waist is a channel rather than a strip. A bare plate is sixty times
-// softer sideways than the closed box this replaces, and the two flanges take
-// that back to under a millimetre of sway for about 5 g. They point inboard,
-// towards the joint axis, into space no actuator reaches: each body stops
-// 29.5 mm from its own joint centre and the flanges stop at 25.
+// softer sideways than the closed box this replaces, and the two flanges are
+// what take that back. They stand on the plate's outboard face and point away
+// from the joint axis, into open air. They used to point inboard, into the gap
+// between the plate and the actuator, which is the one piece of space on the
+// limb that anything else has to share. Outboard the only thing they can reach
+// is the hip carrier's front cheek, and they stop clear of it.
+//
+// The waist is not symmetric about the limb centre. Each end runs as far into
+// its disc as that disc's bolt pattern allows, and the two patterns are not the
+// same distance out, so the two ends are not either.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
@@ -30,6 +36,18 @@ import outputDisc, statorPlate from "joint.kcl"
 
 export fn limbAssembly(@limbLength) {
   jointZ = limbLength / 2
+
+  // The waist reaches into both discs so the three bodies merge, but it cannot
+  // reach the same distance at both ends. At the rotor end it stops where
+  // parameters.kcl puts it, one counterbore clear of the Ø24 output circle. At
+  // the stator end the Ø41 rear bolts are the constraint, and a waist symmetric
+  // about the limb centre overshot them: its corner landed 0.7 mm from the two
+  // bolt centres nearest the waist and filled 46 % of each hole, leaving a
+  // 1.2 mm crescent no screw could pass. It now stops a cap head short of them,
+  // which costs nothing structurally -- the plate is still 38 mm wide there, so
+  // the section never narrows -- and leaves 8 mm of engagement into the disc.
+  waistUpperZ = limbWaistUpperZ
+  waistLowerZ = -(jointZ - actuatorRearBoltOffset - m3CapHeadStandoff)
 
   waistSketch = sketch(on = XY) {
     edge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
@@ -49,29 +67,69 @@ export fn limbAssembly(@limbLength) {
     verticalDistance([edge2.start, edge2.end]) == limbWaistDepth
   }
   waistRegion = region(segments = [waistSketch.edge1, waistSketch.edge2], intersectionIndex = -1, direction = CCW)
-  waistPlate = extrude(waistRegion, length = limbWaistHalfLength * 2, symmetric = true)
-    |> translate(x = rotorHubInnerX, y = -(limbWaistDepth / 2), global = true)
+  waistPlate = extrude(waistRegion, length = waistUpperZ - waistLowerZ)
+    |> translate(
+         x = rotorHubInnerX,
+         y = -(limbWaistDepth / 2),
+         z = waistLowerZ,
+         global = true,
+       )
 
-  flangeSketch = sketch(on = XY) {
-    edge1 = line(start = [var 0mm, var 0mm], end = [var 12mm, var 0mm])
-    edge2 = line(start = [var 12mm, var 0mm], end = [var 12mm, var 4mm])
-    edge3 = line(start = [var 12mm, var 4mm], end = [var 0mm, var 4mm])
-    edge4 = line(start = [var 0mm, var 4mm], end = [var 0mm, var 0mm])
-    coincident([edge1.start, ORIGIN])
-    coincident([edge1.end, edge2.start])
-    coincident([edge2.end, edge3.start])
-    coincident([edge3.end, edge4.start])
-    coincident([edge4.end, edge1.start])
-    horizontal(edge1)
-    vertical(edge2)
-    horizontal(edge3)
-    vertical(edge4)
-    horizontalDistance([edge1.start, edge1.end]) == limbFlangeReach
-    verticalDistance([edge2.start, edge2.end]) == limbFlangeThickness
+  // The flanges sit on the plate's outboard face and run the length of the
+  // waist, not just its middle. The lower end stops where the waist does, which
+  // is already a cap head clear of the stator plate's rear bolts. The upper end
+  // stops short of that: it is the rotor end, and on the thigh the hip carrier's
+  // front cheek stands 1 mm outboard of the plate there, so the flange keeps a
+  // cheek radius and a millimetre away from the joint centre.
+  //
+  // Both ends run out into the plate on an arc of the flange's own reach rather
+  // than stopping in a square shoulder, which is the whole of the profile's
+  // curvature: two quarter arcs, tangent to the outer face at one end and to the
+  // plate at the other.
+  flangeBottomZ = waistLowerZ
+  flangeTopZ = jointZ - limbFlangeRotorClearance
+  flangeHeight = flangeTopZ - flangeBottomZ
+
+  // Two things about how this profile is written, both learned the hard way.
+  // `arc` always sweeps counter-clockwise from its start to its end, so an arc
+  // written the other way round comes back as three quarters of a circle rather
+  // than a quarter, and the flange builds without complaint as a dumbbell -- a
+  // disc at each end joined by a thin bar. And `region` traces its first segment
+  // to where it meets its second and then turns that way at every corner, so the
+  // two segments it is given have to touch and `direction` has to be the way the
+  // outline is actually written. This one is written clockwise.
+  flangeSketch = sketch(on = XZ) {
+    rootFace = line(start = [var 0mm, var 0mm], end = [var 0mm, var 60.1mm])
+    topBlend = arc(start = [var 0mm, var 60.1mm], end = [var 8.4mm, var 51.7mm], center = [var 8.4mm, var 60.1mm])
+    outerFace = line(start = [var 8.4mm, var 51.7mm], end = [var 8.4mm, var 8.4mm])
+    bottomBlend = arc(start = [var 8.4mm, var 8.4mm], end = [var 0mm, var 0mm], center = [var 8.4mm, var 0mm])
+    coincident([rootFace.start, ORIGIN])
+    coincident([rootFace.end, topBlend.start])
+    coincident([topBlend.end, outerFace.start])
+    coincident([outerFace.end, bottomBlend.start])
+    coincident([bottomBlend.end, rootFace.start])
+    vertical(rootFace)
+    vertical(outerFace)
+    verticalDistance([rootFace.start, rootFace.end]) == flangeHeight
+    horizontalDistance([topBlend.start, topBlend.end]) == limbFlangeReach
+    verticalDistance([topBlend.end, topBlend.start]) == limbFlangeBlendRadius
+    horizontalDistance([bottomBlend.end, bottomBlend.start]) == limbFlangeReach
+    verticalDistance([bottomBlend.end, bottomBlend.start]) == limbFlangeBlendRadius
   }
-  flangeRegion = region(segments = [flangeSketch.edge1, flangeSketch.edge2], intersectionIndex = -1, direction = CCW)
-  flangeFront = extrude(flangeRegion, length = limbFlangeHalfLength * 2, symmetric = true)
-    |> translate(x = rotorHubInnerX - limbFlangeReach, y = limbWaistDepth / 2 - limbFlangeThickness, global = true)
+  flangeRegion = region(
+    segments = [
+      flangeSketch.rootFace,
+      flangeSketch.topBlend
+    ],
+    direction = CW,
+  )
+  flangeFront = extrude(flangeRegion, length = limbFlangeThickness, symmetric = true)
+    |> translate(
+         x = rotorHubInnerX + limbPlateThickness,
+         y = limbWaistDepth / 2 - (limbFlangeThickness / 2),
+         z = flangeBottomZ,
+         global = true,
+       )
   flangeRear = clone(flangeFront)
     |> translate(y = -(limbWaistDepth - limbFlangeThickness), global = true)
 

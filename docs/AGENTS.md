@@ -128,3 +128,10 @@ and state what risk is left open.
 
 Prefer small iterative steps over large speculative redesigns. Never silently
 alter a major parameter.
+
+"Regenerate and inspect the geometry" means inspect the **feature**, not the
+part. Where a hole or a pocket sits in a plane that another body is unioned to,
+the engine will fill it back in without complaining, and a clean `/check`, a
+successful engine run and a plausible mass all report nothing. See
+[`KCL_GOTCHAS.md`](KCL_GOTCHAS.md) — render the part alone down the feature's
+axis, or measure the volume across the change, and say which you did.

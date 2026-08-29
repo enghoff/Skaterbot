@@ -43,6 +43,27 @@ refuse passes it silently. [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) lists
 every refusal this project has already hit — read it before designing a pocket,
 a hole or a union, and add to it when you find a new one.
 
+## A boolean that succeeds is not a boolean that worked
+
+Worse than a refusal is a boolean the engine **accepts** having built the wrong
+solid. Union a body onto a disc after the disc is drilled and the holes are
+filled back in, and nothing reports it: `/check` is clean, the engine executes,
+`/mass` prints a number. The rotor hub carried four filled bolt holes that way
+through several rebuilds, on the joint that takes the actuator's full torque.
+
+So for any feature that lives where two bodies overlap — a hole, a pocket, a
+relief in a plane something else is unioned to or interpenetrates — **execution
+is not evidence**. Confirm the feature exists, by one of:
+
+- rendering the part **on its own**, looking straight down the feature's axis so
+  empty background shows through it. Not in its assembly: structure behind a hole
+  makes an open one look closed, which has already wasted a session's renders.
+- or measuring volume across the change and checking the difference is the size
+  and the sign of the feature you intended.
+
+Say which of the two you did when reporting the change. "It executed" is not an
+answer, and neither is "it looks right".
+
 ## Tools in this repository
 
 Three commands, all in [`tools/`](tools/) and run with `uv run`, which fetches

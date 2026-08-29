@@ -32,14 +32,28 @@ export actuatorRearBoltCount = 4
 export actuatorRearBoltPhase = 45deg
 export actuatorRearBoltDepth = 4mm
 export actuatorRearCoverThickness = 3.2mm
+// The same four bolts as Cartesian offsets. At 45 degrees on Ø41 both offsets
+// are the same number, so every printed part that has to keep clear of the rear
+// pattern measures against this one value rather than recomputing the trig.
+export actuatorRearBoltOffset = actuatorRearBoltCircle / 2 * cos(actuatorRearBoltPhase)
 
 // The connector flat: a chord 19.0 mm from the axis, about 25.9 mm wide,
 // subtending about 69°. The connectors sit at the rear end against it. An
 // earlier actuatorConnectorStation = 31.7mm was wrong -- it was plate 3505_00's
 // placement origin misread as a connector -- and has been removed. How far a
-// mated plug projects past the rear face is still unmeasured.
+// mated plug stands off the flat is estimated below rather than measured.
 export actuatorConnectorFlatOffset = 19mm
 export actuatorConnectorFlatArc = 69deg
+// How far a mated plug stands off the flat. THIS IS AN ESTIMATE, not a
+// measurement: no actuator has been in hand to measure. What the manual does
+// give is which connectors they are -- the supply and CAN come in on an SH1.0
+// 3-pin and the debug serial on an SH1.0 8-pin, both 200 mm flying leads. JST
+// SH is a 1.0 mm pitch series whose mated housing stands about 3 mm off its
+// header, and 28 AWG lead needs roughly 5 mm to leave and turn, so 8 mm is the
+// working figure. It puts the keep-out at r 27, outside the Ø52 cheek, which is
+// why the cheek is truncated on the flat rather than trimmed to it. Measure
+// this on the first actuator that arrives and correct it here.
+export actuatorConnectorPlugProjection = 8mm
 export hipSpacing = 96mm
 export hipCenterX = hipSpacing / 2
 export ankleAxisHeight = 44mm
@@ -169,19 +183,55 @@ export statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
 // 14.5 mm in each axis and survive the cut with room to spare.
 export statorPlateFlatOffset = actuatorConnectorFlatOffset
 
-// The waist between the two discs. Its flanges point back towards the joint
-// axis, into space that is empty: each actuator body reaches only 29.5 mm from
-// its own joint centre and the flanges stop at 25.
+// The waist between the two discs. Its flanges stand on the plate's outboard
+// face, pointing away from the joint axis into open air. They used to point
+// inboard, into the gap between the plate and the actuator, which is the only
+// space on the limb anything else has to share -- the joint hardware and the
+// actuator's own leads both live there. Outboard, the only thing they can meet
+// is the hip carrier's front cheek, and limbFlangeRotorClearance keeps them off
+// it.
 export limbWaistDepth = shellDepth
-export limbWaistHalfLength = 38.5mm
-export limbFlangeReach = 12mm
-export limbFlangeThickness = 4mm
-export limbFlangeHalfLength = 25mm
+// How far the waist reaches past the limb centre towards the rotor end. It is
+// not symmetric: the far end is derived in limb.kcl from the rear bolt circle,
+// because a waist this long would sit on the bolts. This end is set by the two
+// features that squeeze it -- it must reach the Ø36 disc, whose lower edge is
+// 18 mm below the joint centre, without touching the nearest output counterbore,
+// whose edge is 13.4 mm below it. 38.5 mm buys 4 mm of engagement and leaves
+// 0.6 mm of counterbore clearance, which is the whole of the available window.
+export limbWaistUpperZ = 38.5mm
 // A bare plate is sixty times softer sideways than the closed box it replaces --
 // roughly 8 mm of sway at the hip in single support against 0.12 mm. The two
-// flanges take that back to under a millimetre for about 5 g a limb, which is
-// the whole reason the waist is a channel and not a strip. They also leave the
-// sagittal section within a quarter of the old box's.
+// flanges are what take that back, which is the whole reason the waist is a
+// channel and not a strip. They also leave the sagittal section within a
+// quarter of the old box's.
+//
+// The reach was 12 mm over a 50 mm length, centred on the limb. It is now 8.4 --
+// seven tenths of that, asked for to slim the limb's silhouette -- over the
+// whole span between the two clearances below, which is 60 mm. The section pays
+// for it: a 12 mm flange inboard put the channel at about 6 800 mm^4 sideways
+// and an 8.4 mm one outboard puts it at about 3 500, because the shallower
+// flange sits nearer the centroid as well as being smaller. Most of that is won
+// back by covering the span rather than its middle half, but not all of it, so
+// sideways sway at the hip is expected to be somewhat worse than the millimetre
+// the 12 mm flange bought. It is arithmetic, not measurement, and it has never
+// been tested on a coupon.
+export limbFlangeReach = 8.4mm
+export limbFlangeThickness = 4mm
+// Both ends of the flange run out into the plate on an arc of its own reach
+// rather than stopping in a square shoulder.
+export limbFlangeBlendRadius = limbFlangeReach
+
+// Where the flange has to stop at the rotor end. The flange stands proud of the
+// plate's outboard face, and at the thigh's rotor end that face looks straight
+// at the hip carrier's front cheek: a Ø52 disc centred on the hip pitch axis
+// whose inner face is 1 mm outboard of the plate. So the flange stops a cheek
+// radius plus a millimetre short of the joint centre -- the same margin
+// jointKeepOut uses -- rather than running on to the waist's own end at 38.5.
+//
+// This costs the shin, which has no cheek at its knee end and could have run the
+// full waist. It is deliberate: the right thigh and the left shin are the same
+// print, so a longer shin flange would make four distinct limb parts out of two.
+export limbFlangeRotorClearance = cheekDiameter / 2 + 1mm
 
 // Far support. The bearing seat is metal, not printed: NOTES.md records printed
 // pockets ovalising, and this one sets the coaxiality of the whole joint. The
@@ -199,12 +249,17 @@ export bearingCarrierBore = 30.2mm
 export bearingCarrierFlangeDiameter = 36mm
 export bearingCarrierFlangeThickness = 1.5mm
 
-// The rear cheek's central bore. It was a Ø26 lightening hole; it was opened
-// to carrier size when the joints were forked, and it has stayed there now the
-// fork is gone, because it is 0.6 g a joint for nothing and it leaves one bore
-// to machine rather than two. It stays well clear of the Ø41 bolt circle: the
-// bore's edge is at r 15.1 and the nearest bolt hole starts at r 18.8. Sized
-// so a carrier can be bonded in if the straddled joint is ever reinstated.
+// The rear cheek's central bore, and the clevis's alone -- the flat limb plate
+// used to inherit it and no longer does, because on a 6 mm plate the same hole
+// left a weaker section than the waist it was feeding. It was a Ø26 lightening
+// hole; it was opened to carrier size when the joints were forked, and it has
+// stayed there now the fork is gone, because on a 3 mm cheek it is 0.6 g a joint
+// for nothing and it leaves one bore to machine rather than two. It stays well
+// clear of the Ø41 bolt circle: the bore's edge is at r 15.1 and the nearest
+// bolt hole starts at r 18.8. Sized so a carrier can be bonded in if the
+// straddled joint is ever reinstated, which is a door only the clevis still has
+// open: at the knee and the ankle a straddled joint would need a clevis back,
+// not a bore in the plate.
 export cheekLighteningDiameter = bearingCarrierBore
 
 // ---------------------------------------------------------------------------
@@ -246,10 +301,21 @@ export rearTieTopZ = -(cheekDiameter / 2 + 1mm)
 export rearTieInboardX = -(shellWidth / 2) + 2mm
 
 // A sharp re-entrant corner where an arm meets its tie multiplies the bending
-// stress there by roughly 2.5. Four millimetres is not arbitrary: the bridge
-// cantilevers out of the limb shell wall and meets the arm 3.95 mm further out,
-// so this radius closes exactly the unsupported span.
-export rotorFilletRadius = 4mm
+// stress there by roughly 2.5, so the corner is radiused. The radius is set by
+// the actuator, not by the stress: the corner it fills is the one between the
+// arm's inner face, which lies in the actuator's own end plane, and the top of
+// the bridge, which sits at jointKeepOut. A fillet there can only grow into the
+// gap between those two, and that gap is the one millimetre by which
+// jointKeepOut clears the O46 body -- so anything larger is inside the motor.
+//
+// It was 4 mm until August 2026, chosen to close the 3.95 mm of bridge that
+// cantilevers unsupported between the hip carrier's connector wall and the arm
+// root. That was the wrong constraint to size it against: the fillet climbed
+// 4 mm above the bridge instead of 1, and cut about half a millimetre into the
+// bottom rim of the housing over roughly 13 mm of its width, on the hip roll and
+// ankle joints. Spotted by eye in Design Studio. The unsupported span is now
+// left open -- there is nowhere to put material that is not inside the actuator.
+export rotorFilletRadius = 1mm
 
 // Two Ø46 actuators 105 mm apart leave only 59 mm of clear span between them,
 // so the shell runs joint radius plus 1 mm short of each joint centre and the
@@ -259,6 +325,9 @@ export jointKeepOut = actuatorDiameter / 2 + 1mm
 export m3Clearance = 3.4mm
 export m3CapCounterbore = 6mm
 export m3CapCounterboreDepth = 3.2mm
+// What a printed feature has to leave round a bolt centre for the cap head to
+// seat and a driver to reach it: the Ø6 head's own radius plus a 0.4 mm wall.
+export m3CapHeadStandoff = m3CapCounterbore / 2 + 0.4mm
 
 export printedOrange = "#d9822b"
 export printedDark = "#27313a"
