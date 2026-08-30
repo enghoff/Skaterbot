@@ -214,14 +214,26 @@ export statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
 // 14.5 mm in each axis and survive the cut with room to spare.
 export statorPlateFlatOffset = actuatorConnectorFlatOffset
 
-// The waist between the two discs. Its flanges stand on the plate's outboard
-// face, pointing away from the joint axis into open air. They used to point
-// inboard, into the gap between the plate and the actuator, which is the only
-// space on the limb anything else has to share -- the joint hardware and the
-// actuator's own leads both live there. Outboard, the only thing they can meet
-// is the hip carrier's front cheek, and limbFlangeRotorClearance keeps them off
-// it.
-export limbWaistDepth = shellDepth
+// The waist between the two discs. It carried two stiffening flanges on its
+// outboard face until 30 August 2026; the retirement note below says why they
+// came off and what they were actually worth.
+// The waist was shellDepth, 30 mm, inherited from the closed box the flat limb
+// replaced. It is now 40 -- widened on 30 August 2026 to buy back some of the
+// lateral strength the flanges never delivered.
+//
+// Width is the only lever left at the rotor end. Thickness would be worth more,
+// going as the square, but the plate cannot grow outboard there: the hip
+// carrier's cheek and its bearing carrier occupy everything within 26 mm of the
+// hip pitch axis, one millimetre off the plate's face, and the peak stress sits
+// 12 to 18 mm below that axis. Width runs fore-and-aft instead, where the cheek
+// is not, so it is free of that obstacle.
+//
+// 40 mm takes the worst section from 1.27 to 0.99 MPa per newton at the foot --
+// the limb breaks at 30.4 N sideways rather than 23.4, printed across the
+// layers -- for 4.6 g a limb. It stops there because the return falls off: 44 mm
+// would buy 1.89x against 40's 1.73x, and the limb is already a third deeper
+// than it was.
+export limbWaistDepth = 40mm
 // How far the waist reaches past the limb centre towards the rotor end. It is
 // not symmetric: the far end is derived in limb.kcl from the rear bolt circle,
 // because a waist this long would sit on the bolts. This end is set by the two
@@ -230,50 +242,48 @@ export limbWaistDepth = shellDepth
 // whose edge is 13.4 mm below it. 38.5 mm buys 4 mm of engagement and leaves
 // 0.6 mm of counterbore clearance, which is the whole of the available window.
 export limbWaistUpperZ = 38.5mm
-// A bare plate is sixty times softer sideways than the closed box it replaces --
-// roughly 8 mm of sway at the hip in single support against 0.12 mm. The two
-// flanges are what take that back, which is the whole reason the waist is a
-// channel and not a strip. They also leave the sagittal section within a
-// quarter of the old box's.
+// ---------------------------------------------------------------------------
+// The limb flanges, retired 30 August 2026
 //
-// The reach was 12 mm over a 50 mm length, centred on the limb. It went to 8.4 --
-// seven tenths of that, asked for to slim the limb's silhouette -- and it is now
-// 4.2, half again, asked for the same reason. The span moved the other way at
-// the same time: the flange covered 60 mm of the waist and now covers 95.9,
-// running past the stator plate's rear bolts and across the joint below.
+// limbFlangeReach, limbFlangeThickness, limbFlangeBlendRadius and
+// limbFlangeRotorClearance are gone. The waist is a plain plate again. What they
+// were and what they were worth is kept here because the reasoning is the useful
+// part, and because the obvious instinct -- put a rib on it -- is wrong here for
+// a reason that is not obvious.
 //
-// The section pays for the reach, and the longer span does not buy it back. A
-// 12 mm flange inboard put the channel at about 6 800 mm^4 sideways; the 8.4 mm
-// one outboard put it at about 3 500; 4.2 mm puts it at about 900, because a
-// flange contributes roughly its area times the square of its distance from the
-// plate's centroid and halving the reach cuts both terms. Added to the 540 mm^4
-// the bare plate carries on its own, the channel now stands at roughly 1 400
-// mm^4 against 4 000, so sideways sway at the hip should be expected to be
-// getting on for three times what the 8.4 mm flange gave -- on top of the ground
-// already given up when the reach came down from 12 mm.
+// They were two ribs standing proud of the plate's outboard face, 4 mm thick,
+// reaching 12 mm at first, then 8.4, then 4.2. They were never introduced to
+// cure a measured weakness.
 //
-// Carrying the flange across the joint helps the load path where the limb meets
-// the disc; it does not help this. Sideways bending is resisted by the reach.
+// A rib on a plate adds material away from the centroid, which raises the second
+// moment; but it also moves the outermost fibre out by nearly as much, and
+// section modulus is the second moment divided by that distance. So the two
+// effects very nearly cancel for strength while compounding for stiffness. At
+// 4.2 mm reach the flanges were worth 2.5x on the section's lateral second
+// moment (540 mm^4 to 1 326) and 15 per cent on its section modulus (180 mm^3 to
+// 207). At 8.4 mm they were worth 6.4x and 2.0x respectively.
 //
-// All of it is arithmetic, not measurement, and none of it has been tested on a
-// coupon.
-export limbFlangeReach = 4.2mm
-export limbFlangeThickness = 4mm
-// Both ends of the flange run out into the plate on an arc of its own reach
-// rather than stopping in a square shoulder.
-export limbFlangeBlendRadius = limbFlangeReach
-
-// Where the flange has to stop at the rotor end. The flange stands proud of the
-// plate's outboard face, and at the thigh's rotor end that face looks straight
-// at the hip carrier's front cheek: a Ø52 disc centred on the hip pitch axis
-// whose inner face is 1 mm outboard of the plate. So the flange stops a cheek
-// radius plus a millimetre short of the joint centre -- the same margin
-// jointKeepOut uses -- rather than running on to the waist's own end at 38.5.
+// And whatever they were worth, they were not present where it counts. The
+// weakest printed thing on the robot is the short run of bare plate just under
+// the thigh's hip-pitch hub, and the flange had to stop a cheek radius short of
+// that joint because the hip carrier's front cheek stands 1 mm outboard of the
+// plate there. So the limb's breaking load was identical with them and without:
+// 23.7 N applied sideways at the foot across the layers, 59.2 N in the print
+// plane.
 //
-// This costs the shin, which has no cheek at its knee end and could have run the
-// full waist. It is deliberate: the right thigh and the left shin are the same
-// print, so a longer shin flange would make four distinct limb parts out of two.
-export limbFlangeRotorClearance = cheekDiameter / 2 + 1mm
+// What the robot can actually do to itself: a lateral push tips it at about 2 N
+// and puts 4 MPa in that section, seven times inside the across-layer figure. A
+// sideways topple from one-leg stance releases 2.85 J and is marginal -- it
+// breaks a limb on a hard floor printed across the layers, and survives printed
+// in plane. The actuators are what do it; they are 1 200 g of the 2 089 g total
+// and they sit at the ends of the links.
+//
+// So the levers that matter, in order, are print orientation (2.5x, free) and
+// plate thickness (6 mm to 8 is 1.78x, and unlike a flange it lifts the bare run
+// under the hub as well). Neither is a rib. Full working in NOTES.md.
+//
+// All of it is arithmetic against 75 MPa in plane and 30 MPa across layers for
+// PA12-CF, which this project has still never measured on a coupon.
 
 // Far support. The bearing seat is metal, not printed: NOTES.md records printed
 // pockets ovalising, and this one sets the coaxiality of the whole joint. The

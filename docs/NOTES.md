@@ -1199,3 +1199,104 @@ attempt was a dumbbell and the second was empty.
 The torso's 7.6 g is the four cheek webs, and it is measured with the overlaps
 counted twice as `mass.py` always does: the material that is actually new, the
 part outside the cheeks and the keel, is about 3 g.
+
+
+## The limb flanges come off, and what actually carries a fall — August 30, 2026
+
+The flanges were asked for, not diagnosed. They were never introduced to cure a
+measured weakness, and when the numbers were finally run they turned out to be
+answering a different question from the one that was worrying us.
+
+### A rib is a stiffness feature, not a strength feature
+
+A rib standing proud of a plate adds material away from the centroid, which
+raises the second moment. But it also moves the outermost fibre out by nearly as
+much, and section modulus — the number that decides whether something breaks —
+is the second moment divided by that distance. The two effects very nearly
+cancel for strength while compounding for stiffness.
+
+| Flange reach | Area | `Iyy` | Z | Z vs bare |
+|---|---:|---:|---:|---:|
+| none | 180 mm² | 540 mm⁴ | 180 mm³ | 1.00× |
+| 4.2 mm | 213.6 mm² | 1 326 mm⁴ | 207 mm³ | **1.15×** |
+| 8.4 mm | 247.2 mm² | 3 472 mm⁴ | 368 mm³ | 2.04× |
+| 12 mm | 276.0 mm² | 6 763 mm⁴ | 570 mm³ | 3.17× |
+
+At the 4.2 mm reach they ended at, the flanges were worth two and a half times
+the lateral stiffness and fifteen per cent of the strength.
+
+### And they were not where it counts
+
+The weakest printed thing on the robot is the short run of bare plate just under
+the thigh's hip-pitch hub, between where the flange had to stop and where the
+Ø36 disc begins. The flange stopped a cheek radius short of that joint because
+the hip carrier's front cheek stands 1 mm outboard of the plate there — the same
+obstacle that stopped a central flange being added at the rotor end.
+
+So the limb's breaking load was **identical with the flanges and without them**:
+23.7 N applied sideways at the foot across the layers, 59.2 N in the print
+plane. Every gram of flange bought nothing against snapping.
+
+### What the robot can do to itself
+
+**A lateral push cannot break a leg.** Standing on one foot the robot tips at
+about 2 N applied at the torso, because the foot is 65 mm wide and the centre of
+mass sits at 202 mm — well below the torso centre, because 1 200 g of the
+2 089 g total is actuators and they are low. At the tipping point the worst
+section sees 4 MPa against 30, better than seven times margin.
+
+**A sideways topple is marginal, and print orientation decides it.** Falling
+from one-leg stance releases 2.85 J and arrives at 1.65 m/s. Taking the worst
+credible path — foot planted, hip arrested by the torso hitting the floor, the
+knee actuator's 150 g swinging between them:
+
+| Floor give | Deceleration | Margin across layers | Margin in plane |
+|---|---:|---:|---:|
+| 1 mm, hard floor | 139 g | **0.44× — breaks** | 1.10× |
+| 2 mm | 70 g | **0.88× — breaks** | 2.19× |
+| 5 mm | 28 g | 2.19× | 5.48× |
+| 25 mm, foam | 6 g | 10.97× | 27.42× |
+
+The leg cannot rescue itself either. It stores 0.21 J of elastic energy before
+that section fails across the layers, against the 2.85 J a fall releases — seven
+per cent. It survives falls because the torso and the floor absorb the energy,
+not because the leg is tough.
+
+### So the levers are orientation and thickness
+
+Print orientation is worth 2.5× and costs nothing, which makes it the first
+thing to spend and the only one already available. Taking the plate from 6 mm to
+8 is worth another 1.78×, and unlike a rib it lifts the bare run under the hub
+as well, for about 3 g a joint. Neither is a flange.
+
+Removing them takes 6.36 g off each limb pair, 12.7 g across the robot, and
+leaves the limb a single flat profile 6 mm thick end to end — which is also the
+cheapest thing to print and the strongest way to print it.
+
+### How the limb should be printed
+
+Laid **flat on the bed**, its 6 mm thickness in the build direction, footprint
+about 180 × 52 mm. Every bending load on a limb — lateral or sagittal — puts
+tension and compression along its long axis, so that axis must lie in the bed
+plane and never up the build direction. Standing it upright is the 30 MPa case
+and it is the orientation in which a sideways fall breaks a limb.
+
+**Outboard face down.** The inboard face carries the Ø30.4 register recess only
+1.2 mm deep, and that register pilots the hub on the actuator's Ø30 boss, so it
+is a precision feature. Face-down it would need a sagging 30 mm bridge; face-up
+it is an open pocket. The features that then have to bridge are the six Ø6
+counterbores and the Ø10.2 journal seat — short, easy spans.
+
+**Run the solid-layer raster along the limb.** Printed flat, the extreme fibres
+for *lateral* bending are the top and bottom solid layers, so their fill
+direction is the tension path; the usual ±45° default wastes it. Sagittal
+bending is carried by the side edges, which are perimeters and already follow
+the outline, so perimeter count is what helps there. Print solid or near it: the
+part is about 31 g, and the mass budget already models it solid.
+
+Interlaminar shear is not a concern in this orientation — 0.20 MPa at the
+breaking load against 15–25 MPa available.
+
+All of the above is arithmetic against 75 MPa in plane and 30 MPa across layers
+for PA12-CF, which this project has still never measured on a coupon. Those
+coupons remain the gate they have always been.
