@@ -168,18 +168,14 @@ export fn statorClevis() {
   rearBolt4 = clone(rearBolt2)
     |> translate(z = -rearBoltOffset * 2, global = true)
 
-  lighteningSketch = sketch(on = YZ) {
-    lighteningCircle = circle(start = [var 13mm, var 0mm], center = [var 0mm, var 0mm])
-    coincident([lighteningCircle.center, ORIGIN])
-    horizontal([
-      lighteningCircle.center,
-      lighteningCircle.start
-    ])
-    diameter(lighteningCircle) == cheekLighteningDiameter
-  }
-  lighteningRegion = region(segments = [lighteningSketch.lighteningCircle])
-  rearLightening = extrude(lighteningRegion, length = cheekThickness + 2mm, symmetric = true)
-    |> translate(x = rearCheekX, global = true)
+  // The rear cheek is solid through the middle. It carried a Ø30.2 lightening
+  // bore for as long as it has existed, and that bore sat squarely across the
+  // only path the joint load has: from the four rear bolts, up through the neck,
+  // into the saddle. Filling it is the correction the stator plate has already
+  // had, for the same reason -- about 2.3 g on a cheek that is 3 mm thick and
+  // that sets the coaxiality of the whole joint. Nothing passed through it: the
+  // cheek lands on the motor's flat rear face, and the bearing the bore was
+  // sized to accept lives in the front cheek.
 
   // The connector relief. The rear cheek used to be a full Ø52 disc sitting
   // 0.3 mm off the rear face, which covered the connector flat and everything
@@ -247,8 +243,7 @@ export fn statorClevis() {
       rearBolt4
     ],
   )
-  rearCheekAfterLightening = subtract(rearCheekAfterBolts, tools = [rearLightening])
-  rearCheekFinished = subtract(rearCheekAfterLightening, tools = [rearFlatCutter])
+  rearCheekFinished = subtract(rearCheekAfterBolts, tools = [rearFlatCutter])
 
   frontCheekBlank = union([frontCheekDisc, frontCheekNeck])
   frontCheekFinished = subtract(frontCheekBlank, tools = [frontCarrierBore])
@@ -258,7 +253,6 @@ export fn statorClevis() {
   hide(saddleOuterSketch)
   hide(saddleInnerSketch)
   hide(boltSketch)
-  hide(lighteningSketch)
   hide(rearFlatSketch)
   hide(carrierBoreSketch)
 

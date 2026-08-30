@@ -26,6 +26,11 @@
 // limb that anything else has to share. Outboard the only thing they can reach
 // is the hip carrier's front cheek, and they stop clear of it.
 //
+// They do not stop above the lower joint any more. Set in far enough to miss
+// the stator plate's rear bolts, they run on past both rows of that pattern and
+// out over the disc, so the channel carries across the joint instead of handing
+// its load to a bare plate a cap head short of it.
+//
 // The waist is not symmetric about the limb centre. Each end runs as far into
 // its disc as that disc's bolt pattern allows, and the two patterns are not the
 // same distance out, so the two ends are not either.
@@ -75,18 +80,35 @@ export fn limbAssembly(@limbLength) {
          global = true,
        )
 
-  // The flanges sit on the plate's outboard face and run the length of the
-  // waist, not just its middle. The lower end stops where the waist does, which
-  // is already a cap head clear of the stator plate's rear bolts. The upper end
-  // stops short of that: it is the rotor end, and on the thigh the hip carrier's
-  // front cheek stands 1 mm outboard of the plate there, so the flange keeps a
-  // cheek radius and a millimetre away from the joint centre.
+  // Where the flanges sit across the limb's depth is set by the stator plate's
+  // rear bolts, not by the waist's edges. They used to stand on those edges at
+  // y = +/-13, square over the four bolt centres at +/-14.5, and that only
+  // worked because they stopped a cap head short of the near bolt row in Z and
+  // so never reached the joint at all. Setting them in until their outer faces
+  // clear the bolt centres by that same cap head lets them run straight past the
+  // row instead.
+  //
+  // It costs some torsion, the channel being narrower, but no lateral stiffness
+  // at all -- and lateral is the whole reason the flanges exist. That comes from
+  // how far they stand off the plate in X, and in X they have not moved.
+  flangeOuterY = actuatorRearBoltOffset - m3CapHeadStandoff
+  flangeCenterY = flangeOuterY - (limbFlangeThickness / 2)
+
+  // The lower end now stops a cap head past the FAR bolt row rather than a cap
+  // head above the near one, so both rows of the four-bolt pattern are spanned
+  // and the waist's stiffness is carried across the joint. The flange is backed
+  // by solid the whole way: by the waist plate down to the waist's own end, and
+  // by the stator disc from above that to well below here.
+  //
+  // The upper end is unchanged. It is the rotor end, and on the thigh the hip
+  // carrier's front cheek stands 1 mm outboard of the plate there, so the flange
+  // keeps a cheek radius and a millimetre away from that joint centre.
   //
   // Both ends run out into the plate on an arc of the flange's own reach rather
   // than stopping in a square shoulder, which is the whole of the profile's
   // curvature: two quarter arcs, tangent to the outer face at one end and to the
   // plate at the other.
-  flangeBottomZ = waistLowerZ
+  flangeBottomZ = -(jointZ + actuatorRearBoltOffset + m3CapHeadStandoff)
   flangeTopZ = jointZ - limbFlangeRotorClearance
   flangeHeight = flangeTopZ - flangeBottomZ
 
@@ -99,10 +121,10 @@ export fn limbAssembly(@limbLength) {
   // two segments it is given have to touch and `direction` has to be the way the
   // outline is actually written. This one is written clockwise.
   flangeSketch = sketch(on = XZ) {
-    rootFace = line(start = [var 0mm, var 0mm], end = [var 0mm, var 60.1mm])
-    topBlend = arc(start = [var 0mm, var 60.1mm], end = [var 8.4mm, var 51.7mm], center = [var 8.4mm, var 60.1mm])
-    outerFace = line(start = [var 8.4mm, var 51.7mm], end = [var 8.4mm, var 8.4mm])
-    bottomBlend = arc(start = [var 8.4mm, var 8.4mm], end = [var 0mm, var 0mm], center = [var 8.4mm, var 0mm])
+    rootFace = line(start = [var 0mm, var 0mm], end = [var 0mm, var 95.9mm])
+    topBlend = arc(start = [var 0mm, var 95.9mm], end = [var 4.2mm, var 91.7mm], center = [var 4.2mm, var 95.9mm])
+    outerFace = line(start = [var 4.2mm, var 91.7mm], end = [var 4.2mm, var 4.2mm])
+    bottomBlend = arc(start = [var 4.2mm, var 4.2mm], end = [var 0mm, var 0mm], center = [var 4.2mm, var 0mm])
     coincident([rootFace.start, ORIGIN])
     coincident([rootFace.end, topBlend.start])
     coincident([topBlend.end, outerFace.start])
@@ -126,12 +148,89 @@ export fn limbAssembly(@limbLength) {
   flangeFront = extrude(flangeRegion, length = limbFlangeThickness, symmetric = true)
     |> translate(
          x = rotorHubInnerX + limbPlateThickness,
-         y = limbWaistDepth / 2 - (limbFlangeThickness / 2),
+         y = flangeCenterY,
          z = flangeBottomZ,
          global = true,
        )
   flangeRear = clone(flangeFront)
-    |> translate(y = -(limbWaistDepth - limbFlangeThickness), global = true)
+    |> translate(y = -(flangeCenterY * 2), global = true)
+
+  // Where the waist runs into the hub disc there was a notch. The plate is
+  // 30 mm wide and stops 14 mm below the joint centre; the O36 disc is only
+  // 22.6 mm wide at that height, so the plate's top corners stood proud of the
+  // disc with a re-entrant step between the two. That step sits exactly where
+  // the limb hands its bending into the joint, which makes it the peak-stress
+  // point on the part. These two gussets fill it and round the corner where the
+  // plate's side runs on into the disc's rim.
+  //
+  // It cannot be done by simply raising the waist. The waist stops where it does
+  // because 0.6 mm higher it would begin to cover the two lowest output
+  // counterbores, and a covered counterbore is a bolt that cannot be fitted. So
+  // the fill is local to each outer corner and stops a cap head clear of the
+  // nearer counterbore centre in y.
+  //
+  // The fillet is tangent to the plate's side face and to the disc's rim, so its
+  // centre lies one radius outboard of that face and one radius outside the
+  // disc; where those two conditions cross fixes it. The inner edge runs back
+  // from the disc tangency to the corner and is buried, because a chord between
+  // two points of a disc stays inside it.
+  gussetInnerY = actuatorOutputBoltCircle / 2 * cos(60deg) + m3CapHeadStandoff
+  gussetOuterY = limbWaistDepth / 2
+  gussetFilletRadius = limbPlateThickness / 2
+  gussetFilletCenterY = gussetOuterY + gussetFilletRadius
+  gussetDiscRadius = rotorHubDiameter / 2
+  gussetFilletHypot = gussetDiscRadius + gussetFilletRadius
+  gussetFilletDrop = sqrt(pow(gussetFilletHypot / 1mm, exp = 2) - pow(gussetFilletCenterY / 1mm, exp = 2)) * 1mm
+  gussetFilletCenterZ = jointZ - gussetFilletDrop
+  gussetTangentScale = gussetDiscRadius / gussetFilletHypot
+  gussetTangentY = gussetFilletCenterY * gussetTangentScale
+  gussetTangentZ = jointZ - (gussetFilletDrop * gussetTangentScale)
+
+  // Drawn at the origin and translated into place, like every other sketch here.
+  // The first version left the profile unanchored and relied on its seed points
+  // for where it sat. That happened to solve correctly -- the measured volume
+  // was the same either way -- but it was luck: an unanchored profile is free to
+  // settle anywhere its constraints allow, and nothing would report it if it
+  // did. The gusset measures 0.07 cm3 on its own against 0.075 predicted.
+  //
+  // Written clockwise, and the arc runs from the disc tangency back down to the
+  // side face so that it sweeps counter-clockwise -- see the note on the flange
+  // profile above, which was bitten by both of those. The arc's radius and its
+  // tangency to the side face are pinned outright rather than left to the seed.
+  gussetSketch = sketch(on = YZ) {
+    innerEdge = line(start = [var 0mm, var 0mm], end = [var 6.03mm, var 4.73mm])
+    filletFace = arc(start = [var 6.03mm, var 4.73mm], end = [var 5.6mm, var 3.18mm], center = [var 8.6mm, var 3.18mm])
+    outerFace = line(start = [var 5.6mm, var 3.18mm], end = [var 5.6mm, var 0mm])
+    rootEdge = line(start = [var 5.6mm, var 0mm], end = [var 0mm, var 0mm])
+    coincident([innerEdge.start, ORIGIN])
+    coincident([innerEdge.end, filletFace.start])
+    coincident([filletFace.end, outerFace.start])
+    coincident([outerFace.end, rootEdge.start])
+    coincident([rootEdge.end, innerEdge.start])
+    vertical(outerFace)
+    horizontal(rootEdge)
+    horizontal([filletFace.end, filletFace.center])
+    horizontalDistance([filletFace.end, filletFace.center]) == gussetFilletRadius
+    horizontalDistance([rootEdge.end, rootEdge.start]) == gussetOuterY - gussetInnerY
+    verticalDistance([outerFace.end, outerFace.start]) == gussetFilletCenterZ - waistUpperZ
+    horizontalDistance([innerEdge.start, innerEdge.end]) == gussetTangentY - gussetInnerY
+    verticalDistance([innerEdge.start, innerEdge.end]) == gussetTangentZ - waistUpperZ
+  }
+  gussetRegion = region(
+    segments = [
+      gussetSketch.innerEdge,
+      gussetSketch.filletFace
+    ],
+    direction = CW,
+  )
+  gussetFront = extrude(gussetRegion, length = limbPlateThickness, symmetric = true)
+    |> translate(
+         x = rotorHubInnerX + limbPlateThickness / 2,
+         y = gussetInnerY,
+         z = waistUpperZ,
+         global = true,
+       )
+  gussetRear = mirror3d(gussetFront, across = XZ)
 
   upperDisc = outputDisc()
     |> translate(z = jointZ, global = true)
@@ -144,6 +243,7 @@ export fn limbAssembly(@limbLength) {
 
   hide(waistSketch)
   hide(flangeSketch)
+  hide(gussetSketch)
 
   // Five interpenetrating bodies rather than one solid. The waist plate occupies
   // exactly the same band in X as both discs, which is the union the engine
@@ -156,6 +256,8 @@ export fn limbAssembly(@limbLength) {
       waistPlate,
       flangeFront,
       flangeRear,
+      gussetFront,
+      gussetRear,
       upperDisc,
       lowerPlate
     ],

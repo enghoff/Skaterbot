@@ -8,7 +8,13 @@
 //
 // Both ends are the shared parts from joint.kcl, unchanged. Only the short
 // connector between them is particular to the carrier, because the two joints
-// are 47 mm apart and the two ends nearly meet on their own.
+// are close enough together that the two ends nearly meet on their own.
+//
+// They are 55 mm apart, not the 47 mm this part was drawn against. The gap is
+// whatever the torso leaves over once the leg is stacked up under it, so it
+// grew by the 8 mm the ankle axis came down when the actuator was seated on the
+// foot. The two ends still overlap by 13 mm rather than 21, which the 10 mm
+// connector sits well inside, so nothing here had to change to follow it.
 //
 // Local origin is the midpoint between the two axes, matching how main.kcl
 // places it.

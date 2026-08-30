@@ -67,7 +67,11 @@ Keep, unchanged:
   and rear patterns, the 3.2 mm rear cover, and the 69° connector flat. This is
   the hardest-won data in the project and none of it is affected.
 - **The kinematics.** 380 mm overall, 96 mm hip spacing, 105 mm thigh and shin,
-  ankle axis at 44 mm, knee at 149 mm, hip pitch at 254 mm, hip roll at 301 mm.
+  ankle axis at 36 mm, knee at 141 mm, hip pitch at 246 mm, hip roll at 301 mm.
+  The ankle was at 44 mm until the actuator was seated down onto the foot in
+  August 2026; the links and the overall height are unchanged, and the 8 mm came
+  out of the leg stack and went into the hip carrier's offset, which grew from
+  47 mm to 55 mm.
 - **The static torque envelope and duty analysis** in `NOTES.md`, including the
   finding that the 0.8 Nm continuous rating is crossed near 47° of knee flexion.
 - **The knee interface logic** in `knee_module.kcl`: drive from the Ø24 output

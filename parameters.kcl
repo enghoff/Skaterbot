@@ -56,7 +56,42 @@ export actuatorConnectorFlatArc = 69deg
 export actuatorConnectorPlugProjection = 8mm
 export hipSpacing = 96mm
 export hipCenterX = hipSpacing / 2
-export ankleAxisHeight = 44mm
+
+// ---------------------------------------------------------------------------
+// The foot, and the ankle height that follows from it
+//
+// The foot is a replaceable sole under a shallow open-topped tray. Those two
+// thicknesses are what decide how high the ankle axis sits, now that the
+// actuator's body comes to rest on the tray's top plane instead of floating
+// above it. They live here rather than in foot.kcl because ankleAxisHeight is
+// derived from them.
+export footLength = 115mm
+export footWidth = 65mm
+export footCenterY = 8.5mm
+export soleThickness = 2mm
+export footTrayHeight = 10mm
+
+// How much air every printed part leaves against the O46 housing: one
+// millimetre. jointKeepOut further down is this same figure written as a
+// radius, and the ankle stack immediately below is the other place it is spent.
+export jointBodyClearance = 1mm
+
+// The ankle axis is no longer a free number. It is wherever the actuator ends
+// up once its body is set down on the foot with a single clearance under it,
+// which puts it a body radius plus that clearance above the tray top:
+// 23 + 1 + 2 + 10 = 36 mm.
+//
+// It was 44 mm, and 44 is what the axis measures if the rotor bridge is stacked
+// *on top of* the tray instead of nested inside it. That arrangement left the
+// motor floating 9 mm clear of the foot, and left 5.6 mm of trapped air between
+// the spreader and the tray floor, so the ankle's load reached the floor only
+// through the two transverse ribs the spreader straddled. Dropping the axis
+// nests the bridge inside the tray and closes both at once.
+//
+// It costs 8 mm of leg. The knee and hip pitch axes come down with the ankle,
+// and because the hip roll axis is fixed by the torso, the hip carrier's offset
+// grows from 47 mm to 55 mm to make up the difference.
+export ankleAxisHeight = actuatorDiameter / 2 + jointBodyClearance + soleThickness + footTrayHeight
 export lowerLegLength = 105mm
 export upperLegLength = 105mm
 export kneeAxisHeight = ankleAxisHeight + lowerLegLength
@@ -70,10 +105,6 @@ export torsoHeight = torsoTop - torsoBottom
 export torsoCenterHeight = (torsoTop + torsoBottom) / 2
 export torsoWidth = 126mm
 export torsoDepth = 74mm
-
-export footLength = 115mm
-export footWidth = 65mm
-export footCenterY = 8.5mm
 
 // ---------------------------------------------------------------------------
 // Tether
@@ -205,17 +236,28 @@ export limbWaistUpperZ = 38.5mm
 // channel and not a strip. They also leave the sagittal section within a
 // quarter of the old box's.
 //
-// The reach was 12 mm over a 50 mm length, centred on the limb. It is now 8.4 --
-// seven tenths of that, asked for to slim the limb's silhouette -- over the
-// whole span between the two clearances below, which is 60 mm. The section pays
-// for it: a 12 mm flange inboard put the channel at about 6 800 mm^4 sideways
-// and an 8.4 mm one outboard puts it at about 3 500, because the shallower
-// flange sits nearer the centroid as well as being smaller. Most of that is won
-// back by covering the span rather than its middle half, but not all of it, so
-// sideways sway at the hip is expected to be somewhat worse than the millimetre
-// the 12 mm flange bought. It is arithmetic, not measurement, and it has never
-// been tested on a coupon.
-export limbFlangeReach = 8.4mm
+// The reach was 12 mm over a 50 mm length, centred on the limb. It went to 8.4 --
+// seven tenths of that, asked for to slim the limb's silhouette -- and it is now
+// 4.2, half again, asked for the same reason. The span moved the other way at
+// the same time: the flange covered 60 mm of the waist and now covers 95.9,
+// running past the stator plate's rear bolts and across the joint below.
+//
+// The section pays for the reach, and the longer span does not buy it back. A
+// 12 mm flange inboard put the channel at about 6 800 mm^4 sideways; the 8.4 mm
+// one outboard put it at about 3 500; 4.2 mm puts it at about 900, because a
+// flange contributes roughly its area times the square of its distance from the
+// plate's centroid and halving the reach cuts both terms. Added to the 540 mm^4
+// the bare plate carries on its own, the channel now stands at roughly 1 400
+// mm^4 against 4 000, so sideways sway at the hip should be expected to be
+// getting on for three times what the 8.4 mm flange gave -- on top of the ground
+// already given up when the reach came down from 12 mm.
+//
+// Carrying the flange across the joint helps the load path where the limb meets
+// the disc; it does not help this. Sideways bending is resisted by the reach.
+//
+// All of it is arithmetic, not measurement, and none of it has been tested on a
+// coupon.
+export limbFlangeReach = 4.2mm
 export limbFlangeThickness = 4mm
 // Both ends of the flange run out into the plate on an arc of its own reach
 // rather than stopping in a square shoulder.
@@ -249,18 +291,28 @@ export bearingCarrierBore = 30.2mm
 export bearingCarrierFlangeDiameter = 36mm
 export bearingCarrierFlangeThickness = 1.5mm
 
-// The rear cheek's central bore, and the clevis's alone -- the flat limb plate
-// used to inherit it and no longer does, because on a 6 mm plate the same hole
-// left a weaker section than the waist it was feeding. It was a Ø26 lightening
-// hole; it was opened to carrier size when the joints were forked, and it has
-// stayed there now the fork is gone, because on a 3 mm cheek it is 0.6 g a joint
-// for nothing and it leaves one bore to machine rather than two. It stays well
-// clear of the Ø41 bolt circle: the bore's edge is at r 15.1 and the nearest
-// bolt hole starts at r 18.8. Sized so a carrier can be bonded in if the
-// straddled joint is ever reinstated, which is a door only the clevis still has
-// open: at the knee and the ankle a straddled joint would need a clevis back,
-// not a bore in the plate.
-export cheekLighteningDiameter = bearingCarrierBore
+// The rear cheek's lightening bore -- REMOVED, and the history kept because it
+// is the second time the same hole has had to go.
+//
+// It began as a Ø26 lightening hole in the cheek, and was opened to carrier size
+// (Ø30.2) when the joints were forked, so that one bore served both the front
+// cheek's bearing carrier and the rear cheek's weight saving. The flat limb
+// plate inherited it and lost it first: on a 6 mm plate the hole left a weaker
+// section than the waist it was feeding, 266 mm^4 against the bare waist's 540.
+// The cheek kept it on the argument that a 3 mm cheek only saves 0.6 g by
+// opening Ø26 out to Ø30.2, so the larger bore was free.
+//
+// What that argument missed is that the hole itself was never free. The cheek is
+// the only path from the four rear bolts up through the neck into the saddle,
+// and it is the part that holds the far bearing in line with the output, so it
+// is the last place on the joint to remove material from the middle. The whole
+// bore is 2.3 g a clevis and there are four clevises, which is 9 g of the
+// 2 300 g budget for the section back.
+//
+// Ø30.2 survives as bearingCarrierBore above, which is what it was measured for:
+// the front cheek's bonded-in carrier. If the straddled joint is ever
+// reinstated, the rear cheek would take a real carrier at that diameter rather
+// than an empty hole.
 
 // ---------------------------------------------------------------------------
 // The forked rotor -- DRAWN BUT NOT FITTED
@@ -320,7 +372,7 @@ export rotorFilletRadius = 1mm
 // Two Ø46 actuators 105 mm apart leave only 59 mm of clear span between them,
 // so the shell runs joint radius plus 1 mm short of each joint centre and the
 // clevis and rotor arm bridge the rest.
-export jointKeepOut = actuatorDiameter / 2 + 1mm
+export jointKeepOut = actuatorDiameter / 2 + jointBodyClearance
 
 export m3Clearance = 3.4mm
 export m3CapCounterbore = 6mm

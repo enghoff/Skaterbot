@@ -21,13 +21,12 @@
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import rotorHub, rotorEndHeight from "joint.kcl"
+import rotorHub from "joint.kcl"
 
-soleThickness = 2mm
 soleCenterZ = -ankleAxisHeight + soleThickness / 2
 
 trayBottomZ = -ankleAxisHeight + soleThickness
-trayHeight = 10mm
+trayHeight = footTrayHeight
 trayTopZ = trayBottomZ + trayHeight
 trayCenterZ = (trayBottomZ + trayTopZ) / 2
 trayFloorThickness = shellWall
@@ -41,10 +40,26 @@ ribHeight = trayTopZ - trayCavityBottomZ
 ribCenterZ = (trayCavityBottomZ + trayTopZ) / 2
 
 spreaderWidth = 52mm
-spreaderThickness = 8mm
-spreaderOverlap = 6mm
-// The two transverse ribs land just inside the spreader's edges, so the
-// spreader bears on rib rather than on unsupported floor.
+// The spreader used to be an 8 mm slab hung under the rotor bridge, and the
+// bridge sat on top of the tray. That left 5.6 mm of trapped air between the
+// slab's underside and the tray floor: the ankle's whole load reached the floor
+// only through the two transverse ribs the slab straddled. The bridge now nests
+// inside the tray, so the spreader runs the full depth from the sole up to it
+// and the void is gone -- its underside is the tray's own bottom face.
+//
+// What sets its top is what passes over it. The shin's stator plate reaches
+// statorPlateDiameter / 2 below the ankle axis, and because that plate is a
+// disc centred on the axis its silhouette does not change as the ankle moves --
+// it sweeps exactly itself, at every joint angle. The old top landed at exactly
+// that radius and grazed the plate; it now stops one clearance short, which is
+// the room the shin has to turn in.
+spreaderTopZ = -(statorPlateDiameter / 2) - jointBodyClearance
+spreaderThickness = spreaderTopZ - trayBottomZ
+spreaderCenterZ = (trayBottomZ + spreaderTopZ) / 2
+// The two transverse ribs land just inside the spreader's edges. That was the
+// spreader's only load path down when it was a slab floating above the floor;
+// it now reaches the floor on its own, and the ribs tie its footprint out to
+// the side walls instead.
 transverseRibY = shellDepth / 2 - (ribThickness / 2)
 
 // ---- replaceable sole -------------------------------------------------------
@@ -196,8 +211,10 @@ spineRibRaw = extrude(longRibRegion, length = ribHeight, symmetric = true)
 // ---- ankle attachment -------------------------------------------------------
 
 // The foot is the rotor of the ankle joint: it bolts straight to the actuator's
-// output circle through the shared hub in joint.kcl. The spreader takes the
-// hub's bridge into the tray, straddling the two transverse ribs.
+// output circle through the shared hub in joint.kcl. The bridge that hub ends
+// in now sits down inside the tray rather than on top of it, and the spreader
+// is the solid pad it lands on, straddling the two transverse ribs and carrying
+// the load the rest of the way down to the sole.
 spreaderSketch = sketch(on = XY) {
   edge1 = line(start = [var 0mm, var 0mm], end = [var 52mm, var 0mm])
   edge2 = line(start = [var 52mm, var 0mm], end = [var 52mm, var 30mm])
@@ -227,7 +244,7 @@ spreaderRaw = extrude(spreaderRegion, length = spreaderThickness, symmetric = tr
   |> translate(
        x = -spreaderWidth / 2,
        y = -shellDepth / 2,
-       z = -rotorEndHeight - (spreaderThickness / 2) + spreaderOverlap,
+       z = spreaderCenterZ,
        global = true,
      )
 
