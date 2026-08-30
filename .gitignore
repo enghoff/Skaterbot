@@ -1,5 +1,24 @@
+# Zoo Design Studio
+thumbnail.png
+
+# Local credentials — never commit
+secrets/
+*.env
+
+# Rendered views from tools/views.py
+renders/
+
+# Python bytecode from tools/
+__pycache__/
+
+# Exported geometry
 *.stl
 *.step
 *.STEP
+
+# Vendor reference geometry is tracked on purpose — it is an input, not an export
+!reference/**/*.step
+!reference/**/*.STEP
+!reference/**/*.stl
 *.FCStd~
 .DS_Store

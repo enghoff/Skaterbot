@@ -1,0 +1,736 @@
+// The joint interface, designed once and used at all eight joints
+//
+// The actuator offers a grip on only two faces -- 4 x M3 on Ø41 at the rear and
+// 6 x M3 on Ø24 at the front -- and nothing can pass through it. So the
+// stationary side has to reach around the body to support the moving side, and
+// the moving side is necessarily a single plate on the output face. That is
+// forced by the actuator, not chosen, and it makes every joint the same shape:
+//
+// * `statorClevis` -- two cheeks straddling the actuator, anchored on the rear
+// pattern, reaching past the body to a metal-seated bearing on the far side,
+// with a saddle over the top that carries the load into whatever is above.
+// * `rotorHub` -- a plate bolted to the output circle and piloted on the Ø30
+// register, carrying a Ø10 journal outboard into that bearing, with an arm
+// and bridge that take its offset back to the centre line below.
+//
+// Both are positioned with the joint centre at the origin and the joint axis
+// along X. The clevis rises in +Z, the hub descends in -Z, so a limb is a shell
+// with a clevis at its bottom and a hub at its top.
+//
+// The clevis is open at the front, the back and below on purpose. The actuator
+// sits in free air and can still radiate, which is what lets the limbs be closed
+// shells without cooking the motors.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+outputBoltRadius = actuatorOutputBoltCircle / 2
+
+// The rear bolts sit at 45 degrees on Ø41, so both offsets are the same number.
+// It lives in parameters.kcl because the limb measures its waist against it too.
+rearBoltOffset = actuatorRearBoltOffset
+
+rotorHubCenterX = rotorHubInnerX + rotorHubThickness / 2
+shellInnerDepth = shellDepth - (shellWall * 2)
+
+// Both ends are the same height whatever limb they belong to: the saddle and the
+// bridge each start one actuator radius plus a millimetre clear of the joint.
+export saddleHeight = 12mm
+export bridgeHeight = 8mm
+export statorEndHeight = jointKeepOut + saddleHeight
+export rotorEndHeight = jointKeepOut + bridgeHeight
+
+export fn statorClevis() {
+  saddleWidth = frontCheekX - rearCheekX + cheekThickness
+  saddleCenterX = (frontCheekX + rearCheekX) / 2
+  saddleCenterZ = jointKeepOut + saddleHeight / 2
+
+  cheekDiscSketch = sketch(on = YZ) {
+    cheekCircle = circle(start = [var 26mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([cheekCircle.center, ORIGIN])
+    horizontal([cheekCircle.center, cheekCircle.start])
+    diameter(cheekCircle) == cheekDiameter
+  }
+  cheekDiscRegion = region(segments = [cheekDiscSketch.cheekCircle])
+
+  cheekNeckSketch = sketch(on = YZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 24mm, var 0mm])
+    edge2 = line(start = [var 24mm, var 0mm], end = [var 24mm, var 36mm])
+    edge3 = line(start = [var 24mm, var 36mm], end = [var 0mm, var 36mm])
+    edge4 = line(start = [var 0mm, var 36mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == cheekNeckWidth
+    verticalDistance([edge2.start, edge2.end]) == statorEndHeight
+  }
+  cheekNeckRegion = region(
+    segments = [
+      cheekNeckSketch.edge1,
+      cheekNeckSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+
+  rearCheekDisc = extrude(cheekDiscRegion, length = cheekThickness, symmetric = true)
+    |> translate(x = rearCheekX, global = true)
+  rearCheekNeck = extrude(cheekNeckRegion, length = cheekThickness, symmetric = true)
+    |> translate(x = rearCheekX, y = -cheekNeckWidth / 2, global = true)
+  frontCheekDisc = clone(rearCheekDisc)
+    |> translate(x = frontCheekX - rearCheekX, global = true)
+  frontCheekNeck = clone(rearCheekNeck)
+    |> translate(x = frontCheekX - rearCheekX, global = true)
+
+  // The saddle is the only path the joint load has into the limb above, so it
+  // is a closed box rather than a plate.
+  saddleOuterSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 51mm, var 0mm])
+    edge2 = line(start = [var 51mm, var 0mm], end = [var 51mm, var 12mm])
+    edge3 = line(start = [var 51mm, var 12mm], end = [var 0mm, var 12mm])
+    edge4 = line(start = [var 0mm, var 12mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == saddleWidth
+    verticalDistance([edge2.start, edge2.end]) == saddleHeight
+  }
+  saddleOuterRegion = region(
+    segments = [
+      saddleOuterSketch.edge1,
+      saddleOuterSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  saddleBlank = extrude(saddleOuterRegion, length = shellDepth, symmetric = true)
+    |> translate(x = saddleCenterX - (saddleWidth / 2), z = saddleCenterZ - (saddleHeight / 2), global = true)
+
+  saddleInnerSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 46mm, var 0mm])
+    edge2 = line(start = [var 46mm, var 0mm], end = [var 46mm, var 7mm])
+    edge3 = line(start = [var 46mm, var 7mm], end = [var 0mm, var 7mm])
+    edge4 = line(start = [var 0mm, var 7mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == saddleWidth - (shellWall * 2)
+    verticalDistance([edge2.start, edge2.end]) == saddleHeight - (shellWall * 2)
+  }
+  saddleInnerRegion = region(
+    segments = [
+      saddleInnerSketch.edge1,
+      saddleInnerSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  saddleCavity = extrude(saddleInnerRegion, length = shellInnerDepth, symmetric = true)
+    |> translate(x = saddleCenterX - (saddleWidth / 2) + shellWall, z = saddleCenterZ - (saddleHeight / 2) + shellWall, global = true)
+  saddleRaw = subtract(saddleBlank, tools = [saddleCavity])
+
+  boltSketch = sketch(on = YZ) {
+    boltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boltCircle.center, ORIGIN])
+    horizontal([boltCircle.center, boltCircle.start])
+    diameter(boltCircle) == m3Clearance
+  }
+  boltRegion = region(segments = [boltSketch.boltCircle])
+  rearBolt1 = extrude(boltRegion, length = cheekThickness + 2mm, symmetric = true)
+    |> translate(
+         x = rearCheekX,
+         y = rearBoltOffset,
+         z = rearBoltOffset,
+         global = true,
+       )
+  rearBolt2 = clone(rearBolt1)
+    |> translate(y = -rearBoltOffset * 2, global = true)
+  rearBolt3 = clone(rearBolt1)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+  rearBolt4 = clone(rearBolt2)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+
+  // The rear cheek is solid through the middle. It carried a Ø30.2 lightening
+  // bore for as long as it has existed, and that bore sat squarely across the
+  // only path the joint load has: from the four rear bolts, up through the neck,
+  // into the saddle. Filling it is the correction the stator plate has already
+  // had, for the same reason -- about 2.3 g on a cheek that is 3 mm thick and
+  // that sets the coaxiality of the whole joint. Nothing passed through it: the
+  // cheek lands on the motor's flat rear face, and the bearing the bore was
+  // sized to accept lives in the front cheek.
+
+  // The connector relief. The rear cheek used to be a full Ø52 disc sitting
+  // 0.3 mm off the rear face, which covered the connector flat and everything
+  // plugged into it -- the flat limb plate had been truncated on this chord
+  // since it was drawn, and the clevis was simply never given the same cut. It
+  // is the same chord, at 19 mm, and it takes the cheek entirely out of the
+  // estimated plug keep-out at r 27. Only the rear cheek needs it: the saddle
+  // reaches 15 mm either side and the front cheek is at the far end of the
+  // actuator, so neither is in the way.
+  rearFlatSketch = sketch(on = YZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+    edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == cheekDiameter
+    verticalDistance([edge2.start, edge2.end]) == cheekDiameter
+  }
+  rearFlatRegion = region(
+    segments = [
+      rearFlatSketch.edge1,
+      rearFlatSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  rearFlatCutter = extrude(rearFlatRegion, length = cheekThickness + 4mm, symmetric = true)
+    |> translate(
+         x = rearCheekX,
+         y = -(actuatorConnectorFlatOffset + cheekDiameter),
+         z = -(cheekDiameter / 2),
+         global = true,
+       )
+
+  carrierBoreSketch = sketch(on = YZ) {
+    carrierBoreCircle = circle(start = [var 15.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierBoreCircle.center, ORIGIN])
+    horizontal([
+      carrierBoreCircle.center,
+      carrierBoreCircle.start
+    ])
+    diameter(carrierBoreCircle) == bearingCarrierBore
+  }
+  carrierBoreRegion = region(segments = [carrierBoreSketch.carrierBoreCircle])
+  frontCarrierBore = extrude(carrierBoreRegion, length = cheekThickness + 2mm, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+
+  // Each cut is taken on the simple body it belongs to, before anything is
+  // unioned: the engine rejects pockets cut out of a large combined solid.
+  rearCheekBlank = union([rearCheekDisc, rearCheekNeck])
+  rearCheekAfterBolts = subtract(
+    rearCheekBlank,
+    tools = [
+      rearBolt1,
+      rearBolt2,
+      rearBolt3,
+      rearBolt4
+    ],
+  )
+  rearCheekFinished = subtract(rearCheekAfterBolts, tools = [rearFlatCutter])
+
+  frontCheekBlank = union([frontCheekDisc, frontCheekNeck])
+  frontCheekFinished = subtract(frontCheekBlank, tools = [frontCarrierBore])
+
+  hide(cheekDiscSketch)
+  hide(cheekNeckSketch)
+  hide(saddleOuterSketch)
+  hide(saddleInnerSketch)
+  hide(boltSketch)
+  hide(rearFlatSketch)
+  hide(carrierBoreSketch)
+
+  return union([
+    rearCheekFinished,
+    frontCheekFinished,
+    saddleRaw
+  ])
+}
+
+// The Ø24 output pattern as free-standing cutters: six M3 clearance holes, and
+// separately their cap counterbores. They are out here rather than inline so the
+// pattern has one definition and one place to correct.
+//
+// The rule that goes with them: nothing may be built across this circle in the
+// disc's own plane. The rotor arm used to, and the union filled four of the six
+// holes back in without an error anywhere -- mock never evaluates a boolean, the
+// engine built it happily, and the mass looked fine. Every way of drilling
+// through such an overlap was then tried and refused, one of them by returning
+// five open holes and one filled, which is worse than a refusal. The arm now
+// keeps clear of the circle instead. See docs/KCL_GOTCHAS.md before putting
+// anything else in this plane.
+fn outputBoltCutters() {
+  boltSketch = sketch(on = YZ) {
+    boltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boltCircle.center, ORIGIN])
+    horizontal([boltCircle.center, boltCircle.start])
+    diameter(boltCircle) == m3Clearance
+  }
+  boltRegion = region(segments = [boltSketch.boltCircle])
+  bolt1 = extrude(boltRegion, length = rotorHubThickness + 2mm, symmetric = true)
+    |> translate(x = rotorHubCenterX, y = outputBoltRadius, global = true)
+  bolt2 = clone(bolt1)
+    |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+  bolt3 = clone(bolt1)
+    |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+  bolt4 = clone(bolt1)
+    |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+  bolt5 = clone(bolt1)
+    |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+  bolt6 = clone(bolt1)
+    |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+  hide(boltSketch)
+
+  return [
+    bolt1,
+    bolt2,
+    bolt3,
+    bolt4,
+    bolt5,
+    bolt6
+  ]
+}
+
+fn outputCounterboreCutters() {
+  counterboreSketch = sketch(on = YZ) {
+    counterboreCircle = circle(start = [var 3mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([counterboreCircle.center, ORIGIN])
+    horizontal([
+      counterboreCircle.center,
+      counterboreCircle.start
+    ])
+    diameter(counterboreCircle) == m3CapCounterbore
+  }
+  counterboreRegion = region(segments = [counterboreSketch.counterboreCircle])
+  cbore1 = extrude(counterboreRegion, length = m3CapCounterboreDepth, symmetric = true)
+    |> translate(x = rotorHubOuterX - (m3CapCounterboreDepth / 2), y = outputBoltRadius, global = true)
+  cbore2 = clone(cbore1)
+    |> rotate(axis = [1, 0, 0], angle = 60deg, global = true)
+  cbore3 = clone(cbore1)
+    |> rotate(axis = [1, 0, 0], angle = 120deg, global = true)
+  cbore4 = clone(cbore1)
+    |> rotate(axis = [1, 0, 0], angle = 180deg, global = true)
+  cbore5 = clone(cbore1)
+    |> rotate(axis = [1, 0, 0], angle = 240deg, global = true)
+  cbore6 = clone(cbore1)
+    |> rotate(axis = [1, 0, 0], angle = 300deg, global = true)
+
+  hide(counterboreSketch)
+
+  return [
+    cbore1,
+    cbore2,
+    cbore3,
+    cbore4,
+    cbore5,
+    cbore6
+  ]
+}
+
+// The plate that bolts to the actuator's output, kept on its own so that the
+// two rotor ends -- the offset hub the hip carrier and the foot use, and the
+// in-plane plate the limbs use -- are the same disc with different structure
+// hung off it. Ø30 register, Ø10 journal seat, six M3 counterbored into the
+// Ø24 output circle.
+export fn outputDisc() {
+  hubSketch = sketch(on = YZ) {
+    hubCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([hubCircle.center, ORIGIN])
+    horizontal([hubCircle.center, hubCircle.start])
+    diameter(hubCircle) == rotorHubDiameter
+  }
+  hubRegion = region(segments = [hubSketch.hubCircle])
+  hubRaw = extrude(hubRegion, length = rotorHubThickness, symmetric = true)
+    |> translate(x = rotorHubCenterX, global = true)
+
+  registerSketch = sketch(on = YZ) {
+    registerCircle = circle(start = [var 15.2mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([registerCircle.center, ORIGIN])
+    horizontal([
+      registerCircle.center,
+      registerCircle.start
+    ])
+    diameter(registerCircle) == rotorRegisterDiameter
+  }
+  registerRegion = region(segments = [registerSketch.registerCircle])
+  registerPocket = extrude(registerRegion, length = rotorRegisterDepth, symmetric = true)
+    |> translate(x = rotorHubInnerX + rotorRegisterDepth / 2, global = true)
+
+  journalSeatSketch = sketch(on = YZ) {
+    journalSeatCircle = circle(start = [var 5.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([journalSeatCircle.center, ORIGIN])
+    horizontal([
+      journalSeatCircle.center,
+      journalSeatCircle.start
+    ])
+    diameter(journalSeatCircle) == journalSeatDiameter
+  }
+  journalSeatRegion = region(segments = [journalSeatSketch.journalSeatCircle])
+  journalSeatCutter = extrude(journalSeatRegion, length = journalSeatDepth, symmetric = true)
+    |> translate(x = rotorHubOuterX - (journalSeatDepth / 2), global = true)
+
+  hubAfterRegister = subtract(hubRaw, tools = [registerPocket])
+  hubAfterJournalSeat = subtract(hubAfterRegister, tools = [journalSeatCutter])
+  hide(hubSketch)
+  hide(registerSketch)
+  hide(journalSeatSketch)
+
+  hubAfterBolts = subtract(hubAfterJournalSeat, tools = outputBoltCutters())
+
+  return subtract(hubAfterBolts, tools = outputCounterboreCutters())
+}
+
+// The offset rotor end: the disc, an arm carrying its offset down past the
+// actuator, and a bridge taking that offset back to the limb centre line.
+// Used by the hip carrier and the foot, whose own structure cannot be moved
+// into the output plane. The limbs can, and use rotorPlate instead.
+export fn rotorHub() {
+  bridgeWidth = rotorHubOuterX + shellWidth / 2
+  bridgeCenterX = rotorHubOuterX - (bridgeWidth / 2)
+  // Two things fix where the arm ends, and between them they fix how wide it is.
+  // It has to stop clear of the output counterbores: the arm lies in the disc's
+  // own plane, so anything it covers it fills, and run up to the joint centre it
+  // buried the two bolts below the axis and half filled the two on it, leaving
+  // two usable screws out of six to carry the actuator's whole output torque.
+  // And its top face has to sit wholly inside the disc, because a face that is
+  // part buried and part proud is the one case the engine will not union at all.
+  // Seating the top corners just inside the disc's edge at 52 degrees does both:
+  // 14.2 mm below the axis, 0.8 mm clear of the counterbores, and 21.2 mm across
+  // where the disc is 22.2. The arm gives up 4 mm of width for that, which is
+  // the price of the six bolts.
+  rotorArmSeatAngle = 52deg
+  rotorArmTopZ = -(rotorHubDiameter / 2 * sin(rotorArmSeatAngle))
+  rotorArmWidth = rotorHubDiameter * cos(rotorArmSeatAngle) - 1mm
+  rotorArmHeight = rotorEndHeight + rotorArmTopZ
+
+  // The arm carries the hub's offset down past the actuator; the bridge takes
+  // it back to the limb centre line. Both are as deep as the shell, so the
+  // offset is reacted in the stiff direction.
+  // The arm's root is filleted into the bridge rather than left as a sharp
+  // re-entrant corner. That corner is the peak-stress point for the load the
+  // limb below puts through the offset -- about 11 MPa nominal, which a sharp
+  // angle multiplies by roughly 2.5 -- and the radius costs almost no mass.
+  // Drawn as a profile with an arc in it: the obvious construction, a block
+  // with a cylinder subtracted, leaves the cutter tangent to two faces and the
+  // engine refuses it.
+  rotorArmSketch = sketch(on = XZ) {
+    armBottom = line(start = [var 0mm, var 0mm], end = [var 10mm, var 0mm])
+    armOuter = line(start = [var 10mm, var 0mm], end = [var 10mm, var 18mm])
+    armTop = line(start = [var 10mm, var 18mm], end = [var 4mm, var 18mm])
+    armInner = line(start = [var 4mm, var 18mm], end = [var 4mm, var 12mm])
+    filletFace = arc(start = [var 0mm, var 8mm], end = [var 4mm, var 12mm], center = [var 0mm, var 12mm])
+    filletBack = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+    coincident([armBottom.start, ORIGIN])
+    coincident([armBottom.end, armOuter.start])
+    coincident([armOuter.end, armTop.start])
+    coincident([armTop.end, armInner.start])
+    coincident([armInner.end, filletFace.end])
+    coincident([filletFace.start, filletBack.start])
+    coincident([filletBack.end, armBottom.start])
+    horizontal(armBottom)
+    vertical(armOuter)
+    horizontal(armTop)
+    vertical(armInner)
+    vertical(filletBack)
+    horizontalDistance([armBottom.start, armBottom.end]) == rotorHubThickness + rotorFilletRadius
+    verticalDistance([armOuter.start, armOuter.end]) == rotorArmHeight
+    horizontalDistance([armTop.end, armTop.start]) == rotorHubThickness
+    verticalDistance([filletBack.end, filletBack.start]) == bridgeHeight
+    horizontalDistance([filletFace.start, filletFace.end]) == rotorFilletRadius
+    verticalDistance([filletFace.start, filletFace.end]) == rotorFilletRadius
+  }
+  rotorArmRegion = region(
+    segments = [
+      rotorArmSketch.armBottom,
+      rotorArmSketch.armOuter
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  rotorArmRaw = extrude(rotorArmRegion, length = rotorArmWidth, symmetric = true)
+    |> translate(x = rotorHubInnerX - rotorFilletRadius, z = -rotorEndHeight, global = true)
+
+  bridgeSketch = sketch(on = XZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 40mm, var 0mm])
+    edge2 = line(start = [var 40mm, var 0mm], end = [var 40mm, var 8mm])
+    edge3 = line(start = [var 40mm, var 8mm], end = [var 0mm, var 8mm])
+    edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == bridgeWidth
+    verticalDistance([edge2.start, edge2.end]) == bridgeHeight
+  }
+  bridgeRegion = region(segments = [bridgeSketch.edge1, bridgeSketch.edge2], intersectionIndex = -1, direction = CCW)
+  bridgeRaw = extrude(bridgeRegion, length = shellDepth, symmetric = true)
+    |> translate(x = bridgeCenterX - (bridgeWidth / 2), z = -rotorEndHeight, global = true)
+
+  // The bridge is a 40 x 30 plate only 8 mm thick and it bends about its own
+  // long axis, so the material at mid-height carries almost nothing. Three
+  // through-slots leave a flange above and below and a rib between each pair,
+  // all at shellWall -- the same four-perimeter rule the shells are drawn to.
+  // That takes about 2 g out of every rotor end, 17 g across the eight joints,
+  // for roughly 6 per cent of the section's second moment.
+  //
+  // The slots stop clear of the rotor arm, which fills the outboard third of
+  // the bridge and would refill anything cut there. Nothing on the outside of
+  // the part moves, so the 112.8 degree knee contact is unaffected. In an
+  // assembled limb the shell walls close the slot ends, so if the final set is
+  // printed SLS rather than FDM the voids will need a vent for the powder.
+  bridgeSlotHeight = bridgeHeight - (shellWall * 2)
+  bridgeSlotInnerX = bridgeCenterX - (bridgeWidth / 2) + shellWall
+  bridgeSlotOuterX = rotorHubInnerX - rotorFilletRadius - shellWall
+  bridgeSlotLength = (bridgeSlotOuterX - bridgeSlotInnerX - (shellWall * 2)) / 3
+  bridgeSlotPitch = bridgeSlotLength + shellWall
+
+  bridgeSlotSketch = sketch(on = XZ) {
+    slotEdge1 = line(start = [var 0mm, var 0mm], end = [var 6mm, var 0mm])
+    slotEdge2 = line(start = [var 6mm, var 0mm], end = [var 6mm, var 3mm])
+    slotEdge3 = line(start = [var 6mm, var 3mm], end = [var 0mm, var 3mm])
+    slotEdge4 = line(start = [var 0mm, var 3mm], end = [var 0mm, var 0mm])
+    coincident([slotEdge1.start, ORIGIN])
+    coincident([slotEdge1.end, slotEdge2.start])
+    coincident([slotEdge2.end, slotEdge3.start])
+    coincident([slotEdge3.end, slotEdge4.start])
+    coincident([slotEdge4.end, slotEdge1.start])
+    horizontal(slotEdge1)
+    vertical(slotEdge2)
+    horizontal(slotEdge3)
+    vertical(slotEdge4)
+    horizontalDistance([slotEdge1.start, slotEdge1.end]) == bridgeSlotLength
+    verticalDistance([slotEdge2.start, slotEdge2.end]) == bridgeSlotHeight
+  }
+  bridgeSlotRegion = region(
+    segments = [
+      bridgeSlotSketch.slotEdge1,
+      bridgeSlotSketch.slotEdge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  bridgeSlot1 = extrude(bridgeSlotRegion, length = shellDepth + 4mm, symmetric = true)
+    |> translate(x = bridgeSlotInnerX, z = -rotorEndHeight + shellWall, global = true)
+  bridgeSlot2 = clone(bridgeSlot1)
+    |> translate(x = bridgeSlotPitch, global = true)
+  bridgeSlot3 = clone(bridgeSlot1)
+    |> translate(x = bridgeSlotPitch * 2, global = true)
+
+  // Cut on the simple body, before the union, as everywhere else here.
+  bridgeLightened = subtract(bridgeRaw, tools = [bridgeSlot1, bridgeSlot2, bridgeSlot3])
+
+  hide(bridgeSlotSketch)
+  hide(rotorArmSketch)
+  hide(bridgeSketch)
+
+  // The arm shares the disc's plane and covers its lower half, so the output
+  // pattern is taken through the assembled end. Drilled into the disc alone, as
+  // this was until August 2026, the union refilled four of the six holes: the
+  // pair at the horizontal diameter half filled with their counterbores ruined,
+  // and the pair below the axis buried outright, leaving two usable bolts on a
+  // 12 mm chord to carry the actuator's whole output torque.
+  return union([
+    outputDisc(),
+    rotorArmRaw,
+    bridgeLightened
+  ])
+}
+
+// The stator plate: the flat limb's lower end, bolted straight to the
+// actuator's rear cover on the four-bolt Ø41 pattern. It replaces the two-cheek
+// clevis wherever the limb can lie in one plane, which is the knee and the
+// ankle. The hip roll and the hip pitch keep `statorClevis`, because the torso
+// and the hip carrier cannot put their structure in the joint's plane.
+//
+// Drawn in the same frame as everything else here -- joint centre at the origin,
+// axis along X, actuator output towards +X -- so the plate sits behind the
+// motor at -X. A limb whose lower actuator is turned round spins it 180 degrees
+// about Z to bring it to +X, which is a true mirror here because every feature
+// is symmetric fore and aft except the connector flat, and where that flat
+// points is a mounting choice.
+//
+// It is solid inside the bolt circle. It carried the clevis's Ø30.2 lightening
+// bore until that was measured on a 6 mm plate rather than a 3 mm cheek: the
+// bore left 14.8 mm of the available 45 mm of width at the joint axis, and
+// 266 mm^4 out of plane against the 540 mm^4 of the bare waist that NOTES.md
+// already calls the weakest printed thing on the robot. Filling it is 4.6 g a
+// plate and takes that section to 810 mm^4. Nothing needed the hole: the rear
+// cover is a flat static face the plate lands on, and the knee and the ankle
+// have had no far bearing since the clevis went.
+export fn statorPlate() {
+  plateSketch = sketch(on = YZ) {
+    plateCircle = circle(start = [var 26mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([plateCircle.center, ORIGIN])
+    horizontal([plateCircle.center, plateCircle.start])
+    diameter(plateCircle) == statorPlateDiameter
+  }
+  plateRegion = region(segments = [plateSketch.plateCircle])
+  plateBlank = extrude(plateRegion, length = limbPlateThickness, symmetric = true)
+    |> translate(x = statorPlateCenterX, global = true)
+
+  // The connector relief, taken as a straight cut on the housing's own flat.
+  flatSketch = sketch(on = YZ) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+    edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == statorPlateDiameter
+    verticalDistance([edge2.start, edge2.end]) == statorPlateDiameter
+  }
+  flatRegion = region(segments = [flatSketch.edge1, flatSketch.edge2], intersectionIndex = -1, direction = CCW)
+  flatCutter = extrude(flatRegion, length = limbPlateThickness + 4mm, symmetric = true)
+    |> translate(
+         x = statorPlateCenterX,
+         y = -(statorPlateFlatOffset + statorPlateDiameter),
+         z = -(statorPlateDiameter / 2),
+         global = true,
+       )
+
+  plateBoltSketch = sketch(on = YZ) {
+    plateBoltCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([plateBoltCircle.center, ORIGIN])
+    horizontal([
+      plateBoltCircle.center,
+      plateBoltCircle.start
+    ])
+    diameter(plateBoltCircle) == m3Clearance
+  }
+  plateBoltRegion = region(segments = [plateBoltSketch.plateBoltCircle])
+  plateBolt1 = extrude(plateBoltRegion, length = limbPlateThickness + 4mm, symmetric = true)
+    |> translate(
+         x = statorPlateCenterX,
+         y = rearBoltOffset,
+         z = rearBoltOffset,
+         global = true,
+       )
+  plateBolt2 = clone(plateBolt1)
+    |> translate(y = -rearBoltOffset * 2, global = true)
+  plateBolt3 = clone(plateBolt1)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+  plateBolt4 = clone(plateBolt2)
+    |> translate(z = -rearBoltOffset * 2, global = true)
+
+  // Every cut on the plain disc, before anything else, as everywhere here.
+  plateFlatted = subtract(plateBlank, tools = [flatCutter])
+  plateFinished = subtract(
+    plateFlatted,
+    tools = [
+      plateBolt1,
+      plateBolt2,
+      plateBolt3,
+      plateBolt4
+    ],
+  )
+
+  hide(plateSketch)
+  hide(flatSketch)
+  hide(plateBoltSketch)
+
+  return plateFinished
+}
+
+// The forked rotor -- drawn but not fitted; see parameters.kcl.
+// It was fitted where the joint was worth straddling -- the hip pitch
+// and the knee. It is `rotorHub` with a second arm on the far side of the
+// motor, tied to the first under the actuator, so the moving assembly is
+// supported either side instead of cantilevered off one.
+//
+// The layout cannot mirror the front, because the stator's rear cheek is bolted
+// flat to the motor's rear face. So the rear arm sits outboard of that cheek
+// and reaches back in on a journal, and the bearing lives in the cheek itself.
+// See the note in parameters.kcl for the numbers this buys.
+//
+// The tie is shallower than the bridge and deliberately so: it has to pass the
+// Ø52 cheek at every joint angle, so it runs outside the cheek's radius rather
+// than at the bridge's height. It is the only part of this that is not free --
+// the bridge would rather have been continued at full depth.
+export fn rotorYoke() {
+  rearLegSketch = sketch(on = XZ) {
+    tieBottom = line(start = [var 0mm, var 0mm], end = [var 18.25mm, var 0mm])
+    tieEnd = line(start = [var 18.25mm, var 0mm], end = [var 18.25mm, var 5mm])
+    tieTop = line(start = [var 18.25mm, var 5mm], end = [var 10mm, var 5mm])
+    filletFace = arc(start = [var 6mm, var 9mm], end = [var 10mm, var 5mm], center = [var 10mm, var 9mm])
+    armInner = line(start = [var 6mm, var 9mm], end = [var 6mm, var 42mm])
+    armTop = line(start = [var 6mm, var 42mm], end = [var 0mm, var 42mm])
+    armOuter = line(start = [var 0mm, var 42mm], end = [var 0mm, var 0mm])
+    coincident([tieBottom.start, ORIGIN])
+    coincident([tieBottom.end, tieEnd.start])
+    coincident([tieEnd.end, tieTop.start])
+    coincident([tieTop.end, filletFace.end])
+    coincident([filletFace.start, armInner.start])
+    coincident([armInner.end, armTop.start])
+    coincident([armTop.end, armOuter.start])
+    coincident([armOuter.end, tieBottom.start])
+    horizontal(tieBottom)
+    vertical(tieEnd)
+    horizontal(tieTop)
+    vertical(armInner)
+    horizontal(armTop)
+    vertical(armOuter)
+    horizontalDistance([tieBottom.start, tieBottom.end]) == rearTieInboardX - rearArmOuterX
+    verticalDistance([tieEnd.start, tieEnd.end]) == rearTieTopZ + rotorEndHeight
+    verticalDistance([armOuter.end, armOuter.start]) == rotorEndHeight + rearArmTopZ
+    horizontalDistance([armTop.end, armTop.start]) == rotorHubThickness
+    horizontalDistance([filletFace.end, filletFace.start]) == rotorFilletRadius
+    verticalDistance([filletFace.end, filletFace.start]) == rotorFilletRadius
+  }
+  rearLegRegion = region(
+    segments = [
+      rearLegSketch.tieBottom,
+      rearLegSketch.tieEnd
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  rearLegBlank = extrude(rearLegRegion, length = shellDepth, symmetric = true)
+    |> translate(x = rearArmOuterX, z = -rotorEndHeight, global = true)
+
+  rearSeatSketch = sketch(on = YZ) {
+    seatCircle = circle(start = [var 5.1mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([seatCircle.center, ORIGIN])
+    horizontal([seatCircle.center, seatCircle.start])
+    diameter(seatCircle) == journalSeatDiameter
+  }
+  rearSeatRegion = region(segments = [rearSeatSketch.seatCircle])
+  rearSeatCutter = extrude(rearSeatRegion, length = journalSeatDepth, symmetric = true)
+    |> translate(x = rearArmInnerX - (journalSeatDepth / 2), global = true)
+
+  // Cut on the simple body before anything is unioned, as everywhere else here.
+  rearLeg = subtract(rearLegBlank, tools = [rearSeatCutter])
+
+  hide(rearLegSketch)
+  hide(rearSeatSketch)
+
+  return union([rotorHub(), rearLeg])
+}

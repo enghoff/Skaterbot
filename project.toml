@@ -1,0 +1,9 @@
+title = "Bipedal"
+
+[settings.app]
+[settings.meta]
+id = "ad34798b-e0b2-4c75-80e1-421b84c55cd9"
+
+[settings.modeling]
+[cloud."zoo.dev"]
+project_id = "193d3ca2-937c-43a5-89c6-6dfe47a14b4c"

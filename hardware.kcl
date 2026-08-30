@@ -1,0 +1,263 @@
+// Metal joint hardware
+//
+// The three bought parts every joint needs, positioned with the joint centre at
+// the origin and the joint axis along X, so they drop into place wherever
+// joint.kcl's clevis and hub do.
+//
+// The bearing seat is metal rather than printed on purpose. NOTES.md records
+// printed pockets ovalising under load, and this seat is what holds the moving
+// side coaxial with the actuator's own output, so it is the last place to trust
+// a plastic bore. The carrier is a flanged ring bonded into the cheek with
+// retaining compound: that avoids putting screws through a 3 mm printed wall,
+// and the flange takes the thrust the bond should not have to.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+carrierThickness = cheekThickness
+journalCenterX = rotorHubOuterX - journalSeatDepth + journalLength / 2
+
+export fn jointHardware() {
+  // ---- bearing carrier: flanged ring, bonded into the cheek ----------------
+
+  carrierOuterSketch = sketch(on = YZ) {
+    carrierOuterCircle = circle(start = [var 15mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierOuterCircle.center, ORIGIN])
+    horizontal([
+      carrierOuterCircle.center,
+      carrierOuterCircle.start
+    ])
+    diameter(carrierOuterCircle) == bearingCarrierDiameter
+  }
+  carrierOuterRegion = region(segments = [carrierOuterSketch.carrierOuterCircle])
+  carrierBody = extrude(carrierOuterRegion, length = carrierThickness, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+
+  carrierFlangeSketch = sketch(on = YZ) {
+    carrierFlangeCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierFlangeCircle.center, ORIGIN])
+    horizontal([
+      carrierFlangeCircle.center,
+      carrierFlangeCircle.start
+    ])
+    diameter(carrierFlangeCircle) == bearingCarrierFlangeDiameter
+  }
+  carrierFlangeRegion = region(segments = [
+    carrierFlangeSketch.carrierFlangeCircle
+  ])
+  carrierFlange = extrude(carrierFlangeRegion, length = bearingCarrierFlangeThickness, symmetric = true)
+    |> translate(x = frontCheekX + carrierThickness / 2 + bearingCarrierFlangeThickness / 2, global = true)
+
+  bearingSeatSketch = sketch(on = YZ) {
+    bearingSeatCircle = circle(start = [var 9.5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingSeatCircle.center, ORIGIN])
+    horizontal([
+      bearingSeatCircle.center,
+      bearingSeatCircle.start
+    ])
+    diameter(bearingSeatCircle) == bearingOuterDiameter
+  }
+  bearingSeatRegion = region(segments = [bearingSeatSketch.bearingSeatCircle])
+  carrierSeatCutter = extrude(bearingSeatRegion, length = carrierThickness + bearingCarrierFlangeThickness + 4mm, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+
+  carrierBlank = union([carrierBody, carrierFlange])
+  carrierRaw = subtract(carrierBlank, tools = [carrierSeatCutter])
+
+  // ---- 6800-2RS, 10 x 19 x 5 ----------------------------------------------
+
+
+  bearingOuterSketch = sketch(on = YZ) {
+    bearingOuterCircle = circle(start = [var 9.5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingOuterCircle.center, ORIGIN])
+    horizontal([
+      bearingOuterCircle.center,
+      bearingOuterCircle.start
+    ])
+    diameter(bearingOuterCircle) == bearingOuterDiameter
+  }
+  bearingOuterRegion = region(segments = [bearingOuterSketch.bearingOuterCircle])
+  bearingBlank = extrude(bearingOuterRegion, length = bearingWidth, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+
+  bearingBoreSketch = sketch(on = YZ) {
+    bearingBoreCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingBoreCircle.center, ORIGIN])
+    horizontal([
+      bearingBoreCircle.center,
+      bearingBoreCircle.start
+    ])
+    diameter(bearingBoreCircle) == bearingBore
+  }
+  bearingBoreRegion = region(segments = [bearingBoreSketch.bearingBoreCircle])
+  bearingBoreCutter = extrude(bearingBoreRegion, length = bearingWidth + 4mm, symmetric = true)
+    |> translate(x = frontCheekX, global = true)
+  bearingRaw = subtract(bearingBlank, tools = [bearingBoreCutter])
+
+  // ---- Ø10 x 8 hardened journal, seated 2.2 mm into the rotor hub ---------
+
+
+  journalSketch = sketch(on = YZ) {
+    journalCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([journalCircle.center, ORIGIN])
+    horizontal([
+      journalCircle.center,
+      journalCircle.start
+    ])
+    diameter(journalCircle) == journalDiameter
+  }
+  journalRegion = region(segments = [journalSketch.journalCircle])
+  journalRaw = extrude(journalRegion, length = journalLength, symmetric = true)
+    |> translate(x = journalCenterX, global = true)
+
+  hide(carrierOuterSketch)
+  hide(carrierFlangeSketch)
+  hide(bearingSeatSketch)
+  hide(bearingOuterSketch)
+  hide(bearingBoreSketch)
+  hide(journalSketch)
+
+  return [
+    appearance(
+      carrierRaw,
+      color = motorFlange,
+      roughness = 30,
+      metalness = 85,
+    ),
+    appearance(
+      bearingRaw,
+      color = bearingSteel,
+      roughness = 20,
+      metalness = 88,
+    ),
+    appearance(
+      journalRaw,
+      color = bearingSteel,
+      roughness = 26,
+      metalness = 90,
+    )
+  ]
+}
+
+// The rear support set -- DRAWN BUT NOT FITTED. Nothing places this any more.
+// It belongs to the straddled joint, which is kept against the possibility that
+// the DM-J3507's own output bearing turns out not to take the moment; see the
+// note above rotorYoke in parameters.kcl.
+//
+// Same three bought parts as the front, and the same 6800 and Ø10 journal, so
+// nothing new appears on the shopping list. The difference is that the
+// carrier's flange faces outboard, because here the bearing is being pushed
+// away from the motor rather than towards it.
+export fn rearJointHardware() {
+  carrierOuterSketch = sketch(on = YZ) {
+    carrierOuterCircle = circle(start = [var 15mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierOuterCircle.center, ORIGIN])
+    horizontal([
+      carrierOuterCircle.center,
+      carrierOuterCircle.start
+    ])
+    diameter(carrierOuterCircle) == bearingCarrierDiameter
+  }
+  carrierOuterRegion = region(segments = [carrierOuterSketch.carrierOuterCircle])
+  carrierBody = extrude(carrierOuterRegion, length = carrierThickness, symmetric = true)
+    |> translate(x = rearCheekX, global = true)
+
+  carrierFlangeSketch = sketch(on = YZ) {
+    carrierFlangeCircle = circle(start = [var 18mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([carrierFlangeCircle.center, ORIGIN])
+    horizontal([
+      carrierFlangeCircle.center,
+      carrierFlangeCircle.start
+    ])
+    diameter(carrierFlangeCircle) == bearingCarrierFlangeDiameter
+  }
+  carrierFlangeRegion = region(segments = [
+    carrierFlangeSketch.carrierFlangeCircle
+  ])
+  carrierFlange = extrude(carrierFlangeRegion, length = bearingCarrierFlangeThickness, symmetric = true)
+    |> translate(x = rearCheekX - (carrierThickness / 2) - (bearingCarrierFlangeThickness / 2), global = true)
+
+  bearingSeatSketch = sketch(on = YZ) {
+    bearingSeatCircle = circle(start = [var 9.5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingSeatCircle.center, ORIGIN])
+    horizontal([
+      bearingSeatCircle.center,
+      bearingSeatCircle.start
+    ])
+    diameter(bearingSeatCircle) == bearingOuterDiameter
+  }
+  bearingSeatRegion = region(segments = [bearingSeatSketch.bearingSeatCircle])
+  carrierSeatCutter = extrude(bearingSeatRegion, length = carrierThickness + bearingCarrierFlangeThickness + 4mm, symmetric = true)
+    |> translate(x = rearCheekX, global = true)
+
+  carrierBlank = union([carrierBody, carrierFlange])
+  carrierRaw = subtract(carrierBlank, tools = [carrierSeatCutter])
+
+  bearingOuterSketch = sketch(on = YZ) {
+    bearingOuterCircle = circle(start = [var 9.5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingOuterCircle.center, ORIGIN])
+    horizontal([
+      bearingOuterCircle.center,
+      bearingOuterCircle.start
+    ])
+    diameter(bearingOuterCircle) == bearingOuterDiameter
+  }
+  bearingOuterRegion = region(segments = [bearingOuterSketch.bearingOuterCircle])
+  bearingBlank = extrude(bearingOuterRegion, length = bearingWidth, symmetric = true)
+    |> translate(x = rearBearingX, global = true)
+
+  bearingBoreSketch = sketch(on = YZ) {
+    bearingBoreCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([bearingBoreCircle.center, ORIGIN])
+    horizontal([
+      bearingBoreCircle.center,
+      bearingBoreCircle.start
+    ])
+    diameter(bearingBoreCircle) == bearingBore
+  }
+  bearingBoreRegion = region(segments = [bearingBoreSketch.bearingBoreCircle])
+  bearingBoreCutter = extrude(bearingBoreRegion, length = bearingWidth + 4mm, symmetric = true)
+    |> translate(x = rearBearingX, global = true)
+  bearingRaw = subtract(bearingBlank, tools = [bearingBoreCutter])
+
+  journalSketch = sketch(on = YZ) {
+    journalCircle = circle(start = [var 5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([journalCircle.center, ORIGIN])
+    horizontal([
+      journalCircle.center,
+      journalCircle.start
+    ])
+    diameter(journalCircle) == journalDiameter
+  }
+  journalRegion = region(segments = [journalSketch.journalCircle])
+  journalRaw = extrude(journalRegion, length = journalLength, symmetric = true)
+    |> translate(x = rearJournalCenterX, global = true)
+
+  hide(carrierOuterSketch)
+  hide(carrierFlangeSketch)
+  hide(bearingSeatSketch)
+  hide(bearingOuterSketch)
+  hide(bearingBoreSketch)
+  hide(journalSketch)
+
+  return [
+    appearance(
+      carrierRaw,
+      color = motorFlange,
+      roughness = 30,
+      metalness = 85,
+    ),
+    appearance(
+      bearingRaw,
+      color = bearingSteel,
+      roughness = 20,
+      metalness = 88,
+    ),
+    appearance(
+      journalRaw,
+      color = bearingSteel,
+      roughness = 26,
+      metalness = 90,
+    )
+  ]
+}

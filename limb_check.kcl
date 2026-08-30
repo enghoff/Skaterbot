@@ -1,0 +1,17 @@
+// Single-joint review model
+// Phase 2 and 3 gate: one flat limb bolted to the actuator below it. There is
+// no hardware left to show at this joint -- the plate lands straight on the
+// actuator's rear cover, and the far bearing that used to close the joint went
+// with the clevis.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import limbAssembly from "limb.kcl"
+import actuatorAssembly from "actuator.kcl"
+
+reviewLimb = limbAssembly(upperLegLength)
+reviewMotor = actuatorAssembly
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(z = -upperLegLength / 2, global = true)
+
+export limbCheckAssembly = [reviewLimb, reviewMotor]

@@ -1,5 +1,12 @@
 # Torque-Controlled Biped — Opus Engineering Handoff
 
+> **This is the original brief, not the current design state.** It has not been
+> maintained through the stressed-shell overhaul or the decision to run the robot
+> tethered, so its structure, mass table and battery lines are all superseded.
+> `PLAN.md` is the live plan and `NOTES.md` the running log; read those for what
+> is actually true. Kept because the objectives and the reasoning behind the
+> actuator choice still stand.
+
 ## Purpose
 
 You are the **lead mechanical engineering agent** for a compact, 3D-printable, torque-controlled bipedal robot project.
@@ -65,16 +72,18 @@ Primary actuator:
 
 ## DAMIAO DM-J3507-2EC
 
-Use the authoritative vendor STEP model when available.
+The authoritative vendor STEP, 2D print and user manual V1.0 are published at
+`gitee.com/kit-miao/DM-J3507-2EC`. These are no longer working assumptions; the
+figures below are confirmed against the manual and the 2025 selection catalogue,
+and the mounting interface is recorded in `parameters.kcl`. See `NOTES.md` for
+the full spec table, the CAN protocol summary and the measured bolt patterns.
 
-Nominal working assumptions:
-
-- Outer diameter: **46 mm**
-- Axial depth: **37.9 mm**
+- Outer diameter: **46 mm** (confirmed Ø46.000 in the STEP)
+- Axial depth: **37.9 mm** overall, with nothing protruding
 - Mass: **~150 g**
 - Gear ratio: **7:1**
-- Rated torque: **~0.8 Nm**
-- Peak torque: **~3 Nm**
+- Rated torque: **0.8 Nm** — continuous, and the binding limit in practice
+- Peak torque: **3 Nm**
 - Integrated BLDC / FOC controller
 - Backdrivable
 - CAN / CAN-FD
@@ -311,8 +320,8 @@ Reported files include:
 
 - `main.kcl`
 - `pose_check.kcl`
-- `NOTES.md`
-- `CHECKLIST.md`
+- `docs/NOTES.md`
+- `docs/CHECKLIST.md`
 
 ## `main.kcl`
 
@@ -493,6 +502,13 @@ The overall exported STL contains many separate/intersecting bodies and should c
 ---
 
 # 14. Immediate Priority
+
+**Sequencing note.** There is currently no hardware, so the bench
+characterisation this document opens with cannot start. That does not block
+design work: the vendor STEP and manual supply what the CAD was waiting on, so
+the knee module can be engineered now and the measurements folded in when
+hardware arrives. What must not happen is recording an analytical result as
+though it had been validated — see the deferred list in `NOTES.md`.
 
 Do **not** beautify or globally refine the entire robot yet.
 
@@ -721,31 +737,59 @@ before committing the change.
 
 Maintain design intent in human-readable project files.
 
-Recommended structure:
+## Current structure
+
+The KCL sources stay at the repository root because Zoo Design Studio expects
+`project.toml` and `main.kcl` there. All prose documentation lives in `docs/`.
 
 ```text
-torque-biped/
+bipedal/
 ├── README.md
-├── robot_spec.md
-├── NOTES.md
-├── CHECKLIST.md
-├── BOM.md
+├── project.toml
+├── main.kcl
+├── pose_check.kcl
+├── parameters.kcl
+├── actuator.kcl
+├── pitch_yoke.kcl
+├── hip_carrier.kcl
+├── thigh.kcl
+├── shin.kcl
+├── foot.kcl
+├── torso.kcl
+├── payload_envelopes.kcl
 │
+├── docs/
+│   ├── AGENTS.md
+│   ├── OPUS_HANDOFF.md
+│   ├── NOTES.md
+│   ├── CHECKLIST.md
+│   └── BOM.md
+│
+├── reference/          vendor data — design inputs, tracked on purpose
+│   ├── README.md       provenance, checksums and known caveats
+│   └── dm_3507_3d-241021.STEP
+│
+└── secrets/            (untracked)
+```
+
+Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
+untracked; regenerate them rather than committing them. Vendor geometry under
+`reference/` is exempt from that rule, because it is an input rather than an
+export — see the negation at the bottom of `.gitignore`. Keep vendor filenames
+as published, so the supplier's own revision date stays visible, and add
+revisions alongside rather than overwriting.
+
+## Structure to grow into
+
+As the per-joint detail arrives, add these alongside the above rather than
+relocating `main.kcl`:
+
+```text
 ├── reference/
-│   ├── dm-j3507.step
-│   ├── bearings/
-│   └── hardware/
+│   ├── bearings/       datasheets, once bearings are selected
+│   └── hardware/       fastener and shaft data
 │
-├── cad/
-│   ├── main.kcl
-│   ├── pose_check.kcl
-│   ├── hip/
-│   ├── knee/
-│   ├── ankle/
-│   ├── foot/
-│   └── torso/
-│
-├── exports/
+├── exports/            generated STEP/STL, untracked
 │   ├── step/
 │   └── stl/
 │
@@ -753,6 +797,10 @@ torque-biped/
     ├── urdf/
     └── usd/
 ```
+
+If per-joint KCL grows beyond single files, group it in subdirectories
+(`hip/`, `knee/`, `ankle/`, `foot/`, `torso/`) that `main.kcl` imports, keeping
+`main.kcl` itself at the root.
 
 Keep:
 
@@ -854,4 +902,4 @@ Inspect the generated geometry, check the engineering assumptions, revise it, an
 1. the knee satisfies the stated requirements to a reasonable engineering confidence, or
 2. you identify a specific constraint that prevents this and explain the minimum design change required.
 
-At the end, update `NOTES.md`, `CHECKLIST.md`, and `BOM.md` with the actual decisions made.
+At the end, update `docs/NOTES.md`, `docs/CHECKLIST.md`, and `docs/BOM.md` with the actual decisions made.

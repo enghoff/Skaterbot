@@ -1,0 +1,10 @@
+{
+  "parts": {
+    "thigh.kcl": 64.2,
+    "shin.kcl": 64.2,
+    "hip_carrier.kcl": 74.4,
+    "foot.kcl": 149.3,
+    "torso.kcl": 187.3
+  },
+  "total_g": 2024.6
+}

@@ -1,0 +1,236 @@
+// Mirrored walking stance
+//
+// The pose the regression suite never had. Every scene so far has moved one leg
+// while the other stayed neutral, so nothing has ever checked the two legs
+// against each other in the sagittal plane. This is mid-stride, both feet flat
+// on the ground, with the left leg leading and the right trailing.
+//
+// HOW THE ANGLES WERE CHOSEN
+// For both feet to lie flat on the same floor, both legs must drop the hip by
+// the same amount, so cos(hip) + cos(shin) has to match on the two sides. The
+// left leg was picked first -- 25 degrees of hip and 40 of knee, a normal
+// leading posture -- which gives a reach of 1.87215 link lengths. The right hip
+// was then set to -10 degrees and its shin angle follows:
+//
+// cos(rightShin) = 1.87215 - cos(10) = 0.88734  ->  rightShin = -27.46 deg
+//
+// The two hip heights then agree to 0.005 mm, which is far below anything the
+// model resolves. Each ankle is set to the negative of its shin angle, which is
+// what puts the sole flat.
+//
+// WHAT IT COSTS: an 84 mm stride with the hip pitch axis 14 mm below neutral.
+// Every joint is inside its commissioning limit, but the trailing ankle at
+// 27.5 degrees is close to its 30 degree limit -- a longer stride runs the
+// trailing ankle out of travel before anything else, which is worth knowing.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import jointHardware from "hardware.kcl"
+import thighRight, thighLeft from "thigh.kcl"
+import shinRight, shinLeft from "shin.kcl"
+import hipCarrierRight, hipCarrierLeft from "hip_carrier.kcl"
+import footRight, footLeft from "foot.kcl"
+import torsoAssembly from "torso.kcl"
+import payloadEnvelopes from "payload_envelopes.kcl"
+
+leftHipAngle = 25deg
+leftKneeAngle = 40deg
+leftShinAngle = leftHipAngle - leftKneeAngle
+leftAnkleAngle = -leftShinAngle
+leftFootAngle = leftShinAngle + leftAnkleAngle
+
+rightHipAngle = -10deg
+rightShinAngle = -27.46deg
+rightKneeAngle = rightHipAngle - rightShinAngle
+rightAnkleAngle = -rightShinAngle
+rightFootAngle = rightShinAngle + rightAnkleAngle
+
+// The stance sets the hip height rather than the other way round.
+poseHipPitchZ = ankleAxisHeight + upperLegLength * cos(leftHipAngle) + lowerLegLength * cos(leftShinAngle)
+crouchDrop = hipPitchAxisHeight - poseHipPitchZ
+poseHipRollZ = hipRollAxisHeight - crouchDrop
+poseTorsoCenterZ = torsoCenterHeight - crouchDrop
+poseCarrierCenterZ = (poseHipRollZ + poseHipPitchZ) / 2
+
+leftKneeY = upperLegLength * sin(leftHipAngle)
+leftKneeZ = poseHipPitchZ - (upperLegLength * cos(leftHipAngle))
+leftAnkleY = leftKneeY + lowerLegLength * sin(leftShinAngle)
+leftAnkleZ = leftKneeZ - (lowerLegLength * cos(leftShinAngle))
+leftThighCenterY = leftKneeY / 2
+leftThighCenterZ = (poseHipPitchZ + leftKneeZ) / 2
+leftShinCenterY = (leftKneeY + leftAnkleY) / 2
+leftShinCenterZ = (leftKneeZ + leftAnkleZ) / 2
+
+rightKneeY = upperLegLength * sin(rightHipAngle)
+rightKneeZ = poseHipPitchZ - (upperLegLength * cos(rightHipAngle))
+rightAnkleY = rightKneeY + lowerLegLength * sin(rightShinAngle)
+rightAnkleZ = rightKneeZ - (lowerLegLength * cos(rightShinAngle))
+rightThighCenterY = rightKneeY / 2
+rightThighCenterZ = (poseHipPitchZ + rightKneeZ) / 2
+rightShinCenterY = (rightKneeY + rightAnkleY) / 2
+rightShinCenterZ = (rightKneeZ + rightAnkleZ) / 2
+
+actuatorCopy2 = clone(actuatorAssembly)
+actuatorCopy3 = clone(actuatorAssembly)
+actuatorCopy4 = clone(actuatorAssembly)
+actuatorCopy5 = clone(actuatorAssembly)
+actuatorCopy6 = clone(actuatorAssembly)
+actuatorCopy7 = clone(actuatorAssembly)
+actuatorCopy8 = clone(actuatorAssembly)
+
+// ---- actuators -------------------------------------------------------------
+
+
+leftHipRollMotor = actuatorAssembly
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipRollZ, global = true)
+rightHipRollMotor = actuatorCopy2
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
+
+leftHipPitchMotor = actuatorCopy3
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
+rightHipPitchMotor = actuatorCopy4
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
+
+leftKneeMotor = actuatorCopy5
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftKneeY,
+       z = leftKneeZ,
+       global = true,
+     )
+rightKneeMotor = actuatorCopy6
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightKneeY,
+       z = rightKneeZ,
+       global = true,
+     )
+
+leftAnkleMotor = actuatorCopy7
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftAnkleY,
+       z = leftAnkleZ,
+       global = true,
+     )
+rightAnkleMotor = actuatorCopy8
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightAnkleY,
+       z = rightAnkleZ,
+       global = true,
+     )
+
+// ---- joint hardware, carried by the stationary side of each joint ----------
+
+
+leftHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipRollZ, global = true)
+rightHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = poseHipRollZ, global = true)
+
+leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> translate(x = -hipCenterX, z = poseHipPitchZ, global = true)
+rightHipPitchHardware = jointHardware()
+  |> translate(x = hipCenterX, z = poseHipPitchZ, global = true)
+
+// ---- printed structure -----------------------------------------------------
+
+
+leftHipCarrier = hipCarrierLeft
+  |> translate(x = -hipCenterX, z = poseCarrierCenterZ, global = true)
+rightHipCarrier = hipCarrierRight
+  |> translate(x = hipCenterX, z = poseCarrierCenterZ, global = true)
+
+leftThigh = thighLeft
+  |> rotate(axis = [1, 0, 0], angle = leftHipAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftThighCenterY,
+       z = leftThighCenterZ,
+       global = true,
+     )
+rightThigh = thighRight
+  |> rotate(axis = [1, 0, 0], angle = rightHipAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightThighCenterY,
+       z = rightThighCenterZ,
+       global = true,
+     )
+
+leftShin = shinLeft
+  |> rotate(axis = [1, 0, 0], angle = leftShinAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftShinCenterY,
+       z = leftShinCenterZ,
+       global = true,
+     )
+rightShin = shinRight
+  |> rotate(axis = [1, 0, 0], angle = rightShinAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightShinCenterY,
+       z = rightShinCenterZ,
+       global = true,
+     )
+
+leftFoot = footLeft
+  |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = leftAnkleY,
+       z = leftAnkleZ,
+       global = true,
+     )
+rightFoot = footRight
+  |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = rightAnkleY,
+       z = rightAnkleZ,
+       global = true,
+     )
+
+bodyFrame = torsoAssembly
+  |> translate(z = poseTorsoCenterZ, global = true)
+reservedPayload = payloadEnvelopes
+  |> translate(z = poseTorsoCenterZ, global = true)
+
+export walkPoseAssembly = [
+  bodyFrame,
+  reservedPayload,
+  leftHipRollMotor,
+  rightHipRollMotor,
+  leftHipPitchMotor,
+  rightHipPitchMotor,
+  leftKneeMotor,
+  rightKneeMotor,
+  leftAnkleMotor,
+  rightAnkleMotor,
+  leftHipRollHardware,
+  rightHipRollHardware,
+  leftHipPitchHardware,
+  rightHipPitchHardware,
+  leftHipCarrier,
+  rightHipCarrier,
+  leftThigh,
+  rightThigh,
+  leftShin,
+  rightShin,
+  leftFoot,
+  rightFoot
+]

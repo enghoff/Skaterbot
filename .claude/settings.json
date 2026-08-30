@@ -1,0 +1,12 @@
+{
+  "enabledMcpjsonServers": [
+    "zoo"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(uv run tools/check.py:*)",
+      "Bash(uv run tools/mass.py:*)",
+      "Bash(uv run tools/views.py:*)"
+    ]
+  }
+}
