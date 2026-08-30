@@ -66,7 +66,7 @@ answer, and neither is "it looks right".
 
 ## Tools in this repository
 
-Three commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
+Four commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
 what they need on its own:
 
 | | | |
@@ -74,6 +74,7 @@ what they need on its own:
 | `/check` | `tools/check.py` | mock-execute, lint and format-check every KCL file. Free, offline, no token. Works when the MCP server does not. |
 | `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. Engine, metered. |
 | `/views` | `tools/views.py` | render a model from several sides, named in the robot's frame rather than the camera's. Engine, metered. |
+| `/cache` | `tools/clear_cache.py` | clear Design Studio's caches when its model index goes bad and it opens on stale geometry. Free, offline, no engine. Refuses while the app is running. |
 
 Report the mass delta of every geometry change, and make `/check` clean before
 saying a change is done.
