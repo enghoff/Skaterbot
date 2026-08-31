@@ -1,0 +1,103 @@
+// Direct-drive wheel for the wheeled-biped study
+//
+// The existing ankle DM-J3507 becomes the wheel motor. Unlike the walking foot,
+// the wheel does not use rotorHub(): there is no reason to take the rotor output
+// down through an offset arm and bridge. The wheel starts from outputDisc()
+// directly, which keeps its load plane close to the actuator output bearing.
+//
+// Geometry here is a prototype envelope, not a claim that the final tyre will be
+// printed. The 80 x 24 mm tread represents an inline-skate-style crowned PU tyre;
+// the CAD uses a simple annulus until a specific donor wheel or moulded tread is
+// selected. The structural core is PA12-CF-compatible and leaves the six M3
+// output counterbores accessible from the outboard face.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import * from "wheeled_parameters.kcl"
+import outputDisc from "joint.kcl"
+
+wheelCenterX = rotorHubOuterX
+wheelRadius = prototypeWheelDiameter / 2
+wheelCoreOuterRadius = prototypeWheelCoreOuterDiameter / 2
+wheelCoreInnerRadius = prototypeWheelCoreInnerDiameter / 2
+
+// ---- structural core -------------------------------------------------------
+
+coreOuterSketch = sketch(on = YZ) {
+  outerCircle = circle(start = [var 34mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([outerCircle.center, ORIGIN])
+  horizontal([outerCircle.center, outerCircle.start])
+  diameter(outerCircle) == prototypeWheelCoreOuterDiameter
+}
+coreOuterRegion = region(segments = [coreOuterSketch.outerCircle])
+coreOuterRaw = extrude(coreOuterRegion, length = prototypeWheelCoreWidth, symmetric = true)
+  |> translate(x = wheelCenterX, global = true)
+
+coreInnerSketch = sketch(on = YZ) {
+  innerCircle = circle(start = [var 16mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([innerCircle.center, ORIGIN])
+  horizontal([innerCircle.center, innerCircle.start])
+  diameter(innerCircle) == prototypeWheelCoreInnerDiameter
+}
+coreInnerRegion = region(segments = [coreInnerSketch.innerCircle])
+coreInnerCutter = extrude(coreInnerRegion, length = prototypeWheelCoreWidth + 2mm, symmetric = true)
+  |> translate(x = wheelCenterX, global = true)
+
+wheelCoreRingRaw = subtract(coreOuterRaw, tools = [coreInnerCutter])
+wheelOutputDiscRaw = outputDisc()
+
+// The annulus overlaps the Ø36 output disc only outside radius 16 mm. The six
+// counterbores extend to radius 15 mm, so the ring does not refill them -- a
+// failure mode already seen elsewhere in this CAD and documented in
+// KCL_GOTCHAS.md. The bodies are intentionally left interpenetrating rather than
+// unioned; the project already uses that approach where the kernel is fragile.
+wheelCore = appearance(
+  [wheelOutputDiscRaw, wheelCoreRingRaw],
+  color = printedOrange,
+  roughness = 70,
+  metalness = 3,
+)
+
+// ---- tyre / tread envelope -------------------------------------------------
+
+tireOuterSketch = sketch(on = YZ) {
+  outerCircle = circle(start = [var 40mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([outerCircle.center, ORIGIN])
+  horizontal([outerCircle.center, outerCircle.start])
+  diameter(outerCircle) == prototypeWheelDiameter
+}
+tireOuterRegion = region(segments = [tireOuterSketch.outerCircle])
+tireOuterRaw = extrude(tireOuterRegion, length = prototypeWheelWidth, symmetric = true)
+  |> translate(x = wheelCenterX, global = true)
+
+tireInnerSketch = sketch(on = YZ) {
+  innerCircle = circle(start = [var 34mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([innerCircle.center, ORIGIN])
+  horizontal([innerCircle.center, innerCircle.start])
+  diameter(innerCircle) == prototypeWheelCoreOuterDiameter
+}
+tireInnerRegion = region(segments = [tireInnerSketch.innerCircle])
+tireInnerCutter = extrude(tireInnerRegion, length = prototypeWheelWidth + 2mm, symmetric = true)
+  |> translate(x = wheelCenterX, global = true)
+
+tireRaw = subtract(tireOuterRaw, tools = [tireInnerCutter])
+tire = appearance(
+  tireRaw,
+  color = soleBlack,
+  roughness = 92,
+  metalness = 0,
+)
+
+hide(coreOuterSketch)
+hide(coreInnerSketch)
+hide(tireOuterSketch)
+hide(tireInnerSketch)
+
+// Right-hand wheel matches a right ankle/wheel motor whose output points +X.
+// The left motor is the mirrored installation, so mirror the complete wheel
+// about the robot mid-plane exactly as foot.kcl does for the walking feet.
+export wheelRight = [wheelCore, tire]
+
+wheelMirrorSource = clone(wheelRight)
+export wheelLeft = mirror3d(wheelMirrorSource, across = YZ)
+hide(wheelMirrorSource)
