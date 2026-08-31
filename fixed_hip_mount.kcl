@@ -1,0 +1,139 @@
+// Fixed hip-pitch hanger for the six-motor wheeled-biped concept
+//
+// This is the first mechanical step toward deleting hip roll. It is deliberately
+// not wired into a full six-motor torso yet: torso.kcl currently contains the
+// hip-roll clevises and their gussets, and those must be removed/reworked rather
+// than hidden by overlapping new geometry.
+//
+// The lower end is the same proven statorClevis() that holds the hip-pitch motor
+// today. Instead of a powered hip-roll rotor above it, a short closed box rises
+// to the existing torso shell floor. This keeps hip pitch at the 80 mm-wheel
+// position while replacing an actuator, bearing set and orthogonal carrier with
+// static printed structure.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
+import statorClevis, statorEndHeight from "joint.kcl"
+
+// torso.kcl puts the shell floor one joint keep-out radius above the hip-roll
+// axis. Keep that datum for the first six-motor concept so the existing torso
+// electronics volume and overall 380 mm height do not move.
+fixedMountFloorHeight = hipRollAxisHeight + jointKeepOut
+fixedMountFloorZ = fixedMountFloorHeight - wheeledHipPitchAxisHeight
+
+hangerOuterWidth = shellWidth
+hangerOuterDepth = shellDepth
+hangerInnerWidth = hangerOuterWidth - (shellWall * 2)
+hangerInnerDepth = hangerOuterDepth - (shellWall * 2)
+
+// Overlap the existing stator saddle by 2 mm and extend 2 mm into the eventual
+// torso floor. These are modelling overlaps, not final interface dimensions.
+hangerBottomZ = statorEndHeight - 2mm
+hangerTopZ = fixedMountFloorZ + 2mm
+hangerHeight = hangerTopZ - hangerBottomZ
+hangerCenterZ = (hangerTopZ + hangerBottomZ) / 2
+
+hangerOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+  edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+  edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == hangerOuterWidth
+  verticalDistance([edge2.start, edge2.end]) == hangerOuterDepth
+}
+hangerOuterRegion = region(segments = [hangerOuterSketch.edge1, hangerOuterSketch.edge2], intersectionIndex = -1, direction = CCW)
+hangerBlank = extrude(hangerOuterRegion, length = hangerHeight, symmetric = true)
+  |> translate(
+       x = -hangerOuterWidth / 2,
+       y = -hangerOuterDepth / 2,
+       z = hangerCenterZ,
+       global = true,
+     )
+
+hangerInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+  edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+  edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+  edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == hangerInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == hangerInnerDepth
+}
+hangerInnerRegion = region(segments = [hangerInnerSketch.edge1, hangerInnerSketch.edge2], intersectionIndex = -1, direction = CCW)
+hangerCavity = extrude(hangerInnerRegion, length = hangerHeight - (shellWall * 2), symmetric = true)
+  |> translate(
+       x = -hangerInnerWidth / 2,
+       y = -hangerInnerDepth / 2,
+       z = hangerCenterZ,
+       global = true,
+     )
+hangerRaw = subtract(hangerBlank, tools = [hangerCavity])
+
+// A thin flange represents the area that should become part of a future
+// six-motor torso shell. It is intentionally broad enough to distribute hip
+// pitch reaction into the floor rather than ending a 30 mm box on a line.
+flangeWidth = 46mm
+flangeDepth = 42mm
+flangeThickness = 3mm
+flangeSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 46mm, var 0mm])
+  edge2 = line(start = [var 46mm, var 0mm], end = [var 46mm, var 42mm])
+  edge3 = line(start = [var 46mm, var 42mm], end = [var 0mm, var 42mm])
+  edge4 = line(start = [var 0mm, var 42mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == flangeWidth
+  verticalDistance([edge2.start, edge2.end]) == flangeDepth
+}
+flangeRegion = region(segments = [flangeSketch.edge1, flangeSketch.edge2], intersectionIndex = -1, direction = CCW)
+flangeRaw = extrude(flangeRegion, length = flangeThickness, symmetric = true)
+  |> translate(
+       x = -flangeWidth / 2,
+       y = -flangeDepth / 2,
+       z = fixedMountFloorZ,
+       global = true,
+     )
+
+pitchJoint = statorClevis()
+
+hide(hangerOuterSketch)
+hide(hangerInnerSketch)
+hide(flangeSketch)
+
+export fixedHipMountRight = [
+  appearance(
+    [pitchJoint, hangerRaw, flangeRaw],
+    color = printedOrange,
+    roughness = 70,
+    metalness = 3,
+  )
+]
+
+fixedHipMountMirrorSource = clone(fixedHipMountRight)
+export fixedHipMountLeft = mirror3d(fixedHipMountMirrorSource, across = YZ)
+hide(fixedHipMountMirrorSource)
