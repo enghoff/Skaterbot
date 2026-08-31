@@ -1,0 +1,39 @@
+// Wheeled-biped derived parameters
+//
+// This file deliberately sits beside parameters.kcl rather than changing the
+// walking baseline. It defines the first wheel prototype and the axis heights
+// that follow from replacing the 36 mm-high ankle axis with a wheel axle.
+//
+// The first prototype uses an 80 mm wheel because it is close to common inline
+// skate sizes, gives useful rolling speed on the DM-J3507, and raises the axle
+// only 4 mm relative to the walking robot. Hip roll and the torso remain at the
+// original height; the hip carrier therefore shortens from 55 mm to 51 mm.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+export prototypeWheelDiameter = 80mm
+export prototypeWheelWidth = 24mm
+export prototypeWheelTreadThickness = 6mm
+export prototypeWheelCoreWidth = 8mm
+
+// Keep the structural core outside the output fastener heads. The six M3
+// counterbores sit on radius 12 mm and are Ø6, so their outer edge is radius
+// 15 mm. A 32 mm core bore starts at radius 16 mm and leaves 1 mm of driver/head
+// clearance while overlapping the Ø36 output disc by 2 mm radially.
+export prototypeWheelCoreInnerDiameter = 32mm
+export prototypeWheelCoreOuterDiameter = prototypeWheelDiameter - (prototypeWheelTreadThickness * 2)
+
+// The tyre is centred close to the actuator output face rather than cantilevered
+// on a long axle. In wheel.kcl its centre plane coincides with rotorHubOuterX,
+// so the 24 mm tread partly wraps axially around the motor envelope while staying
+// radially outside it. This reduces bearing moment without creating interference.
+export prototypeWheelAxisHeight = prototypeWheelDiameter / 2
+
+export wheeledKneeAxisHeight = prototypeWheelAxisHeight + lowerLegLength
+export wheeledHipPitchAxisHeight = wheeledKneeAxisHeight + upperLegLength
+export wheeledHipAxisOffset = hipRollAxisHeight - wheeledHipPitchAxisHeight
+
+export wheeledShinCenterZ = (wheeledKneeAxisHeight + prototypeWheelAxisHeight) / 2
+export wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
+export wheeledHipCarrierCenterZ = (hipRollAxisHeight + wheeledHipPitchAxisHeight) / 2
