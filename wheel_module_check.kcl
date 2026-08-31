@@ -1,0 +1,16 @@
+// Isolated DM-J3507 + direct-drive wheel review scene
+//
+// Open this before wheeled_main.kcl. It exists to make the first engine/render
+// check narrow: verify motor/tread clearance, output-disc registration, bolt-head
+// access and the left/right mirror before debugging the full robot.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import actuatorAssembly from "actuator.kcl"
+import wheelRight from "wheel.kcl"
+
+reviewMotor = actuatorAssembly
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+
+reviewWheel = wheelRight
+
+export wheelModuleCheck = [reviewMotor, reviewWheel]
