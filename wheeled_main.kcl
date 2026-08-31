@@ -1,0 +1,128 @@
+// Eight-motor wheeled-biped prototype
+//
+// Side-by-side alternative to main.kcl. The walking baseline is untouched.
+// Each ankle DM-J3507 is re-used as a continuous wheel motor and the foot is
+// replaced by the direct-drive 80 mm wheel from wheel.kcl.
+//
+// The wheel axle is 40 mm above the floor rather than the walking ankle's
+// 36 mm. Thigh and shin lengths stay 105 mm, hip roll stays at 301 mm, and the
+// torso stays at its existing height. The hip-pitch and knee axes therefore move
+// up 4 mm and the hip carrier shortens from 55 to 51 mm.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ, wheeledHipCarrierCenterZ from "wheeled_parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import jointHardware from "hardware.kcl"
+import thighRight, thighLeft from "thigh.kcl"
+import shinRight, shinLeft from "shin.kcl"
+import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
+import wheelRight, wheelLeft from "wheel.kcl"
+import torsoAssembly from "torso.kcl"
+import payloadEnvelopes from "payload_envelopes.kcl"
+
+actuatorCopy2 = clone(actuatorAssembly)
+actuatorCopy3 = clone(actuatorAssembly)
+actuatorCopy4 = clone(actuatorAssembly)
+actuatorCopy5 = clone(actuatorAssembly)
+actuatorCopy6 = clone(actuatorAssembly)
+actuatorCopy7 = clone(actuatorAssembly)
+actuatorCopy8 = clone(actuatorAssembly)
+
+// ---- actuators -------------------------------------------------------------
+
+leftHipRollMotor = actuatorAssembly
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
+rightHipRollMotor = actuatorCopy2
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
+
+leftHipPitchMotor = actuatorCopy3
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
+leftKneeMotor = actuatorCopy4
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = -hipCenterX, z = wheeledKneeAxisHeight, global = true)
+leftWheelMotor = actuatorCopy5
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = prototypeWheelAxisHeight, global = true)
+
+rightHipPitchMotor = actuatorCopy6
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
+rightKneeMotor = actuatorCopy7
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = wheeledKneeAxisHeight, global = true)
+rightWheelMotor = actuatorCopy8
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
+
+// ---- bearing carriers, bearings and journals -------------------------------
+// Unchanged from the walking robot: only hip roll and hip pitch are straddled.
+// Knee and wheel joints rely on the actuator's own output bearing.
+
+leftHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
+rightHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
+
+leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> translate(x = -hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
+rightHipPitchHardware = jointHardware()
+  |> translate(x = hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
+
+// ---- printed structure -----------------------------------------------------
+
+leftHipCarrier = wheeledHipCarrierLeft
+  |> translate(x = -hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
+rightHipCarrier = wheeledHipCarrierRight
+  |> translate(x = hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
+
+leftThigh = thighLeft
+  |> translate(x = -hipCenterX, z = wheeledThighCenterZ, global = true)
+rightThigh = thighRight
+  |> translate(x = hipCenterX, z = wheeledThighCenterZ, global = true)
+
+leftShin = shinLeft
+  |> translate(x = -hipCenterX, z = wheeledShinCenterZ, global = true)
+rightShin = shinRight
+  |> translate(x = hipCenterX, z = wheeledShinCenterZ, global = true)
+
+leftWheel = wheelLeft
+  |> translate(x = -hipCenterX, z = prototypeWheelAxisHeight, global = true)
+rightWheel = wheelRight
+  |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
+
+bodyFrame = torsoAssembly
+  |> translate(z = torsoCenterHeight, global = true)
+reservedPayload = payloadEnvelopes
+  |> translate(z = torsoCenterHeight, global = true)
+
+export wheeledRobotAssembly = [
+  bodyFrame,
+  reservedPayload,
+  leftHipRollMotor,
+  rightHipRollMotor,
+  leftHipPitchMotor,
+  rightHipPitchMotor,
+  leftKneeMotor,
+  rightKneeMotor,
+  leftWheelMotor,
+  rightWheelMotor,
+  leftHipRollHardware,
+  rightHipRollHardware,
+  leftHipPitchHardware,
+  rightHipPitchHardware,
+  leftHipCarrier,
+  rightHipCarrier,
+  leftThigh,
+  rightThigh,
+  leftShin,
+  rightShin,
+  leftWheel,
+  rightWheel
+]
