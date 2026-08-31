@@ -1,0 +1,90 @@
+// Hip carrier for the 80 mm wheeled-biped prototype
+//
+// The walking carrier spans 55 mm between hip roll and hip pitch. An 80 mm
+// wheel raises the lower chain by 4 mm while hip roll and the torso stay fixed,
+// so the wheeled carrier spans 51 mm. This is a separate part rather than a
+// modification of hip_carrier.kcl so the walking baseline remains intact.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import * from "wheeled_parameters.kcl"
+import statorClevis, rotorHub from "joint.kcl"
+
+axisHalfOffset = wheeledHipAxisOffset / 2
+connectorHeight = 10mm
+connectorInnerWidth = shellWidth - (shellWall * 2)
+connectorInnerDepth = shellDepth - (shellWall * 2)
+
+connectorOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+  edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+  edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == shellWidth
+  verticalDistance([edge2.start, edge2.end]) == shellDepth
+}
+connectorOuterRegion = region(
+  segments = [connectorOuterSketch.edge1, connectorOuterSketch.edge2],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+connectorBlank = extrude(connectorOuterRegion, length = connectorHeight, symmetric = true)
+  |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
+
+connectorInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+  edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+  edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+  edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == connectorInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == connectorInnerDepth
+}
+connectorInnerRegion = region(
+  segments = [connectorInnerSketch.edge1, connectorInnerSketch.edge2],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+connectorCavity = extrude(connectorInnerRegion, length = connectorHeight + 4mm, symmetric = true)
+  |> translate(x = -connectorInnerWidth / 2, y = -connectorInnerDepth / 2, global = true)
+connectorRaw = subtract(connectorBlank, tools = [connectorCavity])
+
+pitchJoint = statorClevis()
+  |> translate(z = -axisHalfOffset, global = true)
+
+rollJoint = rotorHub()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(z = axisHalfOffset, global = true)
+
+hide(connectorOuterSketch)
+hide(connectorInnerSketch)
+
+export wheeledHipCarrierRight = [
+  appearance(
+    [connectorRaw, pitchJoint, rollJoint],
+    color = printedOrange,
+    roughness = 70,
+    metalness = 3,
+  )
+]
+
+wheeledHipCarrierMirrorSource = clone(wheeledHipCarrierRight)
+export wheeledHipCarrierLeft = mirror3d(wheeledHipCarrierMirrorSource, across = YZ)
+hide(wheeledHipCarrierMirrorSource)
