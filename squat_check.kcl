@@ -1,0 +1,220 @@
+// Deepest legal squat, both wheels on the ground
+//
+// The scene the wheeled robot needs and the walking one never did. A walking
+// biped crouches with its feet flat and its shins clear of everything; a wheeled
+// one folds a Ø80 disc up towards its own thigh, and the disc is 40 mm of
+// radius in every direction rather than a flat plate that sweeps its own
+// silhouette.
+//
+// WHAT SETS THE POSE. Two things, and between them they leave no freedom. The
+// knee cannot pass its 110 degree commissioning stop -- the same angle
+// knee_limit_check.kcl is drawn at -- and both axles have to stay at 40 mm or
+// the wheels are not on the floor. Making the squat symmetric, so that each axle
+// sits directly under its own hip rather than thrown fore or aft, then fixes the
+// hip at half the knee angle: 55 degrees of hip, 110 of knee, 55 of shin the
+// other way.
+//
+// WHAT IT COSTS. The leg reaches 120.4 mm vertically instead of 210, so the
+// torso drops 89.6 mm and the robot stands 290 mm rather than 380. The knees
+// come 86 mm forward of the hip axis, which is the number to watch: it is where
+// the payload envelope and the knee actuators have to miss each other.
+//
+// The thigh clears the wheel comfortably at this angle -- the nearest point of
+// the thigh line is a full leg segment from the axle -- so what this scene is
+// really for is the knee actuator against the torso floor, and the wheel against
+// the shin's own stator plate.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
+import actuatorAssembly from "actuator.kcl"
+import jointHardware from "hardware.kcl"
+import thighRight, thighLeft from "thigh.kcl"
+import shinRight, shinLeft from "shin.kcl"
+import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
+import wheelRight, wheelLeft from "wheel.kcl"
+import torsoAssembly from "torso.kcl"
+import payloadEnvelopes from "payload_envelopes.kcl"
+
+// The commissioning stop, from knee_limit_check.kcl.
+squatKneeAngle = 110deg
+squatHipAngle = squatKneeAngle / 2
+squatShinAngle = squatHipAngle - squatKneeAngle
+
+legVerticalReach = upperLegLength * cos(squatHipAngle) + lowerLegLength * cos(squatShinAngle)
+squatDrop = upperLegLength + lowerLegLength - legVerticalReach
+squatHipPitchZ = wheeledHipPitchAxisHeight - squatDrop
+squatHipRollZ = hipRollAxisHeight - squatDrop
+squatTorsoCenterZ = torsoCenterHeight - squatDrop
+squatCarrierCenterZ = (squatHipRollZ + squatHipPitchZ) / 2
+
+kneeY = upperLegLength * sin(squatHipAngle)
+kneeZ = squatHipPitchZ - (upperLegLength * cos(squatHipAngle))
+wheelY = kneeY + lowerLegLength * sin(squatShinAngle)
+wheelZ = kneeZ - (lowerLegLength * cos(squatShinAngle))
+thighCenterY = kneeY / 2
+thighCenterZ = (squatHipPitchZ + kneeZ) / 2
+shinCenterY = (kneeY + wheelY) / 2
+shinCenterZ = (kneeZ + wheelZ) / 2
+
+actuatorCopy2 = clone(actuatorAssembly)
+actuatorCopy3 = clone(actuatorAssembly)
+actuatorCopy4 = clone(actuatorAssembly)
+actuatorCopy5 = clone(actuatorAssembly)
+actuatorCopy6 = clone(actuatorAssembly)
+actuatorCopy7 = clone(actuatorAssembly)
+actuatorCopy8 = clone(actuatorAssembly)
+
+// ---- actuators -------------------------------------------------------------
+
+
+leftHipRollMotor = actuatorAssembly
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = squatHipRollZ, global = true)
+rightHipRollMotor = actuatorCopy2
+  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
+  |> translate(x = hipCenterX, z = squatHipRollZ, global = true)
+
+leftHipPitchMotor = actuatorCopy3
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(x = -hipCenterX, z = squatHipPitchZ, global = true)
+rightHipPitchMotor = actuatorCopy4
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = squatHipPitchZ, global = true)
+
+leftKneeMotor = actuatorCopy5
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = kneeY,
+       z = kneeZ,
+       global = true,
+     )
+rightKneeMotor = actuatorCopy6
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = kneeY,
+       z = kneeZ,
+       global = true,
+     )
+
+leftWheelMotor = actuatorCopy7
+  |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = wheelY,
+       z = wheelZ,
+       global = true,
+     )
+rightWheelMotor = actuatorCopy8
+  |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = wheelY,
+       z = wheelZ,
+       global = true,
+     )
+
+// ---- joint hardware, carried by the stationary side of each joint ----------
+
+
+leftHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = -hipCenterX, z = squatHipRollZ, global = true)
+rightHipRollHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = squatHipRollZ, global = true)
+
+leftHipPitchHardware = jointHardware()
+  |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
+  |> translate(x = -hipCenterX, z = squatHipPitchZ, global = true)
+rightHipPitchHardware = jointHardware()
+  |> translate(x = hipCenterX, z = squatHipPitchZ, global = true)
+
+// ---- printed structure -----------------------------------------------------
+
+
+leftHipCarrier = wheeledHipCarrierLeft
+  |> translate(x = -hipCenterX, z = squatCarrierCenterZ, global = true)
+rightHipCarrier = wheeledHipCarrierRight
+  |> translate(x = hipCenterX, z = squatCarrierCenterZ, global = true)
+
+leftThigh = thighLeft
+  |> rotate(axis = [1, 0, 0], angle = squatHipAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = thighCenterY,
+       z = thighCenterZ,
+       global = true,
+     )
+rightThigh = thighRight
+  |> rotate(axis = [1, 0, 0], angle = squatHipAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = thighCenterY,
+       z = thighCenterZ,
+       global = true,
+     )
+
+leftShin = shinLeft
+  |> rotate(axis = [1, 0, 0], angle = squatShinAngle, global = true)
+  |> translate(
+       x = -hipCenterX,
+       y = shinCenterY,
+       z = shinCenterZ,
+       global = true,
+     )
+rightShin = shinRight
+  |> rotate(axis = [1, 0, 0], angle = squatShinAngle, global = true)
+  |> translate(
+       x = hipCenterX,
+       y = shinCenterY,
+       z = shinCenterZ,
+       global = true,
+     )
+
+leftWheel = wheelLeft
+  |> translate(
+       x = -hipCenterX,
+       y = wheelY,
+       z = wheelZ,
+       global = true,
+     )
+rightWheel = wheelRight
+  |> translate(
+       x = hipCenterX,
+       y = wheelY,
+       z = wheelZ,
+       global = true,
+     )
+
+bodyFrame = torsoAssembly
+  |> translate(z = squatTorsoCenterZ, global = true)
+reservedPayload = payloadEnvelopes
+  |> translate(z = squatTorsoCenterZ, global = true)
+
+export squatCheckAssembly = [
+  bodyFrame,
+  reservedPayload,
+  leftHipRollMotor,
+  rightHipRollMotor,
+  leftHipPitchMotor,
+  rightHipPitchMotor,
+  leftKneeMotor,
+  rightKneeMotor,
+  leftWheelMotor,
+  rightWheelMotor,
+  leftHipRollHardware,
+  rightHipRollHardware,
+  leftHipPitchHardware,
+  rightHipPitchHardware,
+  leftHipCarrier,
+  rightHipCarrier,
+  leftThigh,
+  rightThigh,
+  leftShin,
+  rightShin,
+  leftWheel,
+  rightWheel
+]

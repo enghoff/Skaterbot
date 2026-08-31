@@ -51,7 +51,14 @@ hangerOuterSketch = sketch(on = XY) {
   horizontalDistance([edge1.start, edge1.end]) == hangerOuterWidth
   verticalDistance([edge2.start, edge2.end]) == hangerOuterDepth
 }
-hangerOuterRegion = region(segments = [hangerOuterSketch.edge1, hangerOuterSketch.edge2], intersectionIndex = -1, direction = CCW)
+hangerOuterRegion = region(
+  segments = [
+    hangerOuterSketch.edge1,
+    hangerOuterSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
 hangerBlank = extrude(hangerOuterRegion, length = hangerHeight, symmetric = true)
   |> translate(
        x = -hangerOuterWidth / 2,
@@ -77,7 +84,14 @@ hangerInnerSketch = sketch(on = XY) {
   horizontalDistance([edge1.start, edge1.end]) == hangerInnerWidth
   verticalDistance([edge2.start, edge2.end]) == hangerInnerDepth
 }
-hangerInnerRegion = region(segments = [hangerInnerSketch.edge1, hangerInnerSketch.edge2], intersectionIndex = -1, direction = CCW)
+hangerInnerRegion = region(
+  segments = [
+    hangerInnerSketch.edge1,
+    hangerInnerSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
 hangerCavity = extrude(hangerInnerRegion, length = hangerHeight - (shellWall * 2), symmetric = true)
   |> translate(
        x = -hangerInnerWidth / 2,

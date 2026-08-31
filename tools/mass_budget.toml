@@ -1,4 +1,12 @@
-# Mass budget for the whole robot.
+# Mass budget for the whole robot -- the WHEELED robot, which is main.kcl on
+# this branch. The walking robot it grew out of is walking_main.kcl, and its
+# budget is this same file on the `main` branch: the branch is the variant
+# mechanism, because a single budget file describes a single machine.
+#
+# What changed from the walking budget: the feet became wheel adapters plus a
+# pair of bought skate wheels, and the hip carriers came from the wheeled
+# wrapper rather than the walking one. Everything else -- limbs, torso,
+# actuators, bearings -- is the same part in the same count.
 #
 # The printed parts are measured from the CAD every time tools/mass.py runs, so
 # nothing in this file records their mass. What it records is which files are
@@ -39,14 +47,17 @@ file = "shin.kcl"
 label = "Shins, the pair"
 count = 1
 
+# hip_carrier.kcl itself is a function module with no bodies at its top level,
+# so it would measure zero. The wrapper that fixes the 51 mm wheeled span is
+# what carries the geometry.
 [[printed]]
-file = "hip_carrier.kcl"
+file = "wheeled_hip_carrier.kcl"
 label = "Hip carriers, the pair"
 count = 1
 
 [[printed]]
-file = "foot.kcl"
-label = "Feet, the pair — tray, sole, pads"
+file = "wheel_adapter.kcl"
+label = "Wheel adapters, the pair"
 count = 1
 
 [[printed]]
@@ -71,9 +82,15 @@ Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
 per-joint tally."""
 
 [[fixed]]
+label = "Wheels — 80 mm skate, the pair"
+each_g = 60.0
+count = 2
+note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of this table. Catalogue-typical for an 80 x 24 mm 85A inline-skate wheel; the range across brands is roughly 55-65 g. It is the bare wheel: the two 608 bearings come out for the direct drive, so a vendor figure quoted with bearings fitted is about 24 g per wheel too heavy. Replace this with a weighed figure as soon as a wheel is in hand."""
+
+[[fixed]]
 label = "Fasteners"
-total_g = 60.0
-note = "M3 sets across all eight joints and both covers. docs/BOM.md estimate."
+total_g = 66.0
+note = """M3 sets across all eight joints and both covers, 60 g, docs/BOM.md estimate. Plus 6 g for the two wheel clamps: an M5 x 20 cap screw, a Ø30 washer and an M5 heat-set insert at each wheel."""
 
 [[fixed]]
 label = "Electronics and wiring"

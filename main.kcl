@@ -1,31 +1,32 @@
-// Compact torque-controlled biped, stressed-shell build
+// Compact torque-controlled wheeled biped, stressed-shell build
 //
-// Neutral 380 mm assembly. Each limb is a closed printed shell that carries the
-// load itself, and every one of the eight joints is the same pair of parts from
-// joint.kcl: a stator clevis on the limb above, a rotor hub on the limb below.
-// The actuators hang in the open clevises where they can still radiate.
+// Neutral 380 mm assembly, and the model this branch is about. Each leg is hip
+// roll, hip pitch, knee pitch and a driven wheel, on the same eight DM-J3507
+// actuators the walking robot used: the ankle motor is re-used as a continuous
+// wheel motor and the foot is replaced by an off-the-shelf 80 mm skate wheel on
+// a printed adapter.
 //
-// The two legs are deliberately identical rather than mirrored. Every joint part
-// is symmetric front-to-back, so the only asymmetry is which side of the
-// actuator the hub sits on, and that is forced by the actuator. Building both
-// legs the same way halves the number of distinct printed parts -- one thigh,
-// one shin, one foot, one carrier -- which is worth more on a printed robot than
-// a symmetrical silhouette.
+// The walking robot it grew out of has not been deleted -- it is walking_main.kcl
+// beside this file, and it is the model on the `main` branch. Both are built
+// from the same limbs, the same joints and the same torso; what differs is the
+// bottom of the leg and the 4 mm that follows from it.
+//
+// The wheel axle is 40 mm above the floor rather than the walking ankle's 36 mm.
+// Thigh and shin lengths stay 105 mm, hip roll stays at 301 mm, and the torso
+// stays at its existing height. The hip-pitch and knee axes therefore move up
+// 4 mm and the hip carrier shortens from 55 to 51 mm.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
+import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ, wheeledHipCarrierCenterZ from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
-import hipCarrierRight, hipCarrierLeft from "hip_carrier.kcl"
-import footRight, footLeft from "foot.kcl"
+import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
+import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
-
-thighCenterZ = (hipPitchAxisHeight + kneeAxisHeight) / 2
-shinCenterZ = (kneeAxisHeight + ankleAxisHeight) / 2
-hipCarrierCenterZ = (hipRollAxisHeight + hipPitchAxisHeight) / 2
 
 actuatorCopy2 = clone(actuatorAssembly)
 actuatorCopy3 = clone(actuatorAssembly)
@@ -47,25 +48,27 @@ rightHipRollMotor = actuatorCopy2
 
 leftHipPitchMotor = actuatorCopy3
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
-  |> translate(x = -hipCenterX, z = hipPitchAxisHeight, global = true)
+  |> translate(x = -hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
 leftKneeMotor = actuatorCopy4
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-  |> translate(x = -hipCenterX, z = kneeAxisHeight, global = true)
-leftAnkleMotor = actuatorCopy5
+  |> translate(x = -hipCenterX, z = wheeledKneeAxisHeight, global = true)
+leftWheelMotor = actuatorCopy5
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
-  |> translate(x = -hipCenterX, z = ankleAxisHeight, global = true)
+  |> translate(x = -hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
 rightHipPitchMotor = actuatorCopy6
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-  |> translate(x = hipCenterX, z = hipPitchAxisHeight, global = true)
+  |> translate(x = hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
 rightKneeMotor = actuatorCopy7
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
-  |> translate(x = hipCenterX, z = kneeAxisHeight, global = true)
-rightAnkleMotor = actuatorCopy8
+  |> translate(x = hipCenterX, z = wheeledKneeAxisHeight, global = true)
+rightWheelMotor = actuatorCopy8
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
-  |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+  |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
 // ---- bearing carriers, bearings and journals -------------------------------
+// Unchanged from the walking robot: only hip roll and hip pitch are straddled.
+// Knee and wheel joints rely on the actuator's own output bearing.
 
 
 leftHipRollHardware = jointHardware()
@@ -77,32 +80,32 @@ rightHipRollHardware = jointHardware()
 
 leftHipPitchHardware = jointHardware()
   |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
-  |> translate(x = -hipCenterX, z = hipPitchAxisHeight, global = true)
+  |> translate(x = -hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
 rightHipPitchHardware = jointHardware()
-  |> translate(x = hipCenterX, z = hipPitchAxisHeight, global = true)
+  |> translate(x = hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
 
 // ---- printed structure -----------------------------------------------------
 
 
-leftHipCarrier = hipCarrierLeft
-  |> translate(x = -hipCenterX, z = hipCarrierCenterZ, global = true)
-rightHipCarrier = hipCarrierRight
-  |> translate(x = hipCenterX, z = hipCarrierCenterZ, global = true)
+leftHipCarrier = wheeledHipCarrierLeft
+  |> translate(x = -hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
+rightHipCarrier = wheeledHipCarrierRight
+  |> translate(x = hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
 
 leftThigh = thighLeft
-  |> translate(x = -hipCenterX, z = thighCenterZ, global = true)
+  |> translate(x = -hipCenterX, z = wheeledThighCenterZ, global = true)
 rightThigh = thighRight
-  |> translate(x = hipCenterX, z = thighCenterZ, global = true)
+  |> translate(x = hipCenterX, z = wheeledThighCenterZ, global = true)
 
 leftShin = shinLeft
-  |> translate(x = -hipCenterX, z = shinCenterZ, global = true)
+  |> translate(x = -hipCenterX, z = wheeledShinCenterZ, global = true)
 rightShin = shinRight
-  |> translate(x = hipCenterX, z = shinCenterZ, global = true)
+  |> translate(x = hipCenterX, z = wheeledShinCenterZ, global = true)
 
-leftFoot = footLeft
-  |> translate(x = -hipCenterX, z = ankleAxisHeight, global = true)
-rightFoot = footRight
-  |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
+leftWheel = wheelLeft
+  |> translate(x = -hipCenterX, z = prototypeWheelAxisHeight, global = true)
+rightWheel = wheelRight
+  |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
 bodyFrame = torsoAssembly
   |> translate(z = torsoCenterHeight, global = true)
@@ -118,8 +121,8 @@ export robotAssembly = [
   rightHipPitchMotor,
   leftKneeMotor,
   rightKneeMotor,
-  leftAnkleMotor,
-  rightAnkleMotor,
+  leftWheelMotor,
+  rightWheelMotor,
   leftHipRollHardware,
   rightHipRollHardware,
   leftHipPitchHardware,
@@ -130,6 +133,6 @@ export robotAssembly = [
   rightThigh,
   leftShin,
   rightShin,
-  leftFoot,
-  rightFoot
+  leftWheel,
+  rightWheel
 ]

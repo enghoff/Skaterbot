@@ -1,34 +1,114 @@
 // Wheeled-biped derived parameters
 //
-// This file deliberately sits beside parameters.kcl rather than changing the
-// walking baseline. It defines the first wheel prototype and the axis heights
-// that follow from replacing the 36 mm-high ankle axis with a wheel axle.
+// This file sits beside parameters.kcl rather than changing it. It carries the
+// donor wheel's dimensions and the axis heights that follow from replacing the
+// 36 mm-high ankle axis with a wheel axle.
 //
-// The first prototype uses an 80 mm wheel because it is close to common inline
-// skate sizes, gives useful rolling speed on the DM-J3507, and raises the axle
-// only 4 mm relative to the walking robot. Hip roll and the torso remain at the
-// original height; the hip carrier therefore shortens from 55 mm to 51 mm.
+// The wheel is an off-the-shelf 80 x 24 mm inline-skate wheel, not a printed
+// one. That size was chosen because it is the commonest stocked skate size, it
+// gives useful rolling speed on the DM-J3507, and it raises the axle only 4 mm
+// relative to the walking robot. Hip roll and the torso stay at their original
+// heights; the hip carrier therefore shortens from 55 mm to 51 mm.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 
-export prototypeWheelDiameter = 80mm
-export prototypeWheelWidth = 24mm
-export prototypeWheelTreadThickness = 6mm
-export prototypeWheelCoreWidth = 8mm
+// ---------------------------------------------------------------------------
+// The donor wheel
+//
+// PROVENANCE. These are the dimensions of a generic 80 mm inline-skate wheel,
+// which is a consumer part: no vendor publishes a STEP for one, so unlike the
+// DM-J3507 in reference/ there is no CAD to check this against. What is solid
+// is the interface, because it is standardised by the bearing rather than by
+// the wheel maker:
+//
+// * every skate wheel in this size takes a pair of 608 bearings, 8 x 22 x 7 mm
+// (ISO 15 / ABEC 608), pressed into the hub from each side;
+// * the two bearing seats are Ø22 and 24 mm apart across the hub, which is what
+// fixes the 24 mm width;
+// * the 8 mm bore and the 24 mm width are the two dimensions an 8 mm skate axle
+// relies on, so they are the same across brands.
+//
+// The hub outside diameter and the tread profile are NOT standardised. Ø45 and
+// a 20 mm crown radius are representative of an 80 mm wheel; both need
+// confirming with calipers against whichever wheel is actually bought, and the
+// adapter's Ø22 spigot is the only dimension that has to be right first time.
+export skateWheelDiameter = 80mm
+export skateWheelWidth = 24mm
+export skateWheelHubDiameter = 45mm
+export skateWheelBearingBore = 22mm
 
-// Keep the structural core outside the output fastener heads. The six M3
-// counterbores sit on radius 12 mm and are Ø6, so their outer edge is radius
-// 15 mm. A 32 mm core bore starts at radius 16 mm and leaves 1 mm of driver/head
-// clearance while overlapping the Ø36 output disc by 2 mm radially.
-export prototypeWheelCoreInnerDiameter = 32mm
-export prototypeWheelCoreOuterDiameter = prototypeWheelDiameter - (prototypeWheelTreadThickness * 2)
+// The tread is crowned rather than flat: it stands 4 mm proud at the centre
+// line and falls to Ø72 at the sidewalls. A 20 mm radius through those two
+// points is what puts the arc there, and it is close to the "round" profile
+// sold for recreational skating. A flat or bullet profile would change the
+// contact patch but not the envelope, which is what this model is used for.
+export skateWheelShoulderDiameter = 72mm
+export skateWheelCrownRadius = 20mm
+export skateWheelCrownCenterRadius = skateWheelDiameter / 2 - skateWheelCrownRadius
 
-// The tyre is centred close to the actuator output face rather than cantilevered
-// on a long axle. In wheel.kcl its centre plane coincides with rotorHubOuterX,
-// so the 24 mm tread partly wraps axially around the motor envelope while staying
-// radially outside it. This reduces bearing moment without creating interference.
-export prototypeWheelAxisHeight = prototypeWheelDiameter / 2
+// ---------------------------------------------------------------------------
+// Where the wheel sits on the actuator
+//
+// The hub cannot come any further inboard than the output disc's outer face,
+// and diameters have nothing to do with it. The wheel is coaxial with the
+// motor, so any plane the motor body occupies is a plane the hub cannot be in
+// at all -- a Ø45 hub sharing x with the Ø46 body would be buried inside it,
+// not clearing it by half a millimetre of radius. The motor's front face is at
+// actuatorDepth / 2 and the output disc fills the next 6 mm, so the first free
+// plane is the disc's outer face. The hub lands flat on it and the wheel's
+// centre plane ends up 12 mm outboard.
+//
+// That 12 mm is the whole of the overhang this design adds. Standing, each
+// wheel carries about 10 N, so the extra moment on the actuator's output
+// bearing is 0.12 Nm, and about 0.36 Nm at three times body weight. Both are
+// inside the 0.45 / 1.35 Nm the flat limbs already ask of the same bearing --
+// the open question recorded in NOTES.md -- so the wheel does not become the
+// governing case.
+export skateWheelInnerX = rotorHubOuterX
+export skateWheelCenterX = skateWheelInnerX + skateWheelWidth / 2
+export skateWheelOuterX = skateWheelInnerX + skateWheelWidth
+
+// ---------------------------------------------------------------------------
+// The printed adapter
+//
+// A Ø22 spigot fills both bearing bores once the 608s are pulled out, and an
+// M5 on the axis clamps the hub back against the output disc. Torque reaches
+// the wheel through that clamped face, not through the spigot: an M5 at a
+// modest 1 kN preload on the disc's r11-r18 annulus is good for about 4 Nm of
+// friction against the actuator's 3 Nm peak, where a press fit alone would
+// depend on how the printed spigot came off the bed.
+//
+// THE SIX SCALLOPS ARE NOT DECORATION. The actuator's own output screws sit on
+// Ø24, which is two millimetres bigger than the wheel bore that has to pass
+// over them, so a plain Ø22 spigot walls its own mounting screws in and the
+// adapter cannot be fitted to the motor at all. A 2.5 mm key is 2.89 mm across
+// corners, so at r12 its shaft sweeps r10.56 to r13.44 and the spigot's r11
+// surface stands a fraction of a millimetre inside that.
+//
+// Six axial scallops on the bolt centres open that path the whole length of the
+// spigot. What is left is 19 mm of Ø22 on six pads, which is plenty: the spigot
+// only centres the wheel, it does not drive it.
+export wheelSpigotDiameter = skateWheelBearingBore
+export wheelKeyAccessDiameter = 4.5mm
+// The plug is what ties the spigot to the disc, and it has to stay inside r9.25
+// or it fills the screw heads' own counterbores back in -- the failure this
+// project has been caught by before, and the reason the adapter is left as
+// interpenetrating bodies rather than a union. Ø17 clears them by half a
+// millimetre.
+export wheelSpigotPlugDiameter = 17mm
+// One millimetre short of the hub's outer face, so the clamp washer lands on
+// the hub and not on the end of the spigot.
+export wheelSpigotLength = skateWheelWidth - 1mm
+// M5 heat-set insert, Ø6.4 x 9.5 nominal, given a little depth to seat into.
+export wheelSpigotInsertBore = 6.4mm
+export wheelSpigotInsertDepth = 12mm
+export wheelClampWasherDiameter = 30mm
+export wheelClampWasherThickness = 2mm
+
+// ---------------------------------------------------------------------------
+// Axis heights
+export prototypeWheelAxisHeight = skateWheelDiameter / 2
 
 export wheeledKneeAxisHeight = prototypeWheelAxisHeight + lowerLegLength
 export wheeledHipPitchAxisHeight = wheeledKneeAxisHeight + upperLegLength

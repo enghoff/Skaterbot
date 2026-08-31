@@ -1,55 +1,63 @@
-// Biped kinematic pose check
-// Crouched stance with one lifted foot, for sagittal clearance and joint-chain
-// validation. The kinematics are unchanged from the skeleton build; only the
-// parts are new, so the clearance figures stay comparable.
+// Wheeled biped kinematic pose check
+//
+// Crouched stance with one wheel lifted, for sagittal clearance and joint-chain
+// validation. The hip and knee angles are exactly the ones the walking pose
+// check used, so the clearance figures stay comparable across the two
+// architectures; what has gone is the ankle.
+//
+// There is no fourth joint in this leg and no foot angle to carry. The wheel is
+// a solid of revolution bolted to its motor's output, so how far it has turned
+// changes nothing anyone can measure off this scene -- it is placed, not
+// rotated.
+//
+// The standing leg's axle lands at exactly 40 mm, which is the wheel's own
+// radius, so the left wheel is tangent to the floor and the drop is real rather
+// than drawn. The lifted leg clears the ground by about 27 mm.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
+import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
-import hipCarrierRight, hipCarrierLeft from "hip_carrier.kcl"
-import footRight, footLeft from "foot.kcl"
+import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
+import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
 
 leftHipAngle = -6deg
 leftKneeAngle = 12deg
 leftShinAngle = leftHipAngle - leftKneeAngle
-leftAnkleAngle = 18deg
-leftFootAngle = leftShinAngle + leftAnkleAngle
 
 rightHipAngle = 35deg
 rightKneeAngle = 65deg
 rightShinAngle = rightHipAngle - rightKneeAngle
-rightAnkleAngle = 25deg
-rightFootAngle = rightShinAngle + rightAnkleAngle
 
 leftLegVerticalReach = upperLegLength * cos(leftHipAngle) + lowerLegLength * cos(leftShinAngle)
 crouchDrop = upperLegLength + lowerLegLength - leftLegVerticalReach
-poseHipPitchZ = hipPitchAxisHeight - crouchDrop
+poseHipPitchZ = wheeledHipPitchAxisHeight - crouchDrop
 poseHipRollZ = hipRollAxisHeight - crouchDrop
 poseTorsoCenterZ = torsoCenterHeight - crouchDrop
 poseCarrierCenterZ = (poseHipRollZ + poseHipPitchZ) / 2
 
 leftKneeY = upperLegLength * sin(leftHipAngle)
 leftKneeZ = poseHipPitchZ - (upperLegLength * cos(leftHipAngle))
-leftAnkleY = leftKneeY + lowerLegLength * sin(leftShinAngle)
-leftAnkleZ = leftKneeZ - (lowerLegLength * cos(leftShinAngle))
+leftWheelY = leftKneeY + lowerLegLength * sin(leftShinAngle)
+leftWheelZ = leftKneeZ - (lowerLegLength * cos(leftShinAngle))
 leftThighCenterY = leftKneeY / 2
 leftThighCenterZ = (poseHipPitchZ + leftKneeZ) / 2
-leftShinCenterY = (leftKneeY + leftAnkleY) / 2
-leftShinCenterZ = (leftKneeZ + leftAnkleZ) / 2
+leftShinCenterY = (leftKneeY + leftWheelY) / 2
+leftShinCenterZ = (leftKneeZ + leftWheelZ) / 2
 
 rightKneeY = upperLegLength * sin(rightHipAngle)
 rightKneeZ = poseHipPitchZ - (upperLegLength * cos(rightHipAngle))
-rightAnkleY = rightKneeY + lowerLegLength * sin(rightShinAngle)
-rightAnkleZ = rightKneeZ - (lowerLegLength * cos(rightShinAngle))
+rightWheelY = rightKneeY + lowerLegLength * sin(rightShinAngle)
+rightWheelZ = rightKneeZ - (lowerLegLength * cos(rightShinAngle))
 rightThighCenterY = rightKneeY / 2
 rightThighCenterZ = (poseHipPitchZ + rightKneeZ) / 2
-rightShinCenterY = (rightKneeY + rightAnkleY) / 2
-rightShinCenterZ = (rightKneeZ + rightAnkleZ) / 2
+rightShinCenterY = (rightKneeY + rightWheelY) / 2
+rightShinCenterZ = (rightKneeZ + rightWheelZ) / 2
 
 actuatorCopy2 = clone(actuatorAssembly)
 actuatorCopy3 = clone(actuatorAssembly)
@@ -93,20 +101,20 @@ rightKneeMotor = actuatorCopy6
        global = true,
      )
 
-leftAnkleMotor = actuatorCopy7
+leftWheelMotor = actuatorCopy7
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = -hipCenterX,
-       y = leftAnkleY,
-       z = leftAnkleZ,
+       y = leftWheelY,
+       z = leftWheelZ,
        global = true,
      )
-rightAnkleMotor = actuatorCopy8
+rightWheelMotor = actuatorCopy8
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(
        x = hipCenterX,
-       y = rightAnkleY,
-       z = rightAnkleZ,
+       y = rightWheelY,
+       z = rightWheelZ,
        global = true,
      )
 
@@ -129,9 +137,9 @@ rightHipPitchHardware = jointHardware()
 // ---- printed structure -----------------------------------------------------
 
 
-leftHipCarrier = hipCarrierLeft
+leftHipCarrier = wheeledHipCarrierLeft
   |> translate(x = -hipCenterX, z = poseCarrierCenterZ, global = true)
-rightHipCarrier = hipCarrierRight
+rightHipCarrier = wheeledHipCarrierRight
   |> translate(x = hipCenterX, z = poseCarrierCenterZ, global = true)
 
 leftThigh = thighLeft
@@ -168,20 +176,18 @@ rightShin = shinRight
        global = true,
      )
 
-leftFoot = footLeft
-  |> rotate(axis = [1, 0, 0], angle = leftFootAngle, global = true)
+leftWheel = wheelLeft
   |> translate(
        x = -hipCenterX,
-       y = leftAnkleY,
-       z = leftAnkleZ,
+       y = leftWheelY,
+       z = leftWheelZ,
        global = true,
      )
-rightFoot = footRight
-  |> rotate(axis = [1, 0, 0], angle = rightFootAngle, global = true)
+rightWheel = wheelRight
   |> translate(
        x = hipCenterX,
-       y = rightAnkleY,
-       z = rightAnkleZ,
+       y = rightWheelY,
+       z = rightWheelZ,
        global = true,
      )
 
@@ -199,8 +205,8 @@ export poseCheckAssembly = [
   rightHipPitchMotor,
   leftKneeMotor,
   rightKneeMotor,
-  leftAnkleMotor,
-  rightAnkleMotor,
+  leftWheelMotor,
+  rightWheelMotor,
   leftHipRollHardware,
   rightHipRollHardware,
   leftHipPitchHardware,
@@ -211,6 +217,6 @@ export poseCheckAssembly = [
   rightThigh,
   leftShin,
   rightShin,
-  leftFoot,
-  rightFoot
+  leftWheel,
+  rightWheel
 ]

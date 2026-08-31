@@ -1,0 +1,20 @@
+// Hip carriers for the walking robot, the pair
+//
+// All of the geometry lives in hip_carrier.kcl; this file only chooses the span
+// between the two joint axes and makes the two hands, exactly as thigh.kcl and
+// shin.kcl do over limb.kcl.
+//
+// The robot is mirror-symmetric about its midline, so this part exists left and
+// right. `mirror3d` copies rather than transforms -- it leaves the original
+// standing in the scene -- so the source is hidden afterwards. See
+// docs/KCL_GOTCHAS.md.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import hipCarrier from "hip_carrier.kcl"
+
+export hipCarrierRight = hipCarrier(hipAxisOffset)
+
+hipCarrierMirrorSource = hipCarrier(hipAxisOffset)
+export hipCarrierLeft = mirror3d(hipCarrierMirrorSource, across = YZ)
+hide(hipCarrierMirrorSource)

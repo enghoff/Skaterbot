@@ -1,12 +1,26 @@
-// Isolated DM-J3507 + direct-drive wheel review scene
+// Isolated wheel motor + wheel review scene
 //
-// Open this before wheeled_main.kcl. It exists to make the first engine/render
-// check narrow: verify motor/tread clearance, output-disc registration, bolt-head
-// access and the left/right mirror before debugging the full robot.
+// Open this before main.kcl. It exists to make the first engine/render check
+// narrow: motor-to-tread clearance, how the hub lands on the output disc, and
+// that the left/right mirror is the right way round, before debugging the whole
+// robot.
+//
+// It does NOT prove that the six output holes are open, and must not be used to
+// try: the motor stands directly behind them and structure behind a hole makes
+// an open one look closed. Render wheel_adapter.kcl on its own for that, looking
+// straight down the axis with nothing but background behind it -- which is what
+// docs/KCL_GOTCHAS.md asks for and what the last review did.
+//
+// The left wheel is imported only so it can be hidden. Importing any name from a
+// module runs the whole module, so wheelLeft would otherwise stand here at the
+// origin, coaxial with the right wheel and directly behind the very features
+// this scene exists to look at.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import actuatorAssembly from "actuator.kcl"
-import wheelRight from "wheel.kcl"
+import wheelRight, wheelLeft from "wheel.kcl"
+
+hide(wheelLeft)
 
 reviewMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)

@@ -10,111 +10,119 @@
 // connector between them is particular to the carrier, because the two joints
 // are close enough together that the two ends nearly meet on their own.
 //
-// They are 55 mm apart, not the 47 mm this part was drawn against. The gap is
-// whatever the torso leaves over once the leg is stacked up under it, so it
-// grew by the 8 mm the ankle axis came down when the actuator was seated on the
-// foot. The two ends still overlap by 13 mm rather than 21, which the 10 mm
-// connector sits well inside, so nothing here had to change to follow it.
+// HOW FAR APART THE TWO AXES ARE is not a property of this part. It is whatever
+// the torso leaves over once the leg is stacked up under it, so it is passed in
+// rather than fixed here, and two robots now ask for two different numbers:
 //
-// Local origin is the midpoint between the two axes, matching how main.kcl
-// places it.
+// * the walking robot, 55 mm. Not the 47 mm this part was first drawn against:
+// it grew by the 8 mm the ankle axis came down when the actuator was seated on
+// the foot. The two ends overlap by 13 mm rather than 21, which the 10 mm
+// connector sits well inside, so nothing here had to change to follow it.
+// * the wheeled robot, 51 mm. The 80 mm wheel puts its axle 4 mm higher than the
+// walking ankle while hip roll and the torso stay where they are, so the whole
+// of that 4 mm comes out of this span. The ends overlap by 17 mm instead of 13,
+// which the connector sits further inside still.
+//
+// Nothing else in the part moves with the span, which is why one function serves
+// both: the connector is 10 mm tall wherever it sits, and both ends are the
+// shared joint parts drawn about their own axes.
+//
+// Local origin is the midpoint between the two axes, matching how the assemblies
+// place it. The two hands are made by the thin wrappers beside this file --
+// walking_hip_carrier.kcl and wheeled_hip_carrier.kcl -- for the same reason
+// limb.kcl leaves them to thigh.kcl and shin.kcl: a module with bodies standing
+// at its top level puts them into every scene that imports anything from it,
+// whether that scene wanted them or not.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
 import statorClevis, rotorHub from "joint.kcl"
 
-axisHalfOffset = hipAxisOffset / 2
 connectorHeight = 10mm
 connectorInnerWidth = shellWidth - (shellWall * 2)
 connectorInnerDepth = shellDepth - (shellWall * 2)
-
-connectorOuterSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
-  edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
-  edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
-  edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == shellWidth
-  verticalDistance([edge2.start, edge2.end]) == shellDepth
-}
-connectorOuterRegion = region(
-  segments = [
-    connectorOuterSketch.edge1,
-    connectorOuterSketch.edge2
-  ],
-  intersectionIndex = -1,
-  direction = CCW,
-)
-connectorBlank = extrude(connectorOuterRegion, length = connectorHeight, symmetric = true)
-  |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
-
-connectorInnerSketch = sketch(on = XY) {
-  edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
-  edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
-  edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
-  edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
-  coincident([edge1.start, ORIGIN])
-  coincident([edge1.end, edge2.start])
-  coincident([edge2.end, edge3.start])
-  coincident([edge3.end, edge4.start])
-  coincident([edge4.end, edge1.start])
-  horizontal(edge1)
-  vertical(edge2)
-  horizontal(edge3)
-  vertical(edge4)
-  horizontalDistance([edge1.start, edge1.end]) == connectorInnerWidth
-  verticalDistance([edge2.start, edge2.end]) == connectorInnerDepth
-}
-connectorInnerRegion = region(
-  segments = [
-    connectorInnerSketch.edge1,
-    connectorInnerSketch.edge2
-  ],
-  intersectionIndex = -1,
-  direction = CCW,
-)
-connectorCavity = extrude(connectorInnerRegion, length = connectorHeight + 4mm, symmetric = true)
-  |> translate(x = -connectorInnerWidth / 2, y = -connectorInnerDepth / 2, global = true)
-connectorRaw = subtract(connectorBlank, tools = [connectorCavity])
-
-pitchJoint = statorClevis()
-  |> translate(z = -axisHalfOffset, global = true)
-
-// A quarter turn about Z swings the hub's axis from across the robot to
-// fore-and-aft, which is what makes this the roll joint rather than a pitch one.
-rollJoint = rotorHub()
-  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
-  |> translate(z = axisHalfOffset, global = true)
-
-hide(connectorOuterSketch)
-hide(connectorInnerSketch)
 
 // Left as three overlapping bodies rather than one union. The engine refuses a
 // union of two hollow boxes meeting at right angles here -- the same limitation
 // NOTES.md already records for the foot frame -- and the parts interpenetrate by
 // several millimetres, so any slicer that merges coincident shells prints this
 // as the single part it is. Verify that before printing.
-// The two hands. The robot is mirror-symmetric about its midline, so this part
-// exists left and right. `mirror3d` copies rather than transforms -- it leaves
-// the original standing in the scene -- so the source is hidden afterwards.
-// See docs/KCL_GOTCHAS.md.
-export hipCarrierRight = [
-  appearance(
+export fn hipCarrier(@axisOffset) {
+  axisHalfOffset = axisOffset / 2
+
+  connectorOuterSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 30mm, var 0mm])
+    edge2 = line(start = [var 30mm, var 0mm], end = [var 30mm, var 30mm])
+    edge3 = line(start = [var 30mm, var 30mm], end = [var 0mm, var 30mm])
+    edge4 = line(start = [var 0mm, var 30mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == shellWidth
+    verticalDistance([edge2.start, edge2.end]) == shellDepth
+  }
+  connectorOuterRegion = region(
+    segments = [
+      connectorOuterSketch.edge1,
+      connectorOuterSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  connectorBlank = extrude(connectorOuterRegion, length = connectorHeight, symmetric = true)
+    |> translate(x = -shellWidth / 2, y = -shellDepth / 2, global = true)
+
+  connectorInnerSketch = sketch(on = XY) {
+    edge1 = line(start = [var 0mm, var 0mm], end = [var 25mm, var 0mm])
+    edge2 = line(start = [var 25mm, var 0mm], end = [var 25mm, var 25mm])
+    edge3 = line(start = [var 25mm, var 25mm], end = [var 0mm, var 25mm])
+    edge4 = line(start = [var 0mm, var 25mm], end = [var 0mm, var 0mm])
+    coincident([edge1.start, ORIGIN])
+    coincident([edge1.end, edge2.start])
+    coincident([edge2.end, edge3.start])
+    coincident([edge3.end, edge4.start])
+    coincident([edge4.end, edge1.start])
+    horizontal(edge1)
+    vertical(edge2)
+    horizontal(edge3)
+    vertical(edge4)
+    horizontalDistance([edge1.start, edge1.end]) == connectorInnerWidth
+    verticalDistance([edge2.start, edge2.end]) == connectorInnerDepth
+  }
+  connectorInnerRegion = region(
+    segments = [
+      connectorInnerSketch.edge1,
+      connectorInnerSketch.edge2
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  connectorCavity = extrude(connectorInnerRegion, length = connectorHeight + 4mm, symmetric = true)
+    |> translate(x = -connectorInnerWidth / 2, y = -connectorInnerDepth / 2, global = true)
+  connectorRaw = subtract(connectorBlank, tools = [connectorCavity])
+
+  pitchJoint = statorClevis()
+    |> translate(z = -axisHalfOffset, global = true)
+
+  // A quarter turn about Z swings the hub's axis from across the robot to
+  // fore-and-aft, which is what makes this the roll joint rather than a pitch one.
+  rollJoint = rotorHub()
+    |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+    |> translate(z = axisHalfOffset, global = true)
+
+  hide(connectorOuterSketch)
+  hide(connectorInnerSketch)
+
+  return appearance(
     [connectorRaw, pitchJoint, rollJoint],
     color = printedOrange,
     roughness = 70,
     metalness = 3,
   )
-]
-
-hipCarrierMirrorSource = clone(hipCarrierRight)
-export hipCarrierLeft = mirror3d(hipCarrierMirrorSource, across = YZ)
-hide(hipCarrierMirrorSource)
+}

@@ -27,22 +27,34 @@ The KCL sources sit at the repository root because Zoo Design Studio expects
 ```text
 bipedal/
 ├── project.toml           Zoo Design Studio project file
-├── main.kcl               neutral standing assembly
-├── pose_check.kcl         crouched single-step pose / clearance check
+├── main.kcl               neutral standing assembly — the WHEELED robot
+├── pose_check.kcl         crouched pose, one wheel lifted / clearance check
+├── squat_check.kcl        deepest legal squat, both wheels down
+├── knee_*_check.kcl       knee at 100 and 110 degrees
+├── wheel_module_check.kcl one wheel motor and its wheel, on their own
+├── limb_check.kcl         single-joint review model
+├── coupon_box.kcl         the Phase 1 bending coupon — print this first
+│
+│   the walking robot, kept for comparison and unchanged on `main`
+├── walking_main.kcl       neutral standing assembly — the WALKING robot
 ├── walk_pose_check.kcl    mirrored walking stance, both feet flat
 ├── roll_limit_check.kcl   hip roll at the inward limit the feet impose
 ├── torque_limit_pose.kcl  the deepest crouch the knees can hold indefinitely
-├── knee_*_check.kcl       knee at 100 and 110 degrees
-├── limb_check.kcl         single-joint review model
-├── coupon_box.kcl         the Phase 1 bending coupon — print this first
+│
 ├── parameters.kcl         shared dimensions and joint angles
+├── wheeled_parameters.kcl the donor wheel and the axis heights it implies
 ├── actuator.kcl           simplified DM-J3507-2EC envelope
 ├── joint.kcl              the joint, designed once, used at all eight
 ├── limb.kcl               closed-shell limb, parametric on length
 ├── hardware.kcl           bearing carrier, 6800-2RS, journal
-├── hip_carrier.kcl        orthogonal hip roll/pitch carrier
+├── hip_carrier.kcl        orthogonal hip roll/pitch carrier, parametric on span
+├── walking_hip_carrier.kcl, wheeled_hip_carrier.kcl   that carrier, both spans
 ├── thigh.kcl, shin.kcl    the limb at two lengths
-├── foot.kcl               ribbed foot tray, sole, sensor seats
+├── wheel_adapter.kcl      the printed part that drives a skate wheel
+├── skate_wheel.kcl        the bought 80 x 24 mm wheel it drives
+├── wheel.kcl              adapter, wheel and clamp, as the assemblies place it
+├── foot.kcl               ribbed foot tray, sole, sensor seats (walking robot)
+├── fixed_hip_mount.kcl    six-motor concept: hip pitch hung off the torso
 ├── torso.kcl              pelvis and torso shell, keel, tether entry, cover
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
 ├── tools/                 check, mass and render scripts (see below)

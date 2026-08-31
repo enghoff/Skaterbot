@@ -1,0 +1,118 @@
+// The donor wheel: an off-the-shelf 80 x 24 mm inline-skate wheel
+//
+// This is a bought part, not a printed one, so it is modelled here only well
+// enough to check clearances and to show what the adapter is holding. It is
+// deliberately kept out of wheel_adapter.kcl, because tools/mass.py measures
+// each printed file standalone and a file has to export only printed geometry
+// for its figure to mean anything.
+//
+// WHY A SKATE WHEEL. The robot needs a 80 mm wheel with a rubber tread, a
+// crowned profile and a hub stiff enough to take the drive. That part is sold
+// by the million for about the price of a bolt, in the exact size the geometry
+// wants, and in a choice of durometers. Printing one would mean printing a TPU
+// tyre and then still solving the hub. Nothing here is a compromise except the
+// bearings, and those are thrown away -- see wheel_adapter.kcl.
+//
+// WHAT IS MODELLED AND WHAT IS NOT. The bore, the width and the bearing seats
+// are standard and are drawn as they are. The hub is drawn as a plain Ø45
+// annulus; every real hub is spoked, so this solid is heavier than the part it
+// stands for and its volume must not be used as a mass. The catalogue figure in
+// tools/mass_budget.toml is what the mass roll-up uses instead.
+//
+// The wheel is built about the X axis with its inboard face on the actuator's
+// output disc, which is where wheeled_parameters.kcl puts it.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import * from "wheeled_parameters.kcl"
+
+hubOuterRadius = skateWheelHubDiameter / 2
+shoulderRadius = skateWheelShoulderDiameter / 2
+
+// The hub and the tread are separate functions rather than one returning both,
+// because the assemblies hold their wheels as flat lists of solids and a
+// function that returned a pair would nest one list inside another.
+//
+// A plain annulus standing in for a spoked hub. Its bore is the pair of Ø22
+// bearing seats, drawn straight through: with the 608s pulled out for the
+// direct drive, the seats and the 8 mm bore between them become one bore.
+export fn skateWheelHub() {
+  hubOuterSketch = sketch(on = YZ) {
+    outerCircle = circle(start = [var 22.5mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([outerCircle.center, ORIGIN])
+    horizontal([outerCircle.center, outerCircle.start])
+    diameter(outerCircle) == skateWheelHubDiameter
+  }
+  hubOuterRegion = region(segments = [hubOuterSketch.outerCircle])
+  hubBlank = extrude(hubOuterRegion, length = skateWheelWidth, symmetric = true)
+    |> translate(x = skateWheelCenterX, global = true)
+
+  hubBoreSketch = sketch(on = YZ) {
+    boreCircle = circle(start = [var 11mm, var 0mm], center = [var 0mm, var 0mm])
+    coincident([boreCircle.center, ORIGIN])
+    horizontal([boreCircle.center, boreCircle.start])
+    diameter(boreCircle) == skateWheelBearingBore
+  }
+  hubBoreRegion = region(segments = [hubBoreSketch.boreCircle])
+  hubBoreCutter = extrude(hubBoreRegion, length = skateWheelWidth + 2mm, symmetric = true)
+    |> translate(x = skateWheelCenterX, global = true)
+
+  hubRaw = subtract(hubBlank, tools = [hubBoreCutter])
+
+  hide(hubOuterSketch)
+  hide(hubBoreSketch)
+
+  return appearance(
+    hubRaw,
+    color = printedDark,
+    roughness = 40,
+    metalness = 4,
+  )
+}
+
+// Revolved rather than extruded, because the crown is the whole point: a flat
+// annulus would put the contact patch across the full 24 mm and would misreport
+// how far the wheel leans before its shoulder digs in.
+export fn skateWheelTread() {
+  // Drawn from the inboard face at x = 0 and slid outboard afterwards: the
+  // sketch's radial coordinates have to be the true ones for the revolve, but
+  // its axial ones do not, and a solid of revolution can be moved along its own
+  // axis freely.
+  treadSketch = sketch(on = XZ) {
+    bead = line(start = [var 0mm, var 22.5mm], end = [var 24mm, var 22.5mm])
+    outerWall = line(start = [var 24mm, var 22.5mm], end = [var 24mm, var 36mm])
+    crown = arc(start = [var 24mm, var 36mm], end = [var 0mm, var 36mm], center = [var 12mm, var 20mm])
+    innerWall = line(start = [var 0mm, var 36mm], end = [var 0mm, var 22.5mm])
+    coincident([bead.end, outerWall.start])
+    coincident([outerWall.end, crown.start])
+    coincident([crown.end, innerWall.start])
+    coincident([innerWall.end, bead.start])
+    vertical([ORIGIN, bead.start])
+    horizontal(bead)
+    vertical(outerWall)
+    vertical(innerWall)
+    verticalDistance([ORIGIN, bead.start]) == hubOuterRadius
+    horizontalDistance([bead.start, bead.end]) == skateWheelWidth
+    verticalDistance([outerWall.start, outerWall.end]) == shoulderRadius - hubOuterRadius
+    verticalDistance([ORIGIN, crown.center]) == skateWheelCrownCenterRadius
+  }
+  treadRegion = region(
+    segments = [
+      treadSketch.bead,
+      treadSketch.outerWall
+    ],
+    intersectionIndex = -1,
+    direction = CCW,
+  )
+  treadRaw = revolve(treadRegion, axis = X, angle = 360deg)
+    |> translate(x = skateWheelInnerX, global = true)
+
+  hide(treadSketch)
+
+  return appearance(
+    treadRaw,
+    color = soleBlack,
+    roughness = 88,
+    metalness = 0,
+  )
+}

@@ -79,21 +79,34 @@ what they need on its own:
 Report the mass delta of every geometry change, and make `/check` clean before
 saying a change is done.
 
-## The four models are the regression suite
+## The models are the regression suite
 
-`main.kcl` is the neutral 380 mm assembly and exports `robotAssembly`. Three more
-files are independent top-level models that exercise the same modules in other
-configurations:
+`main.kcl` is the neutral 380 mm assembly and exports `robotAssembly`. **On this
+branch it is the wheeled robot**: hip roll, hip pitch, knee and a driven wheel
+per leg. The walking robot is `walking_main.kcl` beside it, unchanged and still
+the `main.kcl` of the `main` branch.
 
-- `pose_check.kcl` — crouched stance with one foot lifted, for sagittal
+Four more files are independent top-level models that exercise the same modules
+in other configurations:
+
+- `pose_check.kcl` — crouched stance with one wheel lifted, for sagittal
   clearance and joint-chain validation
+- `squat_check.kcl` — the deepest squat the knee stop allows with both wheels
+  still on the ground, which is where a Ø80 wheel comes closest to its own thigh
 - `knee_limit_check.kcl` — the knee at its 110° hard stop
 - `knee_prelimit_check.kcl` — the same knee at 100°, just before contact
 
-A change to `parameters.kcl` or to any shared module reaches all four. Executing
-`main.kcl` alone is not sufficient evidence and must not be reported as if it
-were — the pose and knee-limit checks exist precisely to catch interference that
-the neutral stance hides.
+The knee checks are limb-against-limb and belong to both robots. Three further
+scenes — `walk_pose_check.kcl`, `roll_limit_check.kcl` and
+`torque_limit_pose.kcl` — are about walking specifically and still carry the
+walking geometry; they import `walking_hip_carrier.kcl`, which is what marks
+them. **The wheeled robot's hip-roll limit and torque envelope have not been
+re-derived**, and those two answers do change with wheels.
+
+A change to `parameters.kcl` or to any shared module reaches all of them.
+Executing `main.kcl` alone is not sufficient evidence and must not be reported as
+if it were — the pose and knee-limit checks exist precisely to catch interference
+that the neutral stance hides.
 
 ## Dimensions live in parameters.kcl
 

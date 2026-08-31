@@ -1,13 +1,19 @@
 // Isolated six-motor hip concept review scene
 //
 // Shows one right hip-pitch actuator inside the proposed fixed hanger. This is
-// intentionally separate from wheeled_main.kcl; the full six-motor torso is not
-// claimed until torso.kcl's hip-roll clevises/gussets have been properly removed
-// and the hanger is integrated into the shell load path.
+// intentionally separate from main.kcl; the full six-motor torso is not claimed
+// until torso.kcl's hip-roll clevises/gussets have been properly removed and the
+// hanger is integrated into the shell load path.
+//
+// The left hanger is imported only so it can be hidden: importing any name from
+// a module runs the whole module, so it would otherwise stand here at the origin
+// overlapping the part under review.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import actuatorAssembly from "actuator.kcl"
-import fixedHipMountRight from "fixed_hip_mount.kcl"
+import fixedHipMountRight, fixedHipMountLeft from "fixed_hip_mount.kcl"
+
+hide(fixedHipMountLeft)
 
 reviewHipMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
