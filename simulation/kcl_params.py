@@ -47,6 +47,13 @@ SOURCES = (
 # `name = expr` or `export name = expr`, starting hard against the left margin.
 ASSIGNMENT = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$")
 
+# The same, for the palette: `export printedOrange = "#d9822b"`. The KCL hands
+# every body its colour through `appearance(...)`, so the robot already has a
+# palette and the URDF has no business inventing a second one.
+COLOR = re.compile(
+    r'^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"#([0-9a-fA-F]{6})"\s*$'
+)
+
 # KCL writes units as a suffix on the literal: 46mm, 45deg, 2.4mm.
 UNIT_SUFFIX = re.compile(r"(\d(?:\.\d+)?(?:[eE][-+]?\d+)?)(mm|cm|m|deg|rad)\b")
 
@@ -179,6 +186,27 @@ def load(sources: tuple[str, ...] = SOURCES, root: Path = ROOT) -> dict[str, flo
             except Unevaluatable:
                 continue
     return names
+
+
+def load_colors(
+    sources: tuple[str, ...] = SOURCES, root: Path = ROOT
+) -> dict[str, tuple[float, float, float]]:
+    """Every `name = "#rrggbb"` the listed KCL files define, as fractions of 1.
+
+    parameters.kcl carries the robot's palette and wheeled_electronics.kcl adds
+    the board colours, and both are read here for the same reason the
+    dimensions are: a colour retyped into the URDF is a second source of it.
+    """
+    colors: dict[str, tuple[float, float, float]] = {}
+    for filename in sources:
+        for line in (root / filename).read_text(encoding="utf-8").splitlines():
+            match = COLOR.match(line)
+            if match:
+                hexadecimal = match.group(2)
+                colors[match.group(1)] = tuple(
+                    int(hexadecimal[i : i + 2], 16) / 255.0 for i in (0, 2, 4)
+                )
+    return colors
 
 
 if __name__ == "__main__":

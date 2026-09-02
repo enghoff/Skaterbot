@@ -49,6 +49,32 @@ its only lateral authority is driving the two wheels differentially. It is a
 wheeled inverted pendulum with a two-joint leg under each wheel, and a
 locomotion task written for a walking biped will not fit it.
 
+## What is in it, and not only what it weighs
+
+The whole robot is drawn, not just the six printed pieces. The actuators, the
+skate wheels, the bearings and journals, the boards and the power entry are all
+in the URDF as geometry, in the CAD's own colours — so a simulator shows the
+machine rather than an orange skeleton with invisible wheels, and anyone opening
+the file can see that the thing accelerating the robot is mostly motor.
+
+None of that is a second drawing of the CAD. Each bought part is the SAME
+primitive its mass and inertia were computed from, so the picture and the
+physics cannot drift apart: the actuator is the 46 x 37.9 can the vendor manual
+gives, the wheel is the Ø80 x 24 tread, the boards are the reserved envelopes
+`wheeled_electronics.kcl` packs the pelvis with. Two of them are honest
+approximations and the URDF says so where they appear — the wheel's urethane is
+an annulus drawn as a solid cylinder, because a URDF has no tube, and the wiring
+is 27 g spread through the cavity, so it has mass but nothing to draw. Every
+visual also carries a comment naming the part, its mass and where that mass came
+from, which puts the provenance in front of the person loading the robot rather
+than only in `check_model.py`'s output.
+
+Collision is still deliberately coarse — a box for the pelvis, a box for each
+limb, a cylinder for each wheel — with one addition the shell does not cover:
+the two hip actuators hang below the pelvis floor and stick out past its sides,
+so they collide as their own cylinders. Everything else bought is inside a
+primitive that is already there.
+
 ## Conventions, because they are the easiest thing to get wrong
 
 The CAD is drawn with **+Y forward and +X to the robot's right**, which is what
@@ -124,7 +150,7 @@ and `/views`' job, and it is unchanged by anything here.
 
 | | |
 |---|---|
-| `kcl_params.py` | reads dimensions straight out of the KCL sources |
+| `kcl_params.py` | reads dimensions, and the palette, straight out of the KCL sources |
 | `robot.py` | the kinematic tree and every gram, with provenance. The only file here carrying engineering judgement |
 | `inertia.py` | mass, centre of mass and inertia tensors, from meshes and from primitives |
 | `build_urdf.py` | writes `urdf/wheeled_biped.urdf` and the binary meshes it points at |

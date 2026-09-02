@@ -27,6 +27,15 @@
   hard ceiling, so it cannot be expressed as a URDF limit; it is a cost term in
   the Isaac Lab config instead.
 
+  WHAT IS DRAWN. Everything the robot is made of, not just the printed parts.
+  The six printed pieces are their exported meshes; the actuators, wheels,
+  bearings, boards and power entry are the primitives simulation/robot.py gives
+  them, and each of those primitives is the part's real envelope – it is the
+  SAME solid its mass and inertia were computed from, so what you see is what
+  is being integrated. Two are approximations and say so where they appear: the
+  wheel's urethane is an annulus drawn as a full cylinder, because a URDF has
+  no tube, and the wiring has mass but no body and so is not drawn at all.
+
   WHAT IS NOT MEASURED. The wheels have never been weighed, the capacitor bank
   has never been sized, the actuator's velocity limit and rotor inertia have
   never been recorded, and hip pitch has no established travel. Run
@@ -35,36 +44,118 @@
 -->
 <robot name="wheeled_biped">
 
-  <!-- Colours are the CAD's own, from parameters.kcl. -->
-  <material name="printed"><color rgba="0.851 0.510 0.169 1"/></material>
-  <material name="motor"><color rgba="0.349 0.388 0.424 1"/></material>
-  <material name="urethane"><color rgba="0.180 0.200 0.216 1"/></material>
+  <!-- Colours are the CAD's own, read out of parameters.kcl and wheeled_electronics.kcl by kcl_params.load_colors, so a part is the same colour here as it is in Design Studio. -->
+  <material name="bearingSteel"><color rgba="0.788235294 0.815686275 0.835294118 1"/></material>
+  <material name="canSilver"><color rgba="0.549019608 0.576470588 0.611764706 1"/></material>
+  <material name="motorGrey"><color rgba="0.349019608 0.388235294 0.423529412 1"/></material>
+  <material name="pcbGreen"><color rgba="0.109803922 0.419607843 0.258823529 1"/></material>
+  <material name="printedOrange"><color rgba="0.850980392 0.509803922 0.168627451 1"/></material>
+  <material name="sensorBlue"><color rgba="0.164705882 0.658823529 0.847058824 1"/></material>
+  <material name="soleBlack"><color rgba="0.145098039 0.156862745 0.168627451 1"/></material>
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000108321537 -0.0028016568 -0.0303867251" rpy="0 0 0"/>
+      <origin xyz="0.000108321537 -0.00280165679 -0.030386725" rpy="0 0 0"/>
       <mass value="0.658004"/>
-      <inertia ixx="2.095748785e-03" ixy="-1.996907534e-07" ixz="4.494784939e-07"
-               iyy="8.764143630e-04" iyz="5.040117766e-05" izz="1.549147305e-03"/>
+      <inertia ixx="2.095748790e-03" ixy="-1.996907531e-07" ixz="4.494784995e-07"
+               iyy="8.764143659e-04" iyz="5.040117752e-05" izz="1.549147306e-03"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 -1.5707963268"/>
+    <!-- pelvis shell, clevises and cover bosses — 119.6 g, measured: torso.kcl:pelvisShell, seven bodies -->
+    <visual name="pelvis_shell__clevises_and_cover_bosses">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/pelvis-shell.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
     </visual>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 -1.5707963268"/>
+    <!-- torso cover — 40.6 g, measured: torso.kcl:torsoCover -->
+    <visual name="torso_cover">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/torso-cover.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- hip pitch actuator, right — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
+    <visual name="hip_pitch_actuator__right">
+      <origin xyz="0 -0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
+    </visual>
+    <!-- hip pitch bearing and carrier, right — 11.4 g, bom: 6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10 -->
+    <visual name="hip_pitch_bearing_and_carrier__right">
+      <origin xyz="0 -0.07545 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.018000" length="0.008000"/>
+      </geometry>
+      <material name="bearingSteel"/>
+    </visual>
+    <!-- hip pitch actuator, left — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
+    <visual name="hip_pitch_actuator__left">
+      <origin xyz="0 0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
+    </visual>
+    <!-- hip pitch bearing and carrier, left — 11.4 g, bom: 6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10 -->
+    <visual name="hip_pitch_bearing_and_carrier__left">
+      <origin xyz="0 0.07545 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.018000" length="0.008000"/>
+      </geometry>
+      <material name="bearingSteel"/>
+    </visual>
+    <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
+    <visual name="sbc">
+      <origin xyz="0 0 0.0195" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.058 0.085 0.016"/>
+      </geometry>
+      <material name="pcbGreen"/>
+    </visual>
+    <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
+    <visual name="controller_carrier">
+      <origin xyz="0 0.0201 -0.0145" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.046 0.076 0.012"/>
+      </geometry>
+      <material name="pcbGreen"/>
+    </visual>
+    <!-- IMU — 3.0 g, assumption: BNO085 nano breakout -->
+    <visual name="imu">
+      <origin xyz="0 0 -0.0265" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.022 0.022 0.006"/>
+      </geometry>
+      <material name="sensorBlue"/>
+    </visual>
+    <!-- power entry — 60.0 g, estimate: capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED – docs/BOM.md red line -->
+    <visual name="power_entry">
+      <origin xyz="0 -0.0391 -0.0055" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.062 0.038 0.03"/>
+      </geometry>
+      <material name="canSilver"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <box size="0.068 0.125 0.065"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 -0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
     </collision>
   </link>
@@ -76,12 +167,29 @@
       <inertia ixx="2.058730561e-04" ixy="-4.155604747e-07" ixz="-2.420443092e-07"
                iyy="1.969784978e-04" iyz="3.589695788e-05" izz="5.795387851e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 -0.0525" rpy="0 0 -1.5707963268"/>
+    <!-- thigh limb plate, right — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <visual name="thigh_limb_plate__right">
+      <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/limb-105-unmirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- knee actuator, right — 150.0 g, vendor: held by the thigh's stator plate; drives the shin -->
+    <visual name="knee_actuator__right">
+      <origin xyz="0 0 -0.105" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
+    </visual>
+    <!-- hip pitch journal, right — 4.9 g, bom: 10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh -->
+    <visual name="hip_pitch_journal__right">
+      <origin xyz="0 -0.02295 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.005000" length="0.008000"/>
+      </geometry>
+      <material name="bearingSteel"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
@@ -98,12 +206,21 @@
       <inertia ixx="1.589444513e-04" ixy="4.267814063e-07" ixz="-1.846921658e-07"
                iyy="1.517733797e-04" iyz="-2.706458634e-05" izz="5.616899617e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 -0.0525" rpy="0 0 -1.5707963268"/>
+    <!-- shin limb plate, right — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <visual name="shin_limb_plate__right">
+      <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/limb-105-mirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- wheel actuator, right — 150.0 g, vendor: held by the shin's stator plate; drives the wheel -->
+    <visual name="wheel_actuator__right">
+      <origin xyz="0 0 -0.105" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
@@ -115,17 +232,34 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="-3.37546923e-20 -0.0365393535 1.68773462e-20" rpy="0 0 0"/>
+      <origin xyz="0 -0.0365393535 -3.37546923e-20" rpy="0 0 0"/>
       <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="-7.059688323e-23" ixz="2.098984628e-18"
-               iyy="6.487132618e-05" iyz="-1.127818478e-22" izz="3.747158202e-05"/>
+      <inertia ixx="3.747158201e-05" ixy="6.581346194e-23" ixz="2.098980515e-18"
+               iyy="6.487132618e-05" iyz="2.812330968e-23" izz="3.747158202e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 -1.5707963268"/>
+    <!-- wheel adapter, right — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
+    <visual name="wheel_adapter__right">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/wheel-adapter-right.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- skate wheel, right — 60.0 g, estimate: NEVER WEIGHED. Catalogue-typical for an 80 x 24 mm 85A wheel with the bearings out. Its spin inertia is the most sensitive unmeasured number in this model. -->
+    <visual name="skate_wheel__right">
+      <origin xyz="0 -0.03695 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.040000" length="0.024000"/>
+      </geometry>
+      <material name="soleBlack"/>
+    </visual>
+    <!-- wheel clamp, right — 3.0 g, bom: M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair -->
+    <visual name="wheel_clamp__right">
+      <origin xyz="0 -0.05245 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.015000" length="0.007000"/>
+      </geometry>
+      <material name="bearingSteel"/>
     </visual>
     <collision>
       <origin xyz="0 -0.03695 0" rpy="1.57079633 0 0"/>
@@ -142,12 +276,29 @@
       <inertia ixx="2.058730561e-04" ixy="4.155604747e-07" ixz="-2.420443092e-07"
                iyy="1.969784978e-04" iyz="-3.589695788e-05" izz="5.795387851e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 -0.0525" rpy="0 0 -1.5707963268"/>
+    <!-- thigh limb plate, left — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <visual name="thigh_limb_plate__left">
+      <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/limb-105-mirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- knee actuator, left — 150.0 g, vendor: held by the thigh's stator plate; drives the shin -->
+    <visual name="knee_actuator__left">
+      <origin xyz="0 0 -0.105" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
+    </visual>
+    <!-- hip pitch journal, left — 4.9 g, bom: 10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh -->
+    <visual name="hip_pitch_journal__left">
+      <origin xyz="0 0.02295 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.005000" length="0.008000"/>
+      </geometry>
+      <material name="bearingSteel"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
@@ -164,12 +315,21 @@
       <inertia ixx="1.589444513e-04" ixy="-4.267814063e-07" ixz="-1.846921658e-07"
                iyy="1.517733797e-04" iyz="2.706458634e-05" izz="5.616899617e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 -0.0525" rpy="0 0 -1.5707963268"/>
+    <!-- shin limb plate, left — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <visual name="shin_limb_plate__left">
+      <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/limb-105-unmirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- wheel actuator, left — 150.0 g, vendor: held by the shin's stator plate; drives the wheel -->
+    <visual name="wheel_actuator__left">
+      <origin xyz="0 0 -0.105" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.023000" length="0.037900"/>
+      </geometry>
+      <material name="motorGrey"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
@@ -181,17 +341,34 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="-3.37546923e-20 0.0365393535 1.68773462e-20" rpy="0 0 0"/>
+      <origin xyz="0 0.0365393535 -5.06320385e-20" rpy="0 0 0"/>
       <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="-2.913771574e-22" ixz="-2.098984628e-18"
-               iyy="6.487132618e-05" iyz="-1.884507613e-23" izz="3.747158202e-05"/>
+      <inertia ixx="3.747158201e-05" ixy="9.872019291e-23" ixz="-2.098972288e-18"
+               iyy="6.487132618e-05" iyz="-1.409051574e-22" izz="3.747158202e-05"/>
     </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 -1.5707963268"/>
+    <!-- wheel adapter, left — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
+    <visual name="wheel_adapter__left">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/wheel-adapter-left.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="printed"/>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- skate wheel, left — 60.0 g, estimate: NEVER WEIGHED. Catalogue-typical for an 80 x 24 mm 85A wheel with the bearings out. Its spin inertia is the most sensitive unmeasured number in this model. -->
+    <visual name="skate_wheel__left">
+      <origin xyz="0 0.03695 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.040000" length="0.024000"/>
+      </geometry>
+      <material name="soleBlack"/>
+    </visual>
+    <!-- wheel clamp, left — 3.0 g, bom: M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair -->
+    <visual name="wheel_clamp__left">
+      <origin xyz="0 0.05245 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.015000" length="0.007000"/>
+      </geometry>
+      <material name="bearingSteel"/>
     </visual>
     <collision>
       <origin xyz="0 0.03695 0" rpy="1.57079633 0 0"/>

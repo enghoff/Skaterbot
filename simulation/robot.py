@@ -93,6 +93,14 @@ ACTUATOR = {
 class Solid:
     """One contribution to a link's mass, with enough shape to have inertia.
 
+    The shape is also what the URDF DRAWS. Every one of these is a real part of
+    the robot -- an actuator, a bearing, a board, a wheel -- so a URDF that
+    carried only the printed meshes would show a machine with a third of itself
+    missing and no visible wheels at all. build_urdf.py turns each of these
+    into a visual as well as into inertia, which is why the primitives are
+    chosen to be the part's actual envelope and not merely something with the
+    right moments.
+
     `at` is the solid's own centre in the link's frame, in millimetres, except
     for a mesh, where it is the offset of the mesh file's origin from the link
     origin -- a mesh brings its own centroid with it.
@@ -103,6 +111,15 @@ class Solid:
       tube_x      dims = (outer diameter, inner diameter, length), axis along X
       box         dims = (x, y, z)
       point       dims unused; contributes mass but no inertia of its own
+
+    `material` names a colour in the CAD's own palette -- parameters.kcl for
+    the robot, wheeled_electronics.kcl for the boards -- so a part is the same
+    colour in the simulator as it is in Design Studio, and neither file is a
+    second source of the other.
+
+    `draw` is for the one solid that has mass and a bounding volume but is not
+    a body: the wiring, which is spread through the whole cavity and would be
+    drawn as a slab filling the pelvis.
     """
 
     label: str
@@ -113,6 +130,8 @@ class Solid:
     note: str
     dims: tuple[float, ...] = ()
     piece: str = ""
+    material: str = "printedOrange"
+    draw: bool = True
 
 
 # What each `source` is worth. check_model.py reports the mass total split this
@@ -231,6 +250,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(motor_d, motor_l),
                 at=(sign * hip_x, 0.0, hip_local_z),
                 source="vendor",
+                material="motorGrey",
                 note="DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g",
             )
         )
@@ -244,6 +264,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(d["bearingCarrierFlangeDiameter"], d["bearingWidth"] + 3.0),
                 at=(sign * (hip_x + d["frontCheekX"]), 0.0, hip_local_z),
                 source="bom",
+                material="bearingSteel",
                 note="6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10",
             )
         )
@@ -256,15 +277,21 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # mass_budget.toml carries these as two lines: 100 g of "electronics and
     # wiring" and 60 g of power entry. The 100 is split below across the boards
     # that make it up. The split is an assumption; the total is not.
+    #
+    # The colours are wheeled_electronics.kcl's own, so a board is the same
+    # colour in the simulator as it is in the packing scene, and `draw` is what
+    # separates a body from a bounding volume: everything here is a real box
+    # standing in a real reserved envelope except the wiring, which is a mass
+    # spread through the whole cavity and would be drawn as a slab filling it.
     payload = [
-        ("SBC", 45.0, "sbc", "assumption",
+        ("SBC", 45.0, "sbc", "assumption", "pcbGreen", True,
          "Raspberry-Pi-4-class board, 46 g published"),
-        ("controller carrier", 25.0, "controller", "assumption",
+        ("controller carrier", 25.0, "controller", "assumption", "pcbGreen", True,
          "STM32G474 core board, two CAN-FD transceivers, carrier and header"),
-        ("IMU", 3.0, "imu", "assumption", "BNO085 nano breakout"),
-        ("wiring and looms", 27.0, "wiring", "assumption",
+        ("IMU", 3.0, "imu", "assumption", "sensorBlue", True, "BNO085 nano breakout"),
+        ("wiring and looms", 27.0, "wiring", "assumption", "carbonBlack", False,
          "the remainder of the budget's 100 g, spread through the cavity"),
-        ("power entry", 60.0, "power", "estimate",
+        ("power entry", 60.0, "power", "estimate", "canSilver", True,
          "capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED -- docs/BOM.md red line"),
     ]
     envelopes = {
@@ -284,7 +311,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["floorZ"],
         ),
     }
-    for label, grams, key, source, note in payload:
+    for label, grams, key, source, material, draw, note in payload:
         width, depth, height, at_x, base_z = envelopes[key]
         base.solids.append(
             Solid(
@@ -294,6 +321,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(width, depth, height),
                 at=(at_x, 0.0, base_z + height / 2),
                 source=source,
+                material=material,
+                draw=draw,
                 note=note,
             )
         )
@@ -322,6 +351,19 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             (0.0, 0.0, 0.0),
         )
     )
+    # The two hip actuators are NOT inside that box. They hang a keep-out below
+    # the shell floor, on the clevises, and they are the lowest and widest thing
+    # on the pelvis -- a 46 mm can whose outboard face is past the shell's own
+    # side. Without these the robot could put its hip motors through an obstacle
+    # and the simulator would never notice.
+    for side in SIDES:
+        base.collisions.append(
+            (
+                "cylinder_x",
+                (motor_d, motor_l),
+                (SIDE_SIGN[side] * hip_x, 0.0, hip_local_z),
+            )
+        )
     links[base.name] = base
 
     # ---- the two legs -----------------------------------------------------
@@ -363,6 +405,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(motor_d, motor_l),
                 at=(0.0, 0.0, -thigh_len),
                 source="vendor",
+                material="motorGrey",
                 note="held by the thigh's stator plate; drives the shin",
             ),
             Solid(
@@ -372,6 +415,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(d["journalDiameter"], d["journalLength"]),
                 at=(sign * (d["rotorHubInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
                 source="bom",
+                material="bearingSteel",
                 note="10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh",
             ),
             Solid(
@@ -431,6 +475,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 dims=(motor_d, motor_l),
                 at=(0.0, 0.0, -shin_len),
                 source="vendor",
+                material="motorGrey",
                 note="held by the shin's stator plate; drives the wheel",
             ),
             Solid(
@@ -495,6 +540,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 ),
                 at=(wheel_centre_x, 0.0, 0.0),
                 source="estimate",
+                material="soleBlack",
                 note=(
                     "NEVER WEIGHED. Catalogue-typical for an 80 x 24 mm 85A wheel with "
                     "the bearings out. Its spin inertia is the most sensitive unmeasured "
@@ -511,6 +557,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 ),
                 at=(sign * (d["skateWheelOuterX"] + 3.5), 0.0, 0.0),
                 source="bom",
+                material="bearingSteel",
                 note="M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair",
             ),
         ]
