@@ -23,6 +23,16 @@ cookie jar alone, so you stay signed in to your Zoo account and the app's
 unsaved-file recovery snapshot survives. `--all` takes those as well, which signs
 you out and drops the snapshot. Neither mode touches settings.toml.
 
+That surviving snapshot is worth knowing about, because it is not merely stale
+cache: Design Studio restores it over the file on disk and executes that instead.
+A snapshot left behind by an edit made before a commit can therefore make a file
+draw the old design, or draw nothing at all when the old code imports a module
+the commit has since deleted. That last case cost a morning on 2026-09-02 --
+main.kcl rendered nothing while a byte-identical copy under another name rendered
+the whole robot, because the snapshot still imported a deleted hip carrier. So
+every run now lists which files hold a snapshot and whether it still agrees with
+disk. Only `--all` can actually remove one.
+
 It refuses to run while Design Studio is open. Deleting a live Chromium's cache
 out from under it is a good way to produce the next corruption rather than fix
 one, and on Windows the files are locked anyway.
@@ -31,6 +41,7 @@ one, and on Windows the files are locked anyway.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -108,6 +119,139 @@ def size_of(path: Path) -> int:
     return total
 
 
+# Design Studio keeps an unsaved-file recovery buffer per file, in the Chromium
+# Local Storage store, under a key of this shape followed by the file's full
+# path. The value beside it is a small JSON record carrying the path again and
+# the whole of the code it saved. Chromium writes local storage values as either
+# Latin-1 or UTF-16LE depending on the string, so the store is read under both.
+RECOVERY_KEY = "kclRecovery:"
+RECOVERY_JSON = '{"version":'
+
+RECOVERY_NOTES = {
+    "stale": "differs from disk -- this shadows your file",
+    "gone": "the file it belongs to no longer exists",
+    "matches": "agrees with disk",
+    "unreadable": "present, contents could not be read",
+}
+RECOVERY_LABELS = {"stale": "STALE ", "gone": "ORPHAN", "matches": "ok    ", "unreadable": "?     "}
+
+
+def _decodings(raw: bytes) -> list[str]:
+    """The store's bytes as text, under both encodings Chromium uses."""
+    return [raw.decode("latin-1", "replace"), raw.decode("utf-16-le", "replace")]
+
+
+def _records(text: str):
+    """Every recovery record in one decoding, as (path, saved code).
+
+    Parsed with the JSON decoder rather than matched with a pattern: the values
+    are real JSON, and a compacted log leaves enough truncated look-alikes around
+    that a pattern gets them wrong.
+    """
+    decoder = json.JSONDecoder()
+    index = 0
+    while True:
+        index = text.find(RECOVERY_JSON, index)
+        if index == -1:
+            return
+        try:
+            record, end = decoder.raw_decode(text, index)
+        except ValueError:
+            index += len(RECOVERY_JSON)
+            continue
+        index = end
+        if not isinstance(record, dict):
+            continue
+        path, code = record.get("path"), record.get("code")
+        if isinstance(path, str) and isinstance(code, str):
+            yield path, code
+
+
+def _bare_keys(text: str):
+    """The file paths named by recovery keys, whether or not a record survived."""
+    index = 0
+    while True:
+        index = text.find(RECOVERY_KEY, index)
+        if index == -1:
+            return
+        cursor = index + len(RECOVERY_KEY)
+        start = cursor
+        while cursor < len(text) and text[cursor] >= " " and text[cursor] != '"':
+            cursor += 1
+        tail = text[start:cursor]
+        index = cursor if cursor > start else start + 1
+        cut = tail.rfind(".kcl")
+        if cut != -1:
+            yield tail[: cut + 4]
+
+
+def recovery_snapshots(profile: Path) -> list[tuple[str, str]]:
+    """Every recovery snapshot in the profile, as (file path, verdict).
+
+    The verdict is "stale" when the saved code differs from what is on disk --
+    the case that shadows the real file -- "matches" when it agrees, "gone" when
+    the file it belongs to has been deleted, and "unreadable" when the key is
+    there but no record could be parsed out beside it.
+    """
+    store = profile / "Local Storage" / "leveldb"
+    if not store.is_dir():
+        return []
+
+    found: dict[str, str] = {}
+    for entry in sorted(store.iterdir()):
+        if not entry.is_file():
+            continue
+        try:
+            raw = entry.read_bytes()
+        except OSError:
+            continue
+        for text in _decodings(raw):
+            if RECOVERY_KEY not in text:
+                continue
+            for path in _bare_keys(text):
+                found.setdefault(path, "unreadable")
+            for path, code in _records(text):
+                target = Path(path)
+                if not target.is_file():
+                    found[path] = "gone"
+                    continue
+                try:
+                    on_disk = target.read_text(encoding="utf-8")
+                except OSError:
+                    found[path] = "unreadable"
+                    continue
+                agrees = on_disk.replace("\r\n", "\n") == code.replace("\r\n", "\n")
+                found[path] = "matches" if agrees else "stale"
+    return sorted(found.items())
+
+
+def report_recovery(profile: Path, removed: bool) -> bool:
+    """Print the snapshot roll-up. True if one of them is shadowing a file."""
+    snapshots = recovery_snapshots(profile)
+    if not snapshots:
+        return False
+
+    if removed:
+        print(f"\n  dropped {len(snapshots)} recovery snapshot(s) along with Local Storage")
+        return False
+
+    print("\n  recovery snapshots, which the app restores over the file on disk:")
+    for path, verdict in snapshots:
+        try:
+            shown = str(Path(path).relative_to(Path.cwd()))
+        except ValueError:
+            shown = path
+        print(f"    {RECOVERY_LABELS[verdict]}  {shown:<26} {RECOVERY_NOTES[verdict]}")
+
+    if not any(verdict in ("stale", "gone") for _, verdict in snapshots):
+        return False
+    print("\n  A stale snapshot is opened INSTEAD of the file on disk, so the app can")
+    print("  show the old design, or draw nothing at all when the old code imports a")
+    print("  module that has since been deleted. Clear it with:")
+    print("      uv run tools/clear_cache.py --all      (signs you out of Zoo)")
+    return True
+
+
 def human(size: int) -> str:
     value = float(size)
     for unit in ("B", "KB", "MB", "GB"):
@@ -176,6 +320,7 @@ def main() -> int:
     print(f"  {verb} {human(cleared)}")
     if not args.dry_run and not args.all:
         print("  left the session stores alone; you are still signed in")
+    report_recovery(profile, removed=args.all and not args.dry_run)
     if failed:
         print(f"\n{len(failed)} directory(ies) would not delete -- is the app still open?", file=sys.stderr)
         return 1
