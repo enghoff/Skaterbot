@@ -31,3 +31,8 @@ __pycache__/
 
 # Transient wrapper scene written by tools/export.py
 _export_piece.kcl
+
+# The rigged Isaac Sim robot, written by simulation/isaacsim/import_urdf.py from
+# the URDF. Generated output, and it embeds the meshes, so it is rebuilt rather
+# than tracked.
+simulation/isaacsim/usd/

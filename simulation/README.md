@@ -2,8 +2,9 @@
 
 The CAD, turned into something a physics engine can integrate: a URDF of the
 six-motor wheeled robot, with the mass and inertia of every link worked out
-from the same geometry the printer would get, and an Isaac Lab articulation
-config to load it with.
+from the same geometry the printer would get, and two ways of loading it — an
+Isaac Sim project in [`isaacsim/`](isaacsim/) and an Isaac Lab articulation
+config in [`isaaclab/`](isaaclab/).
 
 Nothing here is typed in twice. Every dimension is read out of the KCL, every
 printed mass is integrated from the exported mesh at PA12-CF density, and every
@@ -32,6 +33,27 @@ uv run tools/export.py --format stl --out simulation/meshes --pieces <those>
 
 That is the only metered step in the pipeline, and only a printed part changing
 *shape* needs it. Everything else is arithmetic.
+
+## Simulating it
+
+Rebuild the Isaac Sim robot after every `/urdf` run, and check what PhysX made
+of it:
+
+```
+python simulation/isaacsim/preflight.py                             # free, offline
+Z:\IsaacSim\venv\Scripts\python.exe -u simulation/isaacsim/import_urdf.py
+Z:\IsaacSim\venv\Scripts\python.exe -u simulation/isaacsim/run.py --check
+```
+
+`preflight.py` is worth running on its own after a rebuild: it needs nothing
+but NumPy and it catches a URDF that was never going to load. The other two
+need Isaac Sim's own Python — here, the 6.0.1 venv at `Z:\IsaacSim\venv`.
+
+All of it currently passes. The robot loads with the URDF's own masses and
+inertia, its joints turn the way the CAD says, and it stands and rolls on a
+40 mm wheel to within a third of a millimetre. See
+[`isaacsim/README.md`](isaacsim/README.md) for the numbers and for what a
+passing check still does not cover.
 
 ## What it says the robot is
 
@@ -129,6 +151,8 @@ and `/views`' job, and it is unchanged by anything here.
 | `inertia.py` | mass, centre of mass and inertia tensors, from meshes and from primitives |
 | `build_urdf.py` | writes `urdf/wheeled_biped.urdf` and the binary meshes it points at |
 | `check_model.py` | the checks above |
+| `plant.py` | the simulator-facing choices — actuator limits, contact, solver, where it starts. Both simulators read it, so neither states a number of its own |
+| `isaacsim/` | an Isaac Sim project: the URDF turned into a rigged USD, and the checks that say whether PhysX agrees. See its own README |
 | `isaaclab/wheeled_biped_cfg.py` | Isaac Lab articulation config, actuator model and contact settings |
 | `meshes/` | raw engine output, untracked, regenerate with `/step --format stl` |
 | `urdf/meshes/` | binary copies, tracked, so a checkout can be simulated without spending credits |

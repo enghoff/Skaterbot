@@ -1,8 +1,10 @@
 """Isaac Lab articulation config for the wheeled biped.
 
-Copy this into an Isaac Lab extension, or add simulation/ to PYTHONPATH and
-import it. It is written against the Isaac Lab 2.x namespace (`isaaclab.*`);
-before 2.0 the same classes lived under `omni.isaac.lab.*`.
+Import it from where it sits. It finds simulation/plant.py by walking up from
+its own path, so it has to stay next to the rest of the project rather than be
+copied into an extension -- point the extension at this file instead. It is
+written against the Isaac Lab 2.x namespace (`isaaclab.*`); before 2.0 the same
+classes lived under `omni.isaac.lab.*`.
 
     from wheeled_biped_cfg import WHEELED_BIPED_CFG
     robot = Articulation(WHEELED_BIPED_CFG.replace(prim_path="/World/Robot"))
@@ -12,6 +14,16 @@ tensors, joint axes, travel. None of that is a choice. This file holds the
 things that ARE choices -- how the actuator is modelled, what the joints are
 told to do, where the robot starts -- and every one of them is either taken
 from the project's documents or flagged below as a guess.
+
+WHERE THOSE CHOICES LIVE. Not here. They are in simulation/plant.py, which the
+plain Isaac Sim scripts in simulation/isaacsim/ read as well, so that the two
+simulators cannot be given different robots by someone editing one of them.
+This file is the Isaac Lab SHAPE of those numbers; plant.py is the numbers.
+
+THIS FILE HAS NEVER BEEN EXECUTED. Isaac Lab is not installed in the
+environment it was written in, so it is checked for syntax and for agreement
+with plant.py, and nothing more. Expect to fix something the first time it
+loads, and see simulation/isaacsim/README.md for what was and was not verified.
 
 THE NUMBERS MARKED "UNMEASURED" ARE NOT PLACEHOLDERS YOU CAN IGNORE. Three of
 them decide whether a policy trained here has any chance of transferring: the
@@ -30,16 +42,29 @@ not fit it.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import DCMotorCfg
 from isaaclab.assets import ArticulationCfg
+
+# simulation/plant.py is this project's single source for everything about the
+# robot that is a CHOICE rather than a measurement: the actuator's limits, the
+# contact, the solver, where it starts. simulation/isaacsim/ reads the same
+# module, so the two simulators cannot quietly disagree about what the robot
+# is. It imports nothing but the standard library, so it is safe to pull into
+# Isaac Lab's interpreter.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import plant  # noqa: E402
 
 # --------------------------------------------------------------------------
 # Where the robot description is. Regenerate it with
 #     uv run simulation/build_urdf.py
 # after any change to the CAD.
 
-URDF_PATH = "${SIMULATION_DIR}/urdf/wheeled_biped.urdf"
+URDF_PATH = str(plant.URDF_PATH)
 
 # --------------------------------------------------------------------------
 # The actuator, all six of them the same
@@ -50,13 +75,13 @@ URDF_PATH = "${SIMULATION_DIR}/urdf/wheeled_biped.urdf"
 # figure is a THERMAL limit and cannot be expressed as a saturation at all --
 # hold 0.8 Nm long enough and the actuator derates rather than refusing. It
 # belongs in the reward as a cost, and there is a term for it below.
-PEAK_TORQUE_NM = 3.0
-CONTINUOUS_TORQUE_NM = 0.8
+PEAK_TORQUE_NM = plant.PEAK_TORQUE_NM
+CONTINUOUS_TORQUE_NM = plant.CONTINUOUS_TORQUE_NM
 
 # UNMEASURED. No vendor no-load speed has been recorded in this project. This
 # figure sets the robot's top speed -- 20 rad/s on a 40 mm wheel is 0.8 m/s --
 # so a policy will learn against whatever is written here. Replace it.
-MAX_VELOCITY_RAD_S = 20.0
+MAX_VELOCITY_RAD_S = plant.MAX_VELOCITY_RAD_S
 
 # UNMEASURED, AND THE MOST IMPORTANT OF THE THREE. A 7:1 reduction reflects the
 # rotor's own inertia to the joint multiplied by 49. Estimated from a 3507
@@ -64,13 +89,13 @@ MAX_VELOCITY_RAD_S = 20.0
 # about 2.3e-4 kg m2 at the output. That is several times the wheel's own spin
 # inertia, which means leaving it out does not make the model slightly wrong,
 # it makes the wheels a different plant. Measure it by spin-down.
-ARMATURE_KG_M2 = 2.3e-4
+ARMATURE_KG_M2 = plant.ARMATURE_KG_M2
 
 # UNMEASURED. Joint friction and damping have never been characterised on this
 # actuator. These are zero because inventing them would be worse, not because
 # they are zero. Identify them on the first joint that runs.
-JOINT_FRICTION_NM = 0.0
-JOINT_DAMPING_NM_S_RAD = 0.0
+JOINT_FRICTION_NM = plant.JOINT_FRICTION_NM
+JOINT_DAMPING_NM_S_RAD = plant.JOINT_DAMPING_NM_S_RAD
 
 # --------------------------------------------------------------------------
 # Where it starts
@@ -79,8 +104,8 @@ JOINT_DAMPING_NM_S_RAD = 0.0
 # with the legs straight. A centimetre of clearance keeps the wheels off the
 # ground plane at reset so the first contact is resolved rather than penetrated.
 
-STANDING_BASE_HEIGHT_M = 0.3065
-RESET_CLEARANCE_M = 0.01
+STANDING_BASE_HEIGHT_M = plant.standing_base_height_m()
+RESET_CLEARANCE_M = plant.RESET_CLEARANCE_M
 
 
 WHEELED_BIPED_CFG = ArticulationCfg(
@@ -91,8 +116,11 @@ WHEELED_BIPED_CFG = ArticulationCfg(
         # The URDF's joints are all actuated; none should come in as a fixed or
         # a free joint.
         joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
+            # Torque control, so the drive contributes nothing of its own.
+            # PDGainsCfg wants numbers rather than None, and target_type
+            # "none" is what makes a command a torque.
             gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(
-                stiffness=None, damping=None
+                stiffness=0.0, damping=0.0
             ),
             target_type="none",
         ),
@@ -102,12 +130,12 @@ WHEELED_BIPED_CFG = ArticulationCfg(
             # This robot is small and light, and a wheel at 20 rad/s on a 4 ms
             # step moves 3 mm at the contact patch. Leave CCD on until it is
             # shown to be unnecessary.
-            max_depenetration_velocity=1.0,
+            max_depenetration_velocity=plant.SOLVER["max_depenetration_velocity"],
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
-            solver_position_iteration_count=8,
-            solver_velocity_iteration_count=2,
+            enabled_self_collisions=plant.SELF_COLLISION,
+            solver_position_iteration_count=plant.SOLVER["position_iterations"],
+            solver_velocity_iteration_count=plant.SOLVER["velocity_iterations"],
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
@@ -169,23 +197,15 @@ WHEELED_BIPED_CFG = ArticulationCfg(
 # on it, that is the assumption to revisit first.
 
 WHEEL_MATERIAL_CFG = sim_utils.RigidBodyMaterialCfg(
-    static_friction=1.0,
-    dynamic_friction=0.9,
-    restitution=0.1,
+    static_friction=plant.CONTACT["static_friction"],
+    dynamic_friction=plant.CONTACT["dynamic_friction"],
+    restitution=plant.CONTACT["restitution"],
 )
 
-# Ranges worth randomising over, since the true value is unknown. Urethane on a
-# painted concrete floor and urethane on a rug are not the same robot.
-DOMAIN_RANDOMISATION = {
-    "static_friction": (0.6, 1.4),
-    "dynamic_friction": (0.5, 1.2),
-    # The wheels have never been weighed and the capacitor bank has never been
-    # sized, so the mass this model carries is uncertain by a good deal more
-    # than the usual few per cent. Randomise the base mass accordingly.
-    "base_mass_scale": (0.85, 1.15),
-    "wheel_mass_scale": (0.8, 1.2),
-    "armature_scale": (0.5, 2.0),
-}
+# Ranges worth randomising over, since the true value is unknown. Urethane on
+# a painted concrete floor and urethane on a rug are not the same robot. The
+# ranges live in plant.py so that both simulators randomise over the same ones.
+DOMAIN_RANDOMISATION = plant.DOMAIN_RANDOMISATION
 
 
 # --------------------------------------------------------------------------
