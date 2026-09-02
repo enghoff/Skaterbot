@@ -1,29 +1,35 @@
 // Compact torque-controlled wheeled biped, stressed-shell build
 //
 // Neutral 380 mm assembly, and the model this branch is about. Each leg is hip
-// roll, hip pitch, knee pitch and a driven wheel, on the same eight DM-J3507
-// actuators the walking robot used: the ankle motor is re-used as a continuous
-// wheel motor and the foot is replaced by an off-the-shelf 80 mm skate wheel on
-// a printed adapter.
+// pitch, knee pitch and a driven wheel -- six DM-J3507 actuators in total, on a
+// robot that used to carry eight.
 //
-// The walking robot it grew out of has not been deleted -- it is walking_main.kcl
-// beside this file, and it is the model on the `main` branch. Both are built
-// from the same limbs, the same joints and the same torso; what differs is the
-// bottom of the leg and the 4 mm that follows from it.
+// WHAT WENT, AND WHY THE REST DID NOT MOVE
+// Hip roll is gone: the actuator, its bearing set and journal, and the
+// orthogonal printed carrier that used to hang the hip pitch joint off it. The
+// hip pitch clevis is now part of the pelvis itself, rooted in a shell floor
+// that has come down 51 mm to meet it, so nothing below the hip has changed at
+// all. Thigh and shin are still 105 mm, the wheel axle is still 40 mm off the
+// floor, the torso still tops out at 380 mm.
 //
-// The wheel axle is 40 mm above the floor rather than the walking ankle's 36 mm.
-// Thigh and shin lengths stay 105 mm, hip roll stays at 301 mm, and the torso
-// stays at its existing height. The hip-pitch and knee axes therefore move up
-// 4 mm and the hip carrier shortens from 55 to 51 mm.
+// What it costs is lateral balance. Nothing can roll the torso over a wheel any
+// more, so the robot leans only by driving the two wheels differentially. That
+// trade is argued in docs/WHEELED_BIPED_ANALYSIS.md section 11 and taken here.
+//
+// Two other robots share these parts. walking_main.kcl beside this file is the
+// eight-motor walking biped, which is the model on the `main` branch and still
+// has hip roll and feet; the wheeled eight-motor robot this file used to hold
+// is in the branch's history. What differs between all three is the top of the
+// leg and the bottom of it; the limbs, the joint interface and the lid are one
+// design throughout.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ, wheeledHipCarrierCenterZ from "wheeled_parameters.kcl"
+import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
-import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
@@ -33,50 +39,39 @@ actuatorCopy3 = clone(actuatorAssembly)
 actuatorCopy4 = clone(actuatorAssembly)
 actuatorCopy5 = clone(actuatorAssembly)
 actuatorCopy6 = clone(actuatorAssembly)
-actuatorCopy7 = clone(actuatorAssembly)
-actuatorCopy8 = clone(actuatorAssembly)
 
 // ---- actuators -------------------------------------------------------------
 
 
-leftHipRollMotor = actuatorAssembly
-  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
-  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
-rightHipRollMotor = actuatorCopy2
-  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
-  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
+// Six, all with their axes across the robot. The hip roll pair, which were the
+// only two turned fore-and-aft, are what this build deleted.
 
-leftHipPitchMotor = actuatorCopy3
+
+leftHipPitchMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = -hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
-leftKneeMotor = actuatorCopy4
+leftKneeMotor = actuatorCopy2
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = -hipCenterX, z = wheeledKneeAxisHeight, global = true)
-leftWheelMotor = actuatorCopy5
+leftWheelMotor = actuatorCopy3
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = -hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
-rightHipPitchMotor = actuatorCopy6
+rightHipPitchMotor = actuatorCopy4
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = hipCenterX, z = wheeledHipPitchAxisHeight, global = true)
-rightKneeMotor = actuatorCopy7
+rightKneeMotor = actuatorCopy5
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = hipCenterX, z = wheeledKneeAxisHeight, global = true)
-rightWheelMotor = actuatorCopy8
+rightWheelMotor = actuatorCopy6
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
 // ---- bearing carriers, bearings and journals -------------------------------
-// Unchanged from the walking robot: only hip roll and hip pitch are straddled.
-// Knee and wheel joints rely on the actuator's own output bearing.
+// Hip pitch is the only straddled joint left. Knee and wheel rely on the
+// actuator's own output bearing, as they always did, and the two sets that used
+// to sit at hip roll went with it.
 
-
-leftHipRollHardware = jointHardware()
-  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
-  |> translate(x = -hipCenterX, z = hipRollAxisHeight, global = true)
-rightHipRollHardware = jointHardware()
-  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
-  |> translate(x = hipCenterX, z = hipRollAxisHeight, global = true)
 
 leftHipPitchHardware = jointHardware()
   |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
@@ -87,10 +82,10 @@ rightHipPitchHardware = jointHardware()
 // ---- printed structure -----------------------------------------------------
 
 
-leftHipCarrier = wheeledHipCarrierLeft
-  |> translate(x = -hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
-rightHipCarrier = wheeledHipCarrierRight
-  |> translate(x = hipCenterX, z = wheeledHipCarrierCenterZ, global = true)
+// There is no hip carrier. The clevis that holds each hip pitch actuator is
+// part of the pelvis now, so the printed chain from torso to wheel is torso,
+// thigh, shin, wheel adapter.
+
 
 leftThigh = thighLeft
   |> translate(x = -hipCenterX, z = wheeledThighCenterZ, global = true)
@@ -115,20 +110,14 @@ reservedPayload = payloadEnvelopes
 export robotAssembly = [
   bodyFrame,
   reservedPayload,
-  leftHipRollMotor,
-  rightHipRollMotor,
   leftHipPitchMotor,
   rightHipPitchMotor,
   leftKneeMotor,
   rightKneeMotor,
   leftWheelMotor,
   rightWheelMotor,
-  leftHipRollHardware,
-  rightHipRollHardware,
   leftHipPitchHardware,
   rightHipPitchHardware,
-  leftHipCarrier,
-  rightHipCarrier,
   leftThigh,
   rightThigh,
   leftShin,

@@ -1,0 +1,235 @@
+// The parts of the torso that do not care which joint hangs off it
+//
+// Two pelvises are built from this file. The wheeled robot's, in torso.kcl,
+// hangs its hip PITCH actuators straight off the shell floor; the walking
+// robot's, in walking_torso.kcl, hangs hip ROLL actuators off a floor 51 mm
+// higher and needs a keel to reach down between them. Those two differ in
+// nearly all of their structure.
+//
+// What they do not differ in is everything at the top: the box is the same
+// 118 x 68 section, the cover is the same lid on the same four bosses at the
+// same height, and the cable slot through the floor is the same slot. Those
+// live here so that one change to the lid is one change, not two.
+//
+// The bodies below stand at the top level of this module, which means they land
+// in any scene that imports anything from it. That is deliberate here -- both
+// pelvises want all five of them, in these positions -- and it is why the
+// shell boxes themselves are NOT here: those two do differ, and a shell in this
+// file would put the wrong one into the other robot.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+
+// ---- the section, shared by both pelvises -----------------------------------
+
+
+export torsoShellWidth = 118mm
+export torsoShellDepth = 68mm
+export torsoInnerWidth = torsoShellWidth - (shellWall * 2)
+export torsoInnerDepth = torsoShellDepth - (shellWall * 2)
+export floorThickness = 3mm
+export coverThickness = 2.4mm
+export shellTopZ = torsoHeight / 2 - coverThickness
+
+// Provisional. A cable has to leave each hip actuator and get inside, and this
+// slot clears both the saddle and the cheeks on either pelvis. Its exact
+// position waits on the mated-plug measurement that Phase 6 is blocked on.
+export cablePortWidth = 14mm
+export cablePortDepth = 10mm
+export cablePortX = 40mm
+export cablePortY = -28mm
+
+bossSize = 8mm
+bossHeight = 12mm
+bossHoleDiameter = 2.5mm
+export bossX = torsoInnerWidth / 2 - (bossSize / 2)
+export bossY = torsoInnerDepth / 2 - (bossSize / 2)
+bossCenterZ = shellTopZ - (bossHeight / 2)
+
+coverCenterZ = torsoHeight / 2 - (coverThickness / 2)
+coverLipWidth = torsoInnerWidth - 0.4mm
+coverLipDepth = torsoInnerDepth - 0.4mm
+coverLipHeight = 2.4mm
+coverLipCenterZ = shellTopZ - (coverLipHeight / 2)
+coverScrewDiameter = m3Clearance
+
+// ---- the box's outline, drawn once and used by the cover --------------------
+
+
+shellOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 118mm, var 0mm])
+  edge2 = line(start = [var 118mm, var 0mm], end = [var 118mm, var 68mm])
+  edge3 = line(start = [var 118mm, var 68mm], end = [var 0mm, var 68mm])
+  edge4 = line(start = [var 0mm, var 68mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == torsoShellWidth
+  verticalDistance([edge2.start, edge2.end]) == torsoShellDepth
+}
+
+// ---- cover bosses -----------------------------------------------------------
+
+
+bossSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 8mm, var 0mm])
+  edge2 = line(start = [var 8mm, var 0mm], end = [var 8mm, var 8mm])
+  edge3 = line(start = [var 8mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == bossSize
+  verticalDistance([edge2.start, edge2.end]) == bossSize
+}
+bossRegion = region(segments = [bossSketch.edge1, bossSketch.edge2], intersectionIndex = -1, direction = CCW)
+bossHoleSketch = sketch(on = XY) {
+  holeCircle = circle(start = [var 1.25mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([holeCircle.center, ORIGIN])
+  horizontal([holeCircle.center, holeCircle.start])
+  diameter(holeCircle) == bossHoleDiameter
+}
+bossHoleRegion = region(segments = [bossHoleSketch.holeCircle])
+
+bossBlank = extrude(bossRegion, length = bossHeight, symmetric = true)
+  |> translate(
+       x = bossX - (bossSize / 2),
+       y = bossY - (bossSize / 2),
+       z = bossCenterZ,
+       global = true,
+     )
+bossHole = extrude(bossHoleRegion, length = bossHeight + 2mm, symmetric = true)
+  |> translate(
+       x = bossX,
+       y = bossY,
+       z = bossCenterZ,
+       global = true,
+     )
+bossRearRight = subtract(bossBlank, tools = [bossHole])
+bossRearLeft = clone(bossRearRight)
+  |> translate(x = -bossX * 2, global = true)
+bossFrontRight = clone(bossRearRight)
+  |> translate(y = -bossY * 2, global = true)
+bossFrontLeft = clone(bossRearLeft)
+  |> translate(y = -bossY * 2, global = true)
+
+// ---- removable cover --------------------------------------------------------
+
+
+coverOuterRegion = region(
+  segments = [
+    shellOuterSketch.edge1,
+    shellOuterSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+coverPlate = extrude(coverOuterRegion, length = coverThickness, symmetric = true)
+  |> translate(
+       x = -torsoShellWidth / 2,
+       y = -torsoShellDepth / 2,
+       z = coverCenterZ,
+       global = true,
+     )
+
+coverLipSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 112mm, var 0mm])
+  edge2 = line(start = [var 112mm, var 0mm], end = [var 112mm, var 62mm])
+  edge3 = line(start = [var 112mm, var 62mm], end = [var 0mm, var 62mm])
+  edge4 = line(start = [var 0mm, var 62mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == coverLipWidth
+  verticalDistance([edge2.start, edge2.end]) == coverLipDepth
+}
+coverLipRegion = region(
+  segments = [
+    coverLipSketch.edge1,
+    coverLipSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+coverLip = extrude(coverLipRegion, length = coverLipHeight, symmetric = true)
+  |> translate(
+       x = -coverLipWidth / 2,
+       y = -coverLipDepth / 2,
+       z = coverLipCenterZ,
+       global = true,
+     )
+
+coverScrewSketch = sketch(on = XY) {
+  screwCircle = circle(start = [var 1.7mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([screwCircle.center, ORIGIN])
+  horizontal([screwCircle.center, screwCircle.start])
+  diameter(screwCircle) == coverScrewDiameter
+}
+// Long enough to clear the lip as well as the plate: a screw hole that stopped
+// inside the lip would be a blind cylindrical pocket, which the engine refuses.
+coverScrewRegion = region(segments = [coverScrewSketch.screwCircle])
+coverScrewLength = coverThickness + coverLipHeight + 2mm
+coverScrewZ = shellTopZ - coverLipHeight + (coverLipHeight + coverThickness) / 2
+coverScrew1 = extrude(coverScrewRegion, length = coverScrewLength, symmetric = true)
+  |> translate(
+       x = bossX,
+       y = bossY,
+       z = coverScrewZ,
+       global = true,
+     )
+coverScrew2 = clone(coverScrew1)
+  |> translate(x = -bossX * 2, global = true)
+coverScrew3 = clone(coverScrew1)
+  |> translate(y = -bossY * 2, global = true)
+coverScrew4 = clone(coverScrew2)
+  |> translate(y = -bossY * 2, global = true)
+
+coverBlank = union([coverPlate, coverLip])
+coverRaw = subtract(
+  coverBlank,
+  tools = [
+    coverScrew1,
+    coverScrew2,
+    coverScrew3,
+    coverScrew4
+  ],
+)
+
+hide(shellOuterSketch)
+hide(bossSketch)
+hide(bossHoleSketch)
+hide(coverLipSketch)
+hide(coverScrewSketch)
+
+// The bosses go into whichever pelvis imports them, so they are handed over raw
+// and that pelvis gives them its own appearance along with the rest of its one
+// printed part. The cover is a print on its own, so it is finished here.
+export coverBody = appearance(
+  coverRaw,
+  color = printedDark,
+  roughness = 72,
+  metalness = 3,
+)
+
+export bossRearRightBody = bossRearRight
+export bossRearLeftBody = bossRearLeft
+export bossFrontRightBody = bossFrontRight
+export bossFrontLeftBody = bossFrontLeft

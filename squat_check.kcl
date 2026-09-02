@@ -23,6 +23,11 @@
 // the thigh line is a full leg segment from the axle -- so what this scene is
 // really for is the knee actuator against the torso floor, and the wheel against
 // the shin's own stator plate.
+//
+// The torso floor matters more here than it used to. With hip roll deleted the
+// pelvis comes down 51 mm and reaches the full 118 mm width all the way to the
+// hip pitch axes, so at 55 degrees of hip this is where a thigh and a full-width
+// floor would meet if they were going to.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
@@ -31,7 +36,6 @@ import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
-import wheeledHipCarrierRight, wheeledHipCarrierLeft from "wheeled_hip_carrier.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
@@ -44,9 +48,7 @@ squatShinAngle = squatHipAngle - squatKneeAngle
 legVerticalReach = upperLegLength * cos(squatHipAngle) + lowerLegLength * cos(squatShinAngle)
 squatDrop = upperLegLength + lowerLegLength - legVerticalReach
 squatHipPitchZ = wheeledHipPitchAxisHeight - squatDrop
-squatHipRollZ = hipRollAxisHeight - squatDrop
 squatTorsoCenterZ = torsoCenterHeight - squatDrop
-squatCarrierCenterZ = (squatHipRollZ + squatHipPitchZ) / 2
 
 kneeY = upperLegLength * sin(squatHipAngle)
 kneeZ = squatHipPitchZ - (upperLegLength * cos(squatHipAngle))
@@ -62,27 +64,18 @@ actuatorCopy3 = clone(actuatorAssembly)
 actuatorCopy4 = clone(actuatorAssembly)
 actuatorCopy5 = clone(actuatorAssembly)
 actuatorCopy6 = clone(actuatorAssembly)
-actuatorCopy7 = clone(actuatorAssembly)
-actuatorCopy8 = clone(actuatorAssembly)
 
 // ---- actuators -------------------------------------------------------------
 
 
-leftHipRollMotor = actuatorAssembly
-  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
-  |> translate(x = -hipCenterX, z = squatHipRollZ, global = true)
-rightHipRollMotor = actuatorCopy2
-  |> rotate(axis = [1, 0, 0], angle = -90deg, global = true)
-  |> translate(x = hipCenterX, z = squatHipRollZ, global = true)
-
-leftHipPitchMotor = actuatorCopy3
+leftHipPitchMotor = actuatorAssembly
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(x = -hipCenterX, z = squatHipPitchZ, global = true)
-rightHipPitchMotor = actuatorCopy4
+rightHipPitchMotor = actuatorCopy2
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(x = hipCenterX, z = squatHipPitchZ, global = true)
 
-leftKneeMotor = actuatorCopy5
+leftKneeMotor = actuatorCopy3
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(
        x = -hipCenterX,
@@ -90,7 +83,7 @@ leftKneeMotor = actuatorCopy5
        z = kneeZ,
        global = true,
      )
-rightKneeMotor = actuatorCopy6
+rightKneeMotor = actuatorCopy4
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = hipCenterX,
@@ -99,7 +92,7 @@ rightKneeMotor = actuatorCopy6
        global = true,
      )
 
-leftWheelMotor = actuatorCopy7
+leftWheelMotor = actuatorCopy5
   |> rotate(axis = [0, 1, 0], angle = -90deg, global = true)
   |> translate(
        x = -hipCenterX,
@@ -107,7 +100,7 @@ leftWheelMotor = actuatorCopy7
        z = wheelZ,
        global = true,
      )
-rightWheelMotor = actuatorCopy8
+rightWheelMotor = actuatorCopy6
   |> rotate(axis = [0, 1, 0], angle = 90deg, global = true)
   |> translate(
        x = hipCenterX,
@@ -119,13 +112,6 @@ rightWheelMotor = actuatorCopy8
 // ---- joint hardware, carried by the stationary side of each joint ----------
 
 
-leftHipRollHardware = jointHardware()
-  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
-  |> translate(x = -hipCenterX, z = squatHipRollZ, global = true)
-rightHipRollHardware = jointHardware()
-  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
-  |> translate(x = hipCenterX, z = squatHipRollZ, global = true)
-
 leftHipPitchHardware = jointHardware()
   |> rotate(axis = [0, 0, 1], angle = 180deg, global = true)
   |> translate(x = -hipCenterX, z = squatHipPitchZ, global = true)
@@ -134,11 +120,6 @@ rightHipPitchHardware = jointHardware()
 
 // ---- printed structure -----------------------------------------------------
 
-
-leftHipCarrier = wheeledHipCarrierLeft
-  |> translate(x = -hipCenterX, z = squatCarrierCenterZ, global = true)
-rightHipCarrier = wheeledHipCarrierRight
-  |> translate(x = hipCenterX, z = squatCarrierCenterZ, global = true)
 
 leftThigh = thighLeft
   |> rotate(axis = [1, 0, 0], angle = squatHipAngle, global = true)
@@ -197,20 +178,14 @@ reservedPayload = payloadEnvelopes
 export squatCheckAssembly = [
   bodyFrame,
   reservedPayload,
-  leftHipRollMotor,
-  rightHipRollMotor,
   leftHipPitchMotor,
   rightHipPitchMotor,
   leftKneeMotor,
   rightKneeMotor,
   leftWheelMotor,
   rightWheelMotor,
-  leftHipRollHardware,
-  rightHipRollHardware,
   leftHipPitchHardware,
   rightHipPitchHardware,
-  leftHipCarrier,
-  rightHipCarrier,
   leftThigh,
   rightThigh,
   leftShin,

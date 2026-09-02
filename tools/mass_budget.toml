@@ -4,14 +4,30 @@
 # mechanism, because a single budget file describes a single machine.
 #
 # What changed from the walking budget: the feet became wheel adapters plus a
-# pair of bought skate wheels, and the hip carriers came from the wheeled
-# wrapper rather than the walking one. Everything else -- limbs, torso,
-# actuators, bearings -- is the same part in the same count.
+# pair of bought skate wheels, and then hip roll was deleted outright. That last
+# change is the big one on this table. It takes away two actuators, two of the
+# four bearing-journal-carrier sets, both hip carriers and a fifth of the
+# fasteners, and it takes the keel and the four cheek gussets out of the pelvis
+# as well. The limbs are untouched.
 #
 # The printed parts are measured from the CAD every time tools/mass.py runs, so
 # nothing in this file records their mass. What it records is which files are
 # printed parts, how many of each the robot carries, and the masses of the
 # bought and estimated items the CAD does not model.
+#
+# It is also the register of what gets printed, so tools/export.py reads it too.
+# A `[[printed]]` entry is one FILE, measured whole; the `[[printed.piece]]`
+# entries under it are the individual PRINTS inside that file, one STEP each.
+# The two views differ on purpose: a file that builds a handed pair weighs the
+# pair but prints as two parts, and two files can build the same part.
+#
+# Each piece carries `bodies`, the number of separate solids that piece is built
+# from. It is not decoration: exporting one piece out of a file that holds
+# several depends on `hide` reaching the exporter, and this is what proves it
+# did. The counts were read off the KCL -- the lists these parts are assembled
+# from -- and then confirmed against the 2026-08-31 STEP export, which agreed on
+# all eight. A count that comes out higher means a sibling part is inside the
+# file and it must not be printed.
 #
 # Provenance for every fixed figure is in the note beside it. Follow that style
 # if a line changes: say where the new number came from.
@@ -42,44 +58,100 @@ file = "thigh.kcl"
 label = "Thighs, the pair"
 count = 1
 
+# Both leg segments are 105 mm, so these two pieces are every limb on the robot:
+# the unmirrored one is the right thigh and the left shin, its mirror is the left
+# thigh and the right shin. Hence prints = 2 each, and hence shin.kcl below
+# contributes no pieces of its own.
+[[printed.piece]]
+name = "limb-105-unmirrored"
+export = "thighRight"
+hide = ["thighLeft"]
+prints = 2
+bodies = 5  # waist plate, two gussets, output disc, stator plate
+note = "Right thigh and left shin -- limbAssembly as built, stator plate on +X."
+
+[[printed.piece]]
+name = "limb-105-mirrored"
+export = "thighLeft"
+hide = ["thighRight"]
+prints = 2
+bodies = 5  # waist plate, two gussets, output disc, stator plate
+note = "Left thigh and right shin -- the mirror, stator plate on -X."
+
+# Measured for mass because the robot carries four limbs, but printed from
+# thigh.kcl's two pieces above: shinLeft is the same solid as thighRight.
 [[printed]]
 file = "shin.kcl"
 label = "Shins, the pair"
 count = 1
 
-# hip_carrier.kcl itself is a function module with no bodies at its top level,
-# so it would measure zero. The wrapper that fixes the 51 mm wheeled span is
-# what carries the geometry.
-[[printed]]
-file = "wheeled_hip_carrier.kcl"
-label = "Hip carriers, the pair"
-count = 1
+# There is no hip carrier. It was the orthogonal bracket between the hip roll
+# and hip pitch axes, and with hip roll deleted the hip pitch clevis is part of
+# the pelvis instead. hip_carrier.kcl and walking_hip_carrier.kcl are still in
+# the repository because the walking robot on `main` still needs them.
 
 [[printed]]
 file = "wheel_adapter.kcl"
 label = "Wheel adapters, the pair"
 count = 1
 
+[[printed.piece]]
+name = "wheel-adapter-right"
+export = "wheelAdapterRight"
+hide = ["wheelAdapterLeft"]
+prints = 1
+bodies = 3  # output disc, spigot, plug
+
+[[printed.piece]]
+name = "wheel-adapter-left"
+export = "wheelAdapterLeft"
+hide = ["wheelAdapterRight"]
+prints = 1
+bodies = 3  # output disc, spigot, plug
+
+# Measured through torso.kcl, which is the six-motor pelvis. The lid and the
+# four cover bosses live in torso_shell.kcl and are pulled in by import, so they
+# are inside this file's figure and must not be counted again.
 [[printed]]
 file = "torso.kcl"
 label = "Pelvis, torso shell, cover"
 count = 1
+
+# One file, two prints. torsoAssembly holds both, so each piece hides the other.
+[[printed.piece]]
+name = "pelvis-shell"
+export = "pelvisShell"
+hide = ["torsoCover"]
+prints = 1
+bodies = 7  # shell, four cover bosses, two hip pitch clevises
+note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until \
+hip roll was deleted: the keel and the four cheek gussets existed only to reach \
+down between the roll actuators and to close the voids their cheeks left."""
+
+[[printed.piece]]
+name = "torso-cover"
+export = "torsoCover"
+hide = ["pelvisShell"]
+prints = 1
+bodies = 1  # the lid, one solid
 
 # ---- bought and estimated, not modelled at PA12 density ---------------------
 
 [[fixed]]
 label = "Actuators"
 each_g = 150.0
-count = 8
-note = "DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, ~150 g."
+count = 6
+note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, \
+~150 g. Six, not eight: hip pitch, knee and wheel on each leg."""
 
 [[fixed]]
 label = "Bearing, journal, carrier"
 each_g = 16.3
-count = 4
+count = 2
 note = """6800-2RS, Ø10 journal and the flanged metal carrier from hardware.kcl. \
 Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
-per-joint tally."""
+per-joint tally. Hip pitch is the only straddled joint left, so there are two \
+sets rather than four."""
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"
@@ -89,8 +161,8 @@ note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of t
 
 [[fixed]]
 label = "Fasteners"
-total_g = 66.0
-note = """M3 sets across all eight joints and both covers, 60 g, docs/BOM.md estimate. Plus 6 g for the two wheel clamps: an M5 x 20 cap screw, a Ø30 washer and an M5 heat-set insert at each wheel."""
+total_g = 51.0
+note = """45 g of M3 sets plus 6 g for the two wheel clamps, which are an M5 x 20 cap screw, a Ø30 washer and an M5 heat-set insert each. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
 
 [[fixed]]
 label = "Electronics and wiring"

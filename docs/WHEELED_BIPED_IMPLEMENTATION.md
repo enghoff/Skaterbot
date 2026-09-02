@@ -13,12 +13,12 @@ This document records what has been implemented from [`WHEELED_BIPED_ANALYSIS.md
 The conservative conversion, per leg, on the same eight DAMIAO DM-J3507-2EC actuators the walking robot used:
 
 ```text
-hip roll -> hip pitch -> knee pitch -> wheel
+hip pitch -> knee pitch -> wheel
 ```
 
 The ankle actuator becomes the wheel motor. Nothing is added: no extra motor, gearbox or driver.
 
-The branch also starts a six-motor concept — a fixed torso mount in place of hip roll — but stops it at an isolated part. The current torso contains real hip-roll clevises and gussets, so a six-motor assembly needs a proper torso variant rather than new geometry hiding old.
+Hip roll has since been deleted outright. `torso.kcl` is now the six-motor pelvis — one closed box from the hip pitch axes to the cover, with each hip pitch clevis rooted in its floor — and the eight-motor pelvis moved to `walking_torso.kcl` for the walking robot. The prototype hanger that was going to bridge between the two is gone; closing the freed volume made it unnecessary, because the shell floor simply came down 51 mm to meet the saddle.
 
 ---
 
@@ -143,7 +143,7 @@ Three things were cleaned up along the way:
 
 Wheel commands are the highest-priority realtime traffic; a dedicated CAN bus for the two wheel motors may be warranted once bus timing is measured. Regeneration matters more with balancing wheels than with static standing — the tethered supply cannot be assumed to absorb reverse current, so the motor-side DC link needs an energy sink even if an upstream contactor opens.
 
-**Six-motor work** stops where it did: an isolated hanger and its review scene, no `six_motor_main.kcl`, no torso variant, no claim that lateral balancing works without hip roll. The next step there is a dedicated torso that removes both hip-roll clevises, their hardware and their gussets, closes the freed volume and integrates the two hangers into the shell floor.
+**Six-motor work** is done in CAD: both hip-roll clevises, their hardware, their gussets and the keel are gone, the freed volume is closed at full width, and the hip pitch joints are integrated into the shell floor. The robot measures 1.638 kg against a 2.3 kg ceiling. What is still not claimed is the control side — nothing here shows that lateral balancing works without hip roll, and the robot can no longer lean or place a wheel sideways at all.
 
 ---
 

@@ -10,29 +10,30 @@
 // connector between them is particular to the carrier, because the two joints
 // are close enough together that the two ends nearly meet on their own.
 //
-// HOW FAR APART THE TWO AXES ARE is not a property of this part. It is whatever
-// the torso leaves over once the leg is stacked up under it, so it is passed in
-// rather than fixed here, and two robots now ask for two different numbers:
+// ONLY THE WALKING ROBOT STILL HAS ONE. The wheeled robot dropped hip roll
+// altogether, and with it this carrier: its hip pitch clevis is part of the
+// pelvis now. So the one caller left is walking_hip_carrier.kcl, and the span
+// it asks for is 55 mm.
 //
-// * the walking robot, 55 mm. Not the 47 mm this part was first drawn against:
-// it grew by the 8 mm the ankle axis came down when the actuator was seated on
-// the foot. The two ends overlap by 13 mm rather than 21, which the 10 mm
-// connector sits well inside, so nothing here had to change to follow it.
-// * the wheeled robot, 51 mm. The 80 mm wheel puts its axle 4 mm higher than the
-// walking ankle while hip roll and the torso stay where they are, so the whole
-// of that 4 mm comes out of this span. The ends overlap by 17 mm instead of 13,
-// which the connector sits further inside still.
+// HOW FAR APART THE TWO AXES ARE is nevertheless not a property of this part. It
+// is whatever the torso leaves over once the leg is stacked up under it, so it
+// is passed in rather than fixed here. The walking robot's 55 mm is not the
+// 47 mm this part was first drawn against: it grew by the 8 mm the ankle axis
+// came down when the actuator was seated on the foot. The two ends overlap by
+// 13 mm rather than 21, which the 10 mm connector sits well inside, so nothing
+// here had to change to follow it. A 51 mm wheeled version was built the same
+// way, and overlapped by 17 mm, for as long as that robot had a roll joint.
 //
-// Nothing else in the part moves with the span, which is why one function serves
-// both: the connector is 10 mm tall wherever it sits, and both ends are the
-// shared joint parts drawn about their own axes.
+// Nothing else in the part moves with the span, which is why one function can
+// serve any of them: the connector is 10 mm tall wherever it sits, and both ends
+// are the shared joint parts drawn about their own axes.
 //
 // Local origin is the midpoint between the two axes, matching how the assemblies
-// place it. The two hands are made by the thin wrappers beside this file --
-// walking_hip_carrier.kcl and wheeled_hip_carrier.kcl -- for the same reason
-// limb.kcl leaves them to thigh.kcl and shin.kcl: a module with bodies standing
-// at its top level puts them into every scene that imports anything from it,
-// whether that scene wanted them or not.
+// place it. The two hands are made by the thin wrapper beside this file --
+// walking_hip_carrier.kcl -- for the same reason limb.kcl leaves them to
+// thigh.kcl and shin.kcl: a module with bodies standing at its top level puts
+// them into every scene that imports anything from it, whether that scene
+// wanted them or not.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"

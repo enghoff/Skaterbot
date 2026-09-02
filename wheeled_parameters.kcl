@@ -7,8 +7,11 @@
 // The wheel is an off-the-shelf 80 x 24 mm inline-skate wheel, not a printed
 // one. That size was chosen because it is the commonest stocked skate size, it
 // gives useful rolling speed on the DM-J3507, and it raises the axle only 4 mm
-// relative to the walking robot. Hip roll and the torso stay at their original
-// heights; the hip carrier therefore shortens from 55 mm to 51 mm.
+// relative to the walking robot. The torso keeps its original height, so those
+// 4 mm come out of the gap between the hip pitch axis and the pelvis above it:
+// on the eight-motor robot they shortened the hip carrier from 55 mm to 51, and
+// now that hip roll is gone they are simply 4 mm the shell floor does not
+// descend.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
@@ -112,8 +115,12 @@ export prototypeWheelAxisHeight = skateWheelDiameter / 2
 
 export wheeledKneeAxisHeight = prototypeWheelAxisHeight + lowerLegLength
 export wheeledHipPitchAxisHeight = wheeledKneeAxisHeight + upperLegLength
-export wheeledHipAxisOffset = hipRollAxisHeight - wheeledHipPitchAxisHeight
 
 export wheeledShinCenterZ = (wheeledKneeAxisHeight + prototypeWheelAxisHeight) / 2
 export wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
-export wheeledHipCarrierCenterZ = (hipRollAxisHeight + wheeledHipPitchAxisHeight) / 2
+
+// Hip pitch is the top of this robot's leg, so the chain stops here. There was
+// a wheeledHipAxisOffset and a wheeledHipCarrierCenterZ above it -- the 51 mm
+// span between hip roll and hip pitch, and the midpoint the carrier sat on --
+// and both went when hip roll did. The 51 mm has not disappeared, it has moved
+// into the pelvis: torso.kcl's shell floor is now that much lower.

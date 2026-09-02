@@ -1,6 +1,6 @@
 # Torque-Controlled Biped
 
-A compact, approximately 380 mm, 8-DOF, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators.
+A compact, approximately 380 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8, and is `walking_main.kcl` here and `main.kcl` on `main`.
 
 The structure is flat printed plates lying in the actuators' own planes, with the actuators sandwiched between them and left exposed so they can cool.
 
@@ -48,16 +48,17 @@ bipedal/
 ├── limb.kcl               closed-shell limb, parametric on length
 ├── hardware.kcl           bearing carrier, 6800-2RS, journal
 ├── hip_carrier.kcl        orthogonal hip roll/pitch carrier, parametric on span
-├── walking_hip_carrier.kcl, wheeled_hip_carrier.kcl   that carrier, both spans
+├── walking_hip_carrier.kcl  that carrier at the walking robot's 55 mm span
 ├── thigh.kcl, shin.kcl    the limb at two lengths
 ├── wheel_adapter.kcl      the printed part that drives a skate wheel
 ├── skate_wheel.kcl        the bought 80 x 24 mm wheel it drives
 ├── wheel.kcl              adapter, wheel and clamp, as the assemblies place it
 ├── foot.kcl               ribbed foot tray, sole, sensor seats (walking robot)
-├── fixed_hip_mount.kcl    six-motor concept: hip pitch hung off the torso
-├── torso.kcl              pelvis and torso shell, keel, tether entry, cover
+├── torso_shell.kcl        the lid, cover bosses and section both pelvises share
+├── torso.kcl              six-motor pelvis: hip pitch hung straight off the shell
+├── walking_torso.kcl      eight-motor pelvis: hip roll clevises, keel, gussets
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
-├── tools/                 check, mass and render scripts (see below)
+├── tools/                 check, mass, render and export scripts (see below)
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
 └── secrets/               local credentials, not committed
@@ -65,7 +66,7 @@ bipedal/
 
 ## Working on the CAD
 
-Three scripts in [`tools/`](tools/), each also available as a slash command in
+Four scripts in [`tools/`](tools/), each also available as a slash command in
 Claude Code. They run with `uv run`, which fetches their one dependency —
 Zoo's own KCL interpreter, the same one the MCP server is built on — by itself.
 
@@ -73,11 +74,18 @@ Zoo's own KCL interpreter, the same one the MCP server is built on — by itself
 uv run tools/check.py              # every .kcl file: mock-execute, lint, format
 uv run tools/mass.py               # mass roll-up against the 2 300 g ceiling
 uv run tools/views.py main.kcl     # render, in views named front/back/left/right
+uv run tools/export.py             # one STEP per printable piece, into exports/
 ```
 
 Only the first is free. `check.py` runs entirely on this machine, costs no API
-credits and needs no token, so it can be run after every edit; the other two
-execute on Zoo's engine and are metered. Views are named in the **robot's**
+credits and needs no token, so it can be run after every edit; the other three
+execute on Zoo's engine and are metered.
+
+`export.py` writes the parts you would hand to a printer, one file per piece,
+and its `--verify` and `--mock` modes cost nothing. Which pieces exist is the
+`[[printed.piece]]` register in
+[`tools/mass_budget.toml`](tools/mass_budget.toml) — the same file that lists
+what is printed for the mass roll-up, so the two cannot drift apart. Views are named in the **robot's**
 frame, where `front` is the face it walks towards — the opposite of Zoo's own
 camera named "front", which is one of the traps collected in
 [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md).
@@ -91,12 +99,16 @@ along with its checksum and known caveats.
 ## Current baseline
 
 - Height: 380 mm
-- DOF: 8 (hip roll, hip pitch, knee pitch, ankle pitch per leg)
+- DOF: 6 (hip pitch, knee pitch, driven wheel per leg). Hip roll was deleted on
+  this branch: see `docs/WHEELED_BIPED_ANALYSIS.md` section 11 for the argument
+  and what it costs, which is the ability to lean or step sideways at all.
+  The walking robot still has 8 (hip roll, hip pitch, knee pitch, ankle pitch).
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
 - Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
-- Current mass, measured from the CAD: **2.025 kg**, which buys a sustained-load
-  knee limit of 45.1° and leaves 275 g of headroom. `uv run tools/mass.py`
-  re-measures it.
+- Current mass, measured from the CAD: **1.638 kg**, leaving 662 g of headroom.
+  `uv run tools/mass.py` re-measures it. Two actuators, two bearing sets, both
+  hip carriers and the pelvis keel went with hip roll, which is about 409 g off
+  the 2.047 kg the eight-motor wheeled robot weighed.
 - Limbs: each is a flat plate in one plane — a Ø52 disc bolted to one actuator's
   rear cover, a Ø36 disc bolted to the next actuator's output, and a channel
   waist between them. Nothing reaches around an actuator, so there is no clevis
@@ -104,12 +116,15 @@ along with its checksum and known caveats.
   actuator is turned round; it assumes the actuator's own output bearing carries
   the joint moment, which DAMIAO have not yet confirmed.
 - The two legs are mirrored about the midline. Both leg segments are 105 mm, so
-  the right thigh and the left shin are the same print: two limb parts, as
-  before, plus a left and a right foot and hip carrier.
+  the right thigh and the left shin are the same print: two limb parts, plus a
+  left and a right wheel adapter. There is no hip carrier — with hip roll gone,
+  the clevis that holds each hip pitch actuator is part of the pelvis.
 - Power: **tethered.** 24 V and CAN arrive on one umbilical from a bench supply;
-  there is no pack on board. What the keel holds instead is a bulk capacitor
+  there is no pack on board. What the pelvis holds instead is a bulk capacitor
   bank, because the battery was also the bus's only sink for regeneration from
-  eight backdrivable actuators, and a tether cannot do that job.
+  backdrivable actuators, and a tether cannot do that job. It used to live in a
+  keel between the hip roll actuators; with those gone the pelvis is one closed
+  box down to the hip pitch axes and the bank sits in the bottom of it.
 - Mechanical prototype: PA12-CF printed shells
 
 ## Development order

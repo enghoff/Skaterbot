@@ -66,7 +66,7 @@ answer, and neither is "it looks right".
 
 ## Tools in this repository
 
-Four commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
+Five commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
 what they need on its own:
 
 | | | |
@@ -75,6 +75,7 @@ what they need on its own:
 | `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. Engine, metered. |
 | `/views` | `tools/views.py` | render a model from several sides, named in the robot's frame rather than the camera's. Engine, metered. |
 | `/cache` | `tools/clear_cache.py` | clear Design Studio's caches when its model index goes bad and it opens on stale geometry. Free, offline, no engine. Refuses while the app is running. |
+| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, checking each against its declared body count. Engine, metered. |
 
 Report the mass delta of every geometry change, and make `/check` clean before
 saying a change is done.
@@ -82,9 +83,15 @@ saying a change is done.
 ## The models are the regression suite
 
 `main.kcl` is the neutral 380 mm assembly and exports `robotAssembly`. **On this
-branch it is the wheeled robot**: hip roll, hip pitch, knee and a driven wheel
-per leg. The walking robot is `walking_main.kcl` beside it, unchanged and still
-the `main.kcl` of the `main` branch.
+branch it is the six-motor wheeled robot**: hip pitch, knee and a driven wheel
+per leg, with no hip roll at all. The walking robot is `walking_main.kcl` beside
+it, unchanged and still the `main.kcl` of the `main` branch.
+
+The two robots no longer share a pelvis. `torso.kcl` is the six-motor one, whose
+hip pitch clevises are rooted straight in its shell floor; `walking_torso.kcl` is
+the eight-motor one, with hip roll clevises, a keel and cheek gussets. What they
+do share -- the lid, the four cover bosses and the 118 x 68 section -- is in
+`torso_shell.kcl`, so a change to the lid is one change and not two.
 
 Four more files are independent top-level models that exercise the same modules
 in other configurations:
@@ -99,9 +106,10 @@ in other configurations:
 The knee checks are limb-against-limb and belong to both robots. Three further
 scenes — `walk_pose_check.kcl`, `roll_limit_check.kcl` and
 `torque_limit_pose.kcl` — are about walking specifically and still carry the
-walking geometry; they import `walking_hip_carrier.kcl`, which is what marks
-them. **The wheeled robot's hip-roll limit and torque envelope have not been
-re-derived**, and those two answers do change with wheels.
+walking geometry; they import `walking_torso.kcl` and `walking_hip_carrier.kcl`,
+which is what marks them. `roll_limit_check.kcl` no longer describes any joint
+this robot has. **The wheeled robot's torque envelope has not been re-derived**,
+and that answer does change with wheels.
 
 A change to `parameters.kcl` or to any shared module reaches all of them.
 Executing `main.kcl` alone is not sufficient evidence and must not be reported as

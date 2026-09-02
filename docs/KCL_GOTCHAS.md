@@ -178,9 +178,35 @@ means the robot's front.
 - **The full assembly is slow on the engine.** `main.kcl` has taken over two
   minutes to execute and snapshot. That is normal, not a hang.
 
+## Exporting one part out of a file that builds several
+
+- **Export takes the whole scene, and there is no way to ask for one body.** So a
+  file that builds a handed pair, or a shell and its cover, cannot be exported as
+  one printable piece directly. The way round it is a wrapper scene that imports
+  the piece and hides its siblings, which is what `tools/export.py` generates.
+- **`hide()` does reach the exporter, not only the renderer.** Confirmed
+  2026-08-31 on the eight-motor pelvis, which `torso.kcl` then built from 12
+  bodies alongside a 1-body cover: isolating each gave a STEP with exactly 12 and
+  exactly 1 `MANIFOLD_SOLID_BREP`, where a leak would have put 13 in both. Both
+  hands of each mirrored pair likewise came out with mirrored x extents rather
+  than the symmetric range a leak gives. That pelvis is now `walking_torso.kcl`
+  and the six-motor one in `torso.kcl` is 7 bodies, so the numbers to compare
+  against are the declared counts in the register, not the ones written here.
+- **Do not assume it, though — count.** `tools/export.py` compares every written
+  file against a declared body count in `tools/mass_budget.toml` and reports the
+  bounding extents, and `--verify` repeats both checks on the files already on
+  disk for free.
+- **One body per `MANIFOLD_SOLID_BREP`, and per `PRODUCT`, and per
+  `ADVANCED_BREP_SHAPE_REPRESENTATION`.** All three appear exactly once per solid
+  in what this exporter writes, so counting two of them together reads as double.
+- **`execute_and_export` wants a `FileExportFormat`, not the `*ExportOptions`
+  class of the same name.** Passing `StepExportOptions()` fails with *not an
+  instance of `FileExportFormat`*, before the engine is touched.
+
 ## Local tooling
 
 `tools/check.py` runs the same KCL interpreter locally through the `zoo-kcl`
 package, so mock execution, linting and formatting cost nothing, need no token
-and work when the MCP server does not. `tools/mass.py` and `tools/views.py` do
-use the engine and do spend credits.
+and work when the MCP server does not. `tools/mass.py`, `tools/views.py` and
+`tools/export.py` do use the engine and do spend credits, though `export.py`'s
+`--list`, `--mock` and `--verify` modes do not.

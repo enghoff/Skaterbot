@@ -1,0 +1,503 @@
+// The walking robot's pelvis and torso shell
+//
+// This is the eight-motor pelvis: the one with a powered hip ROLL joint at the
+// top of each leg. It belongs to walking_main.kcl and the three walking check
+// scenes, and it is what torso.kcl held until the wheeled robot dropped hip
+// roll. The lid, the four cover bosses and the 118 x 68 section it shares with
+// the six-motor pelvis now come from torso_shell.kcl.
+//
+// The skeleton torso -- a battery tray, four corner posts, two cover rails and a
+// thin hip beam -- is gone. This is one closed shell, so the pelvis carries the
+// hip roll moment through a closed section rather than through an 8 mm beam.
+//
+// WHY THE SHAPE IS WHAT IT IS
+//
+// The two hip roll actuators own the outer thirds of the torso and cannot be
+// moved: the roll axis is at 301 mm, so a Ø46 body necessarily fills 278 to
+// 324 mm at |x| between 25 and 71. Their clevis cheeks reach further in still,
+// to |x| = 22. That leaves the torso in two parts, and the shell follows it:
+//
+// * a KEEL between the actuators, 44 mm wide, from the torso bottom up to the
+// shell floor. This is what gives the pelvis its depth in bending, and with
+// the robot tethered it is also where the power-entry block and the tether
+// itself land.
+// * a SHELL above them, full width, starting one millimetre clear of the
+// actuators and running to the removable cover.
+//
+// The two hip clevises root into the shell floor and its lower side walls, so
+// the load path from a hip runs saddle -> floor -> closed section -> other hip,
+// instead of saddle -> mount box -> hip beam as it did before.
+//
+// STIFFNESS
+// The old hip beam was 108 wide, 14 deep and 8 tall, so in roll it offered
+// 14 x 8^3/12 = 597 mm^4. The keel is a channel: a 68 x 3 floor flange over two
+// 2.4 mm webs 51 mm deep, which comes to about 98 000 mm^4 about its own
+// centroid -- roughly 165 times as much -- and the shell above adds to it again.
+// Like every other section number in this project that is arithmetic, not
+// measurement, and it inherits whatever the Phase 1 coupon says about modulus.
+//
+// The hip clevis cheeks are Ø52 discs centred on the leg axes, so they reach
+// 74 mm from the centre line and the robot is 148 mm across at the hips against
+// a 118 mm torso. That is unchanged from the skeleton build and is deliberate:
+// the joints are the visible hardware, the shell is not.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import * from "parameters.kcl"
+import statorClevis, saddleHeight from "joint.kcl"
+import torsoShellWidth, torsoShellDepth, torsoInnerWidth, torsoInnerDepth, floorThickness, shellTopZ from "torso_shell.kcl"
+import cablePortWidth, cablePortDepth, cablePortX, cablePortY from "torso_shell.kcl"
+import bossRearRightBody, bossRearLeftBody, bossFrontRightBody, bossFrontLeftBody, coverBody from "torso_shell.kcl"
+
+// Every station is derived from the kinematics rather than typed in, so moving
+// the hip roll axis or the actuator diameter moves the whole shell with it.
+hipRollZ = hipRollAxisHeight - torsoCenterHeight
+shellFloorZ = hipRollZ + jointKeepOut
+saddleTopZ = shellFloorZ + saddleHeight
+
+shellHeight = shellTopZ - shellFloorZ
+shellCenterZ = (shellFloorZ + shellTopZ) / 2
+cavityBottomZ = shellFloorZ + floorThickness
+cavityLength = shellTopZ + 2mm - cavityBottomZ
+
+// The keel is exactly as wide as the gap the clevis cheeks leave between them,
+// so its walls land on the cheeks rather than short of them.
+keelWidth = (hipCenterX - (cheekDiameter / 2)) * 2
+keelInnerWidth = keelWidth - (shellWall * 2)
+keelInnerDepth = torsoShellDepth - (shellWall * 2)
+keelBottomZ = -torsoHeight / 2
+// The keel runs up into the shell floor rather than butting against it, so the
+// two share a solid overlap for the union instead of a coincident face.
+keelTopZ = cavityBottomZ
+keelHeight = keelTopZ - keelBottomZ
+keelCenterZ = (keelBottomZ + keelTopZ) / 2
+keelCavityTopZ = shellFloorZ
+keelCavityLength = keelCavityTopZ - keelBottomZ + 2mm
+
+// ---- shell ------------------------------------------------------------------
+
+
+shellOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 118mm, var 0mm])
+  edge2 = line(start = [var 118mm, var 0mm], end = [var 118mm, var 68mm])
+  edge3 = line(start = [var 118mm, var 68mm], end = [var 0mm, var 68mm])
+  edge4 = line(start = [var 0mm, var 68mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == torsoShellWidth
+  verticalDistance([edge2.start, edge2.end]) == torsoShellDepth
+}
+shellOuterRegion = region(
+  segments = [
+    shellOuterSketch.edge1,
+    shellOuterSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+shellBlank = extrude(shellOuterRegion, length = shellHeight, symmetric = true)
+  |> translate(
+       x = -torsoShellWidth / 2,
+       y = -torsoShellDepth / 2,
+       z = shellCenterZ,
+       global = true,
+     )
+
+shellInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 113mm, var 0mm])
+  edge2 = line(start = [var 113mm, var 0mm], end = [var 113mm, var 63mm])
+  edge3 = line(start = [var 113mm, var 63mm], end = [var 0mm, var 63mm])
+  edge4 = line(start = [var 0mm, var 63mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == torsoInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == torsoInnerDepth
+}
+shellInnerRegion = region(
+  segments = [
+    shellInnerSketch.edge1,
+    shellInnerSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+shellCavity = extrude(shellInnerRegion, length = cavityLength, symmetric = true)
+  |> translate(
+       x = -torsoInnerWidth / 2,
+       y = -torsoInnerDepth / 2,
+       z = cavityBottomZ + cavityLength / 2,
+       global = true,
+     )
+
+// Rectangular rather than round, and deliberately so: the engine will not take
+// a blind cylindrical pocket out of this box, though it takes a rectangular one
+// happily -- the same limitation NOTES.md records for the tube bleed holes. A
+// slot suits a cable with a moulded connector better than a grommet hole anyway.
+cablePortSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 14mm, var 0mm])
+  edge2 = line(start = [var 14mm, var 0mm], end = [var 14mm, var 10mm])
+  edge3 = line(start = [var 14mm, var 10mm], end = [var 0mm, var 10mm])
+  edge4 = line(start = [var 0mm, var 10mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == cablePortWidth
+  verticalDistance([edge2.start, edge2.end]) == cablePortDepth
+}
+cablePortRegion = region(
+  segments = [
+    cablePortSketch.edge1,
+    cablePortSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rightCablePort = extrude(cablePortRegion, length = floorThickness + 4mm, symmetric = true)
+  |> translate(
+       x = cablePortX - (cablePortWidth / 2),
+       y = cablePortY - (cablePortDepth / 2),
+       z = shellFloorZ + floorThickness / 2,
+       global = true,
+     )
+leftCablePort = clone(rightCablePort)
+  |> translate(x = -cablePortX * 2, global = true)
+
+// Ports first, into the simple box, then the cavity. Taking them out of the
+// already-hollowed shell is the ordering the engine rejects.
+shellSlotted = subtract(shellBlank, tools = [rightCablePort, leftCablePort])
+shellRaw = subtract(shellSlotted, tools = [shellCavity])
+
+// ---- keel, which is both the pelvis' depth and the power-entry bay ----------
+
+
+keelOuterSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 44mm, var 0mm])
+  edge2 = line(start = [var 44mm, var 0mm], end = [var 44mm, var 68mm])
+  edge3 = line(start = [var 44mm, var 68mm], end = [var 0mm, var 68mm])
+  edge4 = line(start = [var 0mm, var 68mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == keelWidth
+  verticalDistance([edge2.start, edge2.end]) == torsoShellDepth
+}
+keelOuterRegion = region(
+  segments = [
+    keelOuterSketch.edge1,
+    keelOuterSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+keelBlank = extrude(keelOuterRegion, length = keelHeight, symmetric = true)
+  |> translate(
+       x = -keelWidth / 2,
+       y = -torsoShellDepth / 2,
+       z = keelCenterZ,
+       global = true,
+     )
+
+keelInnerSketch = sketch(on = XY) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 39mm, var 0mm])
+  edge2 = line(start = [var 39mm, var 0mm], end = [var 39mm, var 63mm])
+  edge3 = line(start = [var 39mm, var 63mm], end = [var 0mm, var 63mm])
+  edge4 = line(start = [var 0mm, var 63mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == keelInnerWidth
+  verticalDistance([edge2.start, edge2.end]) == keelInnerDepth
+}
+keelInnerRegion = region(
+  segments = [
+    keelInnerSketch.edge1,
+    keelInnerSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+// Open at the bottom: the power-entry block -- bulk capacitors, fuse and the
+// tether's terminal -- drops in from underneath, between the legs, and a plate
+// closes it. Leaving the floor of the keel out costs little in bending, because
+// the shell floor above is the flange that matters.
+keelCavity = extrude(keelInnerRegion, length = keelCavityLength, symmetric = true)
+  |> translate(
+       x = -keelInnerWidth / 2,
+       y = -keelInnerDepth / 2,
+       z = keelCavityTopZ - (keelCavityLength / 2),
+       global = true,
+     )
+
+// ---- tether entry -----------------------------------------------------------
+
+// There is no battery, so a single umbilical brings 24 V and CAN in from the
+// bench. It enters the back of the keel rather than the back of the shell for
+// two reasons: down here the tether's pull acts within about 10 mm of the hip
+// roll axis instead of at the top of a 106 mm lever, and it arrives beside the
+// power-entry block rather than having to cross the electronics stack.
+//
+// Strain relief is a cable tie, not a clamp or a threaded insert. The tie goes
+// out through one narrow slot, around the tether inside the keel, and back in
+// through the other, so a pull on the cable is carried in shear by 2.4 mm of
+// wall and never reaches the terminal. That also keeps every cut on this part
+// rectangular, which is the only blind pocket shape the engine will take out of
+// this shell -- see the cable ports above and the note in NOTES.md.
+tetherPortWidth = tetherCableDiameter + 4mm
+tetherPortHeight = tetherCableDiameter
+// Two millimetres below the keel's inside ceiling, so the slot opens into the
+// cavity with the shell floor left intact above it.
+tetherPortZ = keelCavityTopZ - 2mm - (tetherPortHeight / 2)
+// Negative Y is the rear: the foot's front pressure pads sit at y = +51 and its
+// rear pads at y = -40, and the leading leg in walk_pose_check.kcl swings to +Y.
+tetherWallY = -(torsoShellDepth / 2 - (shellWall / 2))
+tieSlotWidth = 3mm
+tieSlotHeight = 8mm
+tieSlotX = tetherPortWidth / 2 + 5mm
+
+tetherPortSketch = sketch(on = XZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 16mm, var 0mm])
+  edge2 = line(start = [var 16mm, var 0mm], end = [var 16mm, var 12mm])
+  edge3 = line(start = [var 16mm, var 12mm], end = [var 0mm, var 12mm])
+  edge4 = line(start = [var 0mm, var 12mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == tetherPortWidth
+  verticalDistance([edge2.start, edge2.end]) == tetherPortHeight
+}
+tetherPortRegion = region(
+  segments = [
+    tetherPortSketch.edge1,
+    tetherPortSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+tetherPort = extrude(tetherPortRegion, length = shellWall + 4mm, symmetric = true)
+  |> translate(
+       x = -tetherPortWidth / 2,
+       y = tetherWallY,
+       z = tetherPortZ - (tetherPortHeight / 2),
+       global = true,
+     )
+
+tieSlotSketch = sketch(on = XZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 3mm, var 0mm])
+  edge2 = line(start = [var 3mm, var 0mm], end = [var 3mm, var 8mm])
+  edge3 = line(start = [var 3mm, var 8mm], end = [var 0mm, var 8mm])
+  edge4 = line(start = [var 0mm, var 8mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == tieSlotWidth
+  verticalDistance([edge2.start, edge2.end]) == tieSlotHeight
+}
+tieSlotRegion = region(
+  segments = [
+    tieSlotSketch.edge1,
+    tieSlotSketch.edge2
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+rightTieSlot = extrude(tieSlotRegion, length = shellWall + 4mm, symmetric = true)
+  |> translate(
+       x = tieSlotX - (tieSlotWidth / 2),
+       y = tetherWallY,
+       z = tetherPortZ - (tieSlotHeight / 2),
+       global = true,
+     )
+leftTieSlot = clone(rightTieSlot)
+  |> translate(x = -tieSlotX * 2, global = true)
+
+// Slots into the plain blank first, cavity afterwards -- the same ordering the
+// shell above needs, and for the same reason.
+keelSlotted = subtract(keelBlank, tools = [tetherPort, rightTieSlot, leftTieSlot])
+keelRaw = subtract(keelSlotted, tools = [keelCavity])
+
+// ---- hip roll joints --------------------------------------------------------
+
+// A quarter turn about Z puts each clevis axis fore-and-aft, which is what makes
+// these the roll joints. The saddles land in the shell floor and its lower side
+// walls, so the hip load enters the closed section directly.
+rightHipRollJoint = statorClevis()
+  |> rotate(axis = [0, 0, 1], angle = 90deg, global = true)
+  |> translate(x = hipCenterX, z = hipRollZ, global = true)
+
+// The left hip is the right one reflected, not a second copy of it. Both used to
+// take the same quarter turn, which left the rear cheek's connector relief
+// pointing the same way at both hips: outboard on the right leg, but inboard on
+// the left, so that actuator's leads would have had to leave towards the torso
+// and turn back on themselves. Reflecting the clevis puts both reliefs outboard,
+// which is the same thing as installing the left actuator spun 180 degrees about
+// its own axis so its connector flat faces away from the keel. Nothing else on
+// the joint moves: the mirror leaves Y alone, so the front cheek and its bearing
+// stay forward on both legs and the hip carriers are unaffected.
+//
+// A rotation cannot do this. Spinning the clevis half a turn about the roll axis
+// would take the saddle with it, and the quarter turn the other way would swap
+// the cheeks end for end. `mirror3d` copies rather than transforms -- it leaves
+// the original standing in the scene -- so the source is hidden afterwards. See
+// docs/KCL_GOTCHAS.md.
+leftHipRollSource = clone(rightHipRollJoint)
+leftHipRollJoint = mirror3d(leftHipRollSource, across = YZ)
+hide(leftHipRollSource)
+
+// ---- hip cheek gussets ------------------------------------------------------
+
+// Each Ø52 cheek is exactly tangent to the keel wall -- the keel is 44 mm wide
+// precisely so that it is -- so the two touched along a single 3 mm line and
+// nothing more. Above and below that tangent the cheek's arc curves away from
+// the flat wall and left an open curved triangle, one under the shell floor and
+// one down at the torso's bottom edge, on both cheeks of both hips. Until now
+// the only path from a hip into the keel ran up through the saddle and across
+// the shell floor.
+//
+// Each void is closed by a web in its own cheek's plane and of the cheek's own
+// thickness, running from the keel's inner wall face out to the joint axis. Its
+// outer edge is a semicircle at the actuator keep-out radius, so the web laps
+// 2 mm over the cheek, which is enough for a slicer to merge the two shells, and
+// stops 1.8 mm short of the four M3 rear bolt holes on their Ø41 circle. The web
+// is cut from a plain rectangle before anything else, and the cutter crosses the
+// rectangle's outboard edge rather than touching any of them: a cylinder tangent
+// to a face is the one case joint.kcl already records the engine refusing.
+gussetInnerX = keelWidth / 2 - shellWall
+gussetWidth = hipCenterX - gussetInnerX
+gussetBottomZ = hipRollZ - (cheekDiameter / 2)
+gussetHeight = cavityBottomZ - gussetBottomZ
+
+gussetSketch = sketch(on = XZ) {
+  edge1 = line(start = [var 0mm, var 0mm], end = [var 28mm, var 0mm])
+  edge2 = line(start = [var 28mm, var 0mm], end = [var 28mm, var 53mm])
+  edge3 = line(start = [var 28mm, var 53mm], end = [var 0mm, var 53mm])
+  edge4 = line(start = [var 0mm, var 53mm], end = [var 0mm, var 0mm])
+  coincident([edge1.start, ORIGIN])
+  coincident([edge1.end, edge2.start])
+  coincident([edge2.end, edge3.start])
+  coincident([edge3.end, edge4.start])
+  coincident([edge4.end, edge1.start])
+  horizontal(edge1)
+  vertical(edge2)
+  horizontal(edge3)
+  vertical(edge4)
+  horizontalDistance([edge1.start, edge1.end]) == gussetWidth
+  verticalDistance([edge2.start, edge2.end]) == gussetHeight
+}
+gussetRegion = region(segments = [gussetSketch.edge1, gussetSketch.edge2], intersectionIndex = -1, direction = CCW)
+gussetBlank = extrude(gussetRegion, length = cheekThickness, symmetric = true)
+  |> translate(x = gussetInnerX, z = gussetBottomZ, global = true)
+
+gussetReliefSketch = sketch(on = XZ) {
+  reliefCircle = circle(start = [var 24mm, var 0mm], center = [var 0mm, var 0mm])
+  coincident([reliefCircle.center, ORIGIN])
+  horizontal([
+    reliefCircle.center,
+    reliefCircle.start
+  ])
+  diameter(reliefCircle) == jointKeepOut * 2
+}
+gussetReliefRegion = region(segments = [gussetReliefSketch.reliefCircle])
+gussetRelief = extrude(gussetReliefRegion, length = cheekThickness + 2mm, symmetric = true)
+  |> translate(x = hipCenterX, z = hipRollZ, global = true)
+
+rightRearGusset = subtract(gussetBlank, tools = [gussetRelief])
+  |> translate(y = rearCheekX, global = true)
+rightFrontGusset = clone(rightRearGusset)
+  |> translate(y = frontCheekX - rearCheekX, global = true)
+
+leftRearGussetSource = clone(rightRearGusset)
+leftRearGusset = mirror3d(leftRearGussetSource, across = YZ)
+hide(leftRearGussetSource)
+leftFrontGussetSource = clone(rightFrontGusset)
+leftFrontGusset = mirror3d(leftFrontGussetSource, across = YZ)
+hide(leftFrontGussetSource)
+
+hide(shellOuterSketch)
+hide(shellInnerSketch)
+hide(keelOuterSketch)
+hide(keelInnerSketch)
+hide(tetherPortSketch)
+hide(tieSlotSketch)
+hide(cablePortSketch)
+hide(gussetSketch)
+hide(gussetReliefSketch)
+
+// The shell, keel, bosses, both hip clevises and the four cheek gussets are one
+// printed part. They are
+// left as interpenetrating bodies rather than unioned for the reason NOTES.md
+// already records: the engine refuses to union hollow boxes that meet at right
+// angles, and the hip saddles are exactly that case. Every overlap here is
+// several millimetres of real solid, so a slicer that merges coincident shells
+// prints them as the single part they are. Verify that before printing.
+//
+// Exported on its own, alongside `walkingTorsoAssembly`, because it is one print
+// and the cover is another: tools/export.py writes a STEP per printed piece, and
+// rendering a part with nothing behind it is how a pocket or a hole in it is
+// confirmed open (CLAUDE.md, docs/KCL_GOTCHAS.md).
+export walkingPelvisShell = appearance(
+  [
+    shellRaw,
+    keelRaw,
+    bossRearRightBody,
+    bossRearLeftBody,
+    bossFrontRightBody,
+    bossFrontLeftBody,
+    rightHipRollJoint,
+    leftHipRollJoint,
+    rightRearGusset,
+    rightFrontGusset,
+    leftRearGusset,
+    leftFrontGusset
+  ],
+  color = printedOrange,
+  roughness = 72,
+  metalness = 3,
+)
+
+// The cover is the shared lid from torso_shell.kcl, already finished there.
+export walkingTorsoCover = coverBody
+
+export walkingTorsoAssembly = [walkingPelvisShell, walkingTorsoCover]

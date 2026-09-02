@@ -22,3 +22,6 @@ __pycache__/
 !reference/**/*.stl
 *.FCStd~
 .DS_Store
+
+# Transient wrapper scene written by tools/export.py
+_export_piece.kcl

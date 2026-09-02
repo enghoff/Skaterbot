@@ -25,7 +25,7 @@ import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import hipCarrierRight, hipCarrierLeft from "walking_hip_carrier.kcl"
 import footRight, footLeft from "foot.kcl"
-import torsoAssembly from "torso.kcl"
+import walkingTorsoAssembly from "walking_torso.kcl"
 import payloadEnvelopes from "payload_envelopes.kcl"
 
 thighCenterZ = (hipPitchAxisHeight + kneeAxisHeight) / 2
@@ -109,7 +109,7 @@ leftFoot = footLeft
 rightFoot = footRight
   |> translate(x = hipCenterX, z = ankleAxisHeight, global = true)
 
-bodyFrame = torsoAssembly
+bodyFrame = walkingTorsoAssembly
   |> translate(z = torsoCenterHeight, global = true)
 reservedPayload = payloadEnvelopes
   |> translate(z = torsoCenterHeight, global = true)
