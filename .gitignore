@@ -20,6 +20,12 @@ __pycache__/
 !reference/**/*.step
 !reference/**/*.STEP
 !reference/**/*.stl
+
+# The simulation meshes are tracked for the same reason: they are what the URDF
+# points at, so a checkout can be simulated without spending engine credits to
+# re-export them. simulation/meshes/ is the raw engine output and stays ignored;
+# simulation/urdf/meshes/ holds the binary copies build_urdf.py writes.
+!simulation/urdf/meshes/*.stl
 *.FCStd~
 .DS_Store
 

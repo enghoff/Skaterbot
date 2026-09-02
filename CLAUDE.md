@@ -66,8 +66,9 @@ answer, and neither is "it looks right".
 
 ## Tools in this repository
 
-Five commands, all in [`tools/`](tools/) and run with `uv run`, which fetches
-what they need on its own:
+Six commands, run with `uv run`, which fetches what they need on its own. Five
+are in [`tools/`](tools/) and are about the CAD; the sixth is in
+[`simulation/`](simulation/) and is about what the CAD is turned into.
 
 | | | |
 |---|---|---|
@@ -76,9 +77,41 @@ what they need on its own:
 | `/views` | `tools/views.py` | render a model from several sides, named in the robot's frame rather than the camera's. Engine, metered. |
 | `/cache` | `tools/clear_cache.py` | clear Design Studio's caches when its model index goes bad and it opens on stale geometry. Free, offline, no engine. Refuses while the app is running. |
 | `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, checking each against its declared body count. Engine, metered. |
+| `/urdf` | `simulation/build_urdf.py` | regenerate the simulation URDF from the CAD and check it against the pose scenes. Free, offline, no engine. |
 
 Report the mass delta of every geometry change, and make `/check` clean before
 saying a change is done.
+
+## The simulation model is downstream of the CAD, never beside it
+
+[`simulation/`](simulation/) turns the CAD into a URDF the wheeled robot can be
+simulated and trained in. Nothing in it is a second copy of a dimension: the
+kinematics are read out of the KCL by `simulation/kcl_params.py`, the printed
+masses and inertia tensors are integrated from the exported meshes, and the
+bought masses come from `tools/mass_budget.toml`. **A change to the CAD is
+followed by regenerating it, not by editing the URDF**, which carries a
+do-not-edit banner for that reason.
+
+`/urdf` is the whole workflow, and it is free. It refuses to build against a
+mesh older than the KCL it came from, names the file that moved, and prints the
+re-export command for just the affected pieces — which is the only metered step,
+and is needed only when a printed part changes SHAPE. A joint height, an axis or
+a mass allowance moving needs no export at all.
+
+`check_model.py` is the regression test. It drives the tree to the exact angles
+in `pose_check.kcl` and `squat_check.kcl` and checks the wheel lands where those
+scenes independently compute it, which exercises every link length, joint origin
+and axis sign at once. It also totals the robot's mass **by provenance**, and
+that table is the point: four fifths of this robot has never been on a scale, so
+a simulation result is worth what those figures are worth and no more.
+
+Two things the CAD frame and a URDF disagree about, both handled in one place
+each and both easy to reintroduce by hand. The CAD is +Y forward and +X to the
+robot's right; a URDF is +X forward, +Y left. And the printed parts export as
+several interpenetrating shells, so simply adding their volumes counts the
+overlaps twice — `tools/mass.py` accepts that bias on purpose because it errs
+upward against a ceiling, but the simulation resolves the union instead, which
+is 19 g lighter across the robot.
 
 ## The models are the regression suite
 

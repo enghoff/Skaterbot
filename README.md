@@ -19,6 +19,11 @@ All project documentation lives in [`docs/`](docs/):
 - [`docs/BOM.md`](docs/BOM.md) — provisional bill of materials with India-focused sourcing notes and supply-risk flags.
 - [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) — what this engine refuses, which way the robot faces, and what the failure messages actually mean. Read before designing a pocket, a hole or a union.
 
+One README sits outside `docs/`, beside the code it describes:
+[`simulation/README.md`](simulation/README.md) — how the CAD becomes a URDF, the
+frame and joint-sign conventions, and how much of the robot has actually been
+measured.
+
 ## Repository layout
 
 The KCL sources sit at the repository root because Zoo Design Studio expects
@@ -61,6 +66,7 @@ bipedal/
 ├── torso_packing_check.kcl  the pelvis with its lid off and the boards in it
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
 ├── tools/                 check, mass, render and export scripts (see below)
+├── simulation/            the CAD as a URDF, for Isaac Sim and RL (see below)
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
 └── secrets/               local credentials, not committed
@@ -96,7 +102,35 @@ Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
 deliberately untracked. Vendor geometry under [`reference/`](reference/) is the
 exception: it is an input rather than an export, so it is tracked, and
 [`reference/README.md`](reference/README.md) records where each file came from
-along with its checksum and known caveats.
+along with its checksum and known caveats. The simulation meshes under
+`simulation/urdf/meshes/` are tracked for the same reason — they are what the
+URDF points at, so a checkout can be simulated without spending credits.
+
+## Simulation
+
+[`simulation/`](simulation/) turns the CAD into a URDF of the wheeled robot,
+with a full inertia tensor for every link, and an Isaac Lab config to load it.
+Its own [`README`](simulation/README.md) has the detail; the workflow is one
+free command:
+
+```bash
+uv run simulation/build_urdf.py     # rebuild from the CAD
+uv run simulation/check_model.py    # check it against the CAD
+```
+
+Nothing in it is a second copy of a dimension: the kinematics are read out of
+the KCL, the printed masses and inertias are integrated from the exported
+meshes, and the bought masses come from `tools/mass_budget.toml`. So a change to
+a joint height, an axis or a mass allowance costs nothing to carry through — only
+a printed part changing *shape* needs a fresh mesh, and the build refuses to run
+against a stale one rather than quietly mixing new kinematics with old geometry.
+
+`check_model.py` drives the tree to the angles in `pose_check.kcl` and
+`squat_check.kcl` and checks the wheels land where those scenes independently
+compute them, which exercises every link length, joint origin and axis sign at
+once. It closes by totalling the robot's mass **by provenance** — read that
+before quoting a simulation result, because only a fifth of this robot's mass is
+measured geometry.
 
 ## Current baseline
 
