@@ -20,14 +20,14 @@
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
+import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
-import payloadEnvelopes from "payload_envelopes.kcl"
+import torsoPayload from "wheeled_electronics.kcl"
 
 leftHipAngle = -6deg
 leftKneeAngle = 12deg
@@ -40,7 +40,7 @@ rightShinAngle = rightHipAngle - rightKneeAngle
 leftLegVerticalReach = upperLegLength * cos(leftHipAngle) + lowerLegLength * cos(leftShinAngle)
 crouchDrop = upperLegLength + lowerLegLength - leftLegVerticalReach
 poseHipPitchZ = wheeledHipPitchAxisHeight - crouchDrop
-poseTorsoCenterZ = torsoCenterHeight - crouchDrop
+poseTorsoCenterZ = wheeledTorsoCenterHeight - crouchDrop
 
 leftKneeY = upperLegLength * sin(leftHipAngle)
 leftKneeZ = poseHipPitchZ - (upperLegLength * cos(leftHipAngle))
@@ -173,7 +173,7 @@ rightWheel = wheelRight
 
 bodyFrame = torsoAssembly
   |> translate(z = poseTorsoCenterZ, global = true)
-reservedPayload = payloadEnvelopes
+reservedPayload = torsoPayload
   |> translate(z = poseTorsoCenterZ, global = true)
 
 export poseCheckAssembly = [

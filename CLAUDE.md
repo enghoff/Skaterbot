@@ -82,16 +82,25 @@ saying a change is done.
 
 ## The models are the regression suite
 
-`main.kcl` is the neutral 380 mm assembly and exports `robotAssembly`. **On this
+`main.kcl` is the neutral 339 mm assembly and exports `robotAssembly`. **On this
 branch it is the six-motor wheeled robot**: hip pitch, knee and a driven wheel
 per leg, with no hip roll at all. The walking robot is `walking_main.kcl` beside
 it, unchanged and still the `main.kcl` of the `main` branch.
 
 The two robots no longer share a pelvis. `torso.kcl` is the six-motor one, whose
 hip pitch clevises are rooted straight in its shell floor; `walking_torso.kcl` is
-the eight-motor one, with hip roll clevises, a keel and cheek gussets. What they
-do share -- the lid, the four cover bosses and the 118 x 68 section -- is in
-`torso_shell.kcl`, so a change to the lid is one change and not two.
+the eight-motor one, with hip roll clevises, a keel and cheek gussets. They are
+no longer even the same size: 125 x 68 x 65 against 118 x 68 x 106. What they
+still share is a design rather than a part, so `torso_shell.kcl` holds the lid
+and the cover boss as FUNCTIONS taking a box size, and a change to the lid is one
+change and not two.
+
+The six-motor torso's height is not a chosen number. It is derived in
+`wheeled_parameters.kcl` from what has to fit inside, and `wheeled_electronics.kcl`
+draws those boards so the packing can be looked at rather than asserted --
+`torso_packing_check.kcl` is that scene. **Anything that changes a reserved
+volume changes the robot's height**, which is the opposite of how it worked
+while the torso was 106 mm.
 
 Four more files are independent top-level models that exercise the same modules
 in other configurations:
@@ -102,6 +111,9 @@ in other configurations:
   still on the ground, which is where a Ø80 wheel comes closest to its own thigh
 - `knee_limit_check.kcl` — the knee at its 110° hard stop
 - `knee_prelimit_check.kcl` — the same knee at 100°, just before contact
+- `torso_packing_check.kcl` — the pelvis with its lid off and the four payload
+  items standing in it, which is the only place the 65 mm torso's height is
+  actually justified rather than asserted
 
 The knee checks are limb-against-limb and belong to both robots. Three further
 scenes — `walk_pose_check.kcl`, `roll_limit_check.kcl` and

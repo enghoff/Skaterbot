@@ -1,8 +1,15 @@
-// Torso payload reservation envelopes
+// Torso payload reservation envelopes -- THE WALKING ROBOT'S
 //
 // Reserved volumes for power entry, the motor controllers, an optional SBC and
 // the IMU. These are requirements, not geometry, and nothing may be designed
 // through them.
+//
+// The wheeled robot has its own, in wheeled_electronics.kcl, because the two
+// torsos are no longer the same box: this layout puts the power-entry block a
+// whole storey below the rest, in the keel between the hip roll actuators, and
+// the six-motor pelvis has no keel to put it in. That file also draws the boards
+// rather than only reserving space for them, which is what a 65 mm torso needs
+// and a 106 mm one did not.
 //
 // THERE IS NO BATTERY
 // The robot is tethered: 24 V and CAN come in from the bench down one umbilical,

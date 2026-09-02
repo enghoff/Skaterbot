@@ -44,9 +44,15 @@
 
 import * from "parameters.kcl"
 import statorClevis, saddleHeight from "joint.kcl"
-import torsoShellWidth, torsoShellDepth, torsoInnerWidth, torsoInnerDepth, floorThickness, shellTopZ from "torso_shell.kcl"
-import cablePortWidth, cablePortDepth, cablePortX, cablePortY from "torso_shell.kcl"
-import bossRearRightBody, bossRearLeftBody, bossFrontRightBody, bossFrontLeftBody, coverBody from "torso_shell.kcl"
+import torsoShellDepth, cablePortWidth, cablePortDepth, cablePortX, cablePortY, coverBossInset, coverBoss, torsoLid from "torso_shell.kcl"
+
+// 118 mm, where the six-motor pelvis is 125. This one never had to fit two
+// boards side by side: its keel put the power-entry block a whole storey below
+// the controller, so the width was free to be whatever the hips wanted.
+torsoShellWidth = 118mm
+torsoInnerWidth = torsoShellWidth - (shellWall * 2)
+torsoInnerDepth = torsoShellDepth - (shellWall * 2)
+floorThickness = torsoFloorThickness
 
 // Every station is derived from the kinematics rather than typed in, so moving
 // the hip roll axis or the actuator diameter moves the whole shell with it.
@@ -54,6 +60,7 @@ hipRollZ = hipRollAxisHeight - torsoCenterHeight
 shellFloorZ = hipRollZ + jointKeepOut
 saddleTopZ = shellFloorZ + saddleHeight
 
+shellTopZ = torsoHeight / 2 - torsoCoverThickness
 shellHeight = shellTopZ - shellFloorZ
 shellCenterZ = (shellFloorZ + shellTopZ) / 2
 cavityBottomZ = shellFloorZ + floorThickness
@@ -477,14 +484,22 @@ hide(gussetReliefSketch)
 // and the cover is another: tools/export.py writes a STEP per printed piece, and
 // rendering a part with nothing behind it is how a pocket or a hole in it is
 // confirmed open (CLAUDE.md, docs/KCL_GOTCHAS.md).
+bossX = coverBossInset(torsoInnerWidth)
+bossY = coverBossInset(torsoInnerDepth)
+
+bossRearRight = coverBoss(bossX, y = bossY, topZ = shellTopZ)
+bossRearLeft = coverBoss(-bossX, y = bossY, topZ = shellTopZ)
+bossFrontRight = coverBoss(bossX, y = -bossY, topZ = shellTopZ)
+bossFrontLeft = coverBoss(-bossX, y = -bossY, topZ = shellTopZ)
+
 export walkingPelvisShell = appearance(
   [
     shellRaw,
     keelRaw,
-    bossRearRightBody,
-    bossRearLeftBody,
-    bossFrontRightBody,
-    bossFrontLeftBody,
+    bossRearRight,
+    bossRearLeft,
+    bossFrontRight,
+    bossFrontLeft,
     rightHipRollJoint,
     leftHipRollJoint,
     rightRearGusset,
@@ -497,7 +512,13 @@ export walkingPelvisShell = appearance(
   metalness = 3,
 )
 
-// The cover is the shared lid from torso_shell.kcl, already finished there.
-export walkingTorsoCover = coverBody
+// The shared lid from torso_shell.kcl, drawn to this box rather than the
+// wheeled robot's: same design, 7 mm narrower and 41 mm higher up.
+export walkingTorsoCover = appearance(
+  torsoLid(torsoShellWidth, lidDepth = torsoShellDepth, topZ = shellTopZ),
+  color = printedDark,
+  roughness = 72,
+  metalness = 3,
+)
 
 export walkingTorsoAssembly = [walkingPelvisShell, walkingTorsoCover]

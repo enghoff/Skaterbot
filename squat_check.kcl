@@ -15,7 +15,7 @@
 // other way.
 //
 // WHAT IT COSTS. The leg reaches 120.4 mm vertically instead of 210, so the
-// torso drops 89.6 mm and the robot stands 290 mm rather than 380. The knees
+// torso drops 89.6 mm and the robot stands 249 mm rather than 339. The knees
 // come 86 mm forward of the hip axis, which is the number to watch: it is where
 // the payload envelope and the knee actuators have to miss each other.
 //
@@ -25,20 +25,20 @@
 // the shin's own stator plate.
 //
 // The torso floor matters more here than it used to. With hip roll deleted the
-// pelvis comes down 51 mm and reaches the full 118 mm width all the way to the
+// pelvis comes down 51 mm and reaches its full 125 mm width all the way to the
 // hip pitch axes, so at 55 degrees of hip this is where a thigh and a full-width
 // floor would meet if they were going to.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
+import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
-import payloadEnvelopes from "payload_envelopes.kcl"
+import torsoPayload from "wheeled_electronics.kcl"
 
 // The commissioning stop, from knee_limit_check.kcl.
 squatKneeAngle = 110deg
@@ -48,7 +48,7 @@ squatShinAngle = squatHipAngle - squatKneeAngle
 legVerticalReach = upperLegLength * cos(squatHipAngle) + lowerLegLength * cos(squatShinAngle)
 squatDrop = upperLegLength + lowerLegLength - legVerticalReach
 squatHipPitchZ = wheeledHipPitchAxisHeight - squatDrop
-squatTorsoCenterZ = torsoCenterHeight - squatDrop
+squatTorsoCenterZ = wheeledTorsoCenterHeight - squatDrop
 
 kneeY = upperLegLength * sin(squatHipAngle)
 kneeZ = squatHipPitchZ - (upperLegLength * cos(squatHipAngle))
@@ -172,7 +172,7 @@ rightWheel = wheelRight
 
 bodyFrame = torsoAssembly
   |> translate(z = squatTorsoCenterZ, global = true)
-reservedPayload = payloadEnvelopes
+reservedPayload = torsoPayload
   |> translate(z = squatTorsoCenterZ, global = true)
 
 export squatCheckAssembly = [

@@ -7,8 +7,8 @@
 // leg is now the same stator clevis, rooted in the shell.
 //
 // The walking robot still has hip roll, and its pelvis is walking_torso.kcl
-// beside this file. The lid, the four cover bosses and the 118 x 68 section are
-// the same on both and come from torso_shell.kcl.
+// beside this file. The lid and the four cover bosses are one design at two
+// sizes and come from torso_shell.kcl.
 //
 // WHY THE SHAPE IS WHAT IT IS
 //
@@ -17,18 +17,29 @@
 // 71, and the clevis cheeks reached in to |x| = 22 -- so the pelvis had to be
 // two things stacked: a 44 mm KEEL squeezed between them from the torso bottom
 // up, and a full-width SHELL clear above them. The keel existed only because
-// the actuators were in the way.
+// the actuators were in the way, and with them gone the shell simply runs down
+// to the torso bottom at full width.
 //
-// With them gone the whole 274 to 380 mm band is free at full width, so the
-// shell simply runs down to the torso bottom and the keel is deleted rather
-// than replaced. The floor lands one joint keep-out above the hip pitch axis,
-// which is 274 mm -- the torso bottom exactly, so the box closes on the number
-// the robot's overall height was already drawn to.
+// WHY IT IS 125 x 68 x 65 AND NOT 118 x 68 x 106
+//
+// The floor is pinned: one joint keep-out above the hip pitch axis, because that
+// floor is the seat the two hip clevises are rooted in. Everything else is set
+// by what has to fit inside, and wheeled_parameters.kcl carries the arithmetic.
+// The short version is that the power-entry block and the controller carrier sit
+// SIDE BY SIDE rather than stacked, which needs 114 mm of interior and is the
+// whole reason the box is 7 mm wider than the walking robot's. Buying that width
+// took 14 mm off the height, and the robot is 148 mm across at the hip saddles
+// anyway, so the torso is not what makes it wide.
+//
+// The saddles are why the payload starts 9 mm up rather than on the floor. They
+// stand that far proud across |x| = 26 to 60, leaving 51.5 mm of clear floor
+// between them, which is where the IMU goes -- the stiffest spot in the pelvis
+// and directly between the two hip joints.
 //
 // STIFFNESS
 // The keel was a channel, a 68 x 3 floor flange over two 2.4 mm webs 51 mm
 // deep, worth about 98 000 mm^4 in roll about its own centroid. Over that same
-// 51 mm the box replacing it is 118 x 68 closed, which is worth of order a
+// 51 mm the box replacing it is 125 x 68 closed, which is worth of order a
 // hundred times more again. That is arithmetic and not measurement, like every
 // other section number in this project, and it inherits whatever the Phase 1
 // coupon says about modulus. The point is not the figure: it is that the pelvis
@@ -43,26 +54,28 @@
 //
 // The hip clevis cheeks are Ø52 discs centred on the leg axes, so they still
 // reach 74 mm from the centre line and the robot is still 148 mm across at the
-// hips against a 118 mm torso. The joints are the visible hardware, the shell
-// is not.
+// hips. The joints are the visible hardware, the shell is not.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import wheeledHipPitchAxisHeight from "wheeled_parameters.kcl"
+import wheeledHipPitchAxisHeight, wheeledTorsoShellWidth, wheeledTorsoHeight, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
 import statorClevis, saddleHeight from "joint.kcl"
-import torsoShellWidth, torsoShellDepth, torsoInnerWidth, torsoInnerDepth, floorThickness, shellTopZ from "torso_shell.kcl"
-import cablePortWidth, cablePortDepth, cablePortX, cablePortY from "torso_shell.kcl"
-import bossRearRightBody, bossRearLeftBody, bossFrontRightBody, bossFrontLeftBody, coverBody from "torso_shell.kcl"
+import torsoShellDepth, cablePortWidth, cablePortDepth, cablePortX, cablePortY, coverBossInset, coverBoss, torsoLid from "torso_shell.kcl"
 
 // Every station is derived from the kinematics rather than typed in, so moving
 // the hip pitch axis or the actuator diameter moves the whole shell with it.
-// The floor is one joint keep-out above hip pitch and nothing else; that it
-// comes out on the torso bottom is a result, not an input, and if the wheel or
-// the leg lengths change it is the floor that follows them.
-hipPitchZ = wheeledHipPitchAxisHeight - torsoCenterHeight
+// The floor is one joint keep-out above hip pitch and nothing else; the torso
+// bottom follows it rather than the other way round.
+torsoShellWidth = wheeledTorsoShellWidth
+torsoInnerWidth = torsoShellWidth - (shellWall * 2)
+torsoInnerDepth = torsoShellDepth - (shellWall * 2)
+floorThickness = torsoFloorThickness
+
+hipPitchZ = wheeledHipPitchAxisHeight - wheeledTorsoCenterHeight
 shellFloorZ = hipPitchZ + jointKeepOut
 saddleTopZ = shellFloorZ + saddleHeight
 
+shellTopZ = wheeledTorsoHeight / 2 - torsoCoverThickness
 shellHeight = shellTopZ - shellFloorZ
 shellCenterZ = (shellFloorZ + shellTopZ) / 2
 cavityBottomZ = shellFloorZ + floorThickness
@@ -322,6 +335,19 @@ hide(tetherPortSketch)
 hide(tieSlotSketch)
 hide(cablePortSketch)
 
+// ---- cover bosses and lid ---------------------------------------------------
+
+// Both are the shared design from torso_shell.kcl, drawn to this box. The
+// bosses belong to the pelvis print and are given its appearance below; the lid
+// is a print of its own.
+bossX = coverBossInset(torsoInnerWidth)
+bossY = coverBossInset(torsoInnerDepth)
+
+bossRearRight = coverBoss(bossX, y = bossY, topZ = shellTopZ)
+bossRearLeft = coverBoss(-bossX, y = bossY, topZ = shellTopZ)
+bossFrontRight = coverBoss(bossX, y = -bossY, topZ = shellTopZ)
+bossFrontLeft = coverBoss(-bossX, y = -bossY, topZ = shellTopZ)
+
 // The shell, the four bosses and both hip clevises are one printed part -- seven
 // bodies, where the eight-motor pelvis needed twelve. They are left as
 // interpenetrating bodies rather than unioned for the reason NOTES.md already
@@ -337,10 +363,10 @@ hide(cablePortSketch)
 export pelvisShell = appearance(
   [
     shellRaw,
-    bossRearRightBody,
-    bossRearLeftBody,
-    bossFrontRightBody,
-    bossFrontLeftBody,
+    bossRearRight,
+    bossRearLeft,
+    bossFrontRight,
+    bossFrontLeft,
     rightHipPitchJoint,
     leftHipPitchJoint
   ],
@@ -349,7 +375,11 @@ export pelvisShell = appearance(
   metalness = 3,
 )
 
-// The cover is the shared lid from torso_shell.kcl, already finished there.
-export torsoCover = coverBody
+export torsoCover = appearance(
+  torsoLid(torsoShellWidth, lidDepth = torsoShellDepth, topZ = shellTopZ),
+  color = printedDark,
+  roughness = 72,
+  metalness = 3,
+)
 
 export torsoAssembly = [pelvisShell, torsoCover]

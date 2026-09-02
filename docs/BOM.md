@@ -188,7 +188,7 @@ Printed-part masses, PA12-CF at 1.06 g/cm³, measured from the CAD:
 | Pelvis and torso shell with removable cover | 198.4 g | 1 | 198.4 g |
 | **Printed structure** | | | **562 g** |
 
-With metal, fasteners, electronics and a 60 g allowance for the power-entry block — capacitors, fuse and terminal — the current model comes to approximately **2,047 g against a 2,300 g ceiling**, leaving roughly **253 g** headroom. Use `uv run tools/mass.py` as the authoritative roll-up rather than this static table.
+With metal, fasteners, electronics and a 60 g allowance for the power-entry block — capacitors, fuse and terminal — the current model comes to approximately **1,607 g against a 2,300 g ceiling**, leaving roughly **693 g** headroom. That is the six-motor wheeled robot; it was 2,047 g before hip roll was deleted and the torso shortened, and the eight-motor walking robot on `main` is still near the older figure. Use `uv run tools/mass.py` as the authoritative roll-up rather than this static table.
 
 ## 10. Fastener schedule
 

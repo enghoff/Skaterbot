@@ -15,6 +15,7 @@
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
+import statorEndHeight from "joint.kcl"
 
 // ---------------------------------------------------------------------------
 // The donor wheel
@@ -124,3 +125,47 @@ export wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight)
 // span between hip roll and hip pitch, and the midpoint the carrier sat on --
 // and both went when hip roll did. The 51 mm has not disappeared, it has moved
 // into the pelvis: torso.kcl's shell floor is now that much lower.
+
+// ---------------------------------------------------------------------------
+// The torso, sized by what goes in it
+//
+// The walking robot's torso is 274 to 380 mm, and its 106 mm height was settled
+// before the electronics were laid out. This one is not a free number at either
+// end. Its floor is pinned at 274 -- one joint keep-out above the hip pitch
+// axis, because that floor IS the seat the two hip clevises are rooted in -- and
+// its ceiling is wherever the reserved payload stops.
+//
+// WHAT SETS THE 65 mm, measured up from the inside face of the floor:
+//
+// * 9 mm of hip pitch saddle. The clevises stand that far proud of the floor
+// across |x| = 26 to 60, so only the 51.5 mm between them is clear at this
+// level. Nothing reserved is narrow enough to use it except the IMU, which
+// goes there -- it is the stiffest spot in the pelvis, directly between the
+// two hip joints, which is where an IMU wants to be anyway.
+// * 30 mm for the power-entry block, 38 x 62 x 30, which therefore starts above
+// the saddles rather than on the floor. The controller carrier, 76 x 46 x 12,
+// sits BESIDE it in the same band.
+// * 16 mm for the SBC, 85 x 58 x 16. It is wider than either of the other two,
+// so it cannot share a band with them and has to go over the top.
+//
+// THAT SIDE-BY-SIDE PAIR IS WHY THE SHELL IS 125 mm WIDE and not the walking
+// robot's 118. Power entry and the controller need 114 mm of interior between
+// them; a 118 mm shell leaves 113.2 and misses by eight tenths of a millimetre.
+// Widening to 125 leaves 120.2, which fits them with 6 mm to spare, and costs
+// nothing in envelope: the robot is already 148 mm across at the hip saddles,
+// so the torso is not what makes it wide. Stacking that pair instead would have
+// cost 14 mm of height for the 7 mm of width it saved.
+//
+// With 2 mm between bands and 2.6 mm under the cover that is 59.6 mm of
+// interior; 3 mm of floor and 2.4 mm of cover make 65 mm of torso, and the
+// robot stands 339 mm rather than 380.
+export wheeledTorsoShellWidth = 125mm
+export wheeledTorsoBottom = wheeledHipPitchAxisHeight + jointKeepOut
+export wheeledTorsoHeight = 65mm
+export wheeledTorsoTop = wheeledTorsoBottom + wheeledTorsoHeight
+export wheeledTorsoCenterHeight = wheeledTorsoBottom + wheeledTorsoHeight / 2
+
+// Torso-local, because that is the frame the payload is laid out in: the inside
+// face of the floor, and the height of the saddles above it.
+export wheeledTorsoInteriorFloorZ = -wheeledTorsoHeight / 2 + torsoFloorThickness
+export wheeledHipSaddleRise = statorEndHeight - jointKeepOut - torsoFloorThickness

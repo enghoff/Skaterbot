@@ -1,6 +1,6 @@
 # Torque-Controlled Biped
 
-A compact, approximately 380 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8, and is `walking_main.kcl` here and `main.kcl` on `main`.
+A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and is `walking_main.kcl` here and `main.kcl` on `main`.
 
 The structure is flat printed plates lying in the actuators' own planes, with the actuators sandwiched between them and left exposed so they can cool.
 
@@ -54,9 +54,11 @@ bipedal/
 ├── skate_wheel.kcl        the bought 80 x 24 mm wheel it drives
 ├── wheel.kcl              adapter, wheel and clamp, as the assemblies place it
 ├── foot.kcl               ribbed foot tray, sole, sensor seats (walking robot)
-├── torso_shell.kcl        the lid, cover bosses and section both pelvises share
-├── torso.kcl              six-motor pelvis: hip pitch hung straight off the shell
-├── walking_torso.kcl      eight-motor pelvis: hip roll clevises, keel, gussets
+├── torso_shell.kcl        lid and cover bosses, as functions taking a box size
+├── torso.kcl              six-motor pelvis, 125 x 68 x 65, hip pitch in its floor
+├── walking_torso.kcl      eight-motor pelvis, 118 x 68 x 106, keel and hip roll
+├── wheeled_electronics.kcl  the boards that set the six-motor torso's height
+├── torso_packing_check.kcl  the pelvis with its lid off and the boards in it
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
 ├── tools/                 check, mass, render and export scripts (see below)
 ├── docs/                  project documentation (see above)
@@ -98,17 +100,20 @@ along with its checksum and known caveats.
 
 ## Current baseline
 
-- Height: 380 mm
+- Height: 339 mm. It was 380 until the torso was cut from 106 mm to 65 —
+  see `wheeled_parameters.kcl`, which derives that height from the electronics
+  rather than choosing it. The walking robot is still 380.
 - DOF: 6 (hip pitch, knee pitch, driven wheel per leg). Hip roll was deleted on
   this branch: see `docs/WHEELED_BIPED_ANALYSIS.md` section 11 for the argument
   and what it costs, which is the ability to lean or step sideways at all.
   The walking robot still has 8 (hip roll, hip pitch, knee pitch, ankle pitch).
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
 - Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
-- Current mass, measured from the CAD: **1.638 kg**, leaving 662 g of headroom.
+- Current mass, measured from the CAD: **1.607 kg**, leaving 693 g of headroom.
   `uv run tools/mass.py` re-measures it. Two actuators, two bearing sets, both
-  hip carriers and the pelvis keel went with hip roll, which is about 409 g off
-  the 2.047 kg the eight-motor wheeled robot weighed.
+  hip carriers and the pelvis keel went with hip roll, and the shorter torso took
+  another 32 g, which is about 440 g off the 2.047 kg the eight-motor wheeled
+  robot weighed.
 - Limbs: each is a flat plate in one plane — a Ø52 disc bolted to one actuator's
   rear cover, a Ø36 disc bolted to the next actuator's output, and a channel
   waist between them. Nothing reaches around an actuator, so there is no clevis
@@ -124,7 +129,10 @@ along with its checksum and known caveats.
   bank, because the battery was also the bus's only sink for regeneration from
   backdrivable actuators, and a tether cannot do that job. It used to live in a
   keel between the hip roll actuators; with those gone the pelvis is one closed
-  box down to the hip pitch axes and the bank sits in the bottom of it.
+  box down to the hip pitch axes and the bank sits in the bottom of it, beside
+  the controller carrier rather than under it. That pair side by side is why the
+  shell is 125 mm wide where the walking robot's is 118, and it is what let the
+  torso lose 41 mm of height.
 - Mechanical prototype: PA12-CF printed shells
 
 ## Development order

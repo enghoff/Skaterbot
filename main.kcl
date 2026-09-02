@@ -1,16 +1,22 @@
 // Compact torque-controlled wheeled biped, stressed-shell build
 //
-// Neutral 380 mm assembly, and the model this branch is about. Each leg is hip
+// Neutral 339 mm assembly, and the model this branch is about. Each leg is hip
 // pitch, knee pitch and a driven wheel -- six DM-J3507 actuators in total, on a
-// robot that used to carry eight.
+// robot that used to carry eight and stand 380 mm.
 //
-// WHAT WENT, AND WHY THE REST DID NOT MOVE
+// WHAT WENT, AND WHY THE LEGS DID NOT MOVE
 // Hip roll is gone: the actuator, its bearing set and journal, and the
 // orthogonal printed carrier that used to hang the hip pitch joint off it. The
 // hip pitch clevis is now part of the pelvis itself, rooted in a shell floor
 // that has come down 51 mm to meet it, so nothing below the hip has changed at
-// all. Thigh and shin are still 105 mm, the wheel axle is still 40 mm off the
-// floor, the torso still tops out at 380 mm.
+// all. Thigh and shin are still 105 mm and the wheel axle is still 40 mm off
+// the floor.
+//
+// The 41 mm the robot then lost off the top is the torso being cut from 106 mm
+// to 65. Its floor could not move -- it is the seat the hip clevises are rooted
+// in -- so the height came off the ceiling, and the ceiling is now set by the
+// electronics rather than by a round number. wheeled_parameters.kcl carries that
+// arithmetic and wheeled_electronics.kcl draws what it is holding.
 //
 // What it costs is lateral balance. Nothing can roll the torso over a wheel any
 // more, so the robot leans only by driving the two wheels differentially. That
@@ -25,14 +31,14 @@
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
 import * from "parameters.kcl"
-import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ from "wheeled_parameters.kcl"
+import prototypeWheelAxisHeight, wheeledKneeAxisHeight, wheeledHipPitchAxisHeight, wheeledShinCenterZ, wheeledThighCenterZ, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
 import actuatorAssembly from "actuator.kcl"
 import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"
 import torsoAssembly from "torso.kcl"
-import payloadEnvelopes from "payload_envelopes.kcl"
+import torsoPayload from "wheeled_electronics.kcl"
 
 actuatorCopy2 = clone(actuatorAssembly)
 actuatorCopy3 = clone(actuatorAssembly)
@@ -103,9 +109,9 @@ rightWheel = wheelRight
   |> translate(x = hipCenterX, z = prototypeWheelAxisHeight, global = true)
 
 bodyFrame = torsoAssembly
-  |> translate(z = torsoCenterHeight, global = true)
-reservedPayload = payloadEnvelopes
-  |> translate(z = torsoCenterHeight, global = true)
+  |> translate(z = wheeledTorsoCenterHeight, global = true)
+reservedPayload = torsoPayload
+  |> translate(z = wheeledTorsoCenterHeight, global = true)
 
 export robotAssembly = [
   bodyFrame,

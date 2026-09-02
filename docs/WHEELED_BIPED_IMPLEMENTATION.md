@@ -143,7 +143,7 @@ Three things were cleaned up along the way:
 
 Wheel commands are the highest-priority realtime traffic; a dedicated CAN bus for the two wheel motors may be warranted once bus timing is measured. Regeneration matters more with balancing wheels than with static standing — the tethered supply cannot be assumed to absorb reverse current, so the motor-side DC link needs an energy sink even if an upstream contactor opens.
 
-**Six-motor work** is done in CAD: both hip-roll clevises, their hardware, their gussets and the keel are gone, the freed volume is closed at full width, and the hip pitch joints are integrated into the shell floor. The robot measures 1.638 kg against a 2.3 kg ceiling. What is still not claimed is the control side — nothing here shows that lateral balancing works without hip roll, and the robot can no longer lean or place a wheel sideways at all.
+**Six-motor work** is done in CAD: both hip-roll clevises, their hardware, their gussets and the keel are gone, the freed volume is closed at full width, and the hip pitch joints are integrated into the shell floor. The torso was then cut from 106 mm to 65 and widened from 118 mm to 125 — the width buys the height, because the power-entry block and the controller carrier fit side by side at 125 and cannot at 118 — so the robot stands 339 mm and measures 1.607 kg against a 2.3 kg ceiling. What is still not claimed is the control side — nothing here shows that lateral balancing works without hip roll, and the robot can no longer lean or place a wheel sideways at all.
 
 ---
 

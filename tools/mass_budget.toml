@@ -109,9 +109,10 @@ hide = ["wheelAdapterRight"]
 prints = 1
 bodies = 3  # output disc, spigot, plug
 
-# Measured through torso.kcl, which is the six-motor pelvis. The lid and the
-# four cover bosses live in torso_shell.kcl and are pulled in by import, so they
-# are inside this file's figure and must not be counted again.
+# Measured through torso.kcl, which is the six-motor pelvis: 125 x 68 x 65,
+# where the walking robot's is 118 x 68 x 106. The lid and the cover bosses are
+# built by functions in torso_shell.kcl and called from torso.kcl, so they are
+# inside this file's figure and must not be counted again.
 [[printed]]
 file = "torso.kcl"
 label = "Pelvis, torso shell, cover"
@@ -124,9 +125,7 @@ export = "pelvisShell"
 hide = ["torsoCover"]
 prints = 1
 bodies = 7  # shell, four cover bosses, two hip pitch clevises
-note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until \
-hip roll was deleted: the keel and the four cheek gussets existed only to reach \
-down between the roll actuators and to close the voids their cheeks left."""
+note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; wheeled_parameters.kcl says why both numbers are what they are."""
 
 [[printed.piece]]
 name = "torso-cover"

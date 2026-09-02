@@ -106,6 +106,15 @@ export torsoCenterHeight = (torsoTop + torsoBottom) / 2
 export torsoWidth = 126mm
 export torsoDepth = 74mm
 
+// The two skins of the pelvis box. They live here rather than in the pelvis
+// files because both pelvises use them and because the wheeled robot's torso
+// height is derived from them -- its ceiling is the reserved payload plus these
+// two thicknesses, so they are an input to a dimension rather than a detail of
+// one part. 3 mm of floor is what the hip saddles root into; 2.4 mm of cover is
+// two perimeters and a skin either side at this nozzle.
+export torsoFloorThickness = 3mm
+export torsoCoverThickness = 2.4mm
+
 // ---------------------------------------------------------------------------
 // Tether
 //
