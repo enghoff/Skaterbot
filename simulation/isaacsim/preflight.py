@@ -417,10 +417,31 @@ def main() -> int:
         return 1
 
     print("PREFLIGHT CLEAN. The file is loadable and agrees with the CAD.")
-    print("What PhysX makes of it is a different question. Ask it, with Isaac")
-    print("Sim's own Python and -u so a hard shutdown cannot eat the output:")
-    print("    <isaac>/python.exe -u simulation/isaacsim/import_urdf.py")
-    print("    <isaac>/python.exe -u simulation/isaacsim/run.py --check")
+
+    # The URDF being right says nothing about the USD built from it. This is
+    # the cheapest place to notice they have come apart -- free, offline, and
+    # before anyone spends five minutes starting Kit to simulate the old robot.
+    behind = plant.stale_usd()
+    if not plant.ROBOT_USD_PATH.exists():
+        print()
+        print("No robot USD yet. Build one:")
+        print(f"    {plant.rebuild_command()}")
+        print(f"    {plant.check_command()}")
+        return 0
+    if behind:
+        print()
+        print(f"BUT THE ROBOT USD IS STALE -- {plant.ROBOT_USD_PATH.name} predates:")
+        for name, age in behind:
+            print(f"    {name}, newer by {age / 60.0:.1f} min")
+        print("Simulating it would describe the robot as it was. Rebuild:")
+        print(f"    {plant.rebuild_command()}")
+        print(f"    {plant.check_command()}")
+        return 0
+
+    print("The robot USD is current with it. What PhysX makes of it is a")
+    print("different question -- ask it, with Isaac Sim's own Python and -u so")
+    print("a hard shutdown cannot eat the output:")
+    print(f"    {plant.check_command()}")
     return 0
 
 

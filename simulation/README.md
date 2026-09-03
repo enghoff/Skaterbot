@@ -49,6 +49,16 @@ Z:\IsaacSim\venv\Scripts\python.exe -u simulation/isaacsim/run.py --check
 but NumPy and it catches a URDF that was never going to load. The other two
 need Isaac Sim's own Python — here, the 6.0.1 venv at `Z:\IsaacSim\venv`.
 
+**You cannot forget the rebuild.** The USD is not the URDF, and a USD left
+behind by a `/urdf` run is the one failure here that raises nothing: it loads,
+the rig checks pass, and every number faithfully describes the robot as it was
+before the CAD moved. So `run.py` now refuses a USD older than the URDF or
+meshes it was built from — naming what moved and printing the rebuild command,
+the same way `build_urdf.py` refuses a mesh older than its KCL — and
+`preflight.py` says so for free before anyone spends five minutes starting Kit.
+`--allow-stale` overrides it and prints a warning that the numbers are not the
+current CAD.
+
 All of it currently passes. The robot loads with the URDF's own masses and
 inertia, its joints turn the way the CAD says, and it stands and rolls on a
 40 mm wheel to within a third of a millimetre. See

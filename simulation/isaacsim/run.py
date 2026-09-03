@@ -87,6 +87,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--usd", type=Path, default=None, help="a different robot USD to load"
     )
+    parser.add_argument(
+        "--allow-stale",
+        action="store_true",
+        help="load the USD even when the URDF it was built from has moved"
+        " since. build_urdf.py carries the same escape for the same reason.",
+    )
     return parser.parse_args()
 
 
@@ -711,8 +717,25 @@ def main() -> int:
     usd_path = ARGS.usd or plant.ROBOT_USD_PATH
     if not usd_path.exists():
         print(f"no robot USD at {usd_path}.")
-        print("Build it first:  python simulation/isaacsim/import_urdf.py")
+        print(f"Build it first:  {plant.rebuild_command()}")
         return 1
+
+    # A stale USD is the one failure in this pipeline that produces no error at
+    # all: it loads, the rig checks pass, and every number describes the robot
+    # as it was before the CAD moved. Refuse it the way build_urdf.py refuses a
+    # stale mesh -- name what moved, print the fix, and stop.
+    behind = plant.stale_usd(usd_path)
+    if behind:
+        print()
+        print(f"STALE ROBOT USD: {usd_path.name} is older than what it was built from.")
+        for name, age in behind:
+            print(f"  {name} is newer by {age / 60.0:.1f} min")
+        print()
+        print(f"Rebuild it:  {plant.rebuild_command()}")
+        print("or pass --allow-stale to simulate the USD as it stands.")
+        if not ARGS.allow_stale:
+            return 1
+        print("--allow-stale: going on anyway. The numbers below are NOT the current CAD.")
 
     print(f"World               {world_from}")
     print(f"Articulation        {articulation_from}")

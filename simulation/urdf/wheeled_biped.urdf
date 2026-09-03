@@ -55,10 +55,10 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000108321537 -0.00280165679 -0.030386725" rpy="0 0 0"/>
+      <origin xyz="0.000108321537 -0.0028016568 -0.0303867251" rpy="0 0 0"/>
       <mass value="0.658004"/>
-      <inertia ixx="2.095748790e-03" ixy="-1.996907531e-07" ixz="4.494784995e-07"
-               iyy="8.764143659e-04" iyz="5.040117752e-05" izz="1.549147306e-03"/>
+      <inertia ixx="2.095748785e-03" ixy="-1.996907534e-07" ixz="4.494784939e-07"
+               iyy="8.764143630e-04" iyz="5.040117766e-05" izz="1.549147305e-03"/>
     </inertial>
     <!-- pelvis shell, clevises and cover bosses — 119.6 g, measured: torso.kcl:pelvisShell, seven bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
@@ -232,10 +232,10 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="0 -0.0365393535 -3.37546923e-20" rpy="0 0 0"/>
+      <origin xyz="-3.37546923e-20 -0.0365393535 1.68773462e-20" rpy="0 0 0"/>
       <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="6.581346194e-23" ixz="2.098980515e-18"
-               iyy="6.487132618e-05" iyz="2.812330968e-23" izz="3.747158202e-05"/>
+      <inertia ixx="3.747158201e-05" ixy="-7.059688323e-23" ixz="2.098984628e-18"
+               iyy="6.487132618e-05" iyz="-1.127818478e-22" izz="3.747158202e-05"/>
     </inertial>
     <!-- wheel adapter, right — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__right">
@@ -341,10 +341,10 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="0 0.0365393535 -5.06320385e-20" rpy="0 0 0"/>
+      <origin xyz="-3.37546923e-20 0.0365393535 1.68773462e-20" rpy="0 0 0"/>
       <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="9.872019291e-23" ixz="-2.098972288e-18"
-               iyy="6.487132618e-05" iyz="-1.409051574e-22" izz="3.747158202e-05"/>
+      <inertia ixx="3.747158201e-05" ixy="-2.913771574e-22" ixz="-2.098984628e-18"
+               iyy="6.487132618e-05" iyz="-1.884507613e-23" izz="3.747158202e-05"/>
     </inertial>
     <!-- wheel adapter, left — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">

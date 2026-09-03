@@ -72,6 +72,63 @@ USD_DIR = HERE / "isaacsim" / "usd"
 # why import_urdf.py clears the old one before every build.
 ROBOT_USD_PATH = USD_DIR / ROBOT_NAME / f"{ROBOT_NAME}.usda"
 
+# The one edge in this pipeline nothing used to watch. build_urdf.py refuses to
+# build a URDF against a mesh older than the KCL it came from, so CAD-to-URDF is
+# gated; URDF-to-USD was not. That is the worse of the two to leave open,
+# because a stale USD does not fail -- Isaac Sim loads it, every rig check
+# passes, and the numbers faithfully describe a robot that no longer exists.
+URDF_MESH_DIR = URDF_PATH.parent / "meshes"
+
+# How much newer an input may be than the USD built from it before the USD is
+# called stale. build_urdf.py allows the same slack for the same reason: a
+# checkout rewrites every mtime at once and would otherwise fire this on a
+# fresh clone.
+USD_GRACE_SECONDS = 2.0
+
+
+def usd_inputs() -> list[Path]:
+    """Everything import_urdf.py reads to build the robot USD."""
+    meshes = sorted(URDF_MESH_DIR.glob("*.stl")) if URDF_MESH_DIR.is_dir() else []
+    return [URDF_PATH, *meshes]
+
+
+def stale_usd(usd_path: Path | None = None) -> list[tuple[str, float]]:
+    """Which of the USD's inputs are newer than the USD itself, newest first.
+
+    Empty when the USD is current. A MISSING USD is not stale, it is absent,
+    and the caller reports that separately -- there is a different thing to do
+    about it.
+    """
+    usd = usd_path or ROBOT_USD_PATH
+    if not usd.exists():
+        return []
+    built = usd.stat().st_mtime
+    behind = [
+        (source.name, source.stat().st_mtime - built)
+        for source in usd_inputs()
+        if source.exists() and source.stat().st_mtime - built > USD_GRACE_SECONDS
+    ]
+    return sorted(behind, key=lambda item: -item[1])
+
+
+def isaac_interpreter() -> Path:
+    """Isaac Sim's Python where this machine has it, a placeholder where not.
+
+    Printed into advice, so it has to degrade on a machine that keeps Isaac
+    somewhere else rather than name a path that is not there.
+    """
+    return ISAAC_PYTHON if ISAAC_PYTHON.exists() else Path("<isaac>/python.exe")
+
+
+def rebuild_command() -> str:
+    """What to run when the USD is stale, with this machine's interpreter."""
+    return f"{isaac_interpreter()} -u simulation/isaacsim/import_urdf.py"
+
+
+def check_command() -> str:
+    """What to run to measure what PhysX made of the rebuilt USD."""
+    return f"{isaac_interpreter()} -u simulation/isaacsim/run.py --check"
+
 # --------------------------------------------------------------------------
 # The actuator, all six of them the same.
 #
