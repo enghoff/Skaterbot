@@ -11,8 +11,8 @@
 // shin, and the right shin is its mirror.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import limbAssembly from "limb.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 export shinLeft = [limbAssembly(lowerLegLength)]
 

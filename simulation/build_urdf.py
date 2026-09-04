@@ -101,7 +101,7 @@ def header(dimensions: dict[str, float], materials: dict) -> str:
     """The provenance block, so the file says what it is without a reader."""
     actuator = robot_model.ACTUATOR
     palette = comment(
-        " Colours are the CAD's own, read out of parameters.kcl and"
+        " Colours are the CAD's own, read out of lib/parameters.kcl and"
         " wheeled_electronics.kcl by kcl_params.load_colors, so a part is the"
         " same colour here as it is in Design Studio. "
     )

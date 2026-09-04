@@ -17,7 +17,8 @@
 // parameters, which carry them as numbers instead.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 motorBodySketch = sketch(on = XY) {
   bodyCircle = circle(start = [var 23mm, var 0mm], center = [var 0mm, var 0mm])

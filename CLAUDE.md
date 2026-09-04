@@ -113,6 +113,42 @@ overlaps twice — `tools/mass.py` accepts that bias on purpose because it errs
 upward against a ceiling, but the simulation resolves the union instead, which
 is 19 g lighter across the robot.
 
+## Where the KCL lives, and why the split is where it is
+
+The models and the parts they place are in the project root, where Design Studio
+expects `project.toml` and `main.kcl`. The dimensions and the shared drawing
+functions are in [`lib/`](lib/), and everything above reaches them through
+`lib/main.kcl`, which re-exports them:
+
+```
+import * from "lib/main.kcl"
+```
+
+The line between the root and `lib/` is not a matter of taste. **Importing a
+module runs it, and any solid it built at its top level joins your scene**,
+transitively, whether the scene asked for it or not. So a part file has to be
+imported by name by the scene that wants it — that is how `main.kcl` gets thighs
+and wheels while `walking_main.kcl` gets feet, from the same directory.
+Everything in `lib/` is geometry-free: numbers, and functions that draw only when
+called. Nothing there can put a body in a scene by being imported, which is the
+only reason one shared front door is safe. Measured, not assumed: routing a
+scene's imports through a facade that re-exported the parts as well took
+`wheel_module_check.kcl` from 182 261 mm3 to 1 323 068 mm3, with `/check` clean
+throughout.
+
+**A new module goes in `lib/` only if it builds nothing at its top level, and it
+must then be added to `lib/main.kcl`** or nothing will find it. A module that
+builds bodies goes in the root beside the parts.
+
+Two further rules, both syntax errors rather than warnings, fix the rest of the
+shape: a subdirectory can only be entered through its `main.kcl`, and a path may
+not climb with `..`. So a check scene cannot be moved down into a `checks/`
+directory — it would no longer be able to see the parts it places — and two
+sibling directories can never share a third. `docs/KCL_GOTCHAS.md` has the
+detail. A layout with everything under `src/` was tried and reverted; documents
+written before `lib/` existed name the shared modules without that prefix, and
+they are the same files.
+
 ## The models are the regression suite
 
 `main.kcl` is the neutral 339 mm assembly and exports `robotAssembly`. **On this
@@ -124,12 +160,12 @@ The two robots no longer share a pelvis. `torso.kcl` is the six-motor one, whose
 hip pitch clevises are rooted straight in its shell floor; `walking_torso.kcl` is
 the eight-motor one, with hip roll clevises, a keel and cheek gussets. They are
 no longer even the same size: 125 x 68 x 65 against 118 x 68 x 106. What they
-still share is a design rather than a part, so `torso_shell.kcl` holds the lid
+still share is a design rather than a part, so `lib/torso_shell.kcl` holds the lid
 and the cover boss as FUNCTIONS taking a box size, and a change to the lid is one
 change and not two.
 
 The six-motor torso's height is not a chosen number. It is derived in
-`wheeled_parameters.kcl` from what has to fit inside, and `wheeled_electronics.kcl`
+`lib/wheeled_parameters.kcl` from what has to fit inside, and `wheeled_electronics.kcl`
 draws those boards so the packing can be looked at rather than asserted --
 `torso_packing_check.kcl` is that scene. **Anything that changes a reserved
 volume changes the robot's height**, which is the opposite of how it worked
@@ -156,14 +192,14 @@ which is what marks them. `roll_limit_check.kcl` no longer describes any joint
 this robot has. **The wheeled robot's torque envelope has not been re-derived**,
 and that answer does change with wheels.
 
-A change to `parameters.kcl` or to any shared module reaches all of them.
+A change to `lib/parameters.kcl` or to any shared module reaches all of them.
 Executing `main.kcl` alone is not sufficient evidence and must not be reported as
 if it were — the pose and knee-limit checks exist precisely to catch interference
 that the neutral stance hides.
 
-## Dimensions live in parameters.kcl
+## Dimensions live in lib/parameters.kcl
 
-`parameters.kcl` is the single source of mechanical dimensions, and its comments
+`lib/parameters.kcl` is the single source of mechanical dimensions, and its comments
 carry the provenance — which vendor STEP, which 2D print, which measurement, and
 where two sources were cross-checked against each other. Honour that:
 

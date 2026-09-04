@@ -5,8 +5,13 @@ or an external agent via Zoo MCP). Full reasoning lives in
 [`OPUS_HANDOFF.md`](OPUS_HANDOFF.md) beside this file; this file is the short,
 binding version.
 
-The KCL sources are at the repository root (one level up), because Zoo Design
-Studio expects `project.toml` and `main.kcl` there. Everything in prose —
+The models and the part files are at the repository root (one level up), because
+Zoo Design Studio expects `project.toml` and `main.kcl` there. The dimensions and
+the shared drawing functions are in `lib/` beside them, reached with
+`import * from "lib/main.kcl"`. The split is forced: importing a module runs it
+and any body it built at its top level joins your scene, so a part has to be
+imported by name by the scene that wants it, while everything in `lib/` is
+geometry-free and safe to hand out together. Everything in prose —
 this file, the handoff, [`NOTES.md`](NOTES.md), [`CHECKLIST.md`](CHECKLIST.md),
 and [`BOM.md`](BOM.md) — lives here in `docs/`.
 
@@ -76,7 +81,7 @@ The vendor STEP, 2D print and manual are published at
 face carries **6 × M3 on a Ø24 mm bolt circle** inside a Ø30 mm register; the
 housing carries **4 × M3 on Ø41 mm**; there is **no rear spigot**, so any
 opposite support bearing needs a stub axle you supply. These are exported from
-`parameters.kcl` — reference them rather than restating numbers.
+`lib/parameters.kcl` — reference them rather than restating numbers.
 
 ## No hardware exists
 

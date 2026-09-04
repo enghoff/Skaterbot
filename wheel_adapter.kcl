@@ -27,9 +27,8 @@
 // merges coincident shells prints this as the single part it is.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import * from "wheeled_parameters.kcl"
-import outputDisc from "joint.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 spigotInnerX = rotorHubOuterX
 spigotOuterX = rotorHubOuterX + wheelSpigotLength

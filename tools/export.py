@@ -16,8 +16,8 @@ and every one of these files builds more than one printed part -- both hands of
 a mirrored pair, or the pelvis shell and its cover. Importing any name from a
 module runs the whole module, so its other parts stand in the scene whether they
 are wanted or not (docs/KCL_GOTCHAS.md). The wrapper therefore imports the piece
-and hides its siblings. Wrappers are generated into the repository root, because
-that is where the imports resolve from, and deleted again immediately.
+and hides its siblings. A wrapper is generated beside the module it imports,
+which is the repository root for every printed part, and deleted immediately.
 
 Because that isolation rests on `hide` reaching the exporter and not only the
 renderer, every written file is counted: the tool reports how many solid bodies
@@ -45,10 +45,18 @@ ROOT = HERE.parent
 BUDGET = HERE / "mass_budget.toml"
 DEFAULT_OUT = ROOT / "exports"
 
-# The generated wrapper has to sit beside the modules it imports, so it is
-# written into the repository root under a name nothing else uses, and removed
-# in a finally block. .gitignore carries it too, in case a run is interrupted.
-WRAPPER = ROOT / "_export_piece.kcl"
+# The generated wrapper has to sit beside the module it imports, because KCL
+# reaches a subdirectory only through its main.kcl and cannot climb out of one
+# with "..". Every printed part is in the repository root today, so that is
+# where the wrapper lands; taking the directory from the module keeps it true
+# if one ever moves. The name is one nothing else uses, it is removed in a finally
+# block, and .gitignore carries it too in case a run is interrupted.
+WRAPPER_NAME = "_export_piece.kcl"
+
+
+def wrapper_path(module: str) -> Path:
+    return ROOT / Path(module).parent / WRAPPER_NAME
+
 
 # execute_and_export wants a FileExportFormat, not the per-format *ExportOptions
 # classes the module also carries -- passing StepExportOptions() is rejected with
@@ -82,7 +90,7 @@ def wrapper_source(module: str, keep: str, hidden: list[str]) -> str:
         f"// Isolates `{keep}` from {module} so the export holds that piece alone.",
         "@settings(defaultLengthUnit = mm, kclVersion = 2.0)",
         "",
-        f'import {names} from "{module}"',
+        f'import {names} from "{Path(module).name}"',
         "",
     ]
     lines += [f"hide({name})" for name in hidden]
@@ -218,9 +226,10 @@ def main() -> int:
             source = wrapper_source(
                 piece["file"], piece["export"], piece.get("hide", [])
             )
-            WRAPPER.write_text(source, encoding="utf-8", newline="\n")
+            wrapper = wrapper_path(piece["file"])
+            wrapper.write_text(source, encoding="utf-8", newline="\n")
             try:
-                asyncio.run(kcl.mock_execute(str(WRAPPER)))
+                asyncio.run(kcl.mock_execute(str(wrapper)))
             except Exception as exc:  # noqa: BLE001 - the diagnostic is the payload
                 cause = getattr(exc, "args", ())
                 message = cause[0] if cause and isinstance(cause[0], str) else str(exc)
@@ -230,7 +239,7 @@ def main() -> int:
                 print(f"{piece['name']}: ok")
             finally:
                 if not args.keep_wrapper:
-                    WRAPPER.unlink(missing_ok=True)
+                    wrapper.unlink(missing_ok=True)
         return 1 if failed else 0
 
     export_format, suffix = FORMATS[args.format]
@@ -270,13 +279,14 @@ def main() -> int:
     rows = []
     wrong = []
     for piece in pieces:
-        WRAPPER.write_text(
+        wrapper = wrapper_path(piece["file"])
+        wrapper.write_text(
             wrapper_source(piece["file"], piece["export"], piece.get("hide", [])),
             encoding="utf-8",
             newline="\n",
         )
         try:
-            files = asyncio.run(export(WRAPPER, export_format))
+            files = asyncio.run(export(wrapper, export_format))
         except Exception as exc:  # noqa: BLE001 - the engine diagnostic is the payload
             cause = getattr(exc, "args", ())
             message = cause[0] if cause and isinstance(cause[0], str) else str(exc)
@@ -291,7 +301,7 @@ def main() -> int:
             return 1
         finally:
             if not args.keep_wrapper:
-                WRAPPER.unlink(missing_ok=True)
+                wrapper.unlink(missing_ok=True)
 
         for index, raw in enumerate(files):
             stem = piece["name"] if len(files) == 1 else f"{piece['name']}-{index + 1}"

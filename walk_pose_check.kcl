@@ -24,9 +24,9 @@
 // trailing ankle out of travel before anything else, which is worth knowing.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 import actuatorAssembly from "actuator.kcl"
-import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import hipCarrierRight, hipCarrierLeft from "walking_hip_carrier.kcl"

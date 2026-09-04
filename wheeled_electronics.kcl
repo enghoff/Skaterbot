@@ -42,8 +42,8 @@
 // Coordinates are torso-local: the origin is the torso centre.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import wheeledTorsoShellWidth, wheeledTorsoInteriorFloorZ, wheeledHipSaddleRise from "wheeled_parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 interiorHalfWidth = (wheeledTorsoShellWidth - (shellWall * 2)) / 2
 floorZ = wheeledTorsoInteriorFloorZ

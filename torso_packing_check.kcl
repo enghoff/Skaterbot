@@ -20,7 +20,8 @@
 // this exists to look into.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import wheeledTorsoCenterHeight from "lib/main.kcl"
 import pelvisShell, torsoCover from "torso.kcl"
 import torsoPayload from "wheeled_electronics.kcl"
 

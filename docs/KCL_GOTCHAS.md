@@ -203,6 +203,61 @@ means the robot's front.
   class of the same name.** Passing `StepExportOptions()` fails with *not an
   instance of `FileExportFormat`*, before the engine is touched.
 
+## Imports across directories, and what an import drags in with it
+
+**Importing a module RUNS it, and every solid it built at its top level joins
+your scene.** Not just the name you asked for — all of them, transitively,
+through however many modules the chain passes. Measured 2026-09-04:
+`wheel_module_check.kcl` is 182 261 mm3 as written, and 1 323 068 mm3 if its
+imports are routed through a facade that re-exports the whole library. Nothing
+warns; `/check` is clean either way, and the extra bodies sit wherever their own
+module put them. This is why each scene names the parts it wants one at a time,
+and why `tools/export.py` has to hide a piece's siblings before exporting it.
+
+Three further rules, all syntax errors rather than warnings, decide what a KCL
+project's directory tree is allowed to look like.
+
+- **A path may not climb.** `import a from "../parameters.kcl"` fails with
+  *import path may not start with `..`. Cannot reference a parent module or
+  anything outside the bounds of your project.* A file can only ever see its own
+  directory and what is below it.
+- **A subdirectory is entered through its `main.kcl` and nothing else.**
+  `import rotorHub from "lib/joint.kcl"` fails with *import path to a
+  subdirectory must only refer to main.kcl*. Deeper paths are legal as long as
+  they end there, so `lib/params/main.kcl` could be reached from the root.
+- **`export import` re-exports, and it takes a glob.** `export import * from
+  "joint.kcl"` is what makes a directory facade cheap to write. It passes on the
+  module's own exports only, not the names it imported, so facades do not
+  collide with themselves.
+
+Put together, those four decide this repository's layout. A module that builds
+no top-level geometry can hide behind a facade safely, so the dimensions and the
+drawing functions live in `lib/` and arrive through its `main.kcl`. A module
+that builds bodies cannot, because the facade would hand every scene every part,
+so `thigh.kcl`, `torso.kcl` and the rest sit in the root beside the scenes
+that import them one at a time. Nothing can be moved further DOWN either — a
+check scene in `checks/` could no longer see the parts it places, and two
+sibling directories can never share a third.
+
+Seen once and NOT explained, 2026-09-04, while the models were briefly moved
+into a `src/` directory: a root `main.kcl` whose whole body was
+`import * from "src/main.kcl"` executed correctly on the engine and measured the
+right robot, but rendered EMPTY in Design Studio while the model itself rendered
+fine. Two candidates, and the second is the more likely: either the app's
+viewport draws only what the open file itself states as an expression, or -- far
+more probably -- it was the snapshot trap in `tools/clear_cache.py`, where the
+app restores its own saved copy of a file over the one on disk. That path had
+held the whole assembly minutes earlier, and a restored snapshot importing the
+parts at their old locations would find nothing and draw nothing, which is
+exactly the 2026-09-02 failure recorded there. The layout was reverted rather
+than diagnosed, so if a wrapper scene is ever wanted, clear the caches first and
+do not trust an empty viewport as evidence about the language.
+
+Design Studio also writes a blank `main.kcl` into any folder it opens that has
+none, which is how a stray `docs/main.kcl` appeared twice on 2026-09-04. It is
+the app's empty-project template, it is not an error, and deleting it will not
+stick while that folder is still open as a project.
+
 ## Local tooling
 
 `tools/check.py` runs the same KCL interpreter locally through the `zoo-kcl`

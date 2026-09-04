@@ -25,8 +25,8 @@
 // step where the arm's sides meet the bridge. That one is not modelled here.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import rotorHub, bridgeHeight, rotorEndHeight from "joint.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 // r/t = 0.67 against the 6 mm arm, which is the usual guidance for a printed
 // re-entrant corner. Bigger buys little; smaller stops removing the peak.

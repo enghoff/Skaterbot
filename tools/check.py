@@ -13,7 +13,7 @@ What it does not do: mock execution never evaluates the booleans. A blind pocket
 the engine will refuse passes here without complaint. See docs/KCL_GOTCHAS.md.
 
     uv run tools/check.py                 # every .kcl file in the project
-    uv run tools/check.py joint.kcl       # just the files named
+    uv run tools/check.py lib/joint.kcl   # just the files named
     uv run tools/check.py --fix           # rewrite anything badly formatted
 
 Exit status is 1 if any file fails to execute, lints dirty, or is unformatted.
@@ -35,10 +35,26 @@ CRLF = "\r\n"
 LF = "\n"
 
 
+# The models are in the project root and the shared modules in lib/, which is a
+# directory rather than a naming convention because KCL only lets a parent reach
+# a subdirectory through its main.kcl. Sweeping the tree rather than the root
+# keeps this command's promise to check every file.
+SKIP = {"exports", "renders", "reference", "simulation", "__pycache__"}
+
+
+def swept(path: Path) -> bool:
+    """Is this file part of the project, rather than output or scratch?"""
+    parts = path.relative_to(ROOT).parts
+    # Anything under a dotted directory is somebody's staging area or the app's
+    # own state -- .git, a transfer staging folder, an editor's workspace. It is
+    # not the project, and sweeping it reports failures nobody owns.
+    return not (SKIP & set(parts) or any(p.startswith(".") for p in parts[:-1]))
+
+
 def targets(names: list[str]) -> list[Path]:
     if names:
         return [Path(n) if Path(n).is_absolute() else ROOT / n for n in names]
-    return sorted(ROOT.glob("*.kcl"))
+    return sorted(p for p in ROOT.rglob("*.kcl") if swept(p))
 
 
 async def check_one(path: Path, fix: bool) -> dict:
@@ -115,7 +131,11 @@ def main() -> int:
         status = "FAIL" if r["error"] else "ok"
         if r["error"]:
             failed += 1
-        print(f"{r['path'].name:26s} {status:5s} {r['seconds']:5.2f}s  {', '.join(flags)}")
+        # The path, not the name: both the model (main.kcl) and the library
+        # facade (lib/main.kcl) are called main.kcl, and a bare name would
+        # not say which of them had passed.
+        label = r["path"].resolve().as_posix().removeprefix(ROOT.as_posix() + "/")
+        print(f"{label:30s} {status:5s} {r['seconds']:5.2f}s  {', '.join(flags)}")
 
         if r["error"]:
             print(indent(r["error"]))

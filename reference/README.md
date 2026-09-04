@@ -42,7 +42,7 @@ envelope when opening it.
 
 ### Interface dimensions taken from this file
 
-These are mirrored into `parameters.kcl` so the CAD references them by name.
+These are mirrored into `lib/parameters.kcl` so the CAD references them by name.
 They were read from the hole geometry and cross-checked against the vendor 2D
 print, not from a dimensioned drawing directly, so confirm them on screen.
 

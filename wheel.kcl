@@ -14,10 +14,9 @@
 // doorways and crates.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import * from "wheeled_parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 import wheelAdapterRight, wheelAdapterLeft from "wheel_adapter.kcl"
-import skateWheelHub, skateWheelTread from "skate_wheel.kcl"
 
 washerInnerX = skateWheelOuterX
 washerOuterX = washerInnerX + wheelClampWasherThickness

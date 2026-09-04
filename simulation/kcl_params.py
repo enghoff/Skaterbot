@@ -1,6 +1,6 @@
 """Read mechanical dimensions straight out of the KCL sources.
 
-parameters.kcl is the single source of mechanical dimensions for this project,
+lib/parameters.kcl is the single source of mechanical dimensions for this project,
 and a URDF with those numbers retyped into it is a second source that goes
 stale the first time the CAD moves. So nothing here is typed in: this module
 evaluates the top-level assignments in the KCL files and hands back a plain
@@ -37,10 +37,10 @@ ROOT = Path(__file__).resolve().parent.parent
 # The files that between them carry every dimension this model needs. Order
 # matters: a file may only use names the ones before it have defined.
 SOURCES = (
-    "parameters.kcl",
-    "joint.kcl",
-    "torso_shell.kcl",
-    "wheeled_parameters.kcl",
+    "lib/parameters.kcl",
+    "lib/joint.kcl",
+    "lib/torso_shell.kcl",
+    "lib/wheeled_parameters.kcl",
     "wheeled_electronics.kcl",
 )
 
@@ -139,7 +139,7 @@ def _value_of(expression: str, names: dict[str, float]) -> float:
     return _evaluate(tree.body, names)
 
 
-# `import * from "parameters.kcl"`, `import a, b from "joint.kcl"`.
+# `import * from "lib/parameters.kcl"`, `import a, b from "lib/joint.kcl"`.
 IMPORT = re.compile(r'^\s*import\s+.+?\s+from\s+"([^"]+)"')
 
 
@@ -147,7 +147,7 @@ def import_closure(filename: str, root: Path = ROOT) -> set[Path]:
     """Every KCL file that `filename` is built from, including itself.
 
     A piece's geometry depends on far more than the file that exports it: a
-    limb is drawn by limb.kcl out of joint.kcl's discs on parameters.kcl's
+    limb is drawn by lib/limb.kcl out of lib/joint.kcl's discs on lib/parameters.kcl's
     dimensions, and a change to any of those changes the printed part. This
     walks the import graph so that "is this mesh still current" can be asked
     about the right set of files rather than about one of them.
@@ -193,7 +193,7 @@ def load_colors(
 ) -> dict[str, tuple[float, float, float]]:
     """Every `name = "#rrggbb"` the listed KCL files define, as fractions of 1.
 
-    parameters.kcl carries the robot's palette and wheeled_electronics.kcl adds
+    lib/parameters.kcl carries the robot's palette and wheeled_electronics.kcl adds
     the board colours, and both are read here for the same reason the
     dimensions are: a colour retyped into the URDF is a second source of it.
     """

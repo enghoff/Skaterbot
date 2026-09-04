@@ -16,8 +16,8 @@
 // only two distinct limb parts on the robot.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import limbAssembly from "limb.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 // limbAssembly builds the hand whose plate lies on +X, which is the right leg's
 // thigh: its hip pitch actuator drives towards +X and its knee actuator, turned

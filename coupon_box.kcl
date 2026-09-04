@@ -32,7 +32,8 @@
 // is written. That is the Phase 1 gate in PLAN.md.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 couponRootLength = 40mm
 couponBoxLength = 145mm

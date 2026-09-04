@@ -10,8 +10,8 @@
 // docs/KCL_GOTCHAS.md.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import hipCarrier from "hip_carrier.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 export hipCarrierRight = hipCarrier(hipAxisOffset)
 

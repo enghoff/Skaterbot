@@ -19,10 +19,9 @@
 // than drawn. The lifted leg clears the ground by about 27 mm.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import prototypeWheelAxisHeight, wheeledHipPitchAxisHeight, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 import actuatorAssembly from "actuator.kcl"
-import jointHardware from "hardware.kcl"
 import thighRight, thighLeft from "thigh.kcl"
 import shinRight, shinLeft from "shin.kcl"
 import wheelRight, wheelLeft from "wheel.kcl"

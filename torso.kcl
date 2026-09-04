@@ -57,10 +57,8 @@
 // hips. The joints are the visible hardware, the shell is not.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import wheeledHipPitchAxisHeight, wheeledTorsoShellWidth, wheeledTorsoHeight, wheeledTorsoCenterHeight from "wheeled_parameters.kcl"
-import statorClevis, saddleHeight from "joint.kcl"
-import torsoShellDepth, cablePortWidth, cablePortDepth, cablePortX, cablePortY, coverBossInset, coverBoss, torsoLid from "torso_shell.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 // Every station is derived from the kinematics rather than typed in, so moving
 // the hip pitch axis or the actuator diameter moves the whole shell with it.

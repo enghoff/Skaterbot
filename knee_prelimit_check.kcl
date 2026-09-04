@@ -4,7 +4,8 @@
 // now, on opposite sides of the knee actuator, so nothing can touch.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 import actuatorAssembly from "actuator.kcl"
 import thighRight from "thigh.kcl"
 import shinRight from "shin.kcl"

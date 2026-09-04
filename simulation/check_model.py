@@ -127,7 +127,12 @@ def check_poses(joints, dimensions) -> list[str]:
     print("1. THE TREE AGAINST THE CAD'S OWN POSE SCENES")
     for label, description, source, angle_names, hip_z_name, expected in scenes:
         scene = load_dimensions(
-            ("parameters.kcl", "joint.kcl", "wheeled_parameters.kcl", source)
+            (
+                "lib/parameters.kcl",
+                "lib/joint.kcl",
+                "lib/wheeled_parameters.kcl",
+                source,
+            )
         )
         angles = {joint: scene[name] for joint, name in angle_names.items()}
 

@@ -42,9 +42,8 @@
 // the joints are the visible hardware, the shell is not.
 @settings(defaultLengthUnit = mm, kclVersion = 2.0)
 
-import * from "parameters.kcl"
-import statorClevis, saddleHeight from "joint.kcl"
-import torsoShellDepth, cablePortWidth, cablePortDepth, cablePortX, cablePortY, coverBossInset, coverBoss, torsoLid from "torso_shell.kcl"
+// Dimensions and the shared drawing functions, reached through lib/main.kcl
+import * from "lib/main.kcl"
 
 // 118 mm, where the six-motor pelvis is 125. This one never had to fit two
 // boards side by side: its keel put the power-entry block a whole storey below

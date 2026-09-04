@@ -26,19 +26,37 @@ measured.
 
 ## Repository layout
 
-The KCL sources sit at the repository root because Zoo Design Studio expects
-`project.toml` and `main.kcl` there.
+The models and the parts they place sit at the repository root, because Zoo
+Design Studio expects `project.toml` and `main.kcl` there. The dimensions and the
+shared drawing functions sit in [`lib/`](lib/) and arrive through
+[`lib/main.kcl`](lib/main.kcl), which re-exports them.
+
+That line is not arbitrary, and it is as much of a hierarchy as KCL allows.
+Importing a module runs it, and any solid it built at its top level joins your
+scene whether you asked for it or not — so a part file has to be imported by
+name, one at a time, by the scene that wants it. Everything in `lib/` is
+geometry-free: numbers, and functions that draw only when called. Nothing there
+can put a body in a scene by being imported, which is what makes one shared
+front door safe. The rest of the tree is fixed by two syntax rules: a
+subdirectory can only be entered through its `main.kcl`, and a path may not climb
+with `..`. So a check scene cannot be filed away in `checks/` — it would no
+longer be able to see the parts it places — and two sibling directories can never
+share a third. See [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md).
 
 ```text
 bipedal/
 ├── project.toml           Zoo Design Studio project file
+│
+│   the wheeled robot — this branch
 ├── main.kcl               neutral standing assembly — the WHEELED robot
 ├── pose_check.kcl         crouched pose, one wheel lifted / clearance check
 ├── squat_check.kcl        deepest legal squat, both wheels down
 ├── knee_*_check.kcl       knee at 100 and 110 degrees
 ├── wheel_module_check.kcl one wheel motor and its wheel, on their own
+├── torso_packing_check.kcl  the pelvis with its lid off and the boards in it
 ├── limb_check.kcl         single-joint review model
 ├── coupon_box.kcl         the Phase 1 bending coupon — print this first
+├── fillet_study.kcl       fillet radii on the joint saddle, side by side
 │
 │   the walking robot, kept for comparison and unchanged on `main`
 ├── walking_main.kcl       neutral standing assembly — the WALKING robot
@@ -46,25 +64,29 @@ bipedal/
 ├── roll_limit_check.kcl   hip roll at the inward limit the feet impose
 ├── torque_limit_pose.kcl  the deepest crouch the knees can hold indefinitely
 │
-├── parameters.kcl         shared dimensions and joint angles
-├── wheeled_parameters.kcl the donor wheel and the axis heights it implies
+│   the parts — each builds its bodies, so a scene imports the ones it wants
 ├── actuator.kcl           simplified DM-J3507-2EC envelope
-├── joint.kcl              the joint, designed once, used at all eight
-├── limb.kcl               closed-shell limb, parametric on length
-├── hardware.kcl           bearing carrier, 6800-2RS, journal
-├── hip_carrier.kcl        orthogonal hip roll/pitch carrier, parametric on span
-├── walking_hip_carrier.kcl  that carrier at the walking robot's 55 mm span
 ├── thigh.kcl, shin.kcl    the limb at two lengths
 ├── wheel_adapter.kcl      the printed part that drives a skate wheel
-├── skate_wheel.kcl        the bought 80 x 24 mm wheel it drives
 ├── wheel.kcl              adapter, wheel and clamp, as the assemblies place it
 ├── foot.kcl               ribbed foot tray, sole, sensor seats (walking robot)
-├── torso_shell.kcl        lid and cover bosses, as functions taking a box size
+├── walking_hip_carrier.kcl  the hip carrier at the walking robot's 55 mm span
 ├── torso.kcl              six-motor pelvis, 125 x 68 x 65, hip pitch in its floor
 ├── walking_torso.kcl      eight-motor pelvis, 118 x 68 x 106, keel and hip roll
 ├── wheeled_electronics.kcl  the boards that set the six-motor torso's height
-├── torso_packing_check.kcl  the pelvis with its lid off and the boards in it
 ├── payload_envelopes.kcl  reserved power-entry and electronics volumes
+│
+├── lib/                   dimensions and shared functions — no geometry at all
+│   ├── main.kcl           re-exports the rest; the only way in from above
+│   ├── parameters.kcl     shared dimensions and joint angles
+│   ├── wheeled_parameters.kcl  the donor wheel and the axis heights it implies
+│   ├── joint.kcl          the joint, designed once, used at all eight
+│   ├── hardware.kcl       bearing carrier, 6800-2RS, journal
+│   ├── limb.kcl           closed-shell limb, parametric on length
+│   ├── hip_carrier.kcl    orthogonal hip roll/pitch carrier, parametric on span
+│   ├── torso_shell.kcl    lid and cover bosses, as functions taking a box size
+│   └── skate_wheel.kcl    the bought 80 x 24 mm wheel the adapter drives
+│
 ├── tools/                 check, mass, render and export scripts (see below)
 ├── simulation/            the CAD as a URDF, for Isaac Sim and RL (see below)
 ├── docs/                  project documentation (see above)
@@ -135,7 +157,7 @@ measured geometry.
 ## Current baseline
 
 - Height: 339 mm. It was 380 until the torso was cut from 106 mm to 65 —
-  see `wheeled_parameters.kcl`, which derives that height from the electronics
+  see `lib/wheeled_parameters.kcl`, which derives that height from the electronics
   rather than choosing it. The walking robot is still 380.
 - DOF: 6 (hip pitch, knee pitch, driven wheel per leg). Hip roll was deleted on
   this branch: see `docs/WHEELED_BIPED_ANALYSIS.md` section 11 for the argument

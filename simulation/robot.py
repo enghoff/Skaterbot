@@ -26,7 +26,7 @@ ROS convention a URDF wants, and the single conversion into metres, so that
 both have exactly one place to go wrong.
 
 WHICH PART BELONGS TO WHICH LINK. A limb print carries a diameter-36 output
-disc at one end and a diameter-52 stator plate at the other (limb.kcl). The
+disc at one end and a diameter-52 stator plate at the other (lib/limb.kcl). The
 output disc bolts to the actuator that drives the limb; the stator plate bolts
 to the REAR COVER of the next actuator down. So each limb carries the housing
 of the joint below it, and that actuator's 150 g belongs to the limb rather
@@ -112,7 +112,7 @@ class Solid:
       box         dims = (x, y, z)
       point       dims unused; contributes mass but no inertia of its own
 
-    `material` names a colour in the CAD's own palette -- parameters.kcl for
+    `material` names a colour in the CAD's own palette -- lib/parameters.kcl for
     the robot, wheeled_electronics.kcl for the boards -- so a part is the same
     colour in the simulator as it is in Design Studio, and neither file is a
     second source of the other.
@@ -367,7 +367,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     links[base.name] = base
 
     # ---- the two legs -----------------------------------------------------
-    # limb.kcl: "the limb axis is Z, both joint axes are X, and the two joint
+    # lib/limb.kcl: "the limb axis is Z, both joint axes are X, and the two joint
     # centres sit at z = +/- limbLength/2", with the driven output disc at +z.
     # So a limb link whose origin is its proximal joint carries its mesh half a
     # limb-length down.
@@ -396,7 +396,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("thigh", side)],
                 at=(0.0, 0.0, -thigh_len / 2),
                 source="measured",
-                note="limb.kcl, 105 mm, five bodies",
+                note="lib/limb.kcl, 105 mm, five bodies",
             ),
             Solid(
                 label=f"knee actuator, {side}",
@@ -466,7 +466,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("shin", side)],
                 at=(0.0, 0.0, -shin_len / 2),
                 source="measured",
-                note="limb.kcl, 105 mm, five bodies",
+                note="lib/limb.kcl, 105 mm, five bodies",
             ),
             Solid(
                 label=f"wheel actuator, {side}",

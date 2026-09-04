@@ -236,28 +236,25 @@ bipedal/
 ├── .mcp.json              # Zoo MCP server, committed
 ├── .claude/settings.json  # project-scope MCP approval
 ├── project.toml           # Zoo Design Studio project file
-├── main.kcl               # top-level assembly
-├── parameters.kcl         # shared named dimensions
-├── torso.kcl
-├── hip_carrier.kcl
-├── pitch_yoke.kcl
-├── thigh.kcl
-├── knee_module.kcl
-├── shin.kcl
-├── foot.kcl
-├── actuator.kcl
-├── payload_envelopes.kcl
-├── pose_check.kcl
-├── knee_limit_check.kcl
-├── knee_prelimit_check.kcl
+├── main.kcl               # top-level assembly, the wheeled robot
+├── walking_main.kcl       # the walking robot
+├── pose_check.kcl         # and the other check scenes
+├── thigh.kcl              # and the part files they place
+├── lib/                   # dimensions and shared functions, no geometry
+│   ├── main.kcl           # re-exports the rest; the only way in from above
+│   └── parameters.kcl     # shared named dimensions
+├── tools/                 # check, mass, render and export scripts
+├── simulation/            # the CAD as a URDF
 ├── docs/
 ├── reference/             # vendor geometry, tracked on purpose
 └── secrets/               # ZOO_API_TOKEN, untracked
 ```
 
-`project.toml` is what marks the directory as a Design Studio project; do not
-delete it. Design Studio projects are filesystem-based and `.kcl` files are
-plain-text parametric CAD source.
+`project.toml` is what marks a directory as a Design Studio project; do not
+delete it. The app treats whatever folder it opens as the project, and writes a
+blank `main.kcl` into one that has none — so opening the repository root, or
+`docs/`, makes a stub rather than an error. Design Studio projects are
+filesystem-based and `.kcl` files are plain-text parametric CAD source.
 
 Open this directory in both VS Code and Zoo Design Studio.
 
