@@ -1,6 +1,8 @@
 # Torque-Controlled Biped
 
-A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and is `walking_main.kcl` here and `main.kcl` on `main`.
+A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and lives on the `main` branch.
+
+The CAD is [build123d](https://build123d.readthedocs.io) — Python over OCCT — in [`cad/`](cad/). It was KCL executed on Zoo's engine until September 2026; [`docs/BUILD123D_MIGRATION.md`](docs/BUILD123D_MIGRATION.md) is the record of the move, and the practical consequence is that every check is now free, local and offline.
 
 The structure is flat printed plates lying in the actuators' own planes, with the actuators sandwiched between them and left exposed so they can cool.
 
@@ -11,13 +13,14 @@ The current baseline uses DAMIAO DM-J3507-2EC actuators and PA12-CF printed shel
 All project documentation lives in [`docs/`](docs/):
 
 - [`docs/AGENTS.md`](docs/AGENTS.md) — binding instructions for any agent working this CAD. **Read this first.**
-- [`docs/ZOOKEEPER_TASK.md`](docs/ZOOKEEPER_TASK.md) — the currently open CAD task brief.
+- [`docs/ZOOKEEPER_TASK.md`](docs/ZOOKEEPER_TASK.md) — the last CAD task brief, now closed and superseded. There is no open brief.
 - [`docs/OPUS_HANDOFF.md`](docs/OPUS_HANDOFF.md) — the original engineering brief. Objectives and actuator reasoning still stand; its structure, mass and battery figures are superseded by `PLAN.md`.
 - [`docs/NOTES.md`](docs/NOTES.md) — the running engineering log: what was measured, what was found, and what turned out to be wrong. Read it back to front.
 - [`docs/PLAN.md`](docs/PLAN.md) — **the active plan**: overhauling the skeleton into a stressed-shell design.
 - [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — superseded by `PLAN.md`; kept as the record of the skeleton design.
 - [`docs/BOM.md`](docs/BOM.md) — provisional bill of materials with India-focused sourcing notes and supply-risk flags.
-- [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) — what this engine refuses, which way the robot faces, and what the failure messages actually mean. Read before designing a pocket, a hole or a union.
+- [`docs/BUILD123D_MIGRATION.md`](docs/BUILD123D_MIGRATION.md) — how the CAD moved from KCL to build123d, and the six gates it is held to.
+- [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) — what the Zoo engine refused and which way the robot faces. **History now**, but it is why several parts are shaped as they are: the interpenetrating shells, the rectangular cable ports, the arcs drawn into profiles instead of real fillets.
 
 One README sits outside `docs/`, beside the code it describes:
 [`simulation/README.md`](simulation/README.md) — how the CAD becomes a URDF, the
@@ -26,107 +29,101 @@ measured.
 
 ## Repository layout
 
-The models and the parts they place sit at the repository root, because Zoo
-Design Studio expects `project.toml` and `main.kcl` there. The dimensions and the
-shared drawing functions sit in [`lib/`](lib/) and arrive through
-[`lib/main.kcl`](lib/main.kcl), which re-exports them.
-
-That line is not arbitrary, and it is as much of a hierarchy as KCL allows.
-Importing a module runs it, and any solid it built at its top level joins your
-scene whether you asked for it or not — so a part file has to be imported by
-name, one at a time, by the scene that wants it. Everything in `lib/` is
-geometry-free: numbers, and functions that draw only when called. Nothing there
-can put a body in a scene by being imported, which is what makes one shared
-front door safe. The rest of the tree is fixed by two syntax rules: a
-subdirectory can only be entered through its `main.kcl`, and a path may not climb
-with `..`. So a check scene cannot be filed away in `checks/` — it would no
-longer be able to see the parts it places — and two sibling directories can never
-share a third. See [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md).
+The CAD is one flat Python package. The KCL-era split between the project root
+and `lib/` is gone along with the reason for it: importing a KCL module ran it,
+and any solid it built at its top level joined your scene whether you asked for
+it or not, so the shared modules had to be geometry-free and reached through a
+single facade. A Python module that defines functions builds nothing, and a scene
+assembles what it asks for by calling functions.
 
 ```text
 bipedal/
-├── project.toml           Zoo Design Studio project file
+├── cad/                   the CAD — build123d, one flat package
+│   ├── parameters.py      shared dimensions and joint angles, with provenance
+│   ├── wheeled_parameters.py  the donor wheel and the axis heights it implies
+│   ├── joint.py           the joint, designed once, used at all six
+│   ├── limb.py            closed-shell limb, parametric on length
+│   ├── hardware.py        bearing carrier, 6800-2RS, journal
+│   ├── torso_shell.py     lid and cover bosses, as functions taking a box size
+│   ├── skate_wheel.py     the bought 80 x 24 mm wheel the adapter drives
+│   ├── geometry.py        the mirroring and profile helpers the parts share
+│   │
+│   ├── thigh.py, shin.py  the limb at two lengths — the printed parts
+│   ├── wheel_adapter.py   the printed part that drives a skate wheel
+│   ├── torso.py           six-motor pelvis, 125 x 68 x 65, hip pitch in its floor
+│   ├── actuator.py        simplified DM-J3507-2EC envelope
+│   ├── wheel.py           adapter, wheel and clamp, as the assemblies place it
+│   ├── electronics.py     the boards that set the torso's height, and their envelopes
+│   │
+│   ├── main.py            robotAssembly() — the neutral standing assembly
+│   ├── poses.py           the check scenes' poses, as numbers
+│   ├── scenes.py          the check scenes, as bodies placed at those poses
+│   ├── finish.py          the 0.5 mm chamfer, applied on the way out
+│   └── dimensions.py      every constant and colour, collected for simulation/
 │
-│   the wheeled robot — this branch
-├── main.kcl               neutral standing assembly — the WHEELED robot
-├── pose_check.kcl         crouched pose, one wheel lifted / clearance check
-├── squat_check.kcl        deepest legal squat, both wheels down
-├── knee_*_check.kcl       knee at 100 and 110 degrees
-├── wheel_module_check.kcl one wheel motor and its wheel, on their own
-├── torso_packing_check.kcl  the pelvis with its lid off and the boards in it
-├── limb_check.kcl         single-joint review model
-├── coupon_box.kcl         the Phase 1 bending coupon — print this first
-├── fillet_study.kcl       fillet radii on the joint saddle, side by side
-│
-│   the walking robot, kept for comparison and unchanged on `main`
-├── walking_main.kcl       neutral standing assembly — the WALKING robot
-├── walk_pose_check.kcl    mirrored walking stance, both feet flat
-├── roll_limit_check.kcl   hip roll at the inward limit the feet impose
-├── torque_limit_pose.kcl  the deepest crouch the knees can hold indefinitely
-│
-│   the parts — each builds its bodies, so a scene imports the ones it wants
-├── actuator.kcl           simplified DM-J3507-2EC envelope
-├── thigh.kcl, shin.kcl    the limb at two lengths
-├── wheel_adapter.kcl      the printed part that drives a skate wheel
-├── wheel.kcl              adapter, wheel and clamp, as the assemblies place it
-├── foot.kcl               ribbed foot tray, sole, sensor seats (walking robot)
-├── walking_hip_carrier.kcl  the hip carrier at the walking robot's 55 mm span
-├── torso.kcl              six-motor pelvis, 125 x 68 x 65, hip pitch in its floor
-├── walking_torso.kcl      eight-motor pelvis, 118 x 68 x 106, keel and hip roll
-├── wheeled_electronics.kcl  the boards that set the six-motor torso's height
-├── payload_envelopes.kcl  reserved power-entry and electronics volumes
-│
-├── lib/                   dimensions and shared functions — no geometry at all
-│   ├── main.kcl           re-exports the rest; the only way in from above
-│   ├── parameters.kcl     shared dimensions and joint angles
-│   ├── wheeled_parameters.kcl  the donor wheel and the axis heights it implies
-│   ├── joint.kcl          the joint, designed once, used at all eight
-│   ├── hardware.kcl       bearing carrier, 6800-2RS, journal
-│   ├── limb.kcl           closed-shell limb, parametric on length
-│   ├── hip_carrier.kcl    orthogonal hip roll/pitch carrier, parametric on span
-│   ├── torso_shell.kcl    lid and cover bosses, as functions taking a box size
-│   └── skate_wheel.kcl    the bought 80 x 24 mm wheel the adapter drives
-│
-├── tools/                 check, mass, render and export scripts (see below)
+├── tools/                 check, gates, mass, view and export scripts (see below)
 ├── simulation/            the CAD as a URDF, for Isaac Sim and RL (see below)
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
+│   └── golden/            what the Zoo engine built, frozen: the gates' reference
 └── secrets/               local credentials, not committed
 ```
 
+The check scenes are `cad/scenes.py`, one function each: the crouched pose with
+one wheel lifted, the deepest legal squat, the knee at 100 and 110 degrees, the
+pelvis with its lid off and the boards in it, one limb on its own and one wheel
+module on its own. `uv run tools/view.py --list` names them.
+
+Two KCL files went without a Python equivalent, and both were studies rather than
+parts of the robot: a printable bending coupon for the limb section, and a
+side-by-side comparison of the rotor-arm fillet. The coupon is worth rebuilding
+when someone is ready to print and test one; the fillet study is spent, because
+that fillet is real geometry in `cad/joint.py` now.
+
 ## Working on the CAD
 
-Four scripts in [`tools/`](tools/), each also available as a slash command in
-Claude Code. They run with `uv run`, which fetches their one dependency —
-Zoo's own KCL interpreter, the same one the MCP server is built on — by itself.
+Six scripts in [`tools/`](tools/), each also a slash command in Claude Code. They
+run with `uv run`, which fetches build123d by itself. **All of them are free,
+offline and take seconds** — the metered engine is gone.
 
 ```bash
-uv run tools/check.py              # every .kcl file: mock-execute, lint, format
+uv run tools/check.py              # build every part and scene, then lint and format
+uv run tools/gate_a.py             # … through gate_f.py: the six gates
 uv run tools/mass.py               # mass roll-up against the 2 300 g ceiling
-uv run tools/views.py main.kcl     # render, in views named front/back/left/right
 uv run tools/export.py             # one STEP per printable piece, into exports/
+uv run tools/view.py               # show a model in the OCP CAD Viewer
+uv run simulation/build_urdf.py    # the simulation model
 ```
 
-Only the first is free. `check.py` runs entirely on this machine, costs no API
-credits and needs no token, so it can be run after every edit; the other three
-execute on Zoo's engine and are metered.
+`check.py` is the sweep to run after every edit: it imports every module, builds
+every printed piece and every check scene, and lints and format-checks the tree
+against `ruff.toml`. Unlike the KCL mock execution it replaced, building a part
+evaluates its booleans, so a cut that cannot be made fails here rather than
+later.
 
-`export.py` writes the parts you would hand to a printer, one file per piece,
-and its `--verify` and `--mock` modes cost nothing. Which pieces exist is the
+The gates are what make "the CAD is right" a measured claim.
+[`reference/golden/`](reference/golden/) holds what the Zoo engine actually built
+before the migration — one STEP per printed piece, every dimension to full
+precision, every check scene's pose — and gates A to D hold today's Python
+against it. Gates E and F are written against the drawing intent instead: E
+counts the holes and pockets that must exist **on the finished solid**, which is
+the permanent answer to a boolean that silently fills a hole back in, and F
+measures every clearance the check scenes were drawn to show.
+
+`export.py` writes the parts you would hand to a printer, one file per piece, and
+re-reads each file to check it against the body count declared in the
 `[[printed.piece]]` register in
-[`tools/mass_budget.toml`](tools/mass_budget.toml) — the same file that lists
-what is printed for the mass roll-up, so the two cannot drift apart. Views are named in the **robot's**
-frame, where `front` is the face it walks towards — the opposite of Zoo's own
-camera named "front", which is one of the traps collected in
-[`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md).
+[`tools/mass_budget.toml`](tools/mass_budget.toml) — the same file that lists what
+is printed for the mass roll-up, so the two cannot drift apart. `--finished`
+applies the 0.5 mm chamfer; the default is the part as drawn, which is what the
+gates compare.
 
-Exported geometry (`*.stl`, `*.step`) and the Design Studio `thumbnail.png` are
-deliberately untracked. Vendor geometry under [`reference/`](reference/) is the
-exception: it is an input rather than an export, so it is tracked, and
-[`reference/README.md`](reference/README.md) records where each file came from
-along with its checksum and known caveats. The simulation meshes under
-`simulation/urdf/meshes/` are tracked for the same reason — they are what the
-URDF points at, so a checkout can be simulated without spending credits.
+Exported geometry (`*.stl`, `*.step`) is deliberately untracked. Geometry under
+[`reference/`](reference/) is the exception: it is an input rather than an export,
+so it is tracked, and [`reference/README.md`](reference/README.md) records where
+each file came from along with its checksum and known caveats. The simulation
+meshes under `simulation/urdf/meshes/` are tracked for the same reason — they are
+what the URDF points at.
 
 ## Simulation
 
@@ -141,14 +138,15 @@ uv run simulation/check_model.py    # check it against the CAD
 ```
 
 Nothing in it is a second copy of a dimension: the kinematics are read out of
-the KCL, the printed masses and inertias are integrated from the exported
-meshes, and the bought masses come from `tools/mass_budget.toml`. So a change to
-a joint height, an axis or a mass allowance costs nothing to carry through — only
-a printed part changing *shape* needs a fresh mesh, and the build refuses to run
-against a stale one rather than quietly mixing new kinematics with old geometry.
+`cad/` by `cad/dimensions.py`, the printed masses and inertias are integrated
+from the exported meshes, and the bought masses come from
+`tools/mass_budget.toml`. A change to a joint height, an axis or a mass allowance
+carries through on its own; only a printed part changing *shape* needs a fresh
+mesh, and the build refuses to run against a stale one rather than quietly mixing
+new kinematics with old geometry.
 
-`check_model.py` drives the tree to the angles in `pose_check.kcl` and
-`squat_check.kcl` and checks the wheels land where those scenes independently
+`check_model.py` drives the tree to the angles of `cad/poses.py`'s `pose_check`
+and `squat_check` and checks the wheels land where those scenes independently
 compute them, which exercises every link length, joint origin and axis sign at
 once. It closes by totalling the robot's mass **by provenance** — read that
 before quoting a simulation result, because only a fifth of this robot's mass is
@@ -157,7 +155,7 @@ measured geometry.
 ## Current baseline
 
 - Height: 339 mm. It was 380 until the torso was cut from 106 mm to 65 —
-  see `lib/wheeled_parameters.kcl`, which derives that height from the electronics
+  see `cad/wheeled_parameters.py`, which derives that height from the electronics
   rather than choosing it. The walking robot is still 380.
 - DOF: 6 (hip pitch, knee pitch, driven wheel per leg). Hip roll was deleted on
   this branch: see `docs/WHEELED_BIPED_ANALYSIS.md` section 11 for the argument
@@ -166,7 +164,7 @@ measured geometry.
 - Actuator: DAMIAO DM-J3507-2EC, 24 V
 - Mass ceiling: 2.3 kg, set by torque rather than chosen — see `docs/PLAN.md`
 - Current mass, measured from the CAD: **1.607 kg**, leaving 693 g of headroom.
-  `uv run tools/mass.py` re-measures it. Two actuators, two bearing sets, both
+  `uv run tools/mass.py` re-measures it in about a second. Two actuators, two bearing sets, both
   hip carriers and the pelvis keel went with hip roll, and the shorter torso took
   another 32 g, which is about 440 g off the 2.047 kg the eight-motor wheeled
   robot weighed.

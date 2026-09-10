@@ -9,7 +9,7 @@ being edited separately.
 
 Nothing in here is typed in twice either. The actuator numbers come from
 robot.py, which is where this project already keeps them; the geometry comes
-from the KCL by way of kcl_params, so a change to the CAD moves it. What is
+from the CAD by way of cad/dimensions.py, so a change to the CAD moves it. What is
 genuinely new -- contact, solver settings, randomisation ranges -- is written
 once, below, with its provenance.
 
@@ -35,7 +35,11 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 from robot import ACTUATOR  # noqa: E402
-from kcl_params import load as load_dimensions  # noqa: E402
+
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0, str(HERE.parent))
+
+from cad.dimensions import load as load_dimensions  # noqa: E402
 
 # --------------------------------------------------------------------------
 # Where the description is
@@ -61,6 +65,7 @@ def needs_isaac_python(script: str) -> str:
         "\n\nPass -u either way: Kit shuts down hard enough to discard buffered"
         "\noutput, so without it a finished run can print nothing at all.\n"
     )
+
 
 URDF_PATH = HERE / "urdf" / f"{ROBOT_NAME}.urdf"
 USD_DIR = HERE / "isaacsim" / "usd"
@@ -128,6 +133,7 @@ def rebuild_command() -> str:
 def check_command() -> str:
     """What to run to measure what PhysX made of the rebuilt USD."""
     return f"{isaac_interpreter()} -u simulation/isaacsim/run.py --check"
+
 
 # --------------------------------------------------------------------------
 # The actuator, all six of them the same.
@@ -269,12 +275,12 @@ def geometry() -> dict[str, float]:
     standing_height = d["wheeledTorsoTop"] / 1000.0
     track = (d["skateWheelCenterX"] * 2.0 + d["hipSpacing"]) / 1000.0
 
-    assert (
-        abs(wheel_radius - d["skateWheelDiameter"] / 2000.0) < 1e-9
-    ), "the wheel axis is not at the wheel's own radius"
-    assert (
-        0.0 < wheel_radius < standing_base_height < standing_height
-    ), "the robot's heights do not stack up"
+    assert abs(wheel_radius - d["skateWheelDiameter"] / 2000.0) < 1e-9, (
+        "the wheel axis is not at the wheel's own radius"
+    )
+    assert 0.0 < wheel_radius < standing_base_height < standing_height, (
+        "the robot's heights do not stack up"
+    )
 
     return {
         "wheel_radius_m": wheel_radius,

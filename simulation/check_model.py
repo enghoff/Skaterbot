@@ -1,7 +1,7 @@
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.11,<3.13"
 # dependencies = ["numpy>=1.26", "trimesh>=4.0", "scipy>=1.11",
-#                 "networkx>=3.0", "manifold3d>=2.3"]
+#                 "networkx>=3.0", "manifold3d>=2.3", "build123d>=0.9"]
 # ///
 """Check the simulation model against the CAD it came from.
 
@@ -10,8 +10,8 @@
 Free and offline. It answers four questions, and the fourth is the one that
 matters most.
 
-1. DOES THE KINEMATIC TREE AGREE WITH THE CAD? pose_check.kcl and
-   squat_check.kcl each place a leg at a stated hip and knee angle and work out
+1. DOES THE KINEMATIC TREE AGREE WITH THE CAD? cad/poses.py's pose_check and
+   squat_check each place a leg at a stated hip and knee angle and work out
    where the wheel ends up. Those scenes are the project's own arithmetic, done
    independently of anything here, so driving the URDF's tree to the same
    angles and landing on the same wheel centre is real evidence -- it tests the
@@ -40,10 +40,12 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import robot as robot_model  # noqa: E402
 from inertia import MeshLibrary, is_plausible, link_properties, skew_of  # noqa: E402
-from kcl_params import load as load_dimensions  # noqa: E402
+
+from cad import poses  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 RAW_MESHES = HERE / "meshes"
@@ -91,9 +93,9 @@ def check_poses(joints, dimensions) -> list[str]:
 
     scenes = [
         (
-            "pose_check.kcl",
+            "pose_check",
             "crouched, right wheel lifted",
-            "pose_check.kcl",
+            "pose_check",
             {
                 "hip_pitch_left": "leftHipAngle",
                 "knee_left": "leftKneeAngle",
@@ -107,9 +109,9 @@ def check_poses(joints, dimensions) -> list[str]:
             },
         ),
         (
-            "squat_check.kcl",
+            "squat_check",
             "deepest squat the knee stop allows",
-            "squat_check.kcl",
+            "squat_check",
             {
                 "hip_pitch_left": "squatHipAngle",
                 "knee_left": "squatKneeAngle",
@@ -126,14 +128,7 @@ def check_poses(joints, dimensions) -> list[str]:
 
     print("1. THE TREE AGAINST THE CAD'S OWN POSE SCENES")
     for label, description, source, angle_names, hip_z_name, expected in scenes:
-        scene = load_dimensions(
-            (
-                "lib/parameters.kcl",
-                "lib/joint.kcl",
-                "lib/wheeled_parameters.kcl",
-                source,
-            )
-        )
+        scene = poses.SCENES[source]()
         angles = {joint: scene[name] for joint, name in angle_names.items()}
 
         # The scenes drop the whole robot so the standing wheel stays on the
@@ -241,8 +236,7 @@ def check_links(links, joints, dimensions, meshes) -> tuple[list[str], dict]:
     # It errs upward on purpose, so the two tools disagree by exactly that bias
     # and the difference is worth printing rather than reconciling silently.
     as_exported = sum(
-        meshes.properties(piece).summed_grams * count
-        for piece, count in placed.items()
+        meshes.properties(piece).summed_grams * count for piece, count in placed.items()
     )
 
     print(f"\n   this model          {total:7.1f} g   overlaps resolved")
@@ -254,7 +248,9 @@ def check_links(links, joints, dimensions, meshes) -> tuple[list[str], dict]:
         f"   budget fixed lines  {fixed:7.1f} g   every bought and estimated item in "
         "mass_budget.toml, all of it placed here"
     )
-    print(f"   ceiling             {ceiling:7.1f} g  -- {ceiling - total:+.1f} g of headroom")
+    print(
+        f"   ceiling             {ceiling:7.1f} g  -- {ceiling - total:+.1f} g of headroom"
+    )
     if abs(total - budget_total) > 0.5:
         failures.append(
             f"the model totals {total:.1f} g but the budget totals {budget_total:.1f} g; "
@@ -332,7 +328,7 @@ def describe_plant(links, joints, dimensions, rolled) -> None:
             f"\n   NOTE: the standing centre of mass sits {abs(com[0]):.1f} mm to the "
             f"{'right' if com[0] > 0 else 'left'}. The pelvis is\n"
             "   laid out with power entry on one side and the controller on the other\n"
-            "   (wheeled_electronics.kcl), and they do not weigh the same. On a robot with no\n"
+            "   (cad/electronics.py), and they do not weigh the same. On a robot with no\n"
             "   hip roll that is a standing bias the wheels have to hold out against."
         )
 

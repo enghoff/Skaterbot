@@ -22,7 +22,7 @@ The project is inspired by the simplicity and scale of the Mekion Bimo, but it i
 
 Your role is to **own and evolve the mechanical CAD**, while maintaining explicit engineering reasoning and design intent.
 
-The current CAD was generated in Zoo Design Studio / Zookeeper and is intended to be driven through **Zoo MCP** where practical.
+~~The current CAD was generated in Zoo Design Studio / Zookeeper and is intended to be driven through **Zoo MCP** where practical.~~ **Out of date, 2026-09-10:** the CAD is build123d in `cad/`, driven from the command line, and nothing in the repository needs Design Studio, Zoo MCP or an API token. See [`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) and `../CLAUDE.md`. The objectives and the actuator reasoning in this brief still stand; its repository layout, tooling and mass figures do not.
 
 ---
 

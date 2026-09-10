@@ -1,6 +1,14 @@
 # Zookeeper task brief — fix three defects in the knee module
 
-**Status:** open, written 2026-08-24. The previous brief asked for the knee
+**Status: CLOSED and superseded, 2026-09-10.** It was written for a KCL model
+(`knee_module.kcl`) that no longer exists: the knee interface was folded into the
+limb and the joint, and the CAD has since moved to build123d in `cad/`. The
+defect class it is about -- features whose X extents do not do what the design
+intends, found on paper because nothing looks wrong on screen -- is exactly what
+`tools/gate_e.py` and `tools/gate_f.py` now check mechanically, which is the part
+of this brief that outlived it. Nothing below is a live instruction.
+
+Originally: open, written 2026-08-24. The previous brief asked for the knee
 actuator interface to be built; it was, and the delivery is committed as
 `def8540`. This brief fixes three defects found afterwards by checking the axial
 stations in `knee_module.kcl` arithmetically, plus one analysis error that was

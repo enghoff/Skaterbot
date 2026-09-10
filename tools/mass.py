@@ -1,166 +1,226 @@
 # /// script
-# requires-python = ">=3.11"
-# dependencies = ["zoo-kcl>=0.3.181"]
+# requires-python = ">=3.11,<3.13"
+# dependencies = ["build123d>=0.9"]
 # ///
 """Measure the printed parts and roll the whole robot's mass up against its ceiling.
 
 Every geometry change is supposed to be reported with its mass delta. This
-measures each printed part from the CAD at PA12-CF density, multiplies by the
-count the robot carries, adds the bought and estimated items, and compares the
-total to the ceiling. Parts, counts and allowances live in mass_budget.toml
-beside this file; nothing is hard-coded here.
+integrates each printed part's volume at PA12-CF density, multiplies by the count
+the robot carries, adds the bought and estimated items, and compares the total to
+the ceiling. Parts, counts, allowances and the functions that build them all live
+in mass_budget.toml beside this file; nothing is hard-coded here.
 
-    uv run tools/mass.py                    # table, plus the delta from baseline
+    uv run tools/mass.py                    # the table, and the delta from baseline
+    uv run tools/mass.py --union            # also what the parts weigh unioned
+    uv run tools/mass.py --gate             # fail if a part has moved (gate C)
     uv run tools/mass.py --save-baseline    # make this the new baseline
 
-This executes on the real engine — one execution per printed part — and
-therefore spends API credits. Volume and mass are the only outputs used: this
-API has returned a bounding box 173 mm long for a 115 mm foot, so its centre of
-mass and extents are not trusted here (docs/KCL_GOTCHAS.md).
+Free and offline, in about a second. It used to be four metered engine
+executions, which is why the discipline around it was "measure when the geometry
+has to be right" rather than "measure every time"; there is no longer any reason
+not to run it on every change.
 
-Two known biases, both small and both in the safe direction for a ceiling:
-parts left as interpenetrating bodies have their overlaps counted twice, and
-printed infill is not modelled, so a real print comes out lighter than its
-solid volume suggests.
+TWO FIGURES, AND THE DIFFERENCE BETWEEN THEM MATTERS. A printed piece is several
+interpenetrating bodies, so there are two honest ways to weigh it:
+
+  sum    add the bodies up and count every overlap twice. This is what the Zoo
+         engine reported and therefore what the baseline holds, and it is the
+         column reported by default, because the bias errs UPWARD against a
+         ceiling.
+  union  resolve the overlaps first. This is the real mass, and it is what
+         simulation/ has always used -- about 19 g lighter across the robot.
+
+--gate compares SUM against the baseline part by part rather than on the total,
+because a total can come out right by cancellation between two parts that are
+both wrong. Once phase 3 of docs/BUILD123D_MIGRATION.md unions these parts for
+real, the union column becomes the only one, and the drop is a MEASUREMENT
+ARTEFACT rather than a saving.
+
+A further bias, unchanged by any of this: printed infill is not modelled, so a
+real print comes out lighter than its solid volume suggests.
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
+import importlib
 import json
 import sys
 import tomllib
 from pathlib import Path
-
-import kcl
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 BUDGET = HERE / "mass_budget.toml"
 BASELINE = HERE / "mass_baseline.json"
 
+sys.path.insert(0, str(ROOT))
 
-async def measure(path: Path, density: float) -> tuple[float, float]:
-    request = kcl.PhysicalPropertiesRequest()
-    request.set_mass(kcl.UnitMass.Grams, density, kcl.UnitDensity.KilogramsPerCubicMeter)
-    request.set_volume(kcl.UnitVolume.CubicCentimeters)
-    response = await kcl.execute_and_measure(str(path), request)
-    return response.get_mass(), response.get_volume()
+# A tenth of a gram is the resolution the baseline is stored at, so that is what
+# a comparison against it can mean.
+TOLERANCE_G = 0.05
 
 
-def delta(current: float, previous: float | None) -> str:
-    if previous is None:
-        return ""
-    change = current - previous
-    if abs(change) < 0.05:
-        return "     ="
-    return f"{change:+7.1f}"
+def bodies_of(part: dict) -> list:
+    """Every body a printed entry's `measure` functions build.
+
+    The engine weighed a KCL file, which meant whatever solids that file left
+    standing -- both hands of a mirrored pair, or a shell and its lid. `measure`
+    is that list written down, so the figure means the same thing it used to.
+    """
+    module = importlib.import_module(
+        part["file"].removesuffix(".py").replace("/", ".").replace("\\", ".")
+    )
+    bodies: list = []
+    for name in part["measure"]:
+        built = getattr(module, name)()
+        bodies += list(built) if isinstance(built, (list, tuple)) else [built]
+    return bodies
 
 
-def main() -> int:
+def weigh(bodies: list, density: float) -> tuple[float, float]:
+    """(sum of the bodies, the union of them), in grams.
+
+    A body that measures zero is refused outright rather than silently added in.
+    Nothing on this robot has no volume, so a zero means the solid is malformed --
+    the way a twice-mirrored gusset did, with a correct bounding box, working
+    booleans and inverted faces. A union re-orients what it swallows and hides
+    that; adding the bodies up is what exposes it, so this is the place to check.
+    """
+    empty = [i for i, body in enumerate(bodies) if body.volume <= 0.0]
+    if empty:
+        raise ValueError(
+            f"bodies {empty} measure zero volume -- malformed solids, "
+            f"probably inverted by a double mirror"
+        )
+    total = sum(body.volume for body in bodies)
+    merged = bodies[0]
+    for body in bodies[1:]:
+        merged = merged + body
+    # density is kg/m3; a mm3 of it weighs density * 1e-6 grams.
+    return total * density * 1e-6, merged.volume * density * 1e-6
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--union", action="store_true", help="show what the parts weigh unioned"
+    )
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="fail if any part differs from the baseline, or the ceiling is passed",
+    )
     parser.add_argument(
         "--save-baseline",
         action="store_true",
         help="write the measured per-part masses to mass_baseline.json",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     budget = tomllib.loads(BUDGET.read_text(encoding="utf-8"))
     density = budget["material"]["density"]
-    printed = budget["printed"]
     ceiling = budget["ceiling_g"]
 
-    baseline = {}
-    if BASELINE.exists():
-        baseline = json.loads(BASELINE.read_text(encoding="utf-8")).get("parts", {})
-
-    print(
-        f"engine run: {len(printed)} printed parts at "
-        f"{budget['material']['name']} {density} kg/m3 — this spends API credits\n"
+    stored = (
+        json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
     )
+    baseline = stored.get("parts", {})
 
+    width = max(
+        max(len(p["label"]) for p in budget["printed"]),
+        max(len(f["label"]) for f in budget["fixed"]),
+    )
+    pad = f" {'':8} {'':7}" if args.union else ""
+
+    head = f"{'part':<{width}}  {'sum g':>8}"
+    if args.union:
+        head += f" {'union g':>8} {'bias g':>7}"
+    head += f" {'n':>3} {'total g':>9} {'vs base':>8}"
+    print(head)
+    print("-" * len(head))
+
+    failures = 0
     measured: dict[str, float] = {}
-    rows = []
-    for part in printed:
-        path = ROOT / part["file"]
-        try:
-            mass, volume = asyncio.run(measure(path, density))
-        except Exception as exc:  # noqa: BLE001 - the engine diagnostic is the payload
-            cause = getattr(exc, "args", ())
-            message = cause[0] if cause and isinstance(cause[0], str) else str(exc)
-            print(f"{part['file']}: FAILED\n{message}", file=sys.stderr)
-            if "auth_token_missing" in message:
-                print(
-                    "\nauth_token_missing is a BILLING failure, not an authentication "
-                    "one. Check https://zoo.dev/account/billing.",
-                    file=sys.stderr,
-                )
-            return 1
-        # Stored to a tenth of a gram: finer than that is noise against a 2.3 kg
-        # ceiling, and it keeps the baseline readable in a diff.
-        measured[part["file"]] = round(mass, 1)
-        rows.append((part["label"], part["file"], mass, part["count"], volume))
+    printed_total = union_total = 0.0
+    for part in budget["printed"]:
+        summed, merged = weigh(bodies_of(part), density)
+        measured[part["file"]] = round(summed, 1)
+        printed_total += summed * part["count"]
+        union_total += merged * part["count"]
 
-    width = max(len(label) for label, *_ in rows)
-    width = max(width, max(len(item["label"]) for item in budget["fixed"]))
+        base = baseline.get(part["file"])
+        if base is None:
+            verdict = "no base"
+        elif abs(round(summed, 1) - base) <= TOLERANCE_G:
+            verdict = "ok"
+        else:
+            verdict = f"{summed - base:+.1f}"
+            failures += 1
 
-    print(f"{'part':<{width}}  {'each g':>8} {'n':>3} {'total g':>9} {'Δ each':>7}")
-    print("-" * (width + 32))
+        row = f"{part['label']:<{width}}  {summed:8.1f}"
+        if args.union:
+            row += f" {merged:8.1f} {summed - merged:7.1f}"
+        row += f" {part['count']:3d} {summed * part['count']:9.1f} {verdict:>8}"
+        print(row)
 
-    printed_total = 0.0
-    for label, file, mass, count, _volume in rows:
-        printed_total += mass * count
-        print(
-            f"{label:<{width}}  {mass:8.1f} {count:3d} {mass * count:9.1f}"
-            f" {delta(mass, baseline.get(file)):>7}"
-        )
-    print(f"{'printed structure':<{width}}  {'':8} {'':3} {printed_total:9.1f}")
+    print(f"{'printed structure':<{width}}  {'':8}{pad} {'':3} {printed_total:9.1f}")
     print()
 
-    fixed_total = 0.0
+    # A bought item is quoted either per unit with a count, or as one figure for
+    # the whole allowance. mass_budget.toml uses each_g for the first and total_g
+    # for the second, and the distinction is meaningful: each_g is a thing you can
+    # put on a scale, total_g is an estimate for a bag of parts.
+    total = printed_total
     for item in budget["fixed"]:
-        if "total_g" in item:
-            total = item["total_g"]
-            print(f"{item['label']:<{width}}  {'':8} {'':3} {total:9.1f}")
-        else:
-            total = item["each_g"] * item["count"]
-            print(
-                f"{item['label']:<{width}}  {item['each_g']:8.1f}"
-                f" {item['count']:3d} {total:9.1f}"
-            )
-        fixed_total += total
+        each = item.get("each_g", item.get("total_g"))
+        count = item.get("count", 1) if "each_g" in item else 1
+        total += each * count
+        print(
+            f"{item['label']:<{width}}  {each:8.1f}{pad} {count:3d} {each * count:9.1f}"
+        )
 
-    total = printed_total + fixed_total
-    print("-" * (width + 32))
-    print(f"{'total':<{width}}  {'':8} {'':3} {total:9.1f}")
-    print(f"{'ceiling':<{width}}  {'':8} {'':3} {ceiling:9.1f}")
-
+    print("-" * len(head))
+    print(f"{'total':<{width}}  {'':8}{pad} {'':3} {total:9.1f}")
+    print(f"{'ceiling':<{width}}  {'':8}{pad} {'':3} {ceiling:9.1f}")
     headroom = ceiling - total
-    verdict = "under" if headroom >= 0 else "OVER THE CEILING BY"
-    print(f"{'headroom':<{width}}  {'':8} {'':3} {abs(headroom):9.1f}  ({verdict})")
+    verdict = "under" if headroom > 0 else "OVER THE CEILING BY"
+    print(
+        f"{'headroom':<{width}}  {'':8}{pad} {'':3} {abs(headroom):9.1f}  ({verdict})"
+    )
 
-    previous_total = None
-    if BASELINE.exists():
-        previous_total = json.loads(BASELINE.read_text(encoding="utf-8")).get("total_g")
-    if previous_total is not None:
-        change = total - previous_total
+    if args.union:
+        print()
+        print(
+            "overlap counted twice across the printed structure: "
+            f"{printed_total - union_total:.1f} g"
+        )
+
+    previous = stored.get("total_g")
+    if previous is not None:
+        change = total - previous
         if abs(change) < 0.05:
             print("\nNo change against the baseline.")
         else:
-            print(f"\nAgainst the baseline: {change:+.1f} g (was {previous_total:.1f} g).")
+            print(f"\nAgainst the baseline: {change:+.1f} g (was {previous:.1f} g).")
 
     if args.save_baseline:
-        BASELINE.write_bytes(
-            (
-                json.dumps({"parts": measured, "total_g": round(total, 1)}, indent=2)
-                + "\n"
-            ).encode("utf-8")
-        )
-        where = BASELINE.relative_to(ROOT) if BASELINE.is_relative_to(ROOT) else BASELINE
-        print(f"\nBaseline written to {where}.")
+        stored = {
+            "note": stored.get(
+                "note",
+                "Per-part mass in grams at the density in tools/mass_budget.toml.",
+            ),
+            "parts": measured,
+            "total_g": round(total, 1),
+        }
+        BASELINE.write_text(json.dumps(stored, indent=2) + "\n", encoding="utf-8")
+        print(f"\nBaseline written to {BASELINE.relative_to(ROOT)}.")
 
+    if args.gate:
+        print()
+        bad = failures or headroom <= 0
+        print("gate C: FAIL" if bad else "gate C: pass")
+        return 1 if bad else 0
     return 0
 
 

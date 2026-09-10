@@ -1,108 +1,65 @@
 # /// script
-# requires-python = ">=3.11"
-# dependencies = ["zoo-kcl>=0.3.181"]
+# requires-python = ">=3.11,<3.13"
+# dependencies = ["build123d>=0.9"]
 # ///
-"""Write one STEP file per printable piece of the robot.
+"""Write one file per printable piece of the robot: STEP to print from, STL to simulate.
 
 Which pieces those are lives in mass_budget.toml beside this file, in the
-`[[printed.piece]]` entries under each printed file. Nothing is hard-coded here.
+`[[printed.piece]]` entries under each printed module. Nothing is hard-coded here.
 
-    uv run tools/export.py                          # every piece, to exports/
-    uv run tools/export.py --pieces pelvis-shell    # just one
-    uv run tools/export.py --format stl             # STL instead of STEP
+    uv run tools/export.py                              # every piece, STEP, to exports/
+    uv run tools/export.py --pieces pelvis-shell        # just one
+    uv run tools/export.py --finished                   # with its edges broken
+    uv run tools/export.py --format stl --out simulation/meshes
+    uv run tools/export.py --list                       # what there is to export
+    uv run tools/export.py --verify                     # re-read what is already written
 
-Isolating one piece needs a wrapper scene, because export takes the whole scene
-and every one of these files builds more than one printed part -- both hands of
-a mirrored pair, or the pelvis shell and its cover. Importing any name from a
-module runs the whole module, so its other parts stand in the scene whether they
-are wanted or not (docs/KCL_GOTCHAS.md). The wrapper therefore imports the piece
-and hides its siblings. A wrapper is generated beside the module it imports,
-which is the repository root for every printed part, and deleted immediately.
+Free and offline. This used to be the most expensive tool in the repository: one
+metered engine execution per piece, plus a generated wrapper scene per piece to
+isolate it, because a KCL export took the whole scene and every module built more
+than one part. A piece is a Python object now, so exporting it is a local OCCT
+call and isolating it is calling one function instead of another.
 
-Because that isolation rests on `hide` reaching the exporter and not only the
-renderer, every written file is counted: the tool reports how many solid bodies
-the file actually contains, and fails the run if a piece with a declared
-`bodies` count comes out wrong. A leaked sibling changes the count, so this
-catches it rather than shipping a STEP with a second part hidden inside it.
+WHAT IS CHECKED ON THE WAY OUT, and why it is not ceremony. Three things, each of
+which has actually gone wrong here:
 
-This executes on the real engine -- one execution per piece -- and therefore
-spends API credits. Exports land in exports/, which is untracked.
+* the body count against the `bodies` figure the budget declares, which catches a
+  piece that arrives with a sibling attached or a shell missing;
+* every body's volume, because a twice-mirrored solid comes back inverted and
+  measures zero while keeping a correct bounding box and working booleans -- that
+  is how the limb's rear gusset shipped wrong once;
+* the file re-read from disk, so the count that gets reported is the count that
+  landed rather than the count that was intended.
+
+THE PIECES ARE STILL SEVERAL INTERPENETRATING SHELLS, not one solid. That is what
+the engine forced -- it refuses to union hollow boxes meeting at right angles, and
+the hip saddles are exactly that -- and it is what a slicer merges anyway. Phase 3
+of docs/BUILD123D_MIGRATION.md is where they become single solids; until then the
+`bodies` counts in the budget are the register of what is still to be unioned.
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
-import re
+import importlib
 import sys
 import tomllib
 from pathlib import Path
 
-import kcl
+from build123d import Compound, export_step, export_stl
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 BUDGET = HERE / "mass_budget.toml"
 DEFAULT_OUT = ROOT / "exports"
 
-# The generated wrapper has to sit beside the module it imports, because KCL
-# reaches a subdirectory only through its main.kcl and cannot climb out of one
-# with "..". Every printed part is in the repository root today, so that is
-# where the wrapper lands; taking the directory from the module keeps it true
-# if one ever moves. The name is one nothing else uses, it is removed in a finally
-# block, and .gitignore carries it too in case a run is interrupted.
-WRAPPER_NAME = "_export_piece.kcl"
+sys.path.insert(0, str(ROOT))
 
-
-def wrapper_path(module: str) -> Path:
-    return ROOT / Path(module).parent / WRAPPER_NAME
-
-
-# execute_and_export wants a FileExportFormat, not the per-format *ExportOptions
-# classes the module also carries -- passing StepExportOptions() is rejected with
-# "not an instance of 'FileExportFormat'". So the defaults apply and there is no
-# place to ask for, say, ASCII STL.
-FORMATS = {
-    "step": (kcl.FileExportFormat.Step, "step"),
-    "stl": (kcl.FileExportFormat.Stl, "stl"),
-}
-
-# One solid body per MANIFOLD_SOLID_BREP. Counted rather than ADVANCED_BREP or
-# PRODUCT because all three appear exactly once per body in what this exporter
-# writes, and the manifold solid is the one that means "a closed volume".
-STEP_SOLID = re.compile(r"MANIFOLD_SOLID_BREP")
-# STL has no notion of a part, only of triangles, so no body count is claimed
-# for it.
-SOLID_COUNTERS = {"step": STEP_SOLID}
-
-# The point cloud, which is the free half of the leak check. Extents that run
-# symmetrically about x = 0 on a part that should sit to one side are a sibling
-# that `hide` failed to remove.
-STEP_POINT = re.compile(
-    r"CARTESIAN_POINT\('', ?\(([-0-9.E+]+), ?([-0-9.E+]+), ?([-0-9.E+]+)\)\)"
-)
-
-
-def wrapper_source(module: str, keep: str, hidden: list[str]) -> str:
-    names = ", ".join([keep, *hidden])
-    lines = [
-        "// GENERATED by tools/export.py -- transient, never edit, never commit.",
-        f"// Isolates `{keep}` from {module} so the export holds that piece alone.",
-        "@settings(defaultLengthUnit = mm, kclVersion = 2.0)",
-        "",
-        f'import {names} from "{Path(module).name}"',
-        "",
-    ]
-    lines += [f"hide({name})" for name in hidden]
-    lines += ["", f"export exportedPiece = {keep}", ""]
-    return "\n".join(lines)
-
-
-async def export(path: Path, options: object) -> list:
-    return await kcl.execute_and_export(str(path), options)
+FORMATS = ("step", "stl")
 
 
 def pieces_from_budget() -> list[dict]:
+    """Every `[[printed.piece]]`, with the module its `[[printed]]` parent names."""
     budget = tomllib.loads(BUDGET.read_text(encoding="utf-8"))
     found = []
     for part in budget["printed"]:
@@ -111,51 +68,82 @@ def pieces_from_budget() -> list[dict]:
     return found
 
 
-def count_solids(text: str, fmt: str) -> int | None:
-    pattern = SOLID_COUNTERS.get(fmt)
-    if pattern is None:
-        return None
-    return len(pattern.findall(text))
+def build(piece: dict, finished: bool) -> list:
+    """The bodies of one piece, by calling the function the budget names.
+
+    `file` is a module path under cad/ and `export` the function in it. A builder
+    returns either one solid or the list of interpenetrating bodies the piece is
+    made of; both come back as a list here.
+    """
+    module = importlib.import_module(
+        piece["file"].removesuffix(".py").replace("/", ".").replace("\\", ".")
+    )
+    built = getattr(module, piece["export"])()
+    bodies = list(built) if isinstance(built, (list, tuple)) else [built]
+
+    if finished:
+        from cad.finish import chamfered
+
+        bodies, _ = chamfered(bodies)
+    return bodies
 
 
-def extents(text: str, fmt: str) -> str:
-    """The written part's bounding box, read back out of the file itself."""
+def zero_volume(bodies: list) -> list[int]:
+    """Which bodies measure nothing, which means malformed rather than empty."""
+    return [i for i, body in enumerate(bodies) if body.volume <= 0.0]
+
+
+def write(bodies: list, path: Path, fmt: str) -> None:
+    shape = bodies[0] if len(bodies) == 1 else Compound(children=bodies)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if fmt == "step":
+        export_step(shape, str(path))
+    else:
+        export_stl(shape, str(path))
+
+
+def solids_in(path: Path, fmt: str) -> int | None:
+    """How many solid bodies the written file actually holds.
+
+    Read back from the file rather than counted before writing it, so what gets
+    reported is what landed. STL has no notion of a body, only of triangles, so
+    it claims nothing.
+    """
     if fmt != "step":
-        return ""
-    points = [tuple(float(v) for v in m.groups()) for m in STEP_POINT.finditer(text)]
-    if not points:
-        return ""
-    axes = list(zip(*points))
-    return "  ".join(f"{min(a):7.1f}..{max(a):7.1f}" for a in axes)
+        return None
+    from build123d import import_step
+
+    return len(import_step(str(path)).solids())
+
+
+def extents(bodies: list) -> str:
+    """The piece's bounding box, which is the cheap half of a sanity check.
+
+    A part that should sit to one side of the robot and comes out symmetric about
+    x = 0 has a sibling in it.
+    """
+    box = bodies[0].bounding_box()
+    for body in bodies[1:]:
+        box = box.add(body.bounding_box())
+    return "  ".join(
+        f"{low:7.1f}..{high:7.1f}"
+        for low, high in (
+            (box.min.X, box.max.X),
+            (box.min.Y, box.max.Y),
+            (box.min.Z, box.max.Z),
+        )
+    )
 
 
 def report(rows: list[tuple]) -> None:
     width = max(len(path.name) for path, *_ in rows)
-    head = f"{'file':<{width}}  {'KB':>8} {'solids':>7}"
-    if any(row[4] for row in rows):
-        head += f"   {'x mm':^16}  {'y mm':^16}  {'z mm':^16}"
+    head = f"{'file':<{width}}  {'KB':>8} {'solids':>7}   "
+    head += f"{'x mm':^16}  {'y mm':^16}  {'z mm':^16}"
     print(head)
     print("-" * len(head))
     for path, size, solids, note, box in rows:
         shown = "     ?" if solids is None else f"{solids:6d}"
         print(f"{path.name:<{width}}  {size / 1024:8.1f}  {shown}   {box}{note}")
-
-
-def inspect(path: Path, piece: dict, fmt: str) -> tuple[tuple, str | None]:
-    """Read a written file back and check it against the declared body count."""
-    payload = path.read_bytes()
-    text = payload.decode("utf-8", "replace")
-    solids = count_solids(text, fmt)
-    expected = piece.get("bodies")
-    note = ""
-    bad = None
-    if solids is not None and expected is not None and solids != expected:
-        note = f"  <-- expected {expected}"
-        bad = piece["name"]
-    elif solids == 0:
-        note = "  <-- EMPTY"
-        bad = piece["name"]
-    return (path, len(payload), solids, note, extents(text, fmt)), bad
 
 
 def main() -> int:
@@ -167,7 +155,7 @@ def main() -> int:
     parser.add_argument(
         "--format",
         default="step",
-        choices=sorted(FORMATS),
+        choices=FORMATS,
         help="output format (default: step)",
     )
     parser.add_argument(
@@ -177,160 +165,88 @@ def main() -> int:
         help="directory to write into (default: exports/)",
     )
     parser.add_argument(
+        "--finished",
+        action="store_true",
+        help="export the piece with its 0.5 mm chamfer, as it would be printed;"
+        " the default is the part as drawn, which is what the gates compare",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
-        help="list the printable pieces and exit, without touching the engine",
+        help="list the printable pieces and exit, without building anything",
     )
     parser.add_argument(
         "--verify",
         action="store_true",
-        help="re-check the files already in the output directory against the"
-        " declared body counts, without touching the engine",
-    )
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="mock-execute each wrapper scene instead of exporting it; free, and"
-        " catches a renamed or unexported piece before the metered run does",
-    )
-    parser.add_argument(
-        "--keep-wrapper",
-        action="store_true",
-        help="leave the last generated wrapper scene in place, to debug an export",
+        help="re-read the files already in the output directory and check them"
+        " against the declared body counts, without rebuilding",
     )
     args = parser.parse_args()
 
     pieces = pieces_from_budget()
     if args.pieces:
-        wanted = [name.strip() for name in args.pieces.split(",") if name.strip()]
-        known = {piece["name"] for piece in pieces}
-        missing = [name for name in wanted if name not in known]
-        if missing:
-            print(f"unknown piece(s): {', '.join(missing)}", file=sys.stderr)
-            print(f"known: {', '.join(sorted(known))}", file=sys.stderr)
+        wanted = [name.strip() for name in args.pieces.split(",")]
+        unknown = [n for n in wanted if n not in {p["name"] for p in pieces}]
+        if unknown:
+            print(f"no such piece: {', '.join(unknown)}")
             return 2
-        pieces = [piece for piece in pieces if piece["name"] in wanted]
+        pieces = [p for p in pieces if p["name"] in wanted]
 
     if args.list:
-        width = max(len(piece["name"]) for piece in pieces)
         for piece in pieces:
+            bodies = piece.get("bodies", "?")
             print(
-                f"{piece['name']:<{width}}  x{piece['prints']}  "
-                f"{piece['file']}:{piece['export']}"
+                f"{piece['name']:<24} {piece['file']}:{piece['export']:<20}"
+                f" {piece.get('prints', 1)} print(s), {bodies} bodies"
             )
         return 0
 
-    if args.mock:
-        failed = False
-        for piece in pieces:
-            source = wrapper_source(
-                piece["file"], piece["export"], piece.get("hide", [])
-            )
-            wrapper = wrapper_path(piece["file"])
-            wrapper.write_text(source, encoding="utf-8", newline="\n")
-            try:
-                asyncio.run(kcl.mock_execute(str(wrapper)))
-            except Exception as exc:  # noqa: BLE001 - the diagnostic is the payload
-                cause = getattr(exc, "args", ())
-                message = cause[0] if cause and isinstance(cause[0], str) else str(exc)
-                print(f"{piece['name']}: FAILED\n{message}", file=sys.stderr)
-                failed = True
-            else:
-                print(f"{piece['name']}: ok")
-            finally:
-                if not args.keep_wrapper:
-                    wrapper.unlink(missing_ok=True)
-        return 1 if failed else 0
-
-    export_format, suffix = FORMATS[args.format]
-
-    if args.verify:
-        rows = []
-        wrong = []
-        for piece in pieces:
-            path = args.out / f"{piece['name']}.{suffix}"
-            if not path.exists():
-                print(f"{path.name}: not written yet", file=sys.stderr)
-                wrong.append(piece["name"])
-                continue
-            row, bad = inspect(path, piece, args.format)
-            rows.append(row)
-            if bad:
-                wrong.append(bad)
-        if rows:
-            report(rows)
-        if wrong:
-            print("", file=sys.stderr)
-            print(
-                f"not verified: {', '.join(sorted(set(wrong)))}", file=sys.stderr
-            )
-            return 1
-        print()
-        print(f"{len(rows)} file(s) match their declared body counts.")
-        return 0
-
-    args.out.mkdir(parents=True, exist_ok=True)
-
-    print(
-        f"engine run: {len(pieces)} pieces to {args.format.upper()}"
-        " - this spends API credits\n"
-    )
-
-    rows = []
-    wrong = []
+    rows: list[tuple] = []
+    bad: list[str] = []
     for piece in pieces:
-        wrapper = wrapper_path(piece["file"])
-        wrapper.write_text(
-            wrapper_source(piece["file"], piece["export"], piece.get("hide", [])),
-            encoding="utf-8",
-            newline="\n",
-        )
-        try:
-            files = asyncio.run(export(wrapper, export_format))
-        except Exception as exc:  # noqa: BLE001 - the engine diagnostic is the payload
-            cause = getattr(exc, "args", ())
-            message = cause[0] if cause and isinstance(cause[0], str) else str(exc)
-            print(f"{piece['name']}: FAILED", file=sys.stderr)
-            print(message, file=sys.stderr)
-            if "auth_token_missing" in message:
+        path = args.out / f"{piece['name']}.{args.format}"
+
+        if args.verify:
+            if not path.exists():
+                print(f"{piece['name']}: nothing written at {path}")
+                bad.append(piece["name"])
+                continue
+            box = ""
+        else:
+            bodies = build(piece, args.finished)
+            empty = zero_volume(bodies)
+            if empty:
                 print(
-                    "\nauth_token_missing is a BILLING failure, not an "
-                    "authentication one. Check https://zoo.dev/account/billing.",
-                    file=sys.stderr,
+                    f"{piece['name']}: bodies {empty} measure zero volume -- "
+                    "malformed solids, probably inverted by a double mirror"
                 )
-            return 1
-        finally:
-            if not args.keep_wrapper:
-                wrapper.unlink(missing_ok=True)
+                bad.append(piece["name"])
+                continue
+            write(bodies, path, args.format)
+            box = extents(bodies)
 
-        for index, raw in enumerate(files):
-            stem = piece["name"] if len(files) == 1 else f"{piece['name']}-{index + 1}"
-            path = args.out / f"{stem}.{suffix}"
-            path.write_bytes(bytes(raw.contents))
-            row, bad = inspect(path, piece, args.format)
-            rows.append(row)
-            if bad:
-                wrong.append(bad)
+        solids = solids_in(path, args.format)
+        expected = piece.get("bodies")
+        note = ""
+        if solids is not None and expected is not None and solids != expected:
+            note = f"  <-- expected {expected}"
+            bad.append(piece["name"])
+        elif solids == 0:
+            note = "  <-- EMPTY"
+            bad.append(piece["name"])
+        rows.append((path, path.stat().st_size, solids, note, box))
 
-    report(rows)
+    if rows:
+        report(rows)
+        print(f"\n{len(rows)} file(s) in {args.out}")
+        if args.finished:
+            print("edges broken at 0.5 mm; tools/finish_report.py measures the cut")
 
-    where = args.out.relative_to(ROOT) if args.out.is_relative_to(ROOT) else args.out
-    print(f"\n{len(rows)} file(s) in {where}.")
-
-    if wrong:
-        print("", file=sys.stderr)
-        print("BODY COUNT WRONG for: " + ", ".join(sorted(set(wrong))), file=sys.stderr)
-        print(
-            "A count above the declared one means `hide` did not reach the exporter\n"
-            "and a sibling part is inside the file. Do not print these.",
-            file=sys.stderr,
-        )
+    if bad:
+        print(f"\nWRONG: {', '.join(sorted(set(bad)))}")
         return 1
-
     return 0
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     raise SystemExit(main())

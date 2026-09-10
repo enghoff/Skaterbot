@@ -1,0 +1,163 @@
+"""Flat-plate limb.
+
+Ported from lib/limb.kcl, comments and all.
+
+One parametric limb, used for the thigh and the shin. It is a plate lying in a
+single plane: a Ø52 disc bolted flat to one actuator's rear cover, a Ø36 disc
+bolted to the next actuator's output, and a channel waist between them. There is
+no clevis, no saddle and no closed shell, and nothing reaches around an actuator
+any more.
+
+Local frame: the limb axis is Z, both joint axes are X, and the two joint centres
+sit at z = +/- limbLength/2. The plate lies on the +X side with both actuators
+inboard of it. That works because the knee actuator is turned round -- see the
+note in parameters.py -- so the upper joint presents its output face and the
+lower joint presents its rear cover on the same side.
+
+A limb for the other hand is this one mirrored across YZ. cad/thigh.py and
+cad/shin.py each export both hands; and because the two leg segments are the
+same 105 mm, the right thigh and the left shin are the same print, as are the
+right shin and the left thigh. Two distinct limb parts.
+
+The waist is a plain plate. It carried two stiffening flanges on its outboard
+face for a while; they came off on 30 August 2026 once the numbers were run,
+because they bought stiffness and almost no strength, and none at all at the
+section that decides whether a limb breaks. The reasoning is kept in
+cad/parameters.py beside the waist dimensions, and in NOTES.md.
+
+What is left is a single flat profile, 6 mm thick from one end to the other,
+which is both the cheapest thing to print and the strongest way to print it:
+laid flat, every fibre runs along the limb and no load crosses a layer line.
+
+The waist is not symmetric about the limb centre. Each end runs as far into its
+disc as that disc's bolt pattern allows, and the two patterns are not the same
+distance out, so the two ends are not either.
+"""
+
+from __future__ import annotations
+
+from math import sqrt
+
+from build123d import (
+    Align,
+    Box,
+    BuildLine,
+    BuildSketch,
+    Plane,
+    Polyline,
+    Pos,
+    Rot,
+    extrude,
+    make_face,
+)
+
+from cad.geometry import mirrored
+from cad.joint import outputDisc, statorPlate
+from cad.parameters import (
+    actuatorRearBoltOffset,
+    limbPlateThickness,
+    limbWaistDepth,
+    limbWaistUpperZ,
+    m3CapHeadStandoff,
+    rotorHubDiameter,
+    rotorHubInnerX,
+)
+
+
+def limbAssembly(limbLength: float) -> list:
+    """One limb, as five interpenetrating bodies.
+
+    Returns a LIST, not a single solid, because that is what the KCL returned
+    and what the golden STEP contains: the waist plate occupies exactly the same
+    band in X as both discs, which is the union the Zoo engine refused. Every
+    overlap is millimetres of real material, so a slicer that merges coincident
+    shells prints this as the single plate it is -- verify that before printing.
+    Unioning them for real is a phase 3 change; see docs/BUILD123D_MIGRATION.md.
+    """
+    jointZ = limbLength / 2
+
+    # The waist reaches into both discs so the three bodies merge, but it cannot
+    # reach the same distance at both ends. At the rotor end it stops where
+    # parameters.py puts it, one counterbore clear of the Ø24 output circle. At
+    # the stator end the Ø41 rear bolts are the constraint, and a waist symmetric
+    # about the limb centre overshot them: its corner landed 0.7 mm from the two
+    # bolt centres nearest the waist and filled 46 % of each hole, leaving a
+    # 1.2 mm crescent no screw could pass. It now stops a cap head short of them,
+    # which costs nothing structurally -- the plate is still 38 mm wide there, so
+    # the section never narrows -- and leaves 8 mm of engagement into the disc.
+    waistUpperZ = limbWaistUpperZ
+    waistLowerZ = -(jointZ - actuatorRearBoltOffset - m3CapHeadStandoff)
+
+    waistPlate = Pos(rotorHubInnerX, -(limbWaistDepth / 2), waistLowerZ) * Box(
+        limbPlateThickness,
+        limbWaistDepth,
+        waistUpperZ - waistLowerZ,
+        align=(Align.MIN, Align.MIN, Align.MIN),
+    )
+
+    # Where the waist runs into the hub disc, the plate has to neck down from
+    # 40 mm to the Ø36 disc, and the step between them is where the limb hands
+    # its bending into the joint -- the peak-stress point on the part. These two
+    # gussets carry the width up past that step as a taper, running from the
+    # waist's top corner to the point where the taper goes tangent to the disc's
+    # rim, so the section narrows gradually instead of in a shoulder.
+    #
+    # While the waist was 30 mm the gusset was a small fillet tangent to both the
+    # plate's side and the disc. That construction has no solution once the waist
+    # is wider than the disc: a line 20 mm off the axis never touches a circle of
+    # radius 18, so the blend became a straight taper instead.
+    #
+    # The inner edge is a chord between two points on the disc, so it is buried --
+    # a chord of a circle stays inside it -- and the visible outline is the disc's
+    # own arc. The taper clears both output counterbore rows: it is outboard of
+    # y = 15.7 everywhere it passes the pair on the horizontal diameter, whose
+    # heads reach y = 15.
+    discRadius = rotorHubDiameter / 2
+    gussetDrop = jointZ - waistUpperZ
+    gussetHalfWidth = limbWaistDepth / 2
+    gussetSpanSq = gussetHalfWidth**2 + gussetDrop**2
+    gussetTangentLen = sqrt(gussetSpanSq - discRadius**2)
+    # Where the disc's rim crosses the waist's top edge, and where the taper from
+    # the waist's corner goes tangent to that rim.
+    gussetArchY = sqrt(discRadius**2 - gussetDrop**2)
+    gussetTangentY = (
+        discRadius**2 * gussetHalfWidth + discRadius * gussetTangentLen * gussetDrop
+    ) / gussetSpanSq
+    gussetTangentZ = (
+        jointZ
+        + (discRadius * gussetTangentLen * gussetHalfWidth - discRadius**2 * gussetDrop)
+        / gussetSpanSq
+    )
+
+    with BuildSketch(Plane.YZ) as gussetProfile:
+        with BuildLine():
+            Polyline(
+                (gussetArchY, waistUpperZ),
+                (gussetHalfWidth, waistUpperZ),
+                (gussetTangentY, gussetTangentZ),
+                close=True,
+            )
+        make_face()
+    # Plane.YZ's own x runs along global Y and its normal along global X, so the
+    # profile above is already in the limb's frame and only needs its thickness.
+    gussetFront = Pos(rotorHubInnerX + limbPlateThickness / 2, 0, 0) * extrude(
+        gussetProfile.sketch, amount=limbPlateThickness / 2, both=True
+    )
+    # mirrored(), not build123d's mirror(). This body gets mirrored a SECOND time
+    # when cad/thigh.py or cad/shin.py builds the opposite hand, and a twice-
+    # mirrored shape reports a volume of zero: build123d wraps each mirror in a
+    # fresh Compound, and Compound.volume only looks one level down. The geometry
+    # is perfect throughout -- valid, correctly oriented, right bounding box, and
+    # every boolean behaves -- so nothing objects; only the number everything
+    # reads goes silently to nothing. cad/geometry.py has the detail. This is the
+    # line that found it, and it is left as a mirror rather than rewritten so
+    # that gate C keeps exercising the fix.
+    gussetRear = mirrored(gussetFront, Plane.XZ)
+
+    upperDisc = Pos(0, 0, jointZ) * outputDisc()
+    # The stator plate is drawn behind an actuator whose output faces +X. This
+    # limb's lower actuator is turned round, so the plate is spun to the near side
+    # to land on the rear cover that now faces +X with everything else.
+    lowerPlate = Pos(0, 0, -jointZ) * (Rot(0, 0, 180) * statorPlate())
+
+    return [waistPlate, gussetFront, gussetRear, upperDisc, lowerPlate]

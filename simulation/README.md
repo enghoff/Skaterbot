@@ -6,7 +6,7 @@ from the same geometry the printer would get, and two ways of loading it — an
 Isaac Sim project in [`isaacsim/`](isaacsim/) and an Isaac Lab articulation
 config in [`isaaclab/`](isaaclab/).
 
-Nothing here is typed in twice. Every dimension is read out of the KCL, every
+Nothing here is typed in twice. Every dimension is read out of `cad/`, every
 printed mass is integrated from the exported mesh at PA12-CF density, and every
 bought mass comes from `tools/mass_budget.toml` — the same table `/mass` rolls
 up against the robot's 2 300 g ceiling. Change the CAD and regenerate; do not
@@ -21,9 +21,9 @@ uv run simulation/build_urdf.py
 uv run simulation/check_model.py
 ```
 
-Dimensions are re-read from the KCL on every build, so the kinematics can never
-be stale. The meshes can be, because they are engine output — so the build
-**refuses** to run against a mesh older than any KCL file in its import closure,
+Dimensions are re-read from `cad/` on every build, so the kinematics can never
+be stale. The meshes can be, because they are exported output — so the build
+**refuses** to run against a mesh older than any file in `cad/`,
 names the file that moved, and prints the re-export command for just the pieces
 affected:
 
@@ -31,7 +31,7 @@ affected:
 uv run tools/export.py --format stl --out simulation/meshes --pieces <those>
 ```
 
-That is the only metered step in the pipeline, and only a printed part changing
+That used to be the one metered step in the pipeline and is now free, and only a printed part changing
 *shape* needs it. Everything else is arithmetic.
 
 ## Simulating it
@@ -54,7 +54,7 @@ behind by a `/urdf` run is the one failure here that raises nothing: it loads,
 the rig checks pass, and every number faithfully describes the robot as it was
 before the CAD moved. So `run.py` now refuses a USD older than the URDF or
 meshes it was built from — naming what moved and printing the rebuild command,
-the same way `build_urdf.py` refuses a mesh older than its KCL — and
+the same way `build_urdf.py` refuses a mesh older than the CAD it came from — and
 `preflight.py` says so for free before anyone spends five minutes starting Kit.
 `--allow-stale` overrides it and prints a warning that the numbers are not the
 current CAD.
@@ -93,7 +93,7 @@ None of that is a second drawing of the CAD. Each bought part is the SAME
 primitive its mass and inertia were computed from, so the picture and the
 physics cannot drift apart: the actuator is the 46 x 37.9 can the vendor manual
 gives, the wheel is the Ø80 x 24 tread, the boards are the reserved envelopes
-`wheeled_electronics.kcl` packs the pelvis with. Two of them are honest
+`cad/electronics.py` packs the pelvis with. Two of them are honest
 approximations and the URDF says so where they appear — the wheel's urethane is
 an annulus drawn as a solid cylinder, because a URDF has no tube, and the wiring
 is 27 g spread through the cavity, so it has mass but nothing to draw. Every
@@ -110,18 +110,18 @@ primitive that is already there.
 ## Conventions, because they are the easiest thing to get wrong
 
 The CAD is drawn with **+Y forward and +X to the robot's right**, which is what
-`tools/views.py` fixes and what every KCL file assumes. A URDF is expected in
+`tools/view.py` names and what every module in `cad/` assumes. A URDF is expected in
 the ROS convention, **+X forward, +Y left, +Z up**, so everything in the URDF
 has been turned a quarter turn out of the frame the mesh files are still in.
 That rotation happens in exactly one place, `inertia.CAD_TO_ROS`, and the
 meshes carry it as an `rpy` on each visual.
 
 `base_link`'s origin is the **torso centre**, 306.5 mm above the floor with the
-legs straight, because that is the frame `torso.kcl` and
-`wheeled_electronics.kcl` are already drawn in.
+legs straight, because that is the frame `cad/torso.py` and
+`cad/electronics.py` are already drawn in.
 
 Both leg joints are **positive in flexion**, the same sign as the angles in
-`pose_check.kcl` and `squat_check.kcl`, so a pose read off one of those scenes
+`cad/poses.py`, so a pose read off one of those scenes
 can be commanded here unchanged. Hip flexion swings the thigh forward and knee
 flexion folds the shin back under it; those are opposite senses in the sagittal
 plane, which is why the two joints carry opposite axis vectors. A positive
@@ -157,9 +157,11 @@ figures are the walking robot's.
 ## What is checked, and how
 
 `check_model.py` drives the kinematic tree to the exact hip and knee angles in
-`pose_check.kcl` and `squat_check.kcl` and compares where the wheel lands with
+`cad/poses.py`'s `pose_check` and `squat_check` and compares where the wheel lands with
 where those scenes independently compute it. That is a real test rather than a
-restatement: the scenes do their own trigonometry in KCL, so agreement to a
+restatement: the scenes do their own trigonometry, and `tools/gate_f.py` holds
+that trigonometry against what the KCL computed before it was ported, so
+agreement to a
 micrometre exercises the link lengths, the joint origins, the axis directions
 and the sign of every joint at once. A flipped axis shows up as tens of
 millimetres.
@@ -175,14 +177,14 @@ counted for how many it actually places. A part added to the robot and never
 added to the model would otherwise pass everything else here, because a link
 that does not exist has no mass to be wrong about.
 
-What it cannot check is whether the geometry itself is right. That is `/check`
-and `/views`' job, and it is unchanged by anything here.
+What it cannot check is whether the geometry itself is right. That is the job of
+`/check` and the six gates in `tools/`, and it is unchanged by anything here.
 
 ## Files
 
 | | |
 |---|---|
-| `kcl_params.py` | reads dimensions, and the palette, straight out of the KCL sources |
+| `cad/dimensions.py` | reads every dimension, and the palette, straight out of the CAD (in `cad/`, not here) |
 | `robot.py` | the kinematic tree and every gram, with provenance. The only file here carrying engineering judgement |
 | `inertia.py` | mass, centre of mass and inertia tensors, from meshes and from primitives |
 | `build_urdf.py` | writes `urdf/wheeled_biped.urdf` and the binary meshes it points at |
@@ -190,5 +192,5 @@ and `/views`' job, and it is unchanged by anything here.
 | `plant.py` | the simulator-facing choices — actuator limits, contact, solver, where it starts. Both simulators read it, so neither states a number of its own |
 | `isaacsim/` | an Isaac Sim project: the URDF turned into a rigged USD, and the checks that say whether PhysX agrees. See its own README |
 | `isaaclab/wheeled_biped_cfg.py` | Isaac Lab articulation config, actuator model and contact settings |
-| `meshes/` | raw engine output, untracked, regenerate with `/step --format stl` |
-| `urdf/meshes/` | binary copies, tracked, so a checkout can be simulated without spending credits |
+| `meshes/` | raw exporter output, untracked, regenerate with `/step --format stl` |
+| `urdf/meshes/` | binary copies, tracked, so a checkout can be simulated without rebuilding them |

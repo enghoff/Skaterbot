@@ -1,10 +1,10 @@
 {
+  "note": "Measured on the Zoo engine from the KCL, before the build123d migration, at the PA12-CF density in tools/mass_budget.toml. The keys are the modules that build those same parts now; the figures are the engine's and are not recomputed. Gate C compares against them part by part.",
   "parts": {
-    "thigh.kcl": 64.2,
-    "shin.kcl": 64.2,
-    "lib/hip_carrier.kcl": 74.4,
-    "foot.kcl": 149.3,
-    "torso.kcl": 187.3
+    "cad/thigh.py": 72.8,
+    "cad/shin.py": 72.8,
+    "cad/wheel_adapter.py": 28.9,
+    "cad/torso.py": 168.6
   },
-  "total_g": 2024.6
+  "total_g": 1606.6
 }

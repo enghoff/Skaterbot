@@ -1,13 +1,13 @@
 """The robot as a kinematic tree, with every gram accounted for and sourced.
 
-main.kcl is a scene: it places parts at absolute heights, and nothing in it
+cad/main.py is a scene: it places parts at absolute heights, and nothing in it
 says which part turns about which axis or what hangs off what. This module is
 where that is written down once. It is the only file in simulation/ that
 carries engineering judgement; build_urdf.py and the Isaac Lab config are
 mechanical translations of what is here.
 
-WHERE THE NUMBERS COME FROM. Every dimension is read out of the KCL by
-kcl_params.py, so the tree moves when the CAD moves. Every mass is either
+WHERE THE NUMBERS COME FROM. Every dimension is read out of the CAD by
+cad/dimensions.py, so the tree moves when the CAD moves. Every mass is either
 measured off the exported mesh at PA12-CF density or taken from
 tools/mass_budget.toml, which is the same table tools/mass.py rolls up against
 the robot's 2 300 g ceiling. Nothing is typed in twice and nothing is invented:
@@ -20,13 +20,13 @@ check_model.py totals the mass by provenance precisely so that the size of that
 third stays visible.
 
 THE FRAME. Everything here is in the CAD's own frame -- +X is the robot's
-right, +Y is forward, +Z is up, the convention tools/views.py fixes -- and
+right, +Y is forward, +Z is up, the convention tools/view.py names -- and
 lengths are in millimetres. build_urdf.py does the single rotation into the
 ROS convention a URDF wants, and the single conversion into metres, so that
 both have exactly one place to go wrong.
 
 WHICH PART BELONGS TO WHICH LINK. A limb print carries a diameter-36 output
-disc at one end and a diameter-52 stator plate at the other (lib/limb.kcl). The
+disc at one end and a diameter-52 stator plate at the other (cad/limb.py). The
 output disc bolts to the actuator that drives the limb; the stator plate bolts
 to the REAR COVER of the next actuator down. So each limb carries the housing
 of the joint below it, and that actuator's 150 g belongs to the limb rather
@@ -37,13 +37,17 @@ the same way, in the clevises rooted in its floor.
 from __future__ import annotations
 
 import math
+import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from kcl_params import load as load_dimensions
-
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from cad.dimensions import load as load_dimensions  # noqa: E402
+
 MESHES = Path(__file__).resolve().parent / "meshes"
 BUDGET = ROOT / "tools" / "mass_budget.toml"
 
@@ -112,8 +116,8 @@ class Solid:
       box         dims = (x, y, z)
       point       dims unused; contributes mass but no inertia of its own
 
-    `material` names a colour in the CAD's own palette -- lib/parameters.kcl for
-    the robot, wheeled_electronics.kcl for the boards -- so a part is the same
+    `material` names a colour in the CAD's own palette -- cad/parameters.py for
+    the robot, cad/electronics.py for the boards -- so a part is the same
     colour in the simulator as it is in Design Studio, and neither file is a
     second source of the other.
 
@@ -209,8 +213,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     joints: list[Joint] = []
 
     # ---- base link: the pelvis, its lid, and everything standing in it -----
-    # Its origin is the torso centre, which is the frame torso.kcl and
-    # wheeled_electronics.kcl are both already drawn in, so both drop in at
+    # Its origin is the torso centre, which is the frame cad/torso.py and
+    # cad/electronics.py are both already drawn in, so both drop in at
     # identity.
     hip_local_z = hip_z - torso_z
 
@@ -223,7 +227,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             piece="pelvis-shell",
             at=(0.0, 0.0, 0.0),
             source="measured",
-            note="torso.kcl:pelvisShell, seven bodies",
+            note="cad/torso.py:pelvisShell, seven bodies",
         ),
         Solid(
             label="torso cover",
@@ -232,13 +236,13 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             piece="torso-cover",
             at=(0.0, 0.0, 0.0),
             source="measured",
-            note="torso.kcl:torsoCover",
+            note="cad/torso.py:torsoCover",
         ),
     ]
 
     # The two hip pitch actuators. Their housings are held by the pelvis
     # clevises, so their mass is the pelvis's even though their output drives
-    # the thighs. The body is centred on the joint axis: main.kcl translates it
+    # the thighs. The body is centred on the joint axis: cad/main.py translates it
     # to the axis and no further.
     for side in SIDES:
         sign = SIDE_SIGN[side]
@@ -269,7 +273,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             )
         )
 
-    # The payload. wheeled_electronics.kcl draws each item inside its reserved
+    # The payload. cad/electronics.py draws each item inside its reserved
     # envelope in this same frame, so the envelope centroids are where the mass
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
@@ -278,27 +282,65 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # wiring" and 60 g of power entry. The 100 is split below across the boards
     # that make it up. The split is an assumption; the total is not.
     #
-    # The colours are wheeled_electronics.kcl's own, so a board is the same
+    # The colours are cad/electronics.py's own, so a board is the same
     # colour in the simulator as it is in the packing scene, and `draw` is what
     # separates a body from a bounding volume: everything here is a real box
     # standing in a real reserved envelope except the wiring, which is a mass
     # spread through the whole cavity and would be drawn as a slab filling it.
     payload = [
-        ("SBC", 45.0, "sbc", "assumption", "pcbGreen", True,
-         "Raspberry-Pi-4-class board, 46 g published"),
-        ("controller carrier", 25.0, "controller", "assumption", "pcbGreen", True,
-         "STM32G474 core board, two CAN-FD transceivers, carrier and header"),
+        (
+            "SBC",
+            45.0,
+            "sbc",
+            "assumption",
+            "pcbGreen",
+            True,
+            "Raspberry-Pi-4-class board, 46 g published",
+        ),
+        (
+            "controller carrier",
+            25.0,
+            "controller",
+            "assumption",
+            "pcbGreen",
+            True,
+            "STM32G474 core board, two CAN-FD transceivers, carrier and header",
+        ),
         ("IMU", 3.0, "imu", "assumption", "sensorBlue", True, "BNO085 nano breakout"),
-        ("wiring and looms", 27.0, "wiring", "assumption", "carbonBlack", False,
-         "the remainder of the budget's 100 g, spread through the cavity"),
-        ("power entry", 60.0, "power", "estimate", "canSilver", True,
-         "capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED -- docs/BOM.md red line"),
+        (
+            "wiring and looms",
+            27.0,
+            "wiring",
+            "assumption",
+            "carbonBlack",
+            False,
+            "the remainder of the budget's 100 g, spread through the cavity",
+        ),
+        (
+            "power entry",
+            60.0,
+            "power",
+            "estimate",
+            "canSilver",
+            True,
+            "capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED -- docs/BOM.md red line",
+        ),
     ]
     envelopes = {
-        "power": (d["powerWidth"], d["powerDepth"], d["powerHeight"],
-                  d["powerX"], d["lowerBandZ"]),
-        "controller": (d["controllerWidth"], d["controllerDepth"], d["controllerHeight"],
-                       d["controllerX"], d["lowerBandZ"]),
+        "power": (
+            d["powerWidth"],
+            d["powerDepth"],
+            d["powerHeight"],
+            d["powerX"],
+            d["lowerBandZ"],
+        ),
+        "controller": (
+            d["controllerWidth"],
+            d["controllerDepth"],
+            d["controllerHeight"],
+            d["controllerX"],
+            d["lowerBandZ"],
+        ),
         "sbc": (d["sbcWidth"], d["sbcDepth"], d["sbcHeight"], 0.0, d["upperBandZ"]),
         "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, d["floorZ"]),
         # Wiring has no envelope; it is spread through the box, so it is given
@@ -347,7 +389,11 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     base.collisions.append(
         (
             "box",
-            (d["wheeledTorsoShellWidth"], d["torsoShellDepth"], d["wheeledTorsoHeight"]),
+            (
+                d["wheeledTorsoShellWidth"],
+                d["torsoShellDepth"],
+                d["wheeledTorsoHeight"],
+            ),
             (0.0, 0.0, 0.0),
         )
     )
@@ -367,7 +413,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     links[base.name] = base
 
     # ---- the two legs -----------------------------------------------------
-    # lib/limb.kcl: "the limb axis is Z, both joint axes are X, and the two joint
+    # cad/limb.py: "the limb axis is Z, both joint axes are X, and the two joint
     # centres sit at z = +/- limbLength/2", with the driven output disc at +z.
     # So a limb link whose origin is its proximal joint carries its mesh half a
     # limb-length down.
@@ -396,7 +442,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("thigh", side)],
                 at=(0.0, 0.0, -thigh_len / 2),
                 source="measured",
-                note="lib/limb.kcl, 105 mm, five bodies",
+                note="cad/limb.py, 105 mm, five bodies",
             ),
             Solid(
                 label=f"knee actuator, {side}",
@@ -443,7 +489,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 child=thigh.name,
                 origin=(sign * hip_x, 0.0, hip_local_z),
                 # Positive is FLEXION: the thigh swings forward, towards +Y.
-                # Same sign as pose_check.kcl's hip angles.
+                # Same sign as cad/poses.py's pose_check's hip angles.
                 axis=(1.0, 0.0, 0.0),
                 kind="revolute",
                 lower=-60.0,
@@ -466,7 +512,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("shin", side)],
                 at=(0.0, 0.0, -shin_len / 2),
                 source="measured",
-                note="lib/limb.kcl, 105 mm, five bodies",
+                note="cad/limb.py, 105 mm, five bodies",
             ),
             Solid(
                 label=f"wheel actuator, {side}",
@@ -502,14 +548,14 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 parent=thigh.name,
                 child=shin.name,
                 origin=(0.0, 0.0, -thigh_len),
-                # Positive is FLEXION, matching squat_check.kcl and the 110 deg
+                # Positive is FLEXION, matching cad/poses.py's squat_check and the 110 deg
                 # commissioning stop. In the sagittal plane knee flexion is the
                 # opposite sense to hip flexion, hence the opposite sign here.
                 axis=(-1.0, 0.0, 0.0),
                 kind="revolute",
                 lower=0.0,
                 upper=110.0,
-                note="110 deg is the commissioning hard stop, knee_limit_check.kcl.",
+                note="110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check.",
             )
         )
 
@@ -524,7 +570,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=f"wheel-adapter-{side}",
                 at=(0.0, 0.0, 0.0),
                 source="measured",
-                note="wheel_adapter.kcl, three bodies, joint centre at its own origin",
+                note="cad/wheel_adapter.py, three bodies, joint centre at its own origin",
             ),
             Solid(
                 label=f"skate wheel, {side}",

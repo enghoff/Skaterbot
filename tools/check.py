@@ -1,161 +1,177 @@
 # /// script
-# requires-python = ">=3.11"
-# dependencies = ["zoo-kcl>=0.3.181"]
+# requires-python = ">=3.11,<3.13"
+# dependencies = ["build123d>=0.9", "ruff>=0.16"]
 # ///
-"""Mock-execute, lint and format-check the KCL sources.
+"""Build every part and every scene, then lint and format-check the whole tree.
 
-This runs Zoo's own KCL interpreter locally, through the `zoo-kcl` package the
-MCP server is itself built on. Nothing here touches the engine, so it costs no
-API credits, needs no token, works offline, and keeps working on the days the
-MCP server will not start.
+This is the sweep to run after any edit, and it is the whole of what the KCL
+version of this command did plus rather more. It was a mock execution: Zoo's own
+interpreter, run locally, which caught bad arguments and broken sketches but
+never evaluated a boolean -- so a pocket the engine would refuse passed it
+silently. Building the part here IS the boolean, so a cut that cannot be made is
+a failure rather than a surprise later.
 
-What it does not do: mock execution never evaluates the booleans. A blind pocket
-the engine will refuse passes here without complaint. See docs/KCL_GOTCHAS.md.
+    uv run tools/check.py             # everything
+    uv run tools/check.py --fix       # reformat what ruff would reformat
+    uv run tools/check.py --no-lint   # geometry only, when iterating
 
-    uv run tools/check.py                 # every .kcl file in the project
-    uv run tools/check.py lib/joint.kcl   # just the files named
-    uv run tools/check.py --fix           # rewrite anything badly formatted
+What it checks, in order of what it costs:
 
-Exit status is 1 if any file fails to execute, lints dirty, or is unformatted.
+1. every module in cad/ imports, which catches a name that moved;
+2. every printed piece and every check scene builds, and no body of one measures
+   zero volume -- the signature of a twice-mirrored solid, which keeps a correct
+   bounding box and takes part in booleans while reporting no volume at all;
+3. ruff lints and format-checks cad/, tools/ and simulation/, against the rules
+   pinned in ruff.toml.
+
+WHAT IT STILL DOES NOT PROVE. That a feature exists. A hole is a boolean, and a
+boolean the engine accepts having built the wrong solid is the failure this
+project has actually shipped -- four filled bolt holes on the joint that takes
+the actuator's full torque. tools/gate_e.py counts the holes on the finished
+solid and tools/gate_f.py measures the clearances the check scenes were drawn to
+show; those are the checks that a part is right, and this is the check that it is
+buildable.
+
+Free, offline, no engine. A few seconds.
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
+import importlib
+import pkgutil
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
 
-import kcl
-
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-CRLF = "\r\n"
-LF = "\n"
-
-
-# The models are in the project root and the shared modules in lib/, which is a
-# directory rather than a naming convention because KCL only lets a parent reach
-# a subdirectory through its main.kcl. Sweeping the tree rather than the root
-# keeps this command's promise to check every file.
-SKIP = {"exports", "renders", "reference", "simulation", "__pycache__"}
+# Where the Python that this project runs on lives. Everything else in the tree
+# is geometry output, reference input or documentation.
+SOURCE_DIRS = ("cad", "tools", "simulation")
 
 
-def swept(path: Path) -> bool:
-    """Is this file part of the project, rather than output or scratch?"""
-    parts = path.relative_to(ROOT).parts
-    # Anything under a dotted directory is somebody's staging area or the app's
-    # own state -- .git, a transfer staging folder, an editor's workspace. It is
-    # not the project, and sweeping it reports failures nobody owns.
-    return not (SKIP & set(parts) or any(p.startswith(".") for p in parts[:-1]))
+def modules() -> list[str]:
+    """Every module in cad/, which is where the CAD now lives."""
+    return sorted(
+        info.name
+        for info in pkgutil.iter_modules([str(ROOT / "cad")])
+        if not info.name.startswith("_")
+    )
 
 
-def targets(names: list[str]) -> list[Path]:
-    if names:
-        return [Path(n) if Path(n).is_absolute() else ROOT / n for n in names]
-    return sorted(p for p in ROOT.rglob("*.kcl") if swept(p))
+def build_all() -> tuple[list[tuple], int]:
+    """Build every printed piece and every scene. (rows, failures)"""
+    import tomllib
+
+    rows: list[tuple] = []
+    failures = 0
+
+    budget = tomllib.loads((ROOT / "tools" / "mass_budget.toml").read_text("utf-8"))
+    work: list[tuple[str, str, object]] = []
+
+    for part in budget["printed"]:
+        module = importlib.import_module(
+            part["file"].removesuffix(".py").replace("/", ".")
+        )
+        for piece in part.get("piece", []):
+            work.append(("piece", piece["name"], getattr(module, piece["export"])))
+
+    from cad import scenes
+
+    for name, build in scenes.SCENES.items():
+        work.append(("scene", name, build))
+
+    from cad.main import robotAssembly
+
+    work.append(("scene", "the neutral assembly", robotAssembly))
+
+    for kind, name, build in work:
+        started = time.time()
+        try:
+            built = build()
+            bodies = list(built) if isinstance(built, (list, tuple)) else [built]
+            empty = [i for i, body in enumerate(bodies) if body.volume <= 0.0]
+            if empty:
+                raise ValueError(
+                    f"bodies {empty} measure zero volume -- malformed solids, "
+                    "probably inverted by a double mirror"
+                )
+            note = f"{len(bodies):3d} bodies"
+            status = "ok"
+        except Exception as exc:  # noqa: BLE001 - the OCCT diagnostic is the payload
+            note = f"{type(exc).__name__}: {exc}"
+            status = "FAIL"
+            failures += 1
+        rows.append((kind, name, status, time.time() - started, note))
+
+    return rows, failures
 
 
-async def check_one(path: Path, fix: bool) -> dict:
-    result: dict = {"path": path, "error": None, "lints": [], "unformatted": False}
-    raw = path.read_bytes().decode("utf-8")
-    # The working tree is CRLF here (core.autocrlf) while the formatter speaks
-    # LF, so compare on LF and write back whichever ending the file already had.
-    was_crlf = CRLF in raw
-    source = raw.replace(CRLF, LF)
-
-    formatted = kcl.format(source)
-    if formatted != source:
-        if fix:
-            out = formatted.replace(LF, CRLF) if was_crlf else formatted
-            path.write_bytes(out.encode("utf-8"))
-            result["fixed"] = True
-        else:
-            result["unformatted"] = True
-
-    # Lint findings carry a character offset, not a line, so turn it into one.
-    result["lints"] = [
-        f"line {source.count(LF, 0, d.pos[0]) + 1}: "
-        f"{d.finding.code} {d.finding.title} — {d.description}"
-        for d in kcl.lint(source)
-        if not d.overridden
-    ]
-
-    started = time.time()
-    try:
-        outcome = await kcl.mock_execute(str(path))
-        # Anything fatal raises; whatever is reported here is a warning.
-        result["warnings"] = outcome.report_all()
-    except Exception as exc:  # noqa: BLE001 - the KCL diagnostic is the payload
-        # The Rust binding raises with the rendered diagnostic as args[0]; str()
-        # on the exception itself would print it as an escaped tuple.
-        args = getattr(exc, "args", ())
-        result["error"] = args[0] if args and isinstance(args[0], str) else str(exc)
-    result["seconds"] = time.time() - started
-    return result
-
-
-def indent(text: str) -> str:
-    return LF.join("    " + line for line in text.rstrip().splitlines())
+def ruff(argv: list[str]) -> tuple[int, str]:
+    """Run ruff from the environment this script was launched in."""
+    binary = shutil.which("ruff") or shutil.which(
+        "ruff", path=str(Path(sys.executable).parent)
+    )
+    if binary is None:
+        return 0, "ruff not found; skipped"
+    done = subprocess.run(
+        [binary, *argv, *SOURCE_DIRS],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return done.returncode, (done.stdout + done.stderr).strip()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("files", nargs="*", help="KCL files; default is all of them")
-    parser.add_argument("--fix", action="store_true", help="rewrite unformatted files")
+    parser.add_argument(
+        "--fix", action="store_true", help="reformat and auto-fix what ruff can"
+    )
+    parser.add_argument(
+        "--no-lint", action="store_true", help="skip ruff; build the geometry only"
+    )
     args = parser.parse_args()
 
-    files = targets(args.files)
-    if not files:
-        print("no .kcl files found", file=sys.stderr)
-        return 1
+    failures = 0
 
-    results = [asyncio.run(check_one(p, args.fix)) for p in files]
+    print("MODULES")
+    for name in modules():
+        try:
+            importlib.import_module(f"cad.{name}")
+            print(f"  ok    cad/{name}.py")
+        except Exception as exc:  # noqa: BLE001 - the import error is the payload
+            print(f"  FAIL  cad/{name}.py  {type(exc).__name__}: {exc}")
+            failures += 1
 
-    failed = fixed = unformatted = dirty = 0
-    for r in results:
-        flags = []
-        if r["unformatted"]:
-            flags.append("needs formatting")
-            unformatted += 1
-        if r.get("fixed"):
-            flags.append("reformatted")
-            fixed += 1
-        if r["lints"]:
-            flags.append(f"{len(r['lints'])} lint")
-            dirty += 1
-        if r.get("warnings"):
-            flags.append(f"{len(r['warnings'])} warning")
+    print("\nPARTS AND SCENES")
+    rows, broken = build_all()
+    failures += broken
+    for kind, name, status, seconds, note in rows:
+        mark = "  ok  " if status == "ok" else " FAIL "
+        print(f" {mark} {kind:<6} {name:<24} {seconds:5.2f}s  {note}")
 
-        status = "FAIL" if r["error"] else "ok"
-        if r["error"]:
-            failed += 1
-        # The path, not the name: both the model (main.kcl) and the library
-        # facade (lib/main.kcl) are called main.kcl, and a bare name would
-        # not say which of them had passed.
-        label = r["path"].resolve().as_posix().removeprefix(ROOT.as_posix() + "/")
-        print(f"{label:30s} {status:5s} {r['seconds']:5.2f}s  {', '.join(flags)}")
+    if not args.no_lint:
+        print("\nLINT AND FORMAT")
+        checks = (
+            (["check", "--fix"], "lint") if args.fix else (["check"], "lint"),
+            (["format"], "format") if args.fix else (["format", "--check"], "format"),
+        )
+        for argv, label in checks:
+            code, output = ruff(argv)
+            summary = output.splitlines()[-1] if output else "clean"
+            print(f"  {'ok  ' if code == 0 else 'FAIL'}  ruff {label:<7} {summary}")
+            if code != 0:
+                print("\n" + output)
+                failures += 1
 
-        if r["error"]:
-            print(indent(r["error"]))
-        for lint in r["lints"]:
-            print(f"    lint {lint}")
-        for warning in r.get("warnings", []):
-            print(indent(warning))
-
-    total = len(results)
-    summary = [f"{total - failed}/{total} execute"]
-    if failed:
-        summary.append(f"{failed} FAILED")
-    summary.append("lint clean" if not dirty else f"{dirty} files lint dirty")
-    if fixed:
-        summary.append(f"{fixed} reformatted")
-    if unformatted:
-        summary.append(f"{unformatted} {'file needs' if unformatted == 1 else 'files need'} formatting (--fix)")
-    print(LF + " · ".join(summary))
-
-    return 1 if (failed or dirty or unformatted) else 0
+    print()
+    print(f"check: FAIL -- {failures} problem(s)" if failures else "check: pass")
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":

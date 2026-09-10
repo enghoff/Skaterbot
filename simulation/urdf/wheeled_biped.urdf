@@ -9,14 +9,14 @@
 
   FRAME. +X forward, +Y left, +Z up, the ROS convention. The CAD is drawn with
   +Y forward and +X to the robot's right, so everything here has been turned a
-  quarter turn from the frame the KCL and the mesh files use.
+  quarter turn from the frame the CAD and the mesh files use.
 
   BASE. base_link's origin is the torso's centre, 0.3065 m above the
   ground in the neutral standing pose. The robot stands 0.339 m tall and its
   wheels are 0.1699 m apart at the contact patch.
 
   JOINT SIGNS. Both leg joints are positive in FLEXION, matching the angles in
-  pose_check.kcl and squat_check.kcl, so a pose read off one of those scenes
+  cad/poses.py, so a pose read off one of those scenes
   can be commanded here unchanged. Hip flexion swings the thigh forward; knee
   flexion folds the shin back under it; and because those are opposite senses
   in the sagittal plane, the two joints carry opposite axis vectors. A positive
@@ -44,7 +44,7 @@
 -->
 <robot name="wheeled_biped">
 
-  <!-- Colours are the CAD's own, read out of parameters.kcl and wheeled_electronics.kcl by kcl_params.load_colors, so a part is the same colour here as it is in Design Studio. -->
+  <!-- Colours are the CAD's own, read out of cad/parameters.py and cad/electronics.py by cad.dimensions.colors, so a part is the same colour here as it is in the CAD viewer. -->
   <material name="bearingSteel"><color rgba="0.788235294 0.815686275 0.835294118 1"/></material>
   <material name="canSilver"><color rgba="0.549019608 0.576470588 0.611764706 1"/></material>
   <material name="motorGrey"><color rgba="0.349019608 0.388235294 0.423529412 1"/></material>
@@ -55,12 +55,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000108321537 -0.0028016568 -0.0303867251" rpy="0 0 0"/>
-      <mass value="0.658004"/>
-      <inertia ixx="2.095748785e-03" ixy="-1.996907534e-07" ixz="4.494784939e-07"
-               iyy="8.764143630e-04" iyz="5.040117766e-05" izz="1.549147305e-03"/>
+      <origin xyz="0.000108379339 -0.00280167012 -0.0303868121" rpy="0 0 0"/>
+      <mass value="0.658000"/>
+      <inertia ixx="2.095719572e-03" ixy="-1.997973118e-07" ixz="4.504250851e-07"
+               iyy="8.764095687e-04" iyz="5.040133802e-05" izz="1.549122577e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 119.6 g, measured: torso.kcl:pelvisShell, seven bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 119.6 g, measured: cad/torso.py:pelvisShell, seven bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -68,7 +68,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- torso cover — 40.6 g, measured: torso.kcl:torsoCover -->
+    <!-- torso cover — 40.6 g, measured: cad/torso.py:torsoCover -->
     <visual name="torso_cover">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -162,12 +162,12 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="-0.000120413463 -0.00440602975 -0.0947814742" rpy="0 0 0"/>
-      <mass value="0.196712"/>
-      <inertia ixx="2.058730561e-04" ixy="-4.155604747e-07" ixz="-2.420443092e-07"
-               iyy="1.969784978e-04" iyz="3.589695788e-05" izz="5.795387851e-05"/>
+      <origin xyz="-0.000120345928 -0.00440566002 -0.0947819879" rpy="0 0 0"/>
+      <mass value="0.196708"/>
+      <inertia ixx="2.058568253e-04" ixy="-4.153275276e-07" ixz="-2.418911590e-07"
+               iyy="1.969627651e-04" iyz="3.589510479e-05" izz="5.795177283e-05"/>
     </inertial>
-    <!-- thigh limb plate, right — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <!-- thigh limb plate, right — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -201,12 +201,12 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="-0.000123489523 0.00393230884 -0.0972027447" rpy="0 0 0"/>
-      <mass value="0.191812"/>
-      <inertia ixx="1.589444513e-04" ixy="4.267814063e-07" ixz="-1.846921658e-07"
-               iyy="1.517733797e-04" iyz="-2.706458634e-05" izz="5.616899617e-05"/>
+      <origin xyz="-0.000123420329 0.00393191953 -0.0972033231" rpy="0 0 0"/>
+      <mass value="0.191808"/>
+      <inertia ixx="1.589276374e-04" ixy="4.265423955e-07" ixz="-1.845708407e-07"
+               iyy="1.517571337e-04" iyz="-2.706250458e-05" izz="5.616682075e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <!-- shin limb plate, right — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -232,12 +232,12 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="-3.37546923e-20 -0.0365393535 1.68773462e-20" rpy="0 0 0"/>
-      <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="-7.059688323e-23" ixz="2.098984628e-18"
-               iyy="6.487132618e-05" iyz="-1.127818478e-22" izz="3.747158202e-05"/>
+      <origin xyz="2.9115046e-16 -0.0365395724 1.13925065e-15" rpy="0 0 0"/>
+      <mass value="0.076158"/>
+      <inertia ixx="3.747094974e-05" ixy="-5.295981416e-20" ixz="6.035464661e-19"
+               iyy="6.487085522e-05" iyz="-2.073196744e-19" izz="3.747094974e-05"/>
     </inertial>
-    <!-- wheel adapter, right — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, right — 13.2 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -271,12 +271,12 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="-0.000120413463 0.00440602975 -0.0947814742" rpy="0 0 0"/>
-      <mass value="0.196712"/>
-      <inertia ixx="2.058730561e-04" ixy="4.155604747e-07" ixz="-2.420443092e-07"
-               iyy="1.969784978e-04" iyz="-3.589695788e-05" izz="5.795387851e-05"/>
+      <origin xyz="-0.000120345928 0.00440566002 -0.0947819879" rpy="0 0 0"/>
+      <mass value="0.196708"/>
+      <inertia ixx="2.058568253e-04" ixy="4.153275276e-07" ixz="-2.418911590e-07"
+               iyy="1.969627651e-04" iyz="-3.589510479e-05" izz="5.795177283e-05"/>
     </inertial>
-    <!-- thigh limb plate, left — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <!-- thigh limb plate, left — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -310,12 +310,12 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="-0.000123489523 -0.00393230884 -0.0972027447" rpy="0 0 0"/>
-      <mass value="0.191812"/>
-      <inertia ixx="1.589444513e-04" ixy="-4.267814063e-07" ixz="-1.846921658e-07"
-               iyy="1.517733797e-04" iyz="2.706458634e-05" izz="5.616899617e-05"/>
+      <origin xyz="-0.000123420329 -0.00393191953 -0.0972033231" rpy="0 0 0"/>
+      <mass value="0.191808"/>
+      <inertia ixx="1.589276374e-04" ixy="-4.265423955e-07" ixz="-1.845708407e-07"
+               iyy="1.517571337e-04" iyz="2.706250458e-05" izz="5.616682075e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 34.3 g, measured: limb.kcl, 105 mm, five bodies -->
+    <!-- shin limb plate, left — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -341,12 +341,12 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="-3.37546923e-20 0.0365393535 1.68773462e-20" rpy="0 0 0"/>
-      <mass value="0.076162"/>
-      <inertia ixx="3.747158201e-05" ixy="-2.913771574e-22" ixz="-2.098984628e-18"
-               iyy="6.487132618e-05" iyz="-1.884507613e-23" izz="3.747158202e-05"/>
+      <origin xyz="2.91184216e-16 0.0365395724 1.13928441e-15" rpy="0 0 0"/>
+      <mass value="0.076158"/>
+      <inertia ixx="3.747094974e-05" ixy="5.292212457e-20" ixz="6.035629194e-19"
+               iyy="6.487085522e-05" iyz="2.074300651e-19" izz="3.747094974e-05"/>
     </inertial>
-    <!-- wheel adapter, left — 13.2 g, measured: wheel_adapter.kcl, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, left — 13.2 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -387,7 +387,7 @@
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
-  <!-- 110 deg is the commissioning hard stop, knee_limit_check.kcl. -->
+  <!-- 110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check. -->
   <joint name="knee_right" type="revolute">
     <parent link="thigh_right"/>
     <child link="shin_right"/>
@@ -414,7 +414,7 @@
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
-  <!-- 110 deg is the commissioning hard stop, knee_limit_check.kcl. -->
+  <!-- 110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check. -->
   <joint name="knee_left" type="revolute">
     <parent link="thigh_left"/>
     <child link="shin_left"/>

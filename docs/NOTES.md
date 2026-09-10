@@ -1300,3 +1300,53 @@ breaking load against 15–25 MPa available.
 All of the above is arithmetic against 75 MPa in plane and 30 MPa across layers
 for PA12-CF, which this project has still never measured on a coupon. Those
 coupons remain the gate they have always been.
+
+
+## The CAD left KCL, and what that changed about checking it
+
+2026-09-10. The CAD is [build123d](https://build123d.readthedocs.io) in `cad/`,
+and the KCL is deleted. [`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) is
+the plan and the record; this entry is what it means for how the robot gets
+checked, which is the part worth remembering.
+
+**Everything is free now.** Measuring the mass, exporting a STEP, exporting the
+simulation meshes and building any part were all metered engine calls, so the
+working discipline was "iterate against a free mock execution, spend credits when
+the geometry has to be right". The mock execution never evaluated a boolean,
+which is the whole gap that discipline lived in. Building a part locally IS the
+boolean, so `/check` now catches a cut that cannot be made, and it takes five
+seconds.
+
+**Two defects surfaced during the port, and both are fixed.** The rotor arm's
+stress-relief fillet was never the 1 mm radius its parameter named: the KCL
+sketch constrained how far the blend reached but left the arc's centre free, so
+the solver kept its initial guess and built a shallow sqrt(8.5) = 2.9155 mm arc
+tangent to neither face, carrying nearly double the material a true quarter-round
+would. It is a real 1 mm fillet now. Separately, a twice-mirrored solid comes back
+inverted and measures ZERO volume while keeping a correct bounding box and taking
+part in every boolean correctly -- the limb's rear gusset was in that state, and
+nothing reported it. Every tool that adds bodies up now refuses a body of zero
+volume outright.
+
+**A render is no longer the evidence for a feature.** It never should have been:
+structure behind a hole makes an open one look closed, which is how the rotor hub
+carried four filled bolt holes through several rebuilds. `tools/gate_e.py` counts
+the holes and bores on the finished solid, and `tools/gate_f.py` measures every
+clearance the check scenes were drawn to show. Numbers from that, worth keeping:
+the shin plate clears the thigh plate by 37.900 mm at the 110 degree knee stop
+(they are in different planes, either side of the actuator, so the gap is the
+joint's width and not a function of the angle); the folded wheel clears its own
+thigh by 39.882 mm in the deepest legal squat, which is the tightest either pose
+gets; and the torso floor clears a thigh swung 35 degrees forward by exactly
+1.000 mm, which is the joint keep-out and nothing to spare.
+
+**What was lost.** The rendered view sheet. `/views` produced a six-sided PNG
+sheet of any model on the engine, and there is no local replacement -- `/view`
+needs a viewer open. The golden renders the migration plan asked for were never
+captured either, so there is no frozen visual reference to diff against.
+
+**What is still open.** The printed pieces are still several interpenetrating
+shells rather than single solids, because the Zoo engine refused to union them.
+OCCT will, so that is now a matter of doing it -- with one obstacle: a body
+carrying the 0.5 mm chamfer segfaults OCCT in any subsequent boolean, so as
+things stand the union and the chamfer cannot both be had.

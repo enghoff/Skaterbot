@@ -1,0 +1,72 @@
+{
+  "note": "Frozen from the KCL check scenes before they were ported to cad/poses.py. Lengths in millimetres, angles in degrees. Each scene's own top-level constants -- the names it defines that its imports do not.",
+  "base": [
+    "lib/parameters.kcl",
+    "lib/joint.kcl",
+    "lib/wheeled_parameters.kcl"
+  ],
+  "scenes": {
+    "pose_check.kcl": {
+      "crouchDrop": 5.7142667753402066,
+      "leftHipAngle": -6.0,
+      "leftKneeAngle": 12.0,
+      "leftKneeY": -10.975488643103615,
+      "leftKneeZ": 139.8609342109911,
+      "leftLegVerticalReach": 204.2857332246598,
+      "leftShinAngle": -18.0,
+      "leftShinCenterY": -27.198880847788356,
+      "leftShinCenterZ": 89.93046710549555,
+      "leftThighCenterY": -5.487744321551808,
+      "leftThighCenterZ": 192.07333371782545,
+      "leftWheelY": -43.422273052473095,
+      "leftWheelZ": 39.999999999999986,
+      "poseHipPitchZ": 244.2857332246598,
+      "poseTorsoCenterZ": 300.7857332246598,
+      "rightHipAngle": 35.0,
+      "rightKneeAngle": 65.0,
+      "rightKneeY": 60.225525816859836,
+      "rightKneeZ": 158.27476857431566,
+      "rightShinAngle": -30.0,
+      "rightShinCenterY": 33.97552581685984,
+      "rightShinCenterZ": 112.80843487563263,
+      "rightThighCenterY": 30.112762908429918,
+      "rightThighCenterZ": 201.28025089948773,
+      "rightWheelY": 7.725525816859843,
+      "rightWheelZ": 67.3421011769496
+    },
+    "squat_check.kcl": {
+      "kneeY": 86.01096465034414,
+      "kneeZ": 100.22552581685983,
+      "legVerticalReach": 120.45105163371967,
+      "shinCenterY": 43.00548232517207,
+      "shinCenterZ": 70.11276290842991,
+      "squatDrop": 89.54894836628033,
+      "squatHipAngle": 55.0,
+      "squatHipPitchZ": 160.45105163371966,
+      "squatKneeAngle": 110.0,
+      "squatShinAngle": -55.0,
+      "squatTorsoCenterZ": 216.95105163371966,
+      "thighCenterY": 43.00548232517207,
+      "thighCenterZ": 130.33828872528974,
+      "wheelY": 0.0,
+      "wheelZ": 39.99999999999999
+    },
+    "knee_limit_check.kcl": {
+      "kneeLimitAngle": 110.0,
+      "lowerLinkCenterY": -49.33386259126019,
+      "lowerLinkCenterZ": 17.956057524597608,
+      "shinLimitAngle": -110.0,
+      "upperLinkCenterZ": 52.5
+    },
+    "knee_prelimit_check.kcl": {
+      "kneePreLimitAngle": 100.0,
+      "lowerLinkCenterY": -51.70240703314092,
+      "lowerLinkCenterZ": 9.116529327513842,
+      "shinPreLimitAngle": -100.0,
+      "upperLinkCenterZ": 52.5
+    },
+    "torso_packing_check.kcl": {},
+    "limb_check.kcl": {},
+    "wheel_module_check.kcl": {}
+  }
+}

@@ -1,7 +1,8 @@
-# Mass budget for the whole robot -- the WHEELED robot, which is main.kcl on
-# this branch. The walking robot it grew out of is walking_main.kcl, and its
-# budget is this same file on the `main` branch: the branch is the variant
-# mechanism, because a single budget file describes a single machine.
+# Mass budget for the whole robot -- the WHEELED robot, which is cad/main.py on
+# this branch. The walking robot it grew out of is walking_main.kcl on the `main`
+# branch, along with the KCL it is still drawn in, and its budget is this same
+# file there: the branch is the variant mechanism, because a single budget file
+# describes a single machine.
 #
 # What changed from the walking budget: the feet became wheel adapters plus a
 # pair of bought skate wheels, and then hip roll was deleted outright. That last
@@ -43,10 +44,23 @@ density_unit = "kg/m3"
 # replaced, which is where part of the current headroom came from.
 
 # ---- printed structure, measured from the CAD ------------------------------
-# Each entry executes on the engine at the density above. Files are measured
-# standalone, so a file must export only printed geometry for its figure to
-# mean anything: actuators, bearings and journals live in their own modules and
-# are counted as bought items below.
+# Each entry is measured locally by integrating the volume of what its module
+# builds, at the density above. A module must build only printed geometry for its
+# figure to mean anything: actuators, bearings and journals live in their own
+# modules and are counted as bought items below.
+#
+# `file` named a KCL file until the build123d migration and now names the Python
+# module that builds the part. `export` is the function in it, called directly --
+# so the `hide` lists these entries used to carry are gone. They existed because
+# importing a KCL module ran it and left every part it built standing in the
+# scene, which the exporter then had to hide one by one.
+#
+# `measure` is new, and it is there because a Python module builds nothing until
+# it is called. The engine weighed a KCL FILE -- whatever solids it happened to
+# leave standing -- so the figure included both hands of a mirrored pair without
+# anyone saying so. Naming the functions makes that explicit, and it is why the
+# shin entry can carry a mass without carrying a print: its two hands are the same
+# solids the thigh already prints.
 #
 # Since the robot became mirror-symmetric the four leg files each build both
 # hands, so their count is 1 and the measured figure is the pair. The two limb
@@ -54,18 +68,18 @@ density_unit = "kg/m3"
 # are 105 mm, so the right thigh and the left shin are the same part.
 
 [[printed]]
-file = "thigh.kcl"
+file = "cad/thigh.py"
 label = "Thighs, the pair"
+measure = ["thighRight", "thighLeft"]
 count = 1
 
 # Both leg segments are 105 mm, so these two pieces are every limb on the robot:
 # the unmirrored one is the right thigh and the left shin, its mirror is the left
-# thigh and the right shin. Hence prints = 2 each, and hence shin.kcl below
+# thigh and the right shin. Hence prints = 2 each, and hence cad/shin.py below
 # contributes no pieces of its own.
 [[printed.piece]]
 name = "limb-105-unmirrored"
 export = "thighRight"
-hide = ["thighLeft"]
 prints = 2
 bodies = 5  # waist plate, two gussets, output disc, stator plate
 note = "Right thigh and left shin -- limbAssembly as built, stator plate on +X."
@@ -73,64 +87,63 @@ note = "Right thigh and left shin -- limbAssembly as built, stator plate on +X."
 [[printed.piece]]
 name = "limb-105-mirrored"
 export = "thighLeft"
-hide = ["thighRight"]
 prints = 2
 bodies = 5  # waist plate, two gussets, output disc, stator plate
 note = "Left thigh and right shin -- the mirror, stator plate on -X."
 
 # Measured for mass because the robot carries four limbs, but printed from
-# thigh.kcl's two pieces above: shinLeft is the same solid as thighRight.
+# cad/thigh.py's two pieces above: shinLeft is the same solid as thighRight.
 [[printed]]
-file = "shin.kcl"
+file = "cad/shin.py"
 label = "Shins, the pair"
+measure = ["shinRight", "shinLeft"]
 count = 1
 
 # There is no hip carrier. It was the orthogonal bracket between the hip roll
 # and hip pitch axes, and with hip roll deleted the hip pitch clevis is part of
-# the pelvis instead. hip_carrier.kcl and walking_hip_carrier.kcl are still in
-# the repository because the walking robot on `main` still needs them.
+# the pelvis instead. The walking robot on `main` still has one, in KCL, which is
+# where that machine now lives.
 
 [[printed]]
-file = "wheel_adapter.kcl"
+file = "cad/wheel_adapter.py"
 label = "Wheel adapters, the pair"
+measure = ["wheelAdapterRight", "wheelAdapterLeft"]
 count = 1
 
 [[printed.piece]]
 name = "wheel-adapter-right"
 export = "wheelAdapterRight"
-hide = ["wheelAdapterLeft"]
 prints = 1
 bodies = 3  # output disc, spigot, plug
 
 [[printed.piece]]
 name = "wheel-adapter-left"
 export = "wheelAdapterLeft"
-hide = ["wheelAdapterRight"]
 prints = 1
 bodies = 3  # output disc, spigot, plug
 
-# Measured through torso.kcl, which is the six-motor pelvis: 125 x 68 x 65,
+# Measured through cad/torso.py, which is the six-motor pelvis: 125 x 68 x 65,
 # where the walking robot's is 118 x 68 x 106. The lid and the cover bosses are
-# built by functions in torso_shell.kcl and called from torso.kcl, so they are
-# inside this file's figure and must not be counted again.
+# built by functions in cad/torso_shell.py and called from cad/torso.py, so they
+# are inside this file's figure and must not be counted again.
 [[printed]]
-file = "torso.kcl"
+file = "cad/torso.py"
 label = "Pelvis, torso shell, cover"
+measure = ["torsoAssembly"]
 count = 1
 
-# One file, two prints. torsoAssembly holds both, so each piece hides the other.
+# One module, two prints: torsoAssembly is both of them, and each is exported by
+# calling its own function.
 [[printed.piece]]
 name = "pelvis-shell"
 export = "pelvisShell"
-hide = ["torsoCover"]
 prints = 1
 bodies = 7  # shell, four cover bosses, two hip pitch clevises
-note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; wheeled_parameters.kcl says why both numbers are what they are."""
+note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are."""
 
 [[printed.piece]]
 name = "torso-cover"
 export = "torsoCover"
-hide = ["pelvisShell"]
 prints = 1
 bodies = 1  # the lid, one solid
 
@@ -147,7 +160,7 @@ note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, \
 label = "Bearing, journal, carrier"
 each_g = 16.3
 count = 2
-note = """6800-2RS, Ø10 journal and the flanged metal carrier from hardware.kcl. \
+note = """6800-2RS, Ø10 journal and the flanged metal carrier from cad/hardware.py. \
 Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
 per-joint tally. Hip pitch is the only straddled joint left, so there are two \
 sets rather than four."""

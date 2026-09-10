@@ -1,21 +1,30 @@
-# KCL and Zoo engine gotchas
+# KCL and Zoo engine gotchas — a historical record
 
-Things this project has already learned the hard way, collected so nobody has to
-learn them twice. Each one was hit while building the robot; the engineering log
-in [`NOTES.md`](NOTES.md) has the surrounding story.
+**This is history, not a working reference.** The CAD moved from KCL to build123d
+in September 2026 ([`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md)) and none
+of the engine behaviour below applies to it. The file is kept, and should not be
+deleted, for one reason: **it is why several parts of this robot are shaped the
+way they are.** The interpenetrating shells, the rectangular cable ports, the
+arcs drawn into profiles in place of fillets, the stub axles — each is a design
+bent around a refusal recorded here, and phase 3 of the migration is the list of
+them being straightened out. Read it before you decide a part's shape is
+arbitrary.
 
-Add to this file whenever the engine refuses something, or accepts something and
-produces the wrong thing.
+What replaced each thing below, in one line: `uv run tools/check.py` builds every
+part locally and therefore evaluates every boolean; `tools/gate_e.py` counts the
+holes on the finished solid; `tools/gate_f.py` measures the clearances; and none
+of it is metered.
 
-## The one that matters most
+## The one that mattered most
 
-**Mock execution does not exercise the booleans.** Every geometry limitation
-below passes `tools/check.py` and the MCP `mock_execute_kcl` without a word of
-complaint, and only fails when the real engine tries to build the solid. Mock
-execution proves the KCL is valid; it does not prove the part exists.
+**Mock execution did not exercise the booleans.** Every geometry limitation below
+passed the free local check without a word of complaint, and only failed when the
+real engine tried to build the solid. Mock execution proved the KCL was valid; it
+did not prove the part existed.
 
 So: mock-execute while iterating, engine-execute before believing anything about
-geometry.
+geometry. That trade-off is what the migration removed — building a part in
+build123d IS the boolean.
 
 ## The one that is worse than a refusal
 

@@ -1,15 +1,14 @@
-# Zoo Design Studio
-thumbnail.png
-
 # Local credentials — never commit
 secrets/
 *.env
 
-# Rendered views from tools/views.py
+# Rendered views, from the metered tools/views.py the migration deleted. Kept
+# ignored because the directory is still on disk in some checkouts.
 renders/
 
-# Python bytecode from tools/
+# Python bytecode
 __pycache__/
+.ruff_cache/
 
 # Exported geometry
 *.stl
@@ -28,9 +27,6 @@ __pycache__/
 !simulation/urdf/meshes/*.stl
 *.FCStd~
 .DS_Store
-
-# Transient wrapper scene written by tools/export.py
-_export_piece.kcl
 
 # The rigged Isaac Sim robot, written by simulation/isaacsim/import_urdf.py from
 # the URDF. Generated output, and it embeds the meshes, so it is rebuilt rather

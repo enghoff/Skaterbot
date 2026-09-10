@@ -1,19 +1,21 @@
 # Project Instructions — Torque-Controlled Biped
 
-Standing context for any agent working this CAD (Zookeeper in Design Studio,
-or an external agent via Zoo MCP). Full reasoning lives in
+Standing context for any agent working this CAD. Full reasoning lives in
 [`OPUS_HANDOFF.md`](OPUS_HANDOFF.md) beside this file; this file is the short,
 binding version.
 
-The models and the part files are at the repository root (one level up), because
-Zoo Design Studio expects `project.toml` and `main.kcl` there. The dimensions and
-the shared drawing functions are in `lib/` beside them, reached with
-`import * from "lib/main.kcl"`. The split is forced: importing a module runs it
-and any body it built at its top level joins your scene, so a part has to be
-imported by name by the scene that wants it, while everything in `lib/` is
-geometry-free and safe to hand out together. Everything in prose —
-this file, the handoff, [`NOTES.md`](NOTES.md), [`CHECKLIST.md`](CHECKLIST.md),
-and [`BOM.md`](BOM.md) — lives here in `docs/`.
+**Two things here are older than the branch you are on.** The frozen parameters
+and the mass ceiling below describe the eight-motor WALKING robot, which now
+lives on the `main` branch. This branch is the six-motor wheeled robot: 6 DOF,
+339 mm, a 2 300 g ceiling, and no hip roll or ankle at all. `../CLAUDE.md` and
+`../README.md` are current; where they disagree with this file, they win.
+
+The CAD is build123d in `../cad/`, one flat Python package, and every check is
+free and local — see `../CLAUDE.md`. It was KCL executed on Zoo's engine until
+September 2026; [`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) is the record
+of the move. Everything in prose — this file, the handoff,
+[`NOTES.md`](NOTES.md), [`CHECKLIST.md`](CHECKLIST.md), and [`BOM.md`](BOM.md)
+— lives here in `docs/`.
 
 ## Current objective
 
@@ -80,8 +82,8 @@ The vendor STEP, 2D print and manual are published at
 `gitee.com/kit-miao/DM-J3507-2EC`. Do not re-guess the interface. The output
 face carries **6 × M3 on a Ø24 mm bolt circle** inside a Ø30 mm register; the
 housing carries **4 × M3 on Ø41 mm**; there is **no rear spigot**, so any
-opposite support bearing needs a stub axle you supply. These are exported from
-`lib/parameters.kcl` — reference them rather than restating numbers.
+opposite support bearing needs a stub axle you supply. These are declared in
+`../cad/parameters.py` — reference them rather than restating numbers.
 
 ## No hardware exists
 
@@ -91,10 +93,12 @@ though it were validated. Thermal behaviour, backdrivability, PETG creep,
 layer strength and printed bearing-pocket accuracy are all open; say so
 explicitly rather than designing past them.
 
-Zoo Design Studio here is GUI-only, with no headless command line, so KCL
-cannot be executed or regenerated outside the app. Any CAD change you make is
-unverified until someone opens the project and regenerates it — state that
-plainly instead of implying a geometry check happened.
+This constraint used to have a second half, and it is worth recording that it is
+gone: the CAD could not be executed outside Design Studio, so every change was
+unverified until someone opened the app. Now `uv run tools/check.py` builds every
+part and scene locally in a few seconds, and the six gates check the result
+against what the engine built before the migration. There is no longer any excuse
+for reporting a change without having built it.
 
 ## Sourcing constraints
 
@@ -114,13 +118,21 @@ FDM, modest workshop tooling. Parts must be printable without exotic support
 strategies, and orientation should put load paths across layer lines
 sensibly rather than along them.
 
-## Known defect — read before touching the feet
+## Known defect — the pieces are still interpenetrating bodies
 
-The connected foot-frame members currently exist as **overlapping bodies**
-because the kernel rejected their 3D union. This is in `foot.kcl` at the
-repository root. The exported STL is a concept export, not
-manufacturing-ready. Do not treat intersecting bodies as acceptable output;
-resolve them into valid solids.
+Every printed piece is several overlapping shells rather than one solid, because
+the Zoo engine refused to union them: the pelvis shell is seven bodies, a limb
+five, a wheel adapter three. A slicer merges them, so the parts are printable,
+but an exported STEP is not a valid single solid and the mass roll-up counts
+every overlap twice.
+
+OCCT will union them, so this is fixable now and it is phase 3 of
+[`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) — with one obstacle recorded
+there: a body carrying the 0.5 mm chamfer segfaults OCCT in any subsequent
+boolean, so the union and the chamfer cannot currently both be had. The `bodies`
+count on each `[[printed.piece]]` in `../tools/mass_budget.toml` is the register
+of what is still to be resolved. The foot this section used to be about belonged
+to the walking robot and is not on this branch.
 
 ## Working method
 
@@ -136,7 +148,12 @@ alter a major parameter.
 
 "Regenerate and inspect the geometry" means inspect the **feature**, not the
 part. Where a hole or a pocket sits in a plane that another body is unioned to,
-the engine will fill it back in without complaining, and a clean `/check`, a
-successful engine run and a plausible mass all report nothing. See
-[`KCL_GOTCHAS.md`](KCL_GOTCHAS.md) — render the part alone down the feature's
-axis, or measure the volume across the change, and say which you did.
+the boolean will fill it back in without complaining, and a clean `/check` and a
+plausible mass both report nothing — which is how the rotor hub carried four
+filled bolt holes through several rebuilds, on the joint that takes the
+actuator's full torque.
+
+The answer is no longer a render. `../tools/gate_e.py` counts the holes, bores
+and pockets on the finished solid, and `../tools/gate_f.py` measures the
+clearances the check scenes were drawn to show. Add your feature's assertion to
+gate E when you cut it, and say which check you ran.
