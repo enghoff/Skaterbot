@@ -228,7 +228,9 @@ def solid_properties(
     raise ValueError(f"unknown shape {solid.shape!r} on {solid.label!r}")
 
 
-def link_properties(solids, meshes: MeshLibrary) -> tuple[float, np.ndarray, np.ndarray]:
+def link_properties(
+    solids, meshes: MeshLibrary
+) -> tuple[float, np.ndarray, np.ndarray]:
     """A link's total mass, its centre of mass, and its tensor about that centre.
 
     In the link's own CAD frame, in grams and millimetres.

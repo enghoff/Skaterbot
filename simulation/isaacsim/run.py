@@ -69,7 +69,9 @@ for path in (str(SIMULATION), str(HERE)):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="run the rig checks and exit")
+    parser.add_argument(
+        "--check", action="store_true", help="run the rig checks and exit"
+    )
     parser.add_argument(
         "--balance",
         action="store_true",
@@ -112,13 +114,14 @@ except ImportError:
         # Report the FIRST failure, not the fallback's. Left to itself this
         # raises "No module named 'omni'", which sends the reader looking for
         # an Omniverse package rather than for the right interpreter.
-        raise SystemExit(plant.needs_isaac_python("simulation/isaacsim/run.py")) from None
+        raise SystemExit(
+            plant.needs_isaac_python("simulation/isaacsim/run.py")
+        ) from None
 
 simulation_app = SimulationApp({"headless": HEADLESS})
 
 import numpy as np  # noqa: E402
 from pxr import Sdf, UsdPhysics  # noqa: E402
-
 
 # --------------------------------------------------------------------------
 # The core API was renamed at Isaac Sim 4.5 -- omni.isaac.core became
@@ -139,8 +142,7 @@ def resolve(candidates: list[tuple[str, str]], what: str):
         if found is not None:
             return found, f"{module_name}.{attribute}"
     raise RuntimeError(
-        f"could not find {what}. Tried: "
-        + ", ".join(f"{m}.{a}" for m, a in candidates)
+        f"could not find {what}. Tried: " + ", ".join(f"{m}.{a}" for m, a in candidates)
     )
 
 
@@ -395,6 +397,7 @@ def check_signs(world, robot, wheel, problems: list[str]) -> None:
     the axis the importer built, not about the dynamics. The wheel is the point
     furthest down the chain, so it shows the sign most clearly.
     """
+
     def wheel_x_at(**angles) -> float:
         positions = np.zeros(robot.num_dof)
         for name, value in angles.items():
@@ -412,7 +415,9 @@ def check_signs(world, robot, wheel, problems: list[str]) -> None:
     knee_delta = knee_flexed - neutral
 
     print(f"  neutral, the wheel sits at x = {neutral * 1000:+.1f} mm")
-    print(f"  hip_pitch_right +17 deg moves it {hip_delta * 1000:+.1f} mm (forward is +)")
+    print(
+        f"  hip_pitch_right +17 deg moves it {hip_delta * 1000:+.1f} mm (forward is +)"
+    )
     print(f"  knee_right      +17 deg moves it {knee_delta * 1000:+.1f} mm (back is -)")
 
     if hip_delta <= 1e-3:
@@ -448,7 +453,9 @@ def check_standing_height(world, robot, problems: list[str]) -> float:
     tilt = math.degrees(pitch_of(orientation))
 
     print(f"  settles with base_link at {height * 1000:.1f} mm")
-    print(f"  the CAD says it should be  {expected * 1000:.1f} mm  ({error * 1000:+.1f} mm)")
+    print(
+        f"  the CAD says it should be  {expected * 1000:.1f} mm  ({error * 1000:+.1f} mm)"
+    )
     print(f"  torso pitch after settling {tilt:+.1f} deg")
 
     # A millimetre is generous for a rigid contact and tight enough to catch a
@@ -510,7 +517,9 @@ def check_rolling_radius(world, robot, wheel, problems: list[str]) -> None:
     robot.set_joint_efforts(np.zeros(robot.num_dof))
 
     print(f"  {torque:.2f} Nm on each wheel for 0.8 s")
-    print(f"  the wheel turned {turned:+.3f} rad and travelled {travelled * 1000:+.1f} mm")
+    print(
+        f"  the wheel turned {turned:+.3f} rad and travelled {travelled * 1000:+.1f} mm"
+    )
 
     if abs(turned) < 0.05:
         problems.append(
@@ -520,7 +529,9 @@ def check_rolling_radius(world, robot, wheel, problems: list[str]) -> None:
         return
 
     measured = travelled / turned
-    print(f"  so it rolls on a radius of {measured * 1000:.1f} mm, against the CAD's {radius * 1000:.1f} mm")
+    print(
+        f"  so it rolls on a radius of {measured * 1000:.1f} mm, against the CAD's {radius * 1000:.1f} mm"
+    )
 
     if measured < 0:
         problems.append(
@@ -607,8 +618,9 @@ def run_checks(world, robot, wheel) -> int:
 # Watching it
 
 
-def run_balance(world, robot, seconds: float, shove_at: float = 2.0,
-                shove_m_s: float = 0.3) -> int:
+def run_balance(
+    world, robot, seconds: float, shove_at: float = 2.0, shove_m_s: float = 0.3
+) -> int:
     """Balance the robot on its wheels, legs frozen, and shove it to see.
 
     The legs are locked straight, so this is the wheeled inverted pendulum
@@ -622,7 +634,6 @@ def run_balance(world, robot, seconds: float, shove_at: float = 2.0,
     import balance
 
     pendulum = balance.pendulum()
-    gains = balance.gains()
     radius = pendulum.radius
 
     # Clamp at TRACTION, not at the actuator's peak. Past mu m g the wheels
@@ -634,11 +645,21 @@ def run_balance(world, robot, seconds: float, shove_at: float = 2.0,
     wheel_indices = [dof_index(robot, name) for name in plant.WHEEL_JOINTS]
     efforts = np.zeros(robot.num_dof)
 
-    print(f"  CoM {pendulum.com_height * 1000:.0f} mm above the axle, so it falls with a")
-    unstable = [v.real for v in np.linalg.eigvals(balance.state_space(pendulum)[0]) if v.real > 0]
-    print(f"  {1000.0 / max(unstable):.0f} ms time constant. Control runs every"
-          f" {plant.PHYSICS_DT * 1000:.1f} ms.")
-    print(f"  torque ceiling {ceiling:.2f} Nm a wheel, which is traction, not the actuator")
+    print(
+        f"  CoM {pendulum.com_height * 1000:.0f} mm above the axle, so it falls with a"
+    )
+    unstable = [
+        v.real
+        for v in np.linalg.eigvals(balance.state_space(pendulum)[0])
+        if v.real > 0
+    ]
+    print(
+        f"  {1000.0 / max(unstable):.0f} ms time constant. Control runs every"
+        f" {plant.PHYSICS_DT * 1000:.1f} ms."
+    )
+    print(
+        f"  torque ceiling {ceiling:.2f} Nm a wheel, which is traction, not the actuator"
+    )
     print(f"  a {shove_m_s:.1f} m/s shove goes in at t = {shove_at:.0f} s\n")
 
     # The wheel angle wraps, the same as in the rolling check, so it is
@@ -680,7 +701,9 @@ def run_balance(world, robot, seconds: float, shove_at: float = 2.0,
 
         if not shoved and now >= shove_at:
             velocity = robot.get_linear_velocity()
-            robot.set_linear_velocity(np.array([float(velocity[0]) + shove_m_s, 0.0, 0.0]))
+            robot.set_linear_velocity(
+                np.array([float(velocity[0]) + shove_m_s, 0.0, 0.0])
+            )
             shoved = True
             print(f"  t={now:5.1f}s  SHOVED at {shove_m_s:.1f} m/s")
 
@@ -696,7 +719,9 @@ def run_balance(world, robot, seconds: float, shove_at: float = 2.0,
             )
 
         if abs(lean) > math.radians(45.0):
-            print(f"\n  FELL OVER at t = {now:.2f} s, {math.degrees(lean):+.0f} deg of lean")
+            print(
+                f"\n  FELL OVER at t = {now:.2f} s, {math.degrees(lean):+.0f} deg of lean"
+            )
             return 1
 
     base, orientation = robot.get_world_pose()
@@ -735,7 +760,9 @@ def main() -> int:
         print("or pass --allow-stale to simulate the USD as it stands.")
         if not ARGS.allow_stale:
             return 1
-        print("--allow-stale: going on anyway. The numbers below are NOT the current CAD.")
+        print(
+            "--allow-stale: going on anyway. The numbers below are NOT the current CAD."
+        )
 
     print(f"World               {world_from}")
     print(f"Articulation        {articulation_from}")
@@ -745,7 +772,9 @@ def main() -> int:
     lock = ARGS.check or ARGS.hold or ARGS.balance
     world, robot, wheel = build_world(usd_path, lock=lock, gantry=ARGS.check)
     if lock:
-        print("legs locked straight by a position drive -- a property of the test, not the robot")
+        print(
+            "legs locked straight by a position drive -- a property of the test, not the robot"
+        )
 
     if ARGS.check:
         return run_checks(world, robot, wheel)
@@ -754,7 +783,9 @@ def main() -> int:
         print("\nbalancing on the wheels alone, legs frozen straight.")
         return run_balance(world, robot, ARGS.seconds)
 
-    print(f"\nrunning for {ARGS.seconds:.0f} s. With no controller it falls over, which is correct:")
+    print(
+        f"\nrunning for {ARGS.seconds:.0f} s. With no controller it falls over, which is correct:"
+    )
     print("this is an inverted pendulum with a two-joint leg under each wheel.")
     settle(world, int(ARGS.seconds / plant.PHYSICS_DT))
     position, orientation = robot.get_world_pose()

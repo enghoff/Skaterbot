@@ -95,13 +95,14 @@ import plant  # noqa: E402
 try:
     from isaacsim import SimulationApp
 except ImportError:
-    raise SystemExit(plant.needs_isaac_python("simulation/isaacsim/import_urdf.py")) from None
+    raise SystemExit(
+        plant.needs_isaac_python("simulation/isaacsim/import_urdf.py")
+    ) from None
 
 simulation_app = SimulationApp({"headless": not ARGS.gui})
 
 from isaacsim.asset.importer.urdf import URDFImporter, URDFImporterConfig  # noqa: E402
-from pxr import PhysxSchema, Sdf, Usd, UsdPhysics, UsdShade  # noqa: E402
-
+from pxr import PhysxSchema, Usd, UsdPhysics, UsdShade  # noqa: E402
 
 # --------------------------------------------------------------------------
 # The import
@@ -185,7 +186,9 @@ def rig_joints(joints: dict, notes: list[str]) -> list[tuple]:
     for name in plant.JOINT_ORDER:
         prim = joints.get(name)
         if prim is None:
-            notes.append(f"MISSING JOINT {name} -- the URDF has it and the USD does not")
+            notes.append(
+                f"MISSING JOINT {name} -- the URDF has it and the USD does not"
+            )
             continue
 
         drive = UsdPhysics.DriveAPI.Get(prim, "angular")
@@ -209,20 +212,30 @@ def rig_joints(joints: dict, notes: list[str]) -> list[tuple]:
         )
 
         rows.append(
-            (name, float(plant.PEAK_TORQUE_NM), float(plant.ARMATURE_KG_M2),
-             float(plant.JOINT_FRICTION_NM))
+            (
+                name,
+                float(plant.PEAK_TORQUE_NM),
+                float(plant.ARMATURE_KG_M2),
+                float(plant.JOINT_FRICTION_NM),
+            )
         )
     return rows
 
 
 def rig_articulation(root) -> None:
     api = PhysxSchema.PhysxArticulationAPI.Apply(root)
-    api.CreateSolverPositionIterationCountAttr().Set(int(plant.SOLVER["position_iterations"]))
-    api.CreateSolverVelocityIterationCountAttr().Set(int(plant.SOLVER["velocity_iterations"]))
+    api.CreateSolverPositionIterationCountAttr().Set(
+        int(plant.SOLVER["position_iterations"])
+    )
+    api.CreateSolverVelocityIterationCountAttr().Set(
+        int(plant.SOLVER["velocity_iterations"])
+    )
     api.CreateEnabledSelfCollisionsAttr().Set(bool(plant.SELF_COLLISION))
     # A balancing robot that falls asleep is one that has fallen over.
     api.CreateSleepThresholdAttr().Set(float(plant.SOLVER["sleep_threshold"]))
-    api.CreateStabilizationThresholdAttr().Set(float(plant.SOLVER["stabilization_threshold"]))
+    api.CreateStabilizationThresholdAttr().Set(
+        float(plant.SOLVER["stabilization_threshold"])
+    )
 
 
 def rig_bodies(links: dict) -> None:
@@ -244,13 +257,19 @@ def rig_wheel_contact(stage, root, notes: list[str]) -> list[str]:
     plant.CONTACT -- which is the argument for randomising over it rather than
     for tuning it.
     """
-    material_path = root.GetPath().AppendChild("PhysicsMaterials").AppendChild("urethane")
+    material_path = (
+        root.GetPath().AppendChild("PhysicsMaterials").AppendChild("urethane")
+    )
     material = UsdShade.Material.Define(stage, material_path)
     prim = material.GetPrim()
 
     physics_material = UsdPhysics.MaterialAPI.Apply(prim)
-    physics_material.CreateStaticFrictionAttr().Set(float(plant.CONTACT["static_friction"]))
-    physics_material.CreateDynamicFrictionAttr().Set(float(plant.CONTACT["dynamic_friction"]))
+    physics_material.CreateStaticFrictionAttr().Set(
+        float(plant.CONTACT["static_friction"])
+    )
+    physics_material.CreateDynamicFrictionAttr().Set(
+        float(plant.CONTACT["dynamic_friction"])
+    )
     physics_material.CreateRestitutionAttr().Set(float(plant.CONTACT["restitution"]))
 
     physx_material = PhysxSchema.PhysxMaterialAPI.Apply(prim)
@@ -345,7 +364,9 @@ def compare(links, joints, urdf_links, urdf_joints) -> list[str]:
         if diagonal is not None and any(float(v) != 0.0 for v in diagonal):
             got = sorted(float(v) for v in diagonal)
             want = expected["moments"]
-            relative = max(abs(g - w) / max(w, 1e-12) for g, w in zip(got, want, strict=True))
+            relative = max(
+                abs(g - w) / max(w, 1e-12) for g, w in zip(got, want, strict=True)
+            )
             if relative > 1e-3:
                 problems.append(
                     f"{name}: principal moments differ from the URDF by {relative * 100:.1f}%."
@@ -389,7 +410,9 @@ def main() -> int:
 
     self_collision = plant.SELF_COLLISION and not ARGS.no_self_collision
     print(f"URDF:               {urdf_path}")
-    print(f"self collision:     {'on' if self_collision else 'OFF (--no-self-collision)'}")
+    print(
+        f"self collision:     {'on' if self_collision else 'OFF (--no-self-collision)'}"
+    )
 
     written = import_urdf(urdf_path, self_collision)
     print(f"importer wrote:     {written}")

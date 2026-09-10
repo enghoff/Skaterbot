@@ -59,7 +59,9 @@ try:
 except ImportError:
     # This file needs no simulator, but it does need SciPy, and the
     # interpreter that has SciPy here is Isaac Sim's.
-    raise SystemExit(plant.needs_isaac_python("simulation/isaacsim/balance.py")) from None
+    raise SystemExit(
+        plant.needs_isaac_python("simulation/isaacsim/balance.py")
+    ) from None
 
 GRAVITY = 9.81
 
@@ -121,7 +123,9 @@ def _links_and_joints(urdf_path: Path):
         i = inertial.find("inertia")
         links[link.get("name")] = {
             "mass": float(inertial.find("mass").get("value")),
-            "com": np.array([float(v) for v in inertial.find("origin").get("xyz").split()]),
+            "com": np.array(
+                [float(v) for v in inertial.find("origin").get("xyz").split()]
+            ),
             # Pitch is rotation about Y, so iyy is the only component this
             # planar model needs.
             "iyy": float(i.get("iyy")),
@@ -131,7 +135,9 @@ def _links_and_joints(urdf_path: Path):
         joint.get("name"): {
             "parent": joint.find("parent").get("link"),
             "child": joint.find("child").get("link"),
-            "origin": np.array([float(v) for v in joint.find("origin").get("xyz").split()]),
+            "origin": np.array(
+                [float(v) for v in joint.find("origin").get("xyz").split()]
+            ),
         }
         for joint in root.findall("joint")
     }
@@ -152,8 +158,14 @@ def pendulum() -> Pendulum:
 
     # Where each link sits in base_link's frame, walking the joint tree.
     origin = {"base_link": np.zeros(3)}
-    for name in ("hip_pitch_right", "knee_right", "wheel_drive_right",
-                 "hip_pitch_left", "knee_left", "wheel_drive_left"):
+    for name in (
+        "hip_pitch_right",
+        "knee_right",
+        "wheel_drive_right",
+        "hip_pitch_left",
+        "knee_left",
+        "wheel_drive_left",
+    ):
         joint = joints[name]
         origin[joint["child"]] = origin[joint["parent"]] + joint["origin"]
 
@@ -184,7 +196,9 @@ def pendulum() -> Pendulum:
     # the joint. The armature is several times the wheel's own figure, which is
     # exactly why it cannot be left out of a balance model.
     wheel_mass = sum(links[name]["mass"] for name in WHEEL_LINKS)
-    wheel_inertia = sum(links[name]["iyy"] + plant.ARMATURE_KG_M2 for name in WHEEL_LINKS)
+    wheel_inertia = sum(
+        links[name]["iyy"] + plant.ARMATURE_KG_M2 for name in WHEEL_LINKS
+    )
 
     return Pendulum(
         body_mass=mass,
@@ -316,7 +330,9 @@ def main() -> int:
 
     traction = traction_limit_nm(p)
     print("\nwhat torque is actually available")
-    print(f"  traction limit       {traction:5.2f} Nm total, {traction / 2:.2f} Nm a wheel")
+    print(
+        f"  traction limit       {traction:5.2f} Nm total, {traction / 2:.2f} Nm a wheel"
+    )
     print(f"  actuator thermal     {plant.CONTINUOUS_TORQUE_NM * 2:5.2f} Nm total")
     print(f"  actuator peak        {plant.PEAK_TORQUE_NM * 2:5.2f} Nm total")
     print("  the wheels slip before the actuator strains, so traction is the ceiling")
@@ -336,7 +352,9 @@ def main() -> int:
         )
 
     worst = max(abs(v.real) for v in closed)
-    print(f"\nfastest closed-loop mode {worst:.1f} rad/s, against a 400 Hz control rate")
+    print(
+        f"\nfastest closed-loop mode {worst:.1f} rad/s, against a 400 Hz control rate"
+    )
 
     if any(v.real > -1e-6 for v in closed):
         print("\nDESIGN FAILED: the closed loop is not stable.")

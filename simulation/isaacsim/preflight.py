@@ -70,7 +70,9 @@ def load_urdf(path: Path, problems: list[str]) -> ET.Element | None:
         return None
 
 
-def check_tree(root: ET.Element, problems: list[str]) -> list[tuple[str, str, str, str]]:
+def check_tree(
+    root: ET.Element, problems: list[str]
+) -> list[tuple[str, str, str, str]]:
     """One root, no cycles, every link reachable, no link driven twice."""
     links = [link.get("name") for link in root.findall("link")]
     joints = [
@@ -96,7 +98,10 @@ def check_tree(root: ET.Element, problems: list[str]) -> list[tuple[str, str, st
     for name, _, parent, child in joints:
         for role, link in (("parent", parent), ("child", child)):
             if link not in known:
-                fail(problems, f"joint {name} names a {role} link that does not exist: {link}")
+                fail(
+                    problems,
+                    f"joint {name} names a {role} link that does not exist: {link}",
+                )
 
     roots = [link for link in links if link not in children]
     if roots != ["base_link"]:
@@ -141,7 +146,10 @@ def check_meshes(root: ET.Element, urdf_dir: Path, problems: list[str]) -> list[
             continue
         data = path.read_bytes()
         if data[:5].lower().lstrip() == b"solid" and b"facet" in data[:512]:
-            fail(problems, f"{filename} is ASCII STL; build_urdf.py should have written binary")
+            fail(
+                problems,
+                f"{filename} is ASCII STL; build_urdf.py should have written binary",
+            )
             continue
         if len(data) < 84:
             fail(problems, f"{filename} is too short to be an STL ({len(data)} bytes)")
@@ -200,7 +208,9 @@ def check_inertials(root: ET.Element, problems: list[str]) -> list[tuple]:
 
         moments = np.linalg.eigvalsh(tensor)
         if (moments <= 0.0).any():
-            fail(problems, f"link {name} has a non-positive principal moment: {moments}")
+            fail(
+                problems, f"link {name} has a non-positive principal moment: {moments}"
+            )
         a, b, c = sorted(moments)
         if a + b < c * (1.0 - 1e-9):
             fail(
@@ -226,7 +236,10 @@ def check_joints(root: ET.Element, problems: list[str]) -> list[tuple]:
 
         limit = joint.find("limit")
         if limit is None:
-            fail(problems, f"joint {name} has no limit block, so it has no effort ceiling")
+            fail(
+                problems,
+                f"joint {name} has no limit block, so it has no effort ceiling",
+            )
             continue
 
         effort = float(limit.get("effort"))
@@ -240,7 +253,10 @@ def check_joints(root: ET.Element, problems: list[str]) -> list[tuple]:
         if kind == "revolute":
             lower, upper = float(limit.get("lower")), float(limit.get("upper"))
             if not lower < upper:
-                fail(problems, f"joint {name} has limits that do not open: [{lower}, {upper}]")
+                fail(
+                    problems,
+                    f"joint {name} has limits that do not open: [{lower}, {upper}]",
+                )
         elif kind == "continuous":
             if limit.get("lower") is not None:
                 fail(problems, f"continuous joint {name} declares a position limit")
@@ -255,7 +271,9 @@ def check_joints(root: ET.Element, problems: list[str]) -> list[tuple]:
 # The cross-check: does plant.py still describe the same robot?
 
 
-def check_against_plant(root: ET.Element, joints: list[tuple], problems: list[str]) -> None:
+def check_against_plant(
+    root: ET.Element, joints: list[tuple], problems: list[str]
+) -> None:
     """Two independent readings of one CAD, compared.
 
     plant.py reads the KCL for the wheel radius, the standing height and the
@@ -277,7 +295,9 @@ def check_against_plant(root: ET.Element, joints: list[tuple], problems: list[st
     for name in plant.WHEEL_JOINTS:
         kind = next((k for n, k, _, _ in joints if n == name), None)
         if kind != "continuous":
-            fail(problems, f"{name} should be a continuous joint, the URDF says {kind!r}")
+            fail(
+                problems, f"{name} should be a continuous joint, the URDF says {kind!r}"
+            )
 
     # -- walk each leg from base_link out to the wheel's contact patch -------
     # Every joint origin down the chain, plus the collider's own offset inside
@@ -295,13 +315,22 @@ def check_against_plant(root: ET.Element, joints: list[tuple], problems: list[st
             continue
 
         link = next(
-            (l for l in root.findall("link") if l.get("name") == f"wheel_{side}"), None
+            (
+                found
+                for found in root.findall("link")
+                if found.get("name") == f"wheel_{side}"
+            ),
+            None,
         )
         if link is None:
             fail(problems, f"no wheel_{side} link to stand on")
             continue
 
-        cylinders = [c for c in link.findall("collision") if c.find("geometry/cylinder") is not None]
+        cylinders = [
+            c
+            for c in link.findall("collision")
+            if c.find("geometry/cylinder") is not None
+        ]
         if len(cylinders) != 1:
             fail(
                 problems,
@@ -317,7 +346,9 @@ def check_against_plant(root: ET.Element, joints: list[tuple], problems: list[st
                 f"wheel_{side}'s collider is {radius:.6f} m but the CAD says"
                 f" {geometry['wheel_radius_m']:.6f} m",
             )
-        offset = np.array([float(v) for v in collision.find("origin").get("xyz").split()])
+        offset = np.array(
+            [float(v) for v in collision.find("origin").get("xyz").split()]
+        )
         contacts[side] = (centre + offset, radius)
 
     if len(contacts) == 2:
@@ -383,12 +414,19 @@ def main() -> int:
         total += mass
         print(f"  {name:<14} {mass:9.4f}   " + "  ".join(f"{m:.3e}" for m in moments))
     headroom = MASS_CEILING_KG - total
-    print(f"  {'TOTAL':<14} {total:9.4f}   {headroom * 1000:+.0f} g against the 2 300 g ceiling")
+    print(
+        f"  {'TOTAL':<14} {total:9.4f}   {headroom * 1000:+.0f} g against the 2 300 g ceiling"
+    )
     if total > MASS_CEILING_KG:
-        fail(problems, f"the model weighs {total:.3f} kg, over the {MASS_CEILING_KG} kg ceiling")
+        fail(
+            problems,
+            f"the model weighs {total:.3f} kg, over the {MASS_CEILING_KG} kg ceiling",
+        )
 
     print("\njoints, in the order plant.py names them")
-    print(f"  {'joint':<20} {'type':<11} {'axis':<12} {'travel, deg':<16} {'Nm':>5} {'rad/s':>7}")
+    print(
+        f"  {'joint':<20} {'type':<11} {'axis':<12} {'travel, deg':<16} {'Nm':>5} {'rad/s':>7}"
+    )
     by_name = {row[0]: row for row in joint_rows}
     for name in plant.JOINT_ORDER:
         if name not in by_name:
@@ -400,13 +438,17 @@ def main() -> int:
             if lower is None
             else f"{math.degrees(lower):+.0f} to {math.degrees(upper):+.0f}"
         )
-        print(f"  {name:<20} {kind:<11} {axis_text:<12} {travel:<16} {effort:5.1f} {velocity:7.1f}")
+        print(
+            f"  {name:<20} {kind:<11} {axis_text:<12} {travel:<16} {effort:5.1f} {velocity:7.1f}"
+        )
 
     geometry = plant.geometry()
     print("\nas the CAD has it, read independently of the URDF")
     print(f"  wheel radius          {geometry['wheel_radius_m'] * 1000:6.1f} mm")
     print(f"  track, patch to patch {geometry['track_m'] * 1000:6.1f} mm")
-    print(f"  base_link stands at   {geometry['standing_base_height_m'] * 1000:6.1f} mm")
+    print(
+        f"  base_link stands at   {geometry['standing_base_height_m'] * 1000:6.1f} mm"
+    )
     print(f"  spawn height          {plant.spawn_height_m() * 1000:6.1f} mm")
 
     print()
