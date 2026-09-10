@@ -19,8 +19,8 @@ turns out not to be worth it.
 Phases 0, 1 and 2 are complete and the KCL is gone. Every component the wheeled
 robot needs is ported, the seven check scenes are ported, the tools are rewritten
 on build123d, the simulation reads its dimensions out of `cad/`, and every gate is
-green. The walking robot was deleted from this branch earlier and lives on `main`,
-still in KCL. A 0.5 mm chamfer has been put on the printed parts' outer edges.
+green. The walking robot was deleted from this branch earlier and lives on the
+`walking` branch, still in KCL. A 0.5 mm chamfer has been put on the printed parts' outer edges.
 
 **What went with the KCL, and what took its place.**
 
@@ -98,7 +98,8 @@ are deleted, and the foot dimensions, the ankle-derived axis chain and the
 walking torso are retired out of `lib/parameters.kcl` and `cad/parameters.py`
 with a note in the house style saying what they decided and where that decision
 went. The branch question in section 7 is answered: this branch is wheeled-only,
-the walking robot lives on `main`, and the two are no longer comparable.
+the walking robot lives on the `walking` branch, and the two are no longer
+comparable.
 
 Nothing carries hip roll any more. It left the wheeled robot in `58e1869`, and
 the walking robot was the last thing holding roll clevises and a carrier. Both
@@ -271,8 +272,8 @@ lists `lib/hip_carrier.kcl` and `foot.kcl` among the printed parts, neither of
 which the six-motor wheeled robot prints. Comparing against it as it stands would
 be meaningless.
 
-The walking robot on `main` needs the same capture before the branches diverge
-further. `foot.kcl`, `walking_torso.kcl` and `lib/hip_carrier.kcl` have no golden
+The walking robot needs the same capture if it is ever to be migrated too. It
+never had one, and the `walking` branch is where it would have to be taken. `foot.kcl`, `walking_torso.kcl` and `lib/hip_carrier.kcl` have no golden
 STEP on this branch, because the wheeled robot does not print them. See
 section 7.
 
@@ -405,7 +406,7 @@ must be green before the next begins.
 | 1.7 | Payload envelopes and the electronics stack | `wheeled_electronics.kcl` (479), `payload_envelopes.kcl` (203) | A; envelopes, not printed |
 | 1.8 | The neutral assembly | `main.kcl` (132) | C, plus the 339 mm standing height |
 | 1.9 | Check scenes -- **done**, as `cad/poses.py` and `cad/scenes.py` | the seven check scenes | A and F |
-| 1.10 | The walking robot -- **not done, and not going to be**: it stays in KCL on `main`, and this branch deleted it | | |
+| 1.10 | The walking robot -- **not done, and not going to be**: it stays in KCL on the `walking` branch, and this work deleted it here | | |
 
 **Task 1.9 is where the check scenes got better, and this is how it went.** They
 were scenes you looked at; a clearance is a number now. The knee at its 110° stop

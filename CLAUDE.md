@@ -176,8 +176,8 @@ boolean**, which is why the finished pieces are left as interpenetrating bodies.
 
 `cad/main.py`'s `robotAssembly()` is the neutral 339 mm assembly of the
 six-motor wheeled robot: hip pitch, knee and a driven wheel per leg, with no hip
-roll at all. **The walking robot is not on this branch.** It is the `main`
-branch, still in KCL, and the two are no longer comparable.
+roll at all. **The walking robot is not here.** It is the `walking` branch,
+still in KCL, and the two are no longer comparable.
 
 The torso's height is not a chosen number. It is derived in
 `cad/wheeled_parameters.py` from what has to fit inside, and `cad/electronics.py`

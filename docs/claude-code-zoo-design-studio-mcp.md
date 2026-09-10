@@ -4,7 +4,7 @@
 > used while the CAD was KCL, up to September 2026. The CAD is build123d now and
 > nothing in the repository needs an engine, a token or a modeling session — see
 > [`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) and `../CLAUDE.md`. Kept
-> because the walking robot on the `main` branch is still KCL and still needs
+> because the walking robot on the `walking` branch is still KCL and still needs
 > all of it.
 
 This guide describes a practical setup for using **Claude Code in VS Code** to create, edit, inspect, and validate CAD models through **Zoo MCP**, while keeping **Zoo Design Studio** open for visual inspection and manual editing.

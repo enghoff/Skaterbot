@@ -1,6 +1,6 @@
 # Torque-Controlled Biped
 
-A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and lives on the `main` branch.
+A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and lives on the `walking` branch, still in KCL.
 
 The CAD is [build123d](https://build123d.readthedocs.io) — Python over OCCT — in [`cad/`](cad/). It was KCL executed on Zoo's engine until September 2026; [`docs/BUILD123D_MIGRATION.md`](docs/BUILD123D_MIGRATION.md) is the record of the move, and the practical consequence is that every check is now free, local and offline.
 

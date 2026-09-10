@@ -6,7 +6,7 @@ binding version.
 
 **Two things here are older than the branch you are on.** The frozen parameters
 and the mass ceiling below describe the eight-motor WALKING robot, which now
-lives on the `main` branch. This branch is the six-motor wheeled robot: 6 DOF,
+lives on the `walking` branch. `main` is the six-motor wheeled robot: 6 DOF,
 339 mm, a 2 300 g ceiling, and no hip roll or ankle at all. `../CLAUDE.md` and
 `../README.md` are current; where they disagree with this file, they win.
 

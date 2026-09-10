@@ -2,7 +2,7 @@
 
 **Branch:** `feature/wheeled-biped`
 **Status:** the wheeled robot is now this branch's `main.kcl`; geometry executes on the engine and the mass is measured
-**Walking robot:** preserved as `walking_main.kcl`, unchanged, and still `main.kcl` on the `main` branch
+**Walking robot:** preserved as `walking_main.kcl`, unchanged. It was `main.kcl` on the `main` branch when this was written; since the build123d migration landed on `main`, the walking robot is the `walking` branch
 
 This document records what has been implemented from [`WHEELED_BIPED_ANALYSIS.md`](WHEELED_BIPED_ANALYSIS.md), what has been verified and how, and what remains open.
 

@@ -1,7 +1,7 @@
 # Mass budget for the whole robot -- the WHEELED robot, which is cad/main.py on
-# this branch. The walking robot it grew out of is walking_main.kcl on the `main`
-# branch, along with the KCL it is still drawn in, and its budget is this same
-# file there: the branch is the variant mechanism, because a single budget file
+# this branch. The walking robot it grew out of is walking_main.kcl on the
+# `walking` branch, along with the KCL it is still drawn in, and its budget is
+# this same file there: the branch is the variant mechanism, because a single budget file
 # describes a single machine.
 #
 # What changed from the walking budget: the feet became wheel adapters plus a
@@ -101,8 +101,8 @@ count = 1
 
 # There is no hip carrier. It was the orthogonal bracket between the hip roll
 # and hip pitch axes, and with hip roll deleted the hip pitch clevis is part of
-# the pelvis instead. The walking robot on `main` still has one, in KCL, which is
-# where that machine now lives.
+# the pelvis instead. The walking robot still has one, in KCL, on the `walking`
+# branch, which is where that machine now lives.
 
 [[printed]]
 file = "cad/wheel_adapter.py"
