@@ -58,26 +58,79 @@ DEVIATION_TOLERANCE_MM3 = 1e-3
 # A piece listed here is EXPECTED to differ from what the Zoo engine built, by a
 # stated amount, for a stated reason. This is not a way of silencing the gate --
 # it is the opposite. An unlisted piece must match exactly; a listed one must
-# differ by exactly the volume recorded here AND by nothing else, which is
-# checked by requiring the symmetric difference to be that same figure. A change
-# that removes the intended material and also moves something else fails, because
-# the symmetric difference then exceeds the delta.
+# differ by exactly the volume recorded here AND by nothing else. A change that
+# removes the intended material and also moves something else fails, because the
+# symmetric difference then exceeds what was declared.
+#
+# Each piece carries a LIST, one entry per change, because a piece accumulates
+# them: the migration's discipline is one change, one measured delta, and adding
+# a second correction must not blur the first one's figure into a net total that
+# no longer says what either change did.
+#
+# ADDED AND REMOVED ARE DECLARED SEPARATELY, and that is what makes the "and
+# nothing else" half of the check work. A net delta is not enough once a piece
+# has changes of both signs -- the limb's connector relief adds 206 mm3 and its
+# register pocket takes 11 away, and a gate that only knew the net +195 would
+# have accepted any pair of numbers 195 apart. So the totals are checked twice
+# over: the volume must move by (added - removed), and the symmetric difference
+# must be exactly (added + removed), which is only true if nothing else moved.
 #
 # The golden STEPs are never regenerated to make a gate pass. They are the frozen
 # record of what the KCL built, and an entry here is how the project says "we
 # changed this on purpose, and here is how much".
 DEVIATIONS = {
-    "joint-rotor-hub": {
-        "delta_mm3": -4.2979372781,
-        "why": (
-            "the arm-root blend is now a true 1 mm fillet tangent to both faces, "
-            "where the KCL's solver had built an unconstrained sqrt(8.5) = 2.9155 mm "
-            "arc tangent to neither. Carries less material and relieves more. "
-            "Affects no printed piece of the wheeled robot -- rotorHub is used by "
-            "the hip carrier and the foot, which are the walking robot's."
-        ),
-    },
+    "joint-rotor-hub": [
+        {
+            "removed_mm3": 4.2979372781,
+            "why": (
+                "the arm-root blend is now a true 1 mm fillet tangent to both "
+                "faces, where the KCL's solver had built an unconstrained "
+                "sqrt(8.5) = 2.9155 mm arc tangent to neither. Carries less "
+                "material and relieves more."
+            ),
+        },
+        {
+            "removed_mm3": 8.9406906219,
+            "why": (
+                "the Ø30.4 register pocket is re-cut after the arm is unioned "
+                "on. The arm's top face sits 14.18 mm below the joint axis, "
+                "inside the pocket's own 15.2 mm radius, so the union had filled "
+                "a 42 degree segment of it back in -- 11 mm wide and the pocket's "
+                "full 1.2 mm deep -- and the actuator's Ø30 output register would "
+                "have landed on that instead of in the pocket. Same class of "
+                "failure as the six bolt holes, missed when those were caught, "
+                "and it hid longer because a part-filled pocket still leaves one "
+                "cylindrical face for gate E to count."
+            ),
+        },
+    ],
+    # Both hands of the limb, and the same two changes on each: the numbers are
+    # one mirror image of the other and agree to 1e-5.
+    "limb-105-unmirrored": [
+        {
+            "added_mm3": 206.3020897,
+            "why": (
+                "the stator plate's connector relief is cut flush with the "
+                "waist's flank at 20 mm rather than on the housing's connector "
+                "flat at 19. Widening the waist from 30 mm to 40 in August 2026 "
+                "had put the limb's edge a millimetre PROUD of the relief, which "
+                "is the 1 mm step in the silhouette above the lower joint. See "
+                "statorPlateFlatOffset in cad/parameters.py for why the "
+                "millimetre is given to the plate rather than taken off the limb."
+            ),
+        },
+        {
+            "removed_mm3": 11.4582296,
+            "why": (
+                "the waist plate is cut clear of the Ø30.4 register pocket, "
+                "which it filled a 45.8 degree segment of -- 11.8 mm across and "
+                "the pocket's full depth. Same defect as the rotor hub's above, "
+                "on the piece the wheeled robot actually prints."
+            ),
+        },
+    ],
 }
+DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 
 
 def registry() -> dict[str, callable]:
@@ -138,25 +191,34 @@ def compare(name: str, build) -> tuple[bool, str]:
     sym = volume_of(new - old) + volume_of(old - new)
     rel = sym / old.volume
 
-    deviation = DEVIATIONS.get(name)
-    if deviation is None:
+    changes = DEVIATIONS.get(name)
+    if changes is None:
         ok = rel <= TOLERANCE
         note = ""
     else:
         # Two things have to hold: the volume moved by the stated amount, and
         # nothing moved that was not meant to. The second is the symmetric
-        # difference matching the delta -- if anything else changed, it exceeds it.
-        expected = deviation["delta_mm3"]
+        # difference matching added + removed -- if anything else changed, it
+        # exceeds that.
+        added = sum(c.get("added_mm3", 0.0) for c in changes)
+        removed = sum(c.get("removed_mm3", 0.0) for c in changes)
+        expected = added - removed
         actual = new.volume - old.volume
         moved_right = abs(actual - expected) <= DEVIATION_TOLERANCE_MM3
-        confined = abs(sym - abs(expected)) <= DEVIATION_TOLERANCE_MM3
+        confined = abs(sym - (added + removed)) <= DEVIATION_TOLERANCE_MM3
         ok = moved_right and confined
         if not moved_right:
             note = f"  <-- expected {expected:+.4f} mm3, got {actual:+.4f}"
         elif not confined:
-            note = f"  <-- {sym:.4f} mm3 changed, but only {abs(expected):.4f} was intended"
+            note = (
+                f"  <-- {sym:.4f} mm3 changed, but only "
+                f"{added + removed:.4f} was intended"
+            )
         else:
-            note = f"  (deviation {expected:+.4f} mm3, as intended)"
+            note = (
+                f"  ({len(changes)} deviation(s): +{added:.4f} -{removed:.4f} mm3, "
+                "as intended)"
+            )
 
     ob, nb = old.bounding_box(), new.bounding_box()
     dbox = max(abs(getattr(nb.min, ax) - getattr(ob.min, ax)) for ax in ("X", "Y", "Z"))
@@ -197,7 +259,9 @@ def main() -> int:
     if deviating:
         print("deliberate departures from the golden reference:")
         for n in deviating:
-            print(f"  {n}: {DEVIATIONS[n]['why']}")
+            for change in DEVIATIONS[n]:
+                moved = change.get("added_mm3", -change.get("removed_mm3", 0.0))
+                print(f"  {n} {moved:+.4f} mm3: {change['why']}")
         print()
     print(
         f"gate B: {len(wanted) - failures}/{len(wanted)} pieces as expected "

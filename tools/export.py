@@ -84,7 +84,7 @@ def build(piece: dict, finished: bool) -> list:
     if finished:
         from cad.finish import chamfered
 
-        bodies, _ = chamfered(bodies)
+        bodies, _, _ = chamfered(bodies)
     return bodies
 
 

@@ -52,7 +52,7 @@ from build123d import (
 )
 
 from cad.geometry import mirrored
-from cad.joint import outputDisc, statorPlate
+from cad.joint import outputDisc, outputRegisterCutter, statorPlate
 from cad.parameters import (
     actuatorRearBoltOffset,
     limbPlateThickness,
@@ -88,12 +88,36 @@ def limbAssembly(limbLength: float) -> list:
     waistUpperZ = limbWaistUpperZ
     waistLowerZ = -(jointZ - actuatorRearBoltOffset - m3CapHeadStandoff)
 
-    waistPlate = Pos(rotorHubInnerX, -(limbWaistDepth / 2), waistLowerZ) * Box(
+    waistBlank = Pos(rotorHubInnerX, -(limbWaistDepth / 2), waistLowerZ) * Box(
         limbPlateThickness,
         limbWaistDepth,
         waistUpperZ - waistLowerZ,
         align=(Align.MIN, Align.MIN, Align.MIN),
     )
+
+    # The waist has to cut itself clear of the rotor disc's register pocket,
+    # because it reaches far enough into the disc to fill part of it in.
+    #
+    # The window the waist's top edge was fitted into was measured against the
+    # disc's rim and against the nearest output counterbore, 13.4 mm below the
+    # joint centre, which 38.5 mm clears by 0.6. The Ø30.4 REGISTER was not in
+    # that arithmetic, and its radius is 15.2, so a top edge 14 mm below the
+    # centre lies 1.2 mm inside it: the waist filled a 45.8 degree segment of the
+    # pocket, 11.8 mm across and the pocket's full 1.2 mm depth. The actuator's
+    # Ø30 output register would have landed on that instead of in the pocket, and
+    # the plate would have rocked on it rather than piloting.
+    #
+    # Nothing reported it. The pocket still had a cylindrical face of the right
+    # radius, so gate E counted it; the union that filled it is between two
+    # bodies this piece never merges, so the fill was not even a boolean anyone
+    # could have watched. What made it visible in the end was the FINISH pass:
+    # the waist's top arris is an outer edge of its own body and got its 0.5 mm
+    # chamfer, and inside the pocket -- the one place that arris is not buried in
+    # the disc -- the chamfer surfaced as a bevel with a sliver at each end,
+    # sitting in a locating feature that finish.py is explicit must never be
+    # chamfered. Cutting the pocket clear takes the chamfer with it, because
+    # there is no longer an edge of the waist inside the pocket at all.
+    waistPlate = waistBlank - Pos(0, 0, jointZ) * outputRegisterCutter()
 
     # Where the waist runs into the hub disc, the plate has to neck down from
     # 40 mm to the Ø36 disc, and the step between them is where the limb hands

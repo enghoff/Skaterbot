@@ -55,6 +55,17 @@ exactly where a chamfer does not belong, so nothing is lost. And a chamfer cut o
 an edge buried inside a neighbouring body is filled back in by the slicer's merge
 just as a union would have filled it, so nothing is gained there either.
 
+WHAT THAT ARGUMENT MISSED, AND IT MATTERED. It asked what the union would ADD and
+never what the union would TAKE AWAY. A body that is half buried in its
+neighbours has edges the finished part does not have at all -- the limb's waist
+plate has a top arris only because the gussets and the rotor disc above it are
+separate bodies, and on the merged part that line is a join, not an edge.
+Chamfering it cuts a 0.5 mm groove along the join, and at the gusset root it cuts
+into the stress relief the gusset is there to provide. Half the edges this module
+used to accept on a limb were of that kind and two of them were plainly visible.
+So the merged solid is now consulted for which arrises are real; see the Merge
+class below.
+
 WHEN OCCT REFUSES A SET ANYWAY.
 
 The set is bisected and the halves are tried in turn, down to single edges, so one
@@ -71,8 +82,10 @@ from __future__ import annotations
 
 import build123d as bd
 from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.GeomAbs import GeomAbs_SurfaceType
-from OCP.TopAbs import TopAbs_ShapeEnum
+from OCP.gp import gp_Pnt
+from OCP.TopAbs import TopAbs_ShapeEnum, TopAbs_State
 from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS
 from OCP.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
@@ -218,12 +231,23 @@ def _edge_keys(solid) -> dict:
     return out
 
 
-def outer_edges(part) -> list:
-    """Every edge of `part` whose faces are all outer faces."""
+def _face_pair_key(faces) -> tuple:
+    """The key an edge is identified by: the surfaces it lies between."""
+    return tuple(sorted(_surface_key(f) for f in faces))
+
+
+def outer_edges(part, merge=None) -> list:
+    """Every edge of `part` whose faces are all outer faces.
+
+    With a Merge, an edge must also survive what the body's neighbours in the
+    same piece do to it -- see Merge for why a fifth of a limb's did not.
+    """
     return [
         edge
         for edge, faces in _edge_faces(part)
-        if faces and all(_is_outer(f) for f in faces)
+        if faces
+        and all(_is_outer(f) for f in faces)
+        and (merge is None or merge.keeps(edge, faces))
     ]
 
 
@@ -246,9 +270,9 @@ def _apply(solid, keys: list, size: float) -> tuple:
     return solid, done_a + done_b, skipped_a + skipped_b
 
 
-def chamfer_body(body, size: float = CHAMFER) -> tuple:
+def chamfer_body(body, size: float = CHAMFER, merge=None) -> tuple:
     """One body with its outer edges broken. Returns (solid, done, skipped)."""
-    wanted = outer_edges(body)
+    wanted = outer_edges(body, merge)
     if not wanted:
         return body, 0, 0
     try:
@@ -278,19 +302,165 @@ def united(bodies):
     return merged
 
 
+def surviving_keys(bodies) -> set | None:
+    """The face-pair keys of every edge the MERGED piece actually has.
+
+    Returns None for a single body, which has no neighbours to lose edges to.
+    """
+    if not isinstance(bodies, (list, tuple)) or len(bodies) < 2:
+        return None
+    merged = united(list(bodies))
+    return {_face_pair_key(faces) for _, faces in _edge_faces(merged) if faces}
+
+
+# How many points along an edge are asked whether the chamfer there would be
+# filled by a neighbour, and how close to the ends the asking starts. The
+# interesting edges are PART buried -- the limb's waist runs 40 mm along the
+# underside of the rotor disc and two gussets and is covered by them for the
+# middle 22 mm only -- so one sample in the middle would get the wrong answer on
+# exactly the edges this test exists for. The ends matter as much: the gussets'
+# inner chord is buried for all but its last third of a millimetre, where it
+# reaches the disc's rim, and that third of a millimetre was one of the two
+# slivers visible on the finished limb.
+_SAMPLES = 25
+_END_MARGIN = 0.01
+
+# Where in the wedge the chamfer would cut away the filling is checked, as
+# fractions of the chamfer size along each of the two faces. Three points, biased
+# towards the wedge's outer corners, because the middle of a wedge is the last
+# part of it to emerge from a neighbour.
+_WEDGE = ((0.70, 0.15), (0.15, 0.70), (0.35, 0.35))
+
+# An edge shorter than this many chamfers is never withheld, however phantom it
+# is. Two reasons, and the second is the harder one. A groove no longer than the
+# chamfer that cuts it is not a groove. And withholding a stub while chamfering
+# the long edges either side of it leaves those chamfers to close on the stub,
+# which is where OCCT stops raising exceptions and starts taking the process
+# down: the pelvis shell's second hip cheek segfaults on exactly that, and a
+# segfault cannot be caught and retried. Withholding the stub alone, or the long
+# edge alone, is fine -- it is the combination that kills it.
+_STUB = 2.0
+
+
+class Merge:
+    """What a body's neighbours in the same piece do to its edges.
+
+    THE OTHER HALF OF "OUTER EDGES ONLY", and the half that was missing. Working
+    per body means each body is chamfered as though it were alone, and a body
+    that is half buried in its neighbours has edges that the finished part does
+    not have: the limb's waist plate has a top arris only because the two gussets
+    and the rotor disc sitting on it are separate bodies, and the gussets have
+    lower arrises only because the waist they are seated on is.
+
+    Two of those phantom edges were plainly visible -- a bevel with a sliver at
+    each end, at both gusset roots, on both faces of the limb -- which is a
+    0.5 mm groove cut into the join, and at the gusset root a groove cut into the
+    stress relief the gusset exists to provide.
+
+    WHICH PHANTOMS ARE SKIPPED, AND WHY NOT ALL OF THEM. An edge the union does
+    not have is not an arris. But the module docstring is right that a chamfer
+    BURIED inside a neighbour costs nothing -- the merge fills it back in exactly
+    as it fills the rest of the overlap -- so cutting those makes no difference
+    to the part, and asking OCCT to cut fewer chamfers is not free: the pelvis
+    shell's second hip cheek takes OCCT DOWN, not to an exception but to a
+    segfault, when three of its buried phantoms are withheld and the chamfers
+    either side of them have to close on a 0.6 mm stub instead.
+
+    So the test is what the chamfer would LEAVE, not what the edge is: an edge is
+    skipped when the union has no such edge AND the material the chamfer would
+    remove is not replaced by a neighbour somewhere along it. That is exactly the
+    set that leaves a groove, it is 21 edges on a limb, and it leaves every
+    buried phantom to be cut as before.
+    """
+
+    def __init__(self, bodies, index: int, size: float, surviving: set | None):
+        self.size = size
+        self.surviving = surviving
+        self.siblings = [b for i, b in enumerate(bodies) if i != index]
+        self._classifiers = [
+            BRepClass3d_SolidClassifier(b.wrapped) for b in self.siblings
+        ]
+
+    def _inside_a_sibling(self, point) -> bool:
+        for classifier in self._classifiers:
+            classifier.Perform(gp_Pnt(point.X, point.Y, point.Z), 1e-7)
+            if classifier.State() == TopAbs_State.TopAbs_IN:
+                return True
+        return False
+
+    def keeps(self, edge, faces) -> bool:
+        """Is this edge one the finished part actually has an arris at?
+
+        Anything the union has, yes. Anything else only if the wedge the chamfer
+        would cut away is filled by a neighbour along the whole edge, so that
+        cutting it changes nothing -- or if the edge is too short to withhold.
+        """
+        if self.surviving is None or _face_pair_key(faces) in self.surviving:
+            return True
+        if len(faces) != 2 or not self._classifiers:
+            return True
+        if edge.length < self.size * _STUB:
+            return True
+        span = 1.0 - 2 * _END_MARGIN
+        for i in range(_SAMPLES):
+            at = _END_MARGIN + span * i / (_SAMPLES - 1)
+            try:
+                point = edge.position_at(at)
+                # Away from the edge along each face is the OTHER face's inward
+                # normal, which is what the chamfer eats into.
+                along = [-faces[1].normal_at(point), -faces[0].normal_at(point)]
+            except Exception:
+                return True
+            for a, b in _WEDGE:
+                probe = point + along[0] * (a * self.size) + along[1] * (b * self.size)
+                if not self._inside_a_sibling(probe):
+                    return False
+        return True
+
+
 def chamfered(bodies, size: float = CHAMFER) -> tuple:
-    """The finished piece: every body's outer edges broken.
+    """ONE finished piece: every body's outer edges broken.
 
     Returns (list_of_bodies, chamfered_edge_count, skipped_edge_count). A LIST,
     the same shape the piece came in as, because these must not be unioned.
+
+    THE ARGUMENT IS ONE PIECE, and that is not a formality. Which arrises are
+    real is decided by merging the bodies given (see Merge), so handing this two
+    pieces at once asks it to merge two parts into one and answer about that --
+    which changes the answer for both. Use chamfered_pieces() for more than one.
     """
     if not isinstance(bodies, (list, tuple)):
         bodies = [bodies]
+    bodies = list(bodies)
+
+    # The union is taken ONCE for the piece, not once per body.
+    surviving = surviving_keys(bodies)
     done = skipped = 0
     finished = []
-    for body in bodies:
-        solid, d, s = chamfer_body(body, size)
+    for i, body in enumerate(bodies):
+        merge = Merge(bodies, i, size, surviving) if surviving is not None else None
+        solid, d, s = chamfer_body(body, size, merge)
         finished.append(solid)
         done += d
         skipped += s
     return finished, done, skipped
+
+
+def chamfered_pieces(pieces, size: float = CHAMFER) -> tuple:
+    """Several pieces, each finished as itself, flattened into one list.
+
+    For a caller that wants a whole assembly's printed bodies in one bucket --
+    tools/view.py does. It has to say where each piece ends, because nothing can
+    work that out from a flat list: two parts of an assembly are as
+    interpenetrating as two bodies of one part, and guessing from that is how a
+    thigh and a shin end up merged into a single "piece" at the knee and lose the
+    arrises where they meet.
+    """
+    bodies: list = []
+    done = skipped = 0
+    for piece in pieces:
+        finished, d, s = chamfered(piece, size)
+        bodies += finished
+        done += d
+        skipped += s
+    return bodies, done, skipped

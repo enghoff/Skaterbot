@@ -83,21 +83,20 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         + motor(hipCenterX, prototypeWheelAxisHeight, 90)
     )
 
-    printed = (
-        [Pos(-hipCenterX, 0, wheeledThighCenterZ) * b for b in thighLeft()]
-        + [Pos(hipCenterX, 0, wheeledThighCenterZ) * b for b in thighRight()]
-        + [Pos(-hipCenterX, 0, wheeledShinCenterZ) * b for b in shinLeft()]
-        + [Pos(hipCenterX, 0, wheeledShinCenterZ) * b for b in shinRight()]
-        + [
-            Pos(-hipCenterX, 0, prototypeWheelAxisHeight) * b
-            for b in wheelAdapterLeft()
-        ]
-        + [
-            Pos(hipCenterX, 0, prototypeWheelAxisHeight) * b
-            for b in wheelAdapterRight()
-        ]
-        + [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in pelvisShell()]
-    )
+    # Kept as a list of PIECES rather than one flat list of bodies, because the
+    # finish pass has to know where each piece ends: it decides which arrises are
+    # real by merging a piece's bodies, and a thigh and a shin are as
+    # interpenetrating at the knee as two bodies of either one.
+    printed_pieces = [
+        [Pos(-hipCenterX, 0, wheeledThighCenterZ) * b for b in thighLeft()],
+        [Pos(hipCenterX, 0, wheeledThighCenterZ) * b for b in thighRight()],
+        [Pos(-hipCenterX, 0, wheeledShinCenterZ) * b for b in shinLeft()],
+        [Pos(hipCenterX, 0, wheeledShinCenterZ) * b for b in shinRight()],
+        [Pos(-hipCenterX, 0, prototypeWheelAxisHeight) * b for b in wheelAdapterLeft()],
+        [Pos(hipCenterX, 0, prototypeWheelAxisHeight) * b for b in wheelAdapterRight()],
+        [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in pelvisShell()],
+    ]
+    printed = [body for piece in printed_pieces for body in piece]
 
     hubs, treads, clamps = [], [], []
     for sign in (-1, 1):
@@ -115,9 +114,9 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     cover = [Pos(0, 0, wheeledTorsoCenterHeight) * torsoCover()]
 
     if finished:
-        from cad.finish import chamfered
+        from cad.finish import chamfered, chamfered_pieces
 
-        printed, cut_a, sharp_a = chamfered(printed, size)
+        printed, cut_a, sharp_a = chamfered_pieces(printed_pieces, size)
         cover, cut_b, sharp_b = chamfered(cover, size)
         print(
             f"finished: {cut_a + cut_b} edges chamfered, "

@@ -243,10 +243,8 @@ statorPlateDiameter = cheekDiameter
 statorPlateInnerX = -(actuatorDepth / 2)
 statorPlateOuterX = statorPlateInnerX - limbPlateThickness
 statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
-# The connectors seat against a flat chord 19 mm from the axis, so the plate is
-# truncated on that chord rather than covering them. All four bolts sit at
-# 14.5 mm in each axis and survive the cut with room to spare.
-statorPlateFlatOffset = actuatorConnectorFlatOffset
+# statorPlateFlatOffset -- the connector relief -- is below, with the waist
+# width it is now cut flush with.
 
 # The waist between the two discs. It carried two stiffening flanges on its
 # outboard face until 30 August 2026; the retirement note below says why they
@@ -268,6 +266,36 @@ statorPlateFlatOffset = actuatorConnectorFlatOffset
 # would buy 1.89x against 40's 1.73x, and the limb is already a third deeper
 # than it was.
 limbWaistDepth = 40.0
+# The connector relief on the stator plate, and it is cut FLUSH WITH THE WAIST
+# rather than on the housing's own connector flat.
+#
+# The connectors seat against a chord 19 mm from the axis and the plate is
+# truncated on a chord rather than covering them, which is why the relief
+# exists at all. It was at exactly 19 -- actuatorConnectorFlatOffset -- from the
+# day it was drawn, and that was right while the waist was 30 mm and its flank
+# sat 4 mm inside the chord. Widening the waist to 40 on 30 August 2026 pushed
+# that flank to 20 and put it a millimetre PROUD of the relief, so the limb's
+# edge stood over the cut the relief had just made. That is the 1 mm step in the
+# silhouette above the lower joint, and it was nobody's decision.
+#
+# The two are now one number, which is the only way they stay matched. The
+# millimetre is given to the plate rather than taken off the limb because it
+# costs nothing on this side and 10 % of the limb's lateral section on the
+# other: the plate lies entirely OUTBOARD of the rear cover, at x -18.95 to
+# -24.95, while the connectors and their plugs are inboard of x -18.95 on the
+# housing itself. So the extra material is a 1 mm lip standing BESIDE a
+# radially-mating plug, not over it, on a disc that already overhangs the Ø46
+# housing by 3 mm everywhere else. Losing 2 mm of waist instead would have taken
+# the limb's sideways breaking load from 30.4 N to 27.4, at the rotor end where
+# it actually breaks.
+#
+# THE LIMIT ON THIS. The relief may follow the waist while the lip stays small
+# enough to be beside the connectors rather than over them; a millimetre is, and
+# the plug projection it is judged against is an ESTIMATE (see
+# actuatorConnectorPlugProjection). A waist much past 42 mm needs the plug
+# measured on a real actuator first, and until then this goes back to
+# actuatorConnectorFlatOffset rather than growing with it.
+statorPlateFlatOffset = limbWaistDepth / 2
 # How far the waist reaches past the limb centre towards the rotor end. It is
 # not symmetric: the far end is derived in cad/limb.py from the rear bolt circle,
 # because a waist this long would sit on the bolts. This end is set by the two

@@ -392,7 +392,9 @@ def main() -> int:
         names = ",".join(sorted({piece for piece, _, _ in stale}))
         print(
             "\nThe kinematics in this build would be current and the geometry would not."
-            "\nRe-export just these, which runs on the engine and spends credits:\n\n"
+            "\nRe-export just these. It used to run on the engine and spend "
+            "credits; since the build123d migration it is a local OCCT call and "
+            "costs nothing but a few seconds:\n\n"
             f"    uv run tools/export.py --format stl --out simulation/meshes --pieces {names}"
             "\n\nor pass --allow-stale to build against the meshes as they are.",
             file=sys.stderr,

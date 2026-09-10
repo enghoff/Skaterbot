@@ -32,7 +32,9 @@ interpenetrating bodies, so there are two honest ways to weigh it:
 
 --gate compares SUM against the baseline part by part rather than on the total,
 because a total can come out right by cancellation between two parts that are
-both wrong. Once phase 3 of docs/BUILD123D_MIGRATION.md unions these parts for
+both wrong. A part that is MEANT to have moved is declared in EXPECTED_CHANGE_G
+below with the grams and the reason, and then has to have moved by exactly that;
+the baseline itself is the engine's record and is not rewritten to suit. Once phase 3 of docs/BUILD123D_MIGRATION.md unions these parts for
 real, the union column becomes the only one, and the drop is a MEASUREMENT
 ARTEFACT rather than a saving.
 
@@ -59,6 +61,32 @@ sys.path.insert(0, str(ROOT))
 # A tenth of a gram is the resolution the baseline is stored at, so that is what
 # a comparison against it can mean.
 TOLERANCE_G = 0.05
+
+# PARTS THAT ARE MEANT TO HAVE MOVED, and by how much.
+#
+# The baseline is the engine's own figures from before the migration and is not
+# recomputed -- its note says so, and it is the same principle as the golden STEPs
+# that gate B compares against: a reference you rewrite to make a gate pass is
+# not a reference. So a deliberate design change is declared here instead, as the
+# grams it is expected to add or remove, and the gate then requires the part to
+# have moved by THAT and not merely to have moved.
+#
+# --save-baseline still exists and still overwrites everything. It is for the day
+# the engine-era figures stop being the reference at all, which is the end of
+# phase 3, and not for silencing a row.
+EXPECTED_CHANGE_G = {
+    "cad/thigh.py": (
+        +0.4,
+        "the connector relief cut flush with the waist adds 206 mm3 to each of "
+        "the two plates and the register pocket cut clear of the waist takes "
+        "11 mm3 off, so +195 mm3 a limb, twice over on the pair. Gate B holds "
+        "the volumes exactly",
+    ),
+    "cad/shin.py": (
+        +0.4,
+        "the same two changes on the same shared limb geometry",
+    ),
+}
 
 
 def bodies_of(part: dict) -> list:
@@ -150,10 +178,13 @@ def main(argv: list[str] | None = None) -> int:
         union_total += merged * part["count"]
 
         base = baseline.get(part["file"])
+        expected, _ = EXPECTED_CHANGE_G.get(part["file"], (0.0, ""))
         if base is None:
             verdict = "no base"
-        elif abs(round(summed, 1) - base) <= TOLERANCE_G:
-            verdict = "ok"
+        elif abs(round(summed, 1) - (base + expected)) <= TOLERANCE_G:
+            # A declared change reads as the change rather than as "ok", so the
+            # table says which parts are not on their original figure.
+            verdict = "ok" if not expected else f"{expected:+.1f}!"
         else:
             verdict = f"{summed - base:+.1f}"
             failures += 1
@@ -203,6 +234,16 @@ def main(argv: list[str] | None = None) -> int:
             print("\nNo change against the baseline.")
         else:
             print(f"\nAgainst the baseline: {change:+.1f} g (was {previous:.1f} g).")
+
+    declared = [
+        (part["label"], EXPECTED_CHANGE_G[part["file"]])
+        for part in budget["printed"]
+        if part["file"] in EXPECTED_CHANGE_G
+    ]
+    if declared:
+        print("\nparts deliberately off the engine's figures (marked ! above):")
+        for label, (grams, why) in declared:
+            print(f"  {label}, {grams:+.1f} g: {why}")
 
     if args.save_baseline:
         stored = {

@@ -162,12 +162,12 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="-0.000120345928 -0.00440566002 -0.0947819879" rpy="0 0 0"/>
-      <mass value="0.196708"/>
-      <inertia ixx="2.058568253e-04" ixy="-4.153275276e-07" ixz="-2.418911590e-07"
-               iyy="1.969627651e-04" iyz="3.589510479e-05" izz="5.795177283e-05"/>
+      <origin xyz="-9.85797283e-05 -0.00442420293 -0.094798257" rpy="0 0 0"/>
+      <mass value="0.196915"/>
+      <inertia ixx="2.058882588e-04" ixy="-3.402070289e-07" ixz="-1.980337878e-07"
+               iyy="1.970130401e-04" iyz="3.584128805e-05" izz="5.810078783e-05"/>
     </inertial>
-    <!-- thigh limb plate, right — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -201,12 +201,12 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="-0.000123420329 0.00393191953 -0.0972033231" rpy="0 0 0"/>
-      <mass value="0.191808"/>
-      <inertia ixx="1.589276374e-04" ixy="4.265423955e-07" ixz="-1.845708407e-07"
-               iyy="1.517571337e-04" iyz="-2.706250458e-05" izz="5.616682075e-05"/>
+      <origin xyz="-0.000101095374 0.00395144505 -0.0972174039" rpy="0 0 0"/>
+      <mass value="0.192015"/>
+      <inertia ixx="1.589482818e-04" ixy="3.493841036e-07" ixz="-1.510738280e-07"
+               iyy="1.517931431e-04" iyz="-2.701624156e-05" izz="5.631936014e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -271,12 +271,12 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="-0.000120345928 0.00440566002 -0.0947819879" rpy="0 0 0"/>
-      <mass value="0.196708"/>
-      <inertia ixx="2.058568253e-04" ixy="4.153275276e-07" ixz="-2.418911590e-07"
-               iyy="1.969627651e-04" iyz="-3.589510479e-05" izz="5.795177283e-05"/>
+      <origin xyz="-9.85797283e-05 0.00442420293 -0.094798257" rpy="0 0 0"/>
+      <mass value="0.196915"/>
+      <inertia ixx="2.058882588e-04" ixy="3.402070289e-07" ixz="-1.980337878e-07"
+               iyy="1.970130401e-04" iyz="-3.584128805e-05" izz="5.810078783e-05"/>
     </inertial>
-    <!-- thigh limb plate, left — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -310,12 +310,12 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="-0.000123420329 -0.00393191953 -0.0972033231" rpy="0 0 0"/>
-      <mass value="0.191808"/>
-      <inertia ixx="1.589276374e-04" ixy="-4.265423955e-07" ixz="-1.845708407e-07"
-               iyy="1.517571337e-04" iyz="2.706250458e-05" izz="5.616682075e-05"/>
+      <origin xyz="-0.000101095374 -0.00395144505 -0.0972174039" rpy="0 0 0"/>
+      <mass value="0.192015"/>
+      <inertia ixx="1.589482818e-04" ixy="-3.493841036e-07" ixz="-1.510738280e-07"
+               iyy="1.517931431e-04" iyz="2.701624156e-05" izz="5.631936014e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 34.3 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>

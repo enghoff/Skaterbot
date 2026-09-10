@@ -20,6 +20,9 @@ It reports four things, and only two of them are failures:
              the name or a dimension invented along the way.
   ADDED      a dimension introduced after the port, which the reference cannot
              hold. Allowed only by being named in ADDED below, with its reason.
+  CHANGED    a ported dimension whose value has deliberately moved since. Allowed
+             only by being named in CHANGED below, which pins BOTH ends of the
+             change, so a third value is still a MISMATCH.
   RETIRED    a golden name this branch deliberately dropped, because it
              belonged to the walking robot. Reported as a count, and a failure
              only if one reappears in cad/.
@@ -120,6 +123,23 @@ ADDED = {
 }
 
 
+# Dimensions the port carried FAITHFULLY and that have since been CHANGED on
+# purpose. Different from ADDED: the golden reference does hold these names, so
+# both ends of the change are pinned here -- what the KCL said, and what cad/ now
+# says. A value that matches neither is still a MISMATCH, so this records a
+# decision without loosening the gate. The reason lives with the dimension in
+# cad/parameters.py; the sentence here is the index entry.
+CHANGED = {
+    "statorPlateFlatOffset": (
+        19.0,
+        20.0,
+        "the connector relief is cut flush with the limb's flank rather than on "
+        "the housing's connector flat, because widening the waist to 40 mm had "
+        "left the limb standing a millimetre proud of the relief",
+    ),
+}
+
+
 def ported_values() -> tuple[
     dict[str, float], dict[str, str], dict[str, str], list[str]
 ]:
@@ -184,6 +204,7 @@ def main() -> int:
 
     mismatch: list[str] = []
     extra: list[str] = []
+    changed: list[str] = []
     unported: list[str] = []
     matched = 0
 
@@ -215,6 +236,18 @@ def main() -> int:
             continue
         if name not in gold_numbers:
             extra.append(f"  EXTRA     {name}  = {value!r}  (cad/{origin[name]}.py)")
+            continue
+        if name in CHANGED:
+            was, now, _ = CHANGED[name]
+            if gold_numbers[name] == was and value == now:
+                matched += 1
+                changed.append(f"  CHANGED   {name}  {was!r} -> {now!r}")
+            else:
+                mismatch.append(
+                    f"  MISMATCH  {name} (changed on purpose, see CHANGED):"
+                    f" expected {was!r} -> {now!r},"
+                    f" kcl says {gold_numbers[name]!r} and cad says {value!r}"
+                )
             continue
         if value != gold_numbers[name]:
             mismatch.append(
@@ -250,6 +283,8 @@ def main() -> int:
         print(line)
     for line in extra:
         print(line)
+    for line in changed:
+        print(line)
 
     # The two UNEVALUATABLE names are checked and counted as matches, but the
     # golden capture could not evaluate them so they are not in its key set.
@@ -261,6 +296,10 @@ def main() -> int:
     print(f"gate A: {matched}/{total_golden} live golden names matched exactly")
     print(f"        {len(RETIRED)} retired with the walking robot, correctly absent")
     print(f"        {len(ADDED)} added after the port, by name and with a reason")
+    if changed:
+        print(f"        {len(changed)} changed on purpose since the port:")
+        for name, (was, now, why) in sorted(CHANGED.items()):
+            print(f"          {name} {was!r} -> {now!r}: {why}")
     if unported:
         print(f"        {len(unported)} not ported yet:")
         for i in range(0, len(unported), 4):

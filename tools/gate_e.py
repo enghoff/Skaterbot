@@ -15,6 +15,12 @@ Here the finished part is an object with faces, so the question is arithmetic. A
 Ø3.4 through-hole leaves a cylindrical face of radius 1.7; six of them leave six.
 A hole that a union filled back in leaves none, and this fails.
 
+COUNTING IS NOT ALWAYS ENOUGH, and the second check exists because counting was
+not. A pocket a union has eaten a SEGMENT out of still leaves one face at the
+right radius, so it passes the count while the thing it locates no longer fits.
+Features that have to be whole rather than merely present are listed separately,
+in complete_pockets(), and are checked by how far round the circle actually goes.
+
     uv run tools/gate_e.py                   # every ported piece
     uv run tools/gate_e.py joint-rotor-hub   # just one
 
@@ -59,6 +65,35 @@ sys.path.insert(0, str(ROOT))
 PLACES = 4
 
 
+def open_arc(part, radius: float) -> float:
+    """How much of the circle at `radius` is still open, in degrees.
+
+    WHY COUNTING FACES IS NOT ENOUGH, learned the hard way twice. A bore that a
+    union has eaten a segment out of still leaves ONE cylindrical face at the
+    right radius, so the count above passes it. Both the limb's waist plate and
+    the rotor hub's arm reach far enough into the rotor disc to fill part of the
+    Ø30.4 register pocket, and both did, for as long as the parts have existed:
+    314 and 318 degrees open instead of 360, with the actuator's Ø30 register due
+    to land on what was left. Nothing said so until the angular span was asked
+    for.
+
+    So this is the assertion for a pocket that has to be COMPLETE rather than
+    merely present, and it is summed over faces because a boolean is free to
+    split one cylinder into several.
+    """
+    from math import degrees
+
+    total = 0.0
+    for face in part.faces():
+        surface = BRepAdaptor_Surface(face.wrapped)
+        if surface.GetType() != GeomAbs_SurfaceType.GeomAbs_Cylinder:
+            continue
+        if round(surface.Cylinder().Radius(), PLACES) != round(radius, PLACES):
+            continue
+        total += surface.LastUParameter() - surface.FirstUParameter()
+    return degrees(total)
+
+
 def cylinder_radii(part) -> Counter:
     """How many cylindrical faces of each radius the finished solid carries.
 
@@ -92,7 +127,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         rotorRegisterDiameter,
     )
 
-    return {
+    rows = {
         "joint-rotor-hub": [
             # The six that were filled. This is the whole reason the gate exists.
             ("M3 clearance holes on the Ø24 output circle", m3Clearance / 2, 6),
@@ -115,15 +150,49 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 1,
             ),
         ],
+        # The limb is the piece the wheeled robot actually prints, and it is here
+        # because the register pocket defect below bit it as well as the hub. Its
+        # ten M3 holes are the six on the Ø24 output circle plus the four on the
+        # Ø41 rear pattern, which are the same clearance and so the same radius.
+        "limb-105-unmirrored": [
+            (
+                "M3 clearance holes, six on the output circle and four on the rear",
+                m3Clearance / 2,
+                10,
+            ),
+            ("cap counterbores over the output six", m3CapCounterbore / 2, 6),
+            ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
+            ("Ø10.2 journal seat", journalSeatDiameter / 2, 1),
+        ],
+    }
+    rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
+    return rows
+
+
+def complete_pockets() -> dict[str, list[tuple[str, float]]]:
+    """piece -> [(what it is, the radius that must be a WHOLE circle), ...]
+
+    Features that have to be complete and not merely present, because something
+    is going to be piloted in them. See open_arc() for what filled them in.
+    """
+    from cad.parameters import rotorRegisterDiameter
+
+    register = ("Ø30.4 register pocket, all the way round", rotorRegisterDiameter / 2)
+    return {
+        "joint-rotor-hub": [register],
+        "limb-105-unmirrored": [register],
+        "limb-105-mirrored": [register],
     }
 
 
 def registry() -> dict[str, callable]:
-    from cad import joint
+    from cad import joint, thigh
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
+        "limb-105-unmirrored": thigh.thighRight,
+        "limb-105-mirrored": thigh.thighLeft,
     }
 
 
@@ -132,18 +201,27 @@ def main() -> int:
     parser.add_argument("pieces", nargs="*")
     args = parser.parse_args()
 
+    from cad.finish import united
+
     built = registry()
-    wanted = args.pieces or sorted(expectations())
+    declared = expectations()
+    pockets = complete_pockets()
+    wanted = args.pieces or sorted(set(declared) | set(pockets))
 
     failures = 0
     for name in wanted:
-        rows = expectations().get(name)
-        if rows is None or name not in built:
+        rows = declared.get(name, [])
+        whole = pockets.get(name, [])
+        if not (rows or whole) or name not in built:
             print(f"{name}: nothing declared yet")
             failures += 1
             continue
 
-        found = cylinder_radii(built[name]())
+        # A printed piece is several interpenetrating bodies, and the features
+        # this gate is about are exactly the ones a merge can fill in, so the
+        # question is asked of the merged solid rather than of any one body.
+        part = united(built[name]())
+        found = cylinder_radii(part)
         print(name)
         for what, radius, count in rows:
             got = found.get(round(radius, PLACES), 0)
@@ -151,6 +229,12 @@ def main() -> int:
             failures += 0 if ok else 1
             mark = "  ok  " if ok else " FAIL "
             print(f" {mark} {count:>2} x r{radius:<7.3f}  found {got:>2}   {what}")
+        for what, radius in whole:
+            span = open_arc(part, radius)
+            ok = abs(span - 360.0) <= 0.01
+            failures += 0 if ok else 1
+            mark = "  ok  " if ok else " FAIL "
+            print(f" {mark} 360 deg at r{radius:<7.3f}  found {span:6.2f}   {what}")
 
     print()
     print("gate E: FAIL" if failures else "gate E: pass")
