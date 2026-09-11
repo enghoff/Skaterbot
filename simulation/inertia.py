@@ -183,7 +183,7 @@ class MeshLibrary:
             raise FileNotFoundError(
                 f"{path} is missing. Regenerate the meshes with\n"
                 f"    uv run tools/export.py --format stl --out simulation/meshes\n"
-                "which runs on the engine and spends API credits."
+                "which is free, offline and takes a couple of minutes."
             )
 
         raw = trimesh.load_mesh(path)

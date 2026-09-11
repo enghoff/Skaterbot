@@ -138,14 +138,34 @@ count = 1
 name = "pelvis-shell"
 export = "pelvisShell"
 prints = 1
-bodies = 7  # shell, four cover bosses, two hip pitch clevises
-note = """Shell, cover bosses and both hip pitch clevises. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are."""
+bodies = 17  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges
+note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are."""
 
 [[printed.piece]]
 name = "torso-cover"
 export = "torsoCover"
 prints = 1
 bodies = 1  # the lid, one solid
+
+# THE FIRST PRINTED PART ON THIS ROBOT THAT THE KCL NEVER HAD, so it is the one
+# piece with no golden STEP behind it and the one piece tools/gate_b.py does not
+# list. Gate E carries its holes instead.
+#
+# It is its own entry rather than part of cad/torso.py's figure because it is a
+# separate print with a separate mass: the pelvis, the cover and the deck are
+# three parts off the same machine, not one part in three pieces.
+[[printed]]
+file = "cad/deck.py"
+label = "Electronics deck"
+measure = ["electronicsDeck"]
+count = 1
+
+[[printed.piece]]
+name = "electronics-deck"
+export = "electronicsDeck"
+prints = 1
+bodies = 5  # the plate and four SBC posts
+note = "Carries the controller carrier and the SBC over the battery, and holds the packs down."
 
 # ---- bought and estimated, not modelled at PA12 density ---------------------
 
@@ -157,13 +177,10 @@ note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, \
 ~150 g. Six, not eight: hip pitch, knee and wheel on each leg."""
 
 [[fixed]]
-label = "Bearing, journal, carrier"
-each_g = 16.3
+label = "Bearing and journal"
+each_g = 9.9
 count = 2
-note = """6800-2RS, Ø10 journal and the flanged metal carrier from cad/hardware.py. \
-Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md \
-per-joint tally. Hip pitch is the only straddled joint left, so there are two \
-sets rather than four."""
+note = """6800-2RS and the Ø10 journal, from cad/hardware.py. Steel, so neither can be measured from the CAD at PA12 density. docs/BOM.md per-joint tally. Hip pitch is the only straddled joint left, so there are two sets rather than four. It was 16.3 g a set until the 6.4 g turned aluminium bearing carrier was deleted -- it was the only bespoke machined part on the robot and nobody sells one, so the front cheek is bored Ø19.2 and the bearing is bonded into the print instead. The printed pelvis takes 4.7 g of that back: material returned to the cheek by the smaller bore, plus the boss that carries the bearing's shoulder now that the carrier's flange is not there to be one."""
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"
@@ -174,7 +191,7 @@ note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of t
 [[fixed]]
 label = "Fasteners"
 total_g = 51.0
-note = """45 g of M3 sets plus 6 g for the two wheel clamps, which are an M5 x 20 cap screw, a Ø30 washer and an M5 heat-set insert each. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
+note = """45 g of M3 sets plus 6 g for the two wheel clamps, which are an M5 x 12 cap screw, a Ø30 washer and an M5 heat-set insert each. The screw was an M5 x 20 until it was drawn: the bore it goes into is blind and reaches 15 mm below the head as dimensioned, so a 20 bottoms out and the clamp never sees preload. docs/BOM.md section 10 has the arithmetic. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
 
 [[fixed]]
 label = "Electronics and wiring"
@@ -184,6 +201,15 @@ note = "SBC, CAN wiring and looms. docs/BOM.md estimate; nothing is in hand."
 [[fixed]]
 label = "Power entry — capacitors, fuse, terminal"
 total_g = 60.0
-note = """Allowance, and the softest figure in the table: the robot is tethered \
-and carries no battery, but the capacitor bank that replaces the battery as the \
-bus's regeneration sink has not been sized. docs/PLAN.md."""
+note = """Allowance, and still one of the softest figures in the table. THE BANK'S JOB CHANGED WITH THE BATTERY AND ITS SIZE HAS NOT BEEN RE-DERIVED. It was sized to be the bus's only regeneration sink, because a bench supply cannot take current back; the pack is that sink now, and what is left for the bank is local decoupling and lead inductance. That is a reason to expect it to shrink, and expecting is not measuring, so both the reservation and this figure stand until the bus excursion is measured. docs/BOM.md red line."""
+
+[[fixed]]
+label = "Battery — 6S 2200 mAh, two 3S packs in series"
+each_g = 144.0
+count = 2
+note = """Gens Ace class 3S 2200 mAh 35C soft-case LiPo, 76 x 33 x 25 mm and 144 g each, wired in series for 6S 2200 mAh: 48.8 Wh for 288 g, which is 169 Wh/kg. CATALOGUE FIGURE, NOT WEIGHED. Two 3S rather than one 6S is a mass decision as much as a packaging one -- the same 48.8 Wh in a single 6S brick is 374 g from the same maker and 420 g from GenX, and both are 108 to 125 mm long against a cavity 130 wide and 67 deep. docs/NOTES.md's old 190 g for 29 Wh was optimistic: no high-discharge 6S pack on the market reaches the 153 Wh/kg it assumed."""
+
+[[fixed]]
+label = "Battery wiring, connectors and mounts"
+total_g = 85.0
+note = """ESTIMATE, nothing weighed, and a line the budget did not have at all while the robot was tethered. It is the pack harness plus everything that holds the payload down: the XT60 series link and pack leads, the panel-mounted XT90-S anti-spark disconnect, two JST-XH balance-lead extensions, the INA226 bus monitor, the 24 V to 5 V DC/DC module and the twelve board standoffs. The DC/DC is the heaviest single item at about 25 g. docs/BOM.md section 1 lists them one by one."""

@@ -14,19 +14,42 @@ joints are the visible hardware, the shell is not.
 
 from __future__ import annotations
 
-from build123d import Box, Plane, Pos
+from build123d import Box, Cylinder, Plane, Pos
 
+from cad.electronics import (
+    balancePortHeight,
+    balancePortWidth,
+    balancePortZ,
+    batteryWidth,
+    batteryX,
+    boardHoleInset,
+    deckLedgeDepth,
+    deckLedgeHeight,
+    deckLedgeWidth,
+    deckLedgeX,
+    deckLedgeY,
+    deckZ,
+    disconnectZ,
+    interiorHalfWidth,
+    leadChaseX,
+    lowerBandZ,
+    powerDepth,
+    powerWidth,
+    powerX,
+    xt90Length,
+    xt90Width,
+)
 from cad.geometry import mirrored
 from cad.joint import saddleHeight, statorClevis
 from cad.parameters import (
     hipCenterX,
     jointKeepOut,
     shellWall,
-    tetherCableDiameter,
     torsoCoverThickness,
     torsoFloorThickness,
 )
 from cad.torso_shell import (
+    bossHoleDiameter,
     cablePortDepth,
     cablePortWidth,
     cablePortX,
@@ -58,34 +81,133 @@ shellCenterZ = (shellFloorZ + shellTopZ) / 2
 cavityBottomZ = shellFloorZ + floorThickness
 cavityLength = shellTopZ + 2.0 - cavityBottomZ
 
-# ---- tether entry -----------------------------------------------------------
+# ---- the service panel ------------------------------------------------------
 #
-# There is no battery, so a single umbilical brings 24 V and CAN in from the
-# bench. It enters the back of the shell as low as the wall allows, for the two
-# reasons the keel used to be the place for it: down here the tether's pull acts
-# near the hip axes rather than at the top of a 106 mm lever, and it arrives
-# beside the power-entry block instead of crossing the electronics stack above.
+# THE UMBILICAL IS GONE. From August 2026 this wall carried a 12 mm tether slot
+# and two cable-tie slots either side of it, because the robot had no battery and
+# 24 V and CAN came in from a bench supply down one cable. The battery came back
+# in September 2026 -- cad/electronics.py says how and why -- and what the wall
+# carries instead is the three things a pack needs brought outside: the main
+# disconnect and one balance port per 3S brick.
 #
-# Strain relief is a cable tie, not a clamp or a threaded insert. The tie goes
-# out through one narrow slot, around the tether inside the shell, and back in
-# through the other, so a pull on the cable is carried in shear by 2.4 mm of
-# wall and never reaches the terminal. That also keeps every cut on this part
-# rectangular, which is the only blind pocket shape the engine will take out of
-# this shell.
-tetherPortWidth = tetherCableDiameter + 4.0
-tetherPortHeight = tetherCableDiameter
-# Two millimetres above the cavity's inside floor, so the slot opens into the
-# cavity with the shell floor left intact below it.
-tetherPortZ = cavityBottomZ + 2.0 + tetherPortHeight / 2
+# The strain relief went with the tether and is not missed. A cable tie carrying
+# a moving umbilical's pull in shear through 2.4 mm of wall was solving a problem
+# this robot no longer has: nothing now pulls on this wall at all, because
+# everything it connects to is inside the shell.
+#
+# EVERY CUT IS STILL RECTANGULAR, and now for a reason of its own rather than an
+# engine's: an XT90-S housing and a JST-XH shell are both rectangular mouldings,
+# so a round hole would have to be bigger than either to pass it. The cutouts are
+# the connector bodies plus half a millimetre all round, which means they are
+# only as good as the catalogue figures in cad/electronics.py -- measure the
+# connectors before this part is printed, because a panel cutout is the one thing
+# that cannot be adjusted afterwards.
+panelClearance = 0.5
+disconnectPortWidth = xt90Length + (panelClearance * 2)
+disconnectPortHeight = xt90Width + (panelClearance * 2)
+disconnectPortZ = disconnectZ + (xt90Width / 2)
+balanceSlotWidth = balancePortWidth + (panelClearance * 2)
+balanceSlotHeight = balancePortHeight + (panelClearance * 2)
+balanceSlotZ = balancePortZ + (balancePortHeight / 2)
+balanceSlotX = balancePortWidth / 2 + 1.5
 # Negative Y is the rear: the foot's front pressure pads sit at y = +51 and its
 # rear pads at y = -40, and the leading leg swings to +Y.
-tetherWallY = -(torsoShellDepth / 2 - (shellWall / 2))
-tieSlotWidth = 3.0
-tieSlotHeight = 8.0
-tieSlotX = tetherPortWidth / 2 + 5.0
+panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
+
+# ---- what stands inside ------------------------------------------------------
+#
+# Three sets of printed features that did not exist while the cavity held nothing
+# but boards lying in reserved volumes. A reserved volume says where a thing may
+# be and nothing about what holds it there, and this is the other half of that
+# answer.
+#
+# THE BATTERY RAILS. The packs sit at the saddle top, which is a plane the hip
+# clevises define and only occupy between |x| = 26 and 60. Under the rest of the
+# battery there is a 9 mm drop to the shell floor, so two rails carry it across.
+# THEY RUN ACROSS THE ROBOT AND NOT ALONG IT, which is the whole point: rails
+# laid fore and aft would wall off the square of floor between the hip saddles,
+# and that square is where the IMU goes. Laid this way they leave it open and
+# leave the actuator harnesses a clear run along the back of the cavity as well.
+batteryRailThickness = 3.0
+batteryRailY = 20.0
+batteryRailEndX = batteryX + (batteryWidth / 2)
+
+# THE POWER-ENTRY POSTS. Four, on the board's own corner pattern, standing from
+# the shell floor to the plane its standoffs sit on. They pass through the hip
+# saddle where they meet it and are left interpenetrating, like everything else
+# on this part.
+boardPostSize = 8.0
+powerPostX = (powerWidth / 2) - boardHoleInset
+powerPostY = (powerDepth / 2) - boardHoleInset
+
+# THE DECK LEDGES stand on the four stations cad/electronics.py names, because
+# cad/deck.py's plate has to land on the same four. Both they and the posts above
+# are PILOTED rather than inserted, at the same Ø2.5 the cover bosses have always
+# used for a self-tapping M3: 5 mm of pad will not sink a 5.7 mm insert, and this
+# project already stocks the screw.
 
 bossX = coverBossInset(torsoInnerWidth)
 bossY = coverBossInset(torsoInnerDepth)
+
+
+def _piloted(block, atX: float, atY: float, topZ: float, depth: float):
+    """A printed pad or post with a pilot hole down its top face.
+
+    The bore is taken out of the body it belongs to and NOTHING IS UNIONED ON
+    afterwards, which is the rule cad/electronics.py's board() follows for the
+    same reason: this part is a list of interpenetrating bodies, and a body
+    unioned over a pilot would fill it back in with nothing to report it but
+    tools/gate_e.py's count.
+    """
+    bore = Pos(atX, atY, topZ - (depth / 2) + 0.5) * Cylinder(
+        bossHoleDiameter / 2, depth + 1.0
+    )
+    return block - bore
+
+
+def batteryRails() -> list:
+    """The two rails the packs sit on, laid across the robot.
+
+    They start at the left wall and stop at the battery's own inboard end, so
+    the lead chase beyond it is clear to the floor.
+    """
+    railLength = batteryRailEndX + interiorHalfWidth
+    railCenterX = (batteryRailEndX - interiorHalfWidth) / 2
+    railHeight = lowerBandZ - cavityBottomZ
+    return [
+        Pos(railCenterX, sy * batteryRailY, cavityBottomZ + railHeight / 2)
+        * Box(railLength, batteryRailThickness, railHeight)
+        for sy in (1, -1)
+    ]
+
+
+def powerEntryPosts() -> list:
+    """Four posts from the shell floor to the power-entry board's standoffs."""
+    postHeight = lowerBandZ - cavityBottomZ
+    posts = []
+    for sx in (1, -1):
+        for sy in (1, -1):
+            atX = powerX + sx * powerPostX
+            atY = sy * powerPostY
+            block = Pos(atX, atY, cavityBottomZ + postHeight / 2) * Box(
+                boardPostSize, boardPostSize, postHeight
+            )
+            posts.append(_piloted(block, atX, atY, lowerBandZ, postHeight - 1.0))
+    return posts
+
+
+def deckLedges() -> list:
+    """Four pads on the front and rear walls, carrying cad/deck.py's plate."""
+    ledges = []
+    for sx in (1, -1):
+        for sy in (1, -1):
+            atX = sx * deckLedgeX
+            atY = sy * deckLedgeY
+            block = Pos(atX, atY, deckZ - deckLedgeHeight / 2) * Box(
+                deckLedgeWidth, deckLedgeDepth, deckLedgeHeight
+            )
+            ledges.append(_piloted(block, atX, atY, deckZ, deckLedgeHeight - 1.0))
+    return ledges
 
 
 def pelvisShell() -> list:
@@ -115,12 +237,12 @@ def pelvisShell() -> list:
         for sx in (1, -1)
     ]
 
-    tetherPort = Pos(0, tetherWallY, tetherPortZ) * Box(
-        tetherPortWidth, shellWall + 4.0, tetherPortHeight
+    disconnectPort = Pos(leadChaseX, panelWallY, disconnectPortZ) * Box(
+        disconnectPortWidth, shellWall + 4.0, disconnectPortHeight
     )
-    tieSlots = [
-        Pos(sx * tieSlotX, tetherWallY, tetherPortZ)
-        * Box(tieSlotWidth, shellWall + 4.0, tieSlotHeight)
+    balanceSlots = [
+        Pos(leadChaseX + sx * balanceSlotX, panelWallY, balanceSlotZ)
+        * Box(balanceSlotWidth, shellWall + 4.0, balanceSlotHeight)
         for sx in (1, -1)
     ]
 
@@ -128,7 +250,7 @@ def pelvisShell() -> list:
     # out of the already-hollowed shell is the ordering the engine rejects, and it
     # is the same ordering the keel needed when the tether entered through that.
     shellSlotted = shellBlank
-    for cutter in [*cablePorts, tetherPort, *tieSlots]:
+    for cutter in [*cablePorts, disconnectPort, *balanceSlots]:
         shellSlotted -= cutter
     shellRaw = shellSlotted - shellCavity
 
@@ -156,6 +278,9 @@ def pelvisShell() -> list:
         coverBoss(-bossX, -bossY, shellTopZ),
         rightHipPitchJoint,
         leftHipPitchJoint,
+        *batteryRails(),
+        *powerEntryPosts(),
+        *deckLedges(),
     ]
 
 

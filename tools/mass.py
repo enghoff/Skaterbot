@@ -87,6 +87,22 @@ EXPECTED_CHANGE_G = {
         +0.4,
         "the same three changes on the same shared limb geometry",
     ),
+    "cad/torso.py": (
+        +47.7,
+        "the torso grew from 125 x 68 x 65 to 135 x 72 x 86 to carry a battery, "
+        "and gained the ten features that hold one: two rails under the packs, "
+        "four posts under the power-entry board and four ledges carrying the "
+        "electronics deck. 43 g of that is the bigger box and the features, and "
+        "4.7 is the older bearing-seat change this line already carried -- "
+        "the two hip pitch cheeks are bored Ø19.2 for the bearing itself "
+        "rather than Ø30.2 for the turned carrier it used to sit in, and each "
+        "carries a Ø26 boss for the bearing's shoulder where the carrier's "
+        "flange used to be: 2 561 mm3 of PA12 back into the wall the joint's "
+        "load crosses, and 1 837 standing off its outer face. The carrier was "
+        "6.4 g of aluminium apiece. Gate B holds every one of those volumes "
+        "exactly, and cad/wheeled_parameters.py derives the box from what has "
+        "to fit inside it",
+    ),
 }
 
 

@@ -6,9 +6,19 @@
 
     uv run tools/view.py                     # the whole robot, neutral pose
     uv run tools/view.py pelvis-shell        # one printed piece, on its own
+    uv run tools/view.py torso-packing-check # a check scene, its groups named
     uv run tools/view.py --list              # what can be shown
     uv run tools/view.py pelvis-shell --finished   # with its edges broken
     uv run tools/view.py --finished          # the whole robot, edges broken
+
+WHAT THE ROBOT VIEW CARRIES, which is more than it used to. The tree is built
+here rather than taken from cad/main.py, and for a long time it was built out of
+printed shells and bought hardware only -- so the payload standing inside the
+pelvis was in the assembly, in the mass roll-up and in the check scenes, and in
+the viewer it was simply absent. It is a "payload" branch under the torso now.
+The check scenes are new here too: cad/scenes.py already builds each one as
+named groups, which is exactly the tree a viewer wants, so any of them can be
+named instead of a piece.
 
 A 0.5 mm chamfer on a 339 mm robot is about a seventh of one per cent of its
 height, so it is not visible until you zoom into an edge. It is not meant to be
@@ -64,11 +74,87 @@ def _piece(label: str, bodies, colour):
     return Compound(children=bodies, label=label)
 
 
+def _payload_colour(name: str) -> str:
+    """What a payload body is made of, from what cad/electronics.py calls it.
+
+    Four of these colours had been declared in that file since the port with
+    nothing drawing them, because nothing had ever drawn these bodies: the viewer
+    built its own tree out of shells and legs and never asked what stands inside
+    the pelvis. Two more arrived with the battery, for the packs and for copper.
+    """
+    from cad.electronics import (
+        canSilver,
+        cellGrey,
+        componentBlack,
+        copperRed,
+        pcbGreen,
+        terminalBlue,
+    )
+
+    if name.endswith("board"):
+        return pcbGreen
+    if name == "battery packs":
+        return cellGrey
+    if "lead" in name or name == "battery series link" or name.endswith("loom"):
+        return copperRed
+    if name == "capacitor bank":
+        return canSilver
+    if name in ("bus terminal", "fuse holder", "main disconnect", "balance ports"):
+        return terminalBlue
+    return componentBlack
+
+
+def _group_colour(name: str) -> str:
+    """What a check scene's named group is, by the name cad/scenes.py gives it.
+
+    Order matters in one place: "left wheel motor" is a motor rather than a
+    wheel, so the motor test comes first.
+    """
+    from cad import parameters as P
+
+    if name == "reservations":
+        return P.sensorBlue
+    if name == "cover":
+        return P.printedDark
+    if "motor" in name:
+        return P.motorGrey
+    if "hardware" in name:
+        return P.bearingSteel
+    if "wheel" in name:
+        return P.soleBlack
+    if name == "pelvis" or name.endswith(("thigh", "shin", "limb")):
+        return P.printedOrange
+    return _payload_colour(name)
+
+
+def check_scene(name: str):
+    """One of cad/scenes.py's configurations, as the tree of its named groups.
+
+    The scenes come in two forms for this exact reason -- the flat assembly for
+    a measurement, the named groups for looking -- so the viewer takes the
+    groups and the tree writes itself.
+    """
+    from build123d import Compound
+
+    from cad.scenes import GROUPS
+
+    groups = GROUPS[name]()
+    return Compound(
+        children=[
+            _piece(group, bodies, _group_colour(group))
+            for group, bodies in groups.items()
+            if bodies
+        ],
+        label=name,
+    )
+
+
 def whole_robot(finished: bool = False, size: float = 0.5):
     """The neutral assembly, as the tree the machine actually is.
 
-    Torso, left leg, right leg; and within a leg the three actuators, the thigh,
-    the shin and the wheel module, in the order they are stacked. Colour still
+    Torso, left leg, right leg; and within a leg the three actuators, the steel
+    that closes the hip, the thigh, the shin and the wheel module, in the order
+    they are stacked. Colour still
     says what a thing is made of, but the tree now says what it IS, so hiding a
     leg hides its wheel -- which a flat list of thirty-three bodies all called
     "printed structure" could not do.
@@ -81,12 +167,14 @@ def whole_robot(finished: bool = False, size: float = 0.5):
 
     from cad import parameters as P
     from cad.actuator import actuatorAssembly
+    from cad.electronics import torsoElectronicsGroups
+    from cad.hardware import jointHardware
     from cad.parameters import hipCenterX
     from cad.shin import shinLeft, shinRight
     from cad.skate_wheel import skateWheelHub, skateWheelTread
     from cad.thigh import thighLeft, thighRight
     from cad.torso import pelvisShell, torsoCover
-    from cad.wheel import _clampHardware
+    from cad.wheel import clampScrew, clampWasher, heatSetInsert
     from cad.wheel_adapter import wheelAdapterLeft, wheelAdapterRight
     from cad.wheeled_parameters import (
         prototypeWheelAxisHeight,
@@ -135,20 +223,52 @@ def whole_robot(finished: bool = False, size: float = 0.5):
             f"finished: {cut} edges chamfered, {sharp} left sharp (printed parts only)"
         )
 
+    def hip_joint_hardware(sign):
+        """The bought steel that closes the hip: the bearing and its journal.
+
+        The left set is the right one turned round, the same way cad/main.py
+        places it. Neither is printed -- tools/mass.py counts them from
+        mass_budget.toml at 9.9 g a set -- so the finish pass never sees them.
+        """
+        at = Pos(sign * hipCenterX, 0, wheeledHipPitchAxisHeight)
+        ball_bearing, pin = jointHardware()
+        if sign < 0:
+            ball_bearing, pin = (b.rotate(Axis.Z, 180) for b in (ball_bearing, pin))
+        return Compound(
+            children=[
+                _piece("bearing", [at * ball_bearing], P.bearingSteel),
+                _piece("journal", [at * pin], P.bearingSteel),
+            ],
+            label="hip joint hardware",
+        )
+
     def wheel_module(leg, sign):
         """The printed adapter, the skate wheel it carries, and its clamp."""
         at = Pos(sign * hipCenterX, 0, prototypeWheelAxisHeight)
-        hub, tread, clamp = skateWheelHub(), skateWheelTread(), _clampHardware()
+        hub, tread = skateWheelHub(), skateWheelTread()
+        # Named one by one rather than as a bag of "clamp hardware": these are
+        # three bought items and which is which is the thing worth seeing.
+        clamp = {
+            "cap screw": clampScrew(),
+            "washer": clampWasher(),
+            "heat-set insert": heatSetInsert(),
+        }
         if sign < 0:
             hub = mirror(hub, Plane.YZ)
             tread = mirror(tread, Plane.YZ)
-            clamp = [mirror(c, Plane.YZ) for c in clamp]
+            clamp = {name: mirror(b, Plane.YZ) for name, b in clamp.items()}
         return Compound(
             children=[
                 _piece("adapter", printed[leg, "wheel adapter"], P.printedOrange),
                 _piece("hub", [at * hub], P.printedDark),
                 _piece("tyre", [at * tread], P.soleBlack),
-                _piece("clamp hardware", [at * c for c in clamp], P.bearingSteel),
+                Compound(
+                    children=[
+                        _piece(name, [at * body], P.bearingSteel)
+                        for name, body in clamp.items()
+                    ],
+                    label="clamp",
+                ),
             ],
             label="wheel module",
         )
@@ -163,6 +283,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
                     motor(x, wheeledHipPitchAxisHeight, sign * 90),
                     P.motorGrey,
                 ),
+                hip_joint_hardware(sign),
                 _piece("thigh", printed[leg, "thigh"], P.printedOrange),
                 _piece(
                     "knee actuator",
@@ -180,10 +301,24 @@ def whole_robot(finished: bool = False, size: float = 0.5):
             label=leg,
         )
 
+    # What stands inside the pelvis, which the robot view did not carry at all
+    # until the boards were drawn properly. It is a branch of its own so that the
+    # lid can be hidden and the payload looked at in place, and the reserved
+    # volumes are deliberately NOT here -- four opaque boxes would swallow the
+    # boards they are drawn around. cad/scenes.py's torso_packing_check is where
+    # the reservations belong, and that scene is now viewable.
+    payload = Compound(
+        children=[
+            _piece(name, [torso_at * body for body in bodies], _payload_colour(name))
+            for name, bodies in torsoElectronicsGroups().items()
+        ],
+        label="payload",
+    )
     torso = Compound(
         children=[
             _piece("pelvis shell", printed["torso", "pelvis shell"], P.printedOrange),
             _piece("cover", printed["torso", "cover"], P.printedDark),
+            payload,
         ],
         label="torso",
     )
@@ -238,7 +373,9 @@ def pieces() -> dict[str, callable]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "piece", nargs="?", help="a printed piece; default is the robot"
+        "piece",
+        nargs="?",
+        help="a printed piece or a check scene; default is the robot",
     )
     parser.add_argument("--list", action="store_true", help="list what can be shown")
     parser.add_argument(
@@ -266,8 +403,14 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.list:
+        from cad.scenes import GROUPS
+
         print("robot        the neutral 339 mm assembly (default)")
         for name in sorted(pieces()):
+            print(f"{name}")
+        print()
+        print("and the check scenes, which come with their groups named:")
+        for name in sorted(GROUPS):
             print(f"{name}")
         return 0
 
@@ -276,9 +419,26 @@ def main() -> int:
     ocp_vscode.set_port(args.port)
 
     if args.piece and args.piece != "robot":
+        from cad.scenes import GROUPS
+
+        # A scene is named with underscores in cad/scenes.py and the printed
+        # pieces are named with hyphens, and nobody types the difference
+        # reliably, so either spelling finds the scene.
+        scene = args.piece.replace("-", "_")
+        if scene in GROUPS:
+            if args.finished:
+                print("scenes are drawn as modelled; --finished applies to pieces")
+            shown = check_scene(scene)
+            ocp_vscode.show(shown)
+            print(
+                f"showing {scene}: {len(shown.solids())} bodies"
+                f" in {len(shown.children)} groups"
+            )
+            return 0
+
         built = pieces()
         if args.piece not in built:
-            print(f"no such piece: {args.piece}; try --list", file=sys.stderr)
+            print(f"no such piece or scene: {args.piece}; try --list", file=sys.stderr)
             return 2
         from cad.parameters import printedOrange
 

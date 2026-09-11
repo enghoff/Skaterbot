@@ -57,7 +57,11 @@ from build123d import (
 from cad.parameters import (
     actuatorConnectorFlatOffset,
     actuatorRearBoltOffset,
-    bearingCarrierBore,
+    bearingSeatBossDiameter,
+    bearingSeatBossThickness,
+    bearingSeatDiameter,
+    bearingSeatShoulderBore,
+    bearingWidth,
     cheekDiameter,
     cheekNeckWidth,
     cheekThickness,
@@ -167,7 +171,34 @@ def statorClevis():
         rearCheekX, -(actuatorConnectorFlatOffset + cheekDiameter / 2), 0
     ) * Box(cheekThickness + 4.0, cheekDiameter, cheekDiameter)
 
-    frontCarrierBore = _disc(bearingCarrierBore, cheekThickness + 2.0, frontCheekX)
+    # The front cheek is bored for the bearing itself. It held a Ø30.2 bore for a
+    # turned aluminium carrier until that part was deleted for want of a supplier,
+    # and the bearing is now bonded into the print with the same retaining
+    # compound the carrier was bonded in with.
+    #
+    # The boss is what replaces the carrier's flange. A 3 mm cheek cannot seat a
+    # 5 mm bearing, so the boss stands off the cheek's outer face, makes up the
+    # missing 2 mm and carries 1.5 mm of shoulder past it: the bearing goes in
+    # from inboard, seats against the shoulder, and the journal then loads it
+    # against that face rather than against the bond. The Ø17.5 shoulder bore
+    # touches the outer race only -- the seal and the inner race turn -- and is
+    # also how a pin reaches the bearing to push it out.
+    #
+    # The seat cutter runs 1 mm past the cheek's inner face rather than stopping
+    # on it, and the shoulder bore starts inside the seat it is cut through, so
+    # neither cut ends coplanar with a face it does not mean to touch.
+    cheekOuterX = frontCheekX + cheekThickness / 2
+    frontSeatBoss = _disc(
+        bearingSeatBossDiameter,
+        bearingSeatBossThickness,
+        cheekOuterX + bearingSeatBossThickness / 2,
+    )
+    frontBearingSeat = _disc(bearingSeatDiameter, bearingWidth + 2.0, frontCheekX)
+    frontShoulderBore = _disc(
+        bearingSeatShoulderBore,
+        bearingSeatBossThickness + 2.0,
+        cheekOuterX + (bearingSeatBossThickness + 2.0) / 2,
+    )
 
     # KCL-SHAPED: each cut is taken on the simple body it belongs to, before
     # anything is unioned, because the engine rejected pockets cut out of a large
@@ -178,8 +209,11 @@ def statorClevis():
         rearCheekAfterBolts -= bolt
     rearCheekFinished = rearCheekAfterBolts - rearFlatCutter
 
-    frontCheekBlank = frontCheekDisc + frontCheekNeck
-    frontCheekFinished = frontCheekBlank - frontCarrierBore
+    # The boss is unioned on BEFORE the seat is cut, not after: a bore drilled
+    # first and then unioned over is a bore filled back in, which is the failure
+    # CLAUDE.md and gate E exist for.
+    frontCheekBlank = frontCheekDisc + frontCheekNeck + frontSeatBoss
+    frontCheekFinished = frontCheekBlank - frontBearingSeat - frontShoulderBore
 
     return rearCheekFinished + frontCheekFinished + saddleRaw
 

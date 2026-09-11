@@ -326,10 +326,12 @@ def describe_plant(links, joints, dimensions, rolled) -> None:
     if abs(com[0]) > 0.5:
         print(
             f"\n   NOTE: the standing centre of mass sits {abs(com[0]):.1f} mm to the "
-            f"{'right' if com[0] > 0 else 'left'}. The pelvis is\n"
-            "   laid out with power entry on one side and the controller on the other\n"
-            "   (cad/electronics.py), and they do not weigh the same. On a robot with no\n"
-            "   hip roll that is a standing bias the wheels have to hold out against."
+            f"{'right' if com[0] > 0 else 'left'}. The bottom band\n"
+            "   of the pelvis holds a 288 g battery against a 60 g power-entry block\n"
+            "   (cad/electronics.py), one at each side wall, and they do not weigh the\n"
+            "   same. On a robot with no hip roll that is a standing bias the wheels have\n"
+            "   to hold out against, and where the pack sits is the cheapest way to trim\n"
+            "   it -- nothing else in this torso weighs enough to matter."
         )
 
 

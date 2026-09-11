@@ -66,6 +66,31 @@ used to accept on a limb were of that kind and two of them were plainly visible.
 So the merged solid is now consulted for which arrises are real; see the Merge
 class below.
 
+AN EDGE THE CHAMFER WOULD SWALLOW IS NOT OFFERED TO OCCT AT ALL.
+
+A chamfer takes its own length off the far end of every edge that runs into the
+one being cut, so an edge shorter than twice the chamfer has nothing left of it
+once its two neighbours have been broken. Cutting it is not a finish, it is
+three chamfers trying to occupy the same corner.
+
+THAT CASE DOES NOT FAIL, IT CRASHES. Everywhere else in this module an
+impossible chamfer raises and the bisection below absorbs it. These do not:
+OCCT dies with an access violation and takes the interpreter with it, which no
+try/except can catch and which therefore cannot be recovered from or reported --
+the tool simply disappears. It was found on the stator clevis, on a 0.935 mm
+sliver where the rear cheek's connector relief meets its neck, cut onto a solid
+that already carried other chamfers. The same piece with three fewer edges on it
+finished perfectly well, so nothing about that sliver announces itself: which
+edges are attempted together is decided by how the bisection happens to split,
+and any geometry change reshuffles it. That makes this a landmine rather than a
+defect of one part, and the guard is what removes it.
+
+What it costs is reported rather than hidden. A refused edge is counted as
+SKIPPED, exactly like one OCCT declines, so tools/finish_report.py's "left
+sharp" column still means every arris that should have been broken and was not.
+At 0.5 mm the floor is 1 mm, which is under two layers at this nozzle and below
+anything a finger or an eye finds on a printed part.
+
 WHEN OCCT REFUSES A SET ANYWAY.
 
 The set is bisected and the halves are tried in turn, down to single edges, so one
@@ -251,6 +276,21 @@ def outer_edges(part, merge=None) -> list:
     ]
 
 
+# How short is too short, as a multiple of the chamfer. Two, because a short edge
+# has two ends and each of them loses the chamfer's own length to the cut that
+# runs into it. See the module docstring: these edges crash OCCT rather than
+# being refused by it.
+SLIVER = 2.0
+
+
+def _long_enough(edges: list, size: float) -> tuple[list, list]:
+    """Split `edges` into the ones a chamfer leaves something of, and the slivers."""
+    floor = SLIVER * size
+    keep = [edge for edge in edges if edge.length >= floor]
+    slivers = [edge for edge in edges if edge.length < floor]
+    return keep, slivers
+
+
 def _apply(solid, keys: list, size: float) -> tuple:
     """Chamfer as many of `keys` as OCCT will accept. Returns (solid, done, skipped)."""
     if not keys:
@@ -271,12 +311,16 @@ def _apply(solid, keys: list, size: float) -> tuple:
 
 
 def chamfer_body(body, size: float = CHAMFER, merge=None) -> tuple:
-    """One body with its outer edges broken. Returns (solid, done, skipped)."""
-    wanted = outer_edges(body, merge)
+    """One body with its outer edges broken. Returns (solid, done, skipped).
+
+    The slivers are taken out before anything is attempted and counted as
+    skipped, so they are reported as the sharp arrises they are.
+    """
+    wanted, slivers = _long_enough(outer_edges(body, merge), size)
     if not wanted:
-        return body, 0, 0
+        return body, 0, len(slivers)
     try:
-        return bd.chamfer(wanted, length=size), len(wanted), 0
+        return bd.chamfer(wanted, length=size), len(wanted), len(slivers)
     except Exception:
         pass
     numbered = _edge_keys(body)
@@ -285,7 +329,8 @@ def chamfer_body(body, size: float = CHAMFER, merge=None) -> tuple:
         for key, edge in numbered.items()
         if any(edge.wrapped.IsSame(w.wrapped) for w in wanted)
     ]
-    return _apply(body, keys, size)
+    solid, done, skipped = _apply(body, keys, size)
+    return solid, done, skipped + len(slivers)
 
 
 def united(bodies):

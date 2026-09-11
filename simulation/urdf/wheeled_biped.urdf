@@ -11,8 +11,8 @@
   +Y forward and +X to the robot's right, so everything here has been turned a
   quarter turn from the frame the CAD and the mesh files use.
 
-  BASE. base_link's origin is the torso's centre, 0.3065 m above the
-  ground in the neutral standing pose. The robot stands 0.339 m tall and its
+  BASE. base_link's origin is the torso's centre, 0.3170 m above the
+  ground in the neutral standing pose. The robot stands 0.360 m tall and its
   wheels are 0.1699 m apart at the contact patch.
 
   JOINT SIGNS. Both leg joints are positive in FLEXION, matching the angles in
@@ -28,7 +28,8 @@
   the Isaac Lab config instead.
 
   WHAT IS DRAWN. Everything the robot is made of, not just the printed parts.
-  The six printed pieces are their exported meshes; the actuators, wheels,
+  The printed pieces are their exported meshes, as they would be printed with
+  their arrises broken at 0.5 mm; the actuators, wheels,
   bearings, boards and power entry are the primitives simulation/robot.py gives
   them, and each of those primitives is the part's real envelope – it is the
   SAME solid its mass and inertia were computed from, so what you see is what
@@ -47,6 +48,8 @@
   <!-- Colours are the CAD's own, read out of cad/parameters.py and cad/electronics.py by cad.dimensions.colors, so a part is the same colour here as it is in the CAD viewer. -->
   <material name="bearingSteel"><color rgba="0.788235294 0.815686275 0.835294118 1"/></material>
   <material name="canSilver"><color rgba="0.549019608 0.576470588 0.611764706 1"/></material>
+  <material name="cellGrey"><color rgba="0.290196078 0.309803922 0.341176471 1"/></material>
+  <material name="componentBlack"><color rgba="0.125490196 0.137254902 0.164705882 1"/></material>
   <material name="motorGrey"><color rgba="0.349019608 0.388235294 0.423529412 1"/></material>
   <material name="pcbGreen"><color rgba="0.109803922 0.419607843 0.258823529 1"/></material>
   <material name="printedOrange"><color rgba="0.850980392 0.509803922 0.168627451 1"/></material>
@@ -55,12 +58,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000108379339 -0.00280167012 -0.0303868121" rpy="0 0 0"/>
-      <mass value="0.658000"/>
-      <inertia ixx="2.095719572e-03" ixy="-1.997973118e-07" ixz="4.504250851e-07"
-               iyy="8.764095687e-04" iyz="5.040133802e-05" izz="1.549122577e-03"/>
+      <origin xyz="9.06087308e-05 0.00339269911 -0.0237418645" rpy="0 0 0"/>
+      <mass value="1.094069"/>
+      <inertia ixx="3.396010927e-03" ixy="1.346910118e-06" ixz="7.463960057e-07"
+               iyy="1.716776937e-03" iyz="-2.942991434e-05" izz="2.303203086e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 119.6 g, measured: cad/torso.py:pelvisShell, seven bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 160.3 g, measured: cad/torso.py:pelvisShell, seventeen bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -68,7 +71,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- torso cover — 40.6 g, measured: cad/torso.py:torsoCover -->
+    <!-- torso cover — 46.6 g, measured: cad/torso.py:torsoCover -->
     <visual name="torso_cover">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -76,41 +79,65 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
+    <!-- electronics deck — 29.1 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <visual name="electronics_deck">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
+      <geometry>
+        <mesh filename="meshes/electronics-deck.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
     <!-- hip pitch actuator, right — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
     <visual name="hip_pitch_actuator__right">
-      <origin xyz="0 -0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <origin xyz="0 -0.048 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- hip pitch bearing and carrier, right — 11.4 g, bom: 6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10 -->
-    <visual name="hip_pitch_bearing_and_carrier__right">
-      <origin xyz="0 -0.07545 -0.0565" rpy="1.57079633 0 0"/>
+    <!-- hip pitch bearing, right — 5.0 g, bom: 6800-2RS at 5.0 g, docs/BOM.md section 9 -->
+    <visual name="hip_pitch_bearing__right">
+      <origin xyz="0 -0.07645 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
-        <cylinder radius="0.018000" length="0.008000"/>
+        <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
     <!-- hip pitch actuator, left — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
     <visual name="hip_pitch_actuator__left">
-      <origin xyz="0 0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <origin xyz="0 0.048 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- hip pitch bearing and carrier, left — 11.4 g, bom: 6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10 -->
-    <visual name="hip_pitch_bearing_and_carrier__left">
-      <origin xyz="0 0.07545 -0.0565" rpy="1.57079633 0 0"/>
+    <!-- hip pitch bearing, left — 5.0 g, bom: 6800-2RS at 5.0 g, docs/BOM.md section 9 -->
+    <visual name="hip_pitch_bearing__left">
+      <origin xyz="0 0.07645 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
-        <cylinder radius="0.018000" length="0.008000"/>
+        <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
+    <!-- battery — 288.0 g, estimate: two 3S 2200 mAh LiPo bricks in series, 144 g each. CATALOGUE FIGURE, NEVER WEIGHED -->
+    <visual name="battery">
+      <origin xyz="0 0.0241 -0.013" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.054 0.078 0.036"/>
+      </geometry>
+      <material name="cellGrey"/>
+    </visual>
+    <!-- logic DC/DC — 25.0 g, assumption: 24 V to 5 V buck module, the heaviest item in the 85 g wiring line -->
+    <visual name="logic_dc_dc">
+      <origin xyz="0 -0.0501 0.015" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.026 0.014"/>
+      </geometry>
+      <material name="componentBlack"/>
+    </visual>
     <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
     <visual name="sbc">
-      <origin xyz="0 0 0.0195" rpy="0 0 0"/>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
       <geometry>
         <box size="0.058 0.085 0.016"/>
       </geometry>
@@ -118,7 +145,7 @@
     </visual>
     <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
     <visual name="controller_carrier">
-      <origin xyz="0 0.0201 -0.0145" rpy="0 0 0"/>
+      <origin xyz="0 0.0251 0.014" rpy="0 0 0"/>
       <geometry>
         <box size="0.046 0.076 0.012"/>
       </geometry>
@@ -126,7 +153,7 @@
     </visual>
     <!-- IMU — 3.0 g, assumption: BNO085 nano breakout -->
     <visual name="imu">
-      <origin xyz="0 0 -0.0265" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.037" rpy="0 0 0"/>
       <geometry>
         <box size="0.022 0.022 0.006"/>
       </geometry>
@@ -134,7 +161,7 @@
     </visual>
     <!-- power entry — 60.0 g, estimate: capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED – docs/BOM.md red line -->
     <visual name="power_entry">
-      <origin xyz="0 -0.0391 -0.0055" rpy="0 0 0"/>
+      <origin xyz="0 -0.0441 -0.016" rpy="0 0 0"/>
       <geometry>
         <box size="0.062 0.038 0.03"/>
       </geometry>
@@ -143,17 +170,17 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.068 0.125 0.065"/>
+        <box size="0.072 0.135 0.086"/>
       </geometry>
     </collision>
     <collision>
-      <origin xyz="0 -0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <origin xyz="0 -0.048 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
     </collision>
     <collision>
-      <origin xyz="0 0.048 -0.0565" rpy="1.57079633 0 0"/>
+      <origin xyz="0 0.048 -0.067" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
@@ -162,10 +189,10 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="-9.85797283e-05 -0.00442420293 -0.094798257" rpy="0 0 0"/>
-      <mass value="0.196915"/>
-      <inertia ixx="2.058882588e-04" ixy="-3.402070289e-07" ixz="-1.980337878e-07"
-               iyy="1.970130401e-04" iyz="3.584128805e-05" izz="5.810078783e-05"/>
+      <origin xyz="-9.85746706e-05 -0.00442502079 -0.0947979178" rpy="0 0 0"/>
+      <mass value="0.196924"/>
+      <inertia ixx="2.058915951e-04" ixy="-3.401895745e-07" ixz="-1.980409842e-07"
+               iyy="1.970170655e-04" iyz="3.584245864e-05" izz="5.810717703e-05"/>
     </inertial>
     <!-- thigh limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__right">
@@ -201,10 +228,10 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="-0.000101095374 0.00395144505 -0.0972174039" rpy="0 0 0"/>
-      <mass value="0.192015"/>
-      <inertia ixx="1.589482818e-04" ixy="3.493841036e-07" ixz="-1.510738280e-07"
-               iyy="1.517931431e-04" iyz="-2.701624156e-05" izz="5.631936014e-05"/>
+      <origin xyz="-0.000101090067 0.0039523064 -0.0972169402" rpy="0 0 0"/>
+      <mass value="0.192024"/>
+      <inertia ixx="1.589521494e-04" ixy="3.493657623e-07" ixz="-1.510836577e-07"
+               iyy="1.517975455e-04" iyz="-2.701784383e-05" izz="5.632590366e-05"/>
     </inertial>
     <!-- shin limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__right">
@@ -271,10 +298,10 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="-9.85797283e-05 0.00442420293 -0.094798257" rpy="0 0 0"/>
-      <mass value="0.196915"/>
-      <inertia ixx="2.058882588e-04" ixy="3.402070289e-07" ixz="-1.980337878e-07"
-               iyy="1.970130401e-04" iyz="-3.584128805e-05" izz="5.810078783e-05"/>
+      <origin xyz="-9.85746706e-05 0.00442502079 -0.0947979178" rpy="0 0 0"/>
+      <mass value="0.196924"/>
+      <inertia ixx="2.058915951e-04" ixy="3.401895745e-07" ixz="-1.980409842e-07"
+               iyy="1.970170655e-04" iyz="-3.584245864e-05" izz="5.810717703e-05"/>
     </inertial>
     <!-- thigh limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__left">
@@ -310,10 +337,10 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="-0.000101095374 -0.00395144505 -0.0972174039" rpy="0 0 0"/>
-      <mass value="0.192015"/>
-      <inertia ixx="1.589482818e-04" ixy="-3.493841036e-07" ixz="-1.510738280e-07"
-               iyy="1.517931431e-04" iyz="2.701624156e-05" izz="5.631936014e-05"/>
+      <origin xyz="-0.000101090067 -0.0039523064 -0.0972169402" rpy="0 0 0"/>
+      <mass value="0.192024"/>
+      <inertia ixx="1.589521494e-04" ixy="-3.493657623e-07" ixz="-1.510836577e-07"
+               iyy="1.517975455e-04" iyz="2.701784383e-05" izz="5.632590366e-05"/>
     </inertial>
     <!-- shin limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__left">
@@ -382,7 +409,7 @@
   <joint name="hip_pitch_right" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_right"/>
-    <origin xyz="0 -0.048 -0.0565" rpy="0 0 0"/>
+    <origin xyz="0 -0.048 -0.067" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
@@ -409,7 +436,7 @@
   <joint name="hip_pitch_left" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_left"/>
-    <origin xyz="0 0.048 -0.0565" rpy="0 0 0"/>
+    <origin xyz="0 0.048 -0.067" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>

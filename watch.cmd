@@ -3,6 +3,7 @@ rem Bring the OCP CAD Viewer up and keep it showing the current CAD, finished.
 rem
 rem   watch.cmd                     the whole robot, redrawn every time you save
 rem   watch.cmd pelvis-shell        one printed piece, on its own
+rem   watch.cmd torso-packing-check a check scene, with its groups named
 rem   watch.cmd --raw               as modelled, sharp arrises, which is faster
 rem   watch.cmd --size 2            an exaggerated chamfer, to SEE it is there
 rem   watch.cmd --list              what can be shown

@@ -23,11 +23,19 @@ from build123d import Box, Cylinder, Pos
 
 from cad.parameters import m3Clearance, shellWall, torsoCoverThickness
 
-# The one section dimension the two pelvises still agree on. Depth is set by
-# the actuators' fore-and-aft envelope, which neither robot changed; width is
-# each pelvis' own business, because the wheeled one grew to fit two boards
-# side by side.
-torsoShellDepth = 68.0
+# Depth was the one section dimension the two pelvises agreed on, at 68 mm, and
+# the wheeled one has now left that behind as well. 68 was the actuators'
+# fore-and-aft envelope and nothing else, which was right while the cavity held
+# nothing but boards lying flat. THE BATTERY MADE IT A REQUIREMENT RATHER THAN A
+# LEFTOVER: two 3S packs on edge are 52 mm across the robot, and the four ledges
+# the electronics deck lands on stand 5 mm proud of these walls, so a 68 mm
+# shell leaves the packs and the ledges a tenth of a millimetre apart. 72 opens
+# that to 1.6 mm. The four millimetres are checked rather than assumed -- this
+# floor is what a thigh swings under, and tools/gate_f.py measures that clearance
+# in the pose and squat scenes.
+#
+# Width is each pelvis' own business and is in cad/wheeled_parameters.py.
+torsoShellDepth = 72.0
 
 # Provisional. A cable has to leave each hip actuator and get inside, and this
 # slot clears both the saddle and the cheeks on either pelvis. Its exact

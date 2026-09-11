@@ -111,6 +111,50 @@ wheelClampWasherDiameter = 30.0
 wheelClampWasherThickness = 2.0
 
 # ---------------------------------------------------------------------------
+# What the clamp is made of
+#
+# Three bought items on the wheel's axis, and two of them were drawn as plain
+# cylinders standing in for the space they occupy until the screw and the insert
+# were modelled properly.
+#
+# PROVENANCE: ISO 4762 (DIN 912) socket cap screw, M5 -- head Ø8.5 x 5.0 across a
+# 4 mm hex socket -- and the heat-set insert the spigot's bore was already cut
+# for, Ø6.4 x 9.5 nominal. Neither is in reference/: a cap screw and a heat-set
+# insert are catalogue parts and every maker builds them to the same table.
+wheelClampScrewDiameter = 5.0
+# HOW LONG THE SCREW CAN BE, which is not a free choice. Under the head sits the
+# 2 mm washer, then the millimetre the spigot is held short of the hub's face,
+# and then a BLIND bore: 12 mm deep as this file declares it, 14 as
+# cad/wheel_adapter.py actually cuts it, because that cutter's 2 mm overrun goes
+# inboard past the pocket's bottom rather than outward past its open mouth. So
+# the reach is 15 mm against the nominal pocket and 17 mm against the drawn one,
+# and either way a screw longer than that lands on the bottom and the joint
+# never sees preload -- the M5 x 20 the bill of materials asks for stands 3 mm
+# of its shank inside solid printed spigot. 12 is the standard length that fits
+# both readings: it threads through 9 of the insert's 9.5 mm and stops 3 mm
+# clear of the nominal bottom, 5 mm clear of the drawn one.
+wheelClampScrewLength = 12.0
+# The socket is drawn only so the head reads as a cap head. 4 mm across the
+# flats is the M5 key; the depth is nominal.
+wheelClampSocketAcrossFlats = 4.0
+wheelClampSocketDepth = 2.5
+# M5 clearance through a washer this size, which is a penny washer rather than
+# anything in the ISO 7089 series -- no standard flat washer for M5 is Ø30.
+wheelClampWasherBore = 5.5
+# The insert itself, seated flush with the spigot's outer end. The bore it goes
+# into is 12 mm deep for the 9.5 mm insert, which is the seating allowance the
+# comment above records -- and 14 as drawn, for the overrun reason below.
+wheelInsertLength = 9.5
+# Its thread is drawn at pitch diameter rather than as a helix, so a screw in it
+# overlaps by a quarter of a millimetre the way an engaged thread does. M5 pitch
+# diameter is 4.48.
+wheelInsertThreadDiameter = 4.5
+# The cap head. These two moved here from cad/wheel.py, which is where the port
+# left them: they are the screw's dimensions and they belong with the rest of it.
+capHeadDiameter = 8.5
+capHeadLength = 5.0
+
+# ---------------------------------------------------------------------------
 # Axis heights
 prototypeWheelAxisHeight = skateWheelDiameter / 2
 
@@ -135,33 +179,53 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # axis, because that floor IS the seat the two hip clevises are rooted in -- and
 # its ceiling is wherever the reserved payload stops.
 #
-# WHAT SETS THE 65 mm, measured up from the inside face of the floor:
+# THE ROBOT CARRIES A BATTERY AGAIN, and that is what this box is now sized
+# around. It was tethered from August 2026, when the on-board pack was deleted
+# because no 6S brick would fit the keel and its 190 g was the whole of the mass
+# headroom; the height below is what it costs to put one back. Both of those
+# objections were answered rather than waved away -- the pack is two 3S bricks
+# in series rather than one 6S, which is what makes it fit, and the headroom is
+# there now because deleting hip roll gave 700 g back. docs/NOTES.md carries the
+# decision.
+#
+# WHAT SETS THE 86 mm, measured up from the inside face of the floor:
 #
 # * 9 mm of hip pitch saddle. The clevises stand that far proud of the floor
 # across |x| = 26 to 60, so only the 51.5 mm between them is clear at this
 # level. Nothing reserved is narrow enough to use it except the IMU, which
 # goes there -- it is the stiffest spot in the pelvis, directly between the
 # two hip joints, which is where an IMU wants to be anyway.
-# * 30 mm for the power-entry block, 38 x 62 x 30, which therefore starts above
-# the saddles rather than on the floor. The controller carrier, 76 x 46 x 12,
-# sits BESIDE it in the same band.
+# * 36 mm for the battery, 78 x 56 x 36, which is two 3S 2200 mAh bricks ON
+# EDGE side by side. That orientation is the whole reason a pack fits at all:
+# laid flat the pair is 68 mm across the robot against 63.2 mm of interior
+# depth, and on edge it is 52. The power-entry block, 38 x 62 x 30, sits
+# BESIDE it in the same band and is the shorter of the two, so the battery
+# alone sets this band's height.
+# * 3 mm of electronics deck, cad/deck.py, which is a printed plate screwed to
+# four bosses on the side walls. It carries both boards above the battery and
+# holds the packs down, and it lifts out to reach them.
+# * 12 mm for the controller carrier, 76 x 46 x 12, standing on the deck.
 # * 16 mm for the SBC, 85 x 58 x 16. It is wider than either of the other two,
 # so it cannot share a band with them and has to go over the top.
 #
-# THAT SIDE-BY-SIDE PAIR IS WHY THE SHELL IS 125 mm WIDE and not the walking
-# robot's 118. Power entry and the controller need 114 mm of interior between
-# them; a 118 mm shell leaves 113.2 and misses by eight tenths of a millimetre.
-# Widening to 125 leaves 120.2, which fits them with 6 mm to spare, and costs
-# nothing in envelope: the robot is already 148 mm across at the hip saddles,
-# so the torso is not what makes it wide. Stacking that pair instead would have
-# cost 14 mm of height for the 7 mm of width it saved.
+# THE BATTERY IS WHY THE SHELL IS 135 mm WIDE and not the 125 it was, and the
+# 10 mm is bought for the LEADS rather than for the pack. Battery and power
+# entry need 116 mm of interior between them where the old pair needed 114, and
+# with 2 mm at each wall a 125 mm shell leaves them two tenths of a millimetre
+# apart -- not a gap at all. Both packs bring their leads out of the end that
+# faces the power block and an XT60 is 8.1 mm across its moulded body, so what
+# has to fit between those two blocks is a cable chase and not slack: 130 would
+# leave 5.2 mm and still not take a connector, and 135 leaves 10.2, which does.
+# It costs nothing in envelope: the robot is already 148 mm across at the hip
+# saddles, so the torso is still not what makes it wide.
 #
-# With 2 mm between bands and 2.6 mm under the cover that is 59.6 mm of
-# interior; 3 mm of floor and 2.4 mm of cover make 65 mm of torso, and the
-# robot stands 339 mm rather than 380.
-wheeledTorsoShellWidth = 125.0
+# With 2 mm between the two upper bands and 2.6 mm under the cover that is
+# 80.6 mm of interior; 3 mm of floor and 2.4 mm of cover make 86 mm of torso,
+# and the robot stands 360 mm rather than 339. Those 21 mm are what the battery
+# costs in height, and cad/electronics.py's bands are where they went.
+wheeledTorsoShellWidth = 135.0
 wheeledTorsoBottom = wheeledHipPitchAxisHeight + jointKeepOut
-wheeledTorsoHeight = 65.0
+wheeledTorsoHeight = 86.0
 wheeledTorsoTop = wheeledTorsoBottom + wheeledTorsoHeight
 wheeledTorsoCenterHeight = wheeledTorsoBottom + wheeledTorsoHeight / 2
 

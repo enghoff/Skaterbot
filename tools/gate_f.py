@@ -41,6 +41,7 @@ Free, offline, no engine.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import sys
 from pathlib import Path
@@ -78,6 +79,37 @@ def measure(first: list, second: list) -> tuple[float, float]:
     return a.distance_to(b), shared
 
 
+# Scene constants that have MOVED on purpose since the reference was frozen.
+#
+# The same idea as gate A's CHANGED and gate B's DEVIATIONS, and written the same
+# way for the same reason: BOTH ENDS ARE PINNED, so a value matching neither is
+# still a failure and a second change cannot hide inside the first. A pose is not
+# loosened here, it is re-frozen at a stated number with a stated cause.
+#
+# Nothing in these two scenes is a different POSE. The joints are at the angles
+# they always were and the wheels land where they always did -- which is the
+# check immediately below this one, and it still passes untouched. What moved is
+# where the torso's own centre sits, because the torso got taller, and these two
+# constants are the height of that centre above the floor.
+MOVED = {
+    "pose_check": {
+        "poseTorsoCenterZ": (
+            300.7857332246598,
+            311.2857332246598,
+            "the torso grew from 65 mm to 86 to carry a battery, so its centre "
+            "is 10.5 mm further above a floor that has not moved",
+        ),
+    },
+    "squat_check": {
+        "squatTorsoCenterZ": (
+            216.95105163371966,
+            227.45105163371966,
+            "the same 10.5 mm, in the deepest squat",
+        ),
+    },
+}
+
+
 def check_poses() -> tuple[int, int]:
     """Every scene constant against the frozen KCL reference. (checked, failed)"""
     from cad import poses
@@ -89,17 +121,29 @@ def check_poses() -> tuple[int, int]:
     for scene, frozen in sorted(golden.items()):
         name = scene.removesuffix(".kcl")
         computed = poses.SCENES[name]() if name in poses.SCENES else {}
+        moved = MOVED.get(name, {})
 
         extra = sorted(set(computed) - set(frozen))
         missing = sorted(set(frozen) - set(computed))
-        differing = [
-            n for n in sorted(set(frozen) & set(computed)) if frozen[n] != computed[n]
-        ]
+        differing = []
+        wrong = []
+        for n in sorted(set(frozen) & set(computed)):
+            if frozen[n] == computed[n]:
+                continue
+            if n in moved:
+                was, now, _ = moved[n]
+                if frozen[n] == was and computed[n] == now:
+                    continue
+                wrong.append(n)
+            else:
+                differing.append(n)
         checked += len(frozen)
-        failed += len(extra) + len(missing) + len(differing)
+        failed += len(extra) + len(missing) + len(differing) + len(wrong)
 
         note = f"{len(frozen):>2} constants" if frozen else "places bodies only"
-        mark = "  ok  " if not (extra or missing or differing) else " FAIL "
+        if moved and not (extra or missing or differing or wrong):
+            note += f", {len(moved)} moved on purpose"
+        mark = "  ok  " if not (extra or missing or differing or wrong) else " FAIL "
         print(f" {mark} {name:<20} {note}")
         for missed in missing:
             print(f"        missing: {missed} = {frozen[missed]!r}")
@@ -109,6 +153,16 @@ def check_poses() -> tuple[int, int]:
             print(
                 f"        {drifted}: kcl {frozen[drifted]!r}  cad {computed[drifted]!r}"
             )
+        for bad in wrong:
+            was, now, _ = moved[bad]
+            print(
+                f"        {bad} (moved on purpose, see MOVED): expected "
+                f"{was!r} -> {now!r}, kcl says {frozen[bad]!r} and cad says "
+                f"{computed[bad]!r}"
+            )
+        for name_, (was, now, why) in sorted(moved.items()):
+            if name_ not in wrong:
+                print(f"        MOVED {name_} {was!r} -> {now!r}: {why}")
     return checked, failed
 
 
@@ -300,10 +354,18 @@ def check_clearances() -> tuple[int, int]:
 def check_packing() -> tuple[int, int]:
     """Every reserved payload volume inside the shell, and clear of it.
 
-    The 65 mm torso is derived from what has to fit in it, so this is where that
+    The 86 mm torso is derived from what has to fit in it, so this is where that
     derivation is actually checked rather than asserted. Two things per item: it
     does not eat into the shell, and it lies inside the cavity -- because a block
     that sticks out through a wall shares no volume with it either.
+
+    THE SHELL IS NOT THE ONLY THING THE PAYLOAD CAN FOUL any more. The battery
+    brought ten printed features into the cavity with it -- two rails, four board
+    posts and four deck ledges -- and they are part of cad/torso.py's list, so
+    they are inside `shell` here and measured along with it. That is deliberate:
+    the tightest clearance in this torso is the 1.6 mm between a battery pack and
+    a deck ledge, and it would mean nothing if the ledges were left out of the
+    body the packing is measured against.
     """
     from cad import scenes, torso
     from cad.wheeled_parameters import wheeledTorsoCenterHeight
@@ -320,7 +382,9 @@ def check_packing() -> tuple[int, int]:
     floorZ = torso.cavityBottomZ + wheeledTorsoCenterHeight
     lidZ = torso.shellTopZ + wheeledTorsoCenterHeight
 
-    items = ("power entry", "controller carrier", "SBC", "IMU")
+    # In cad/electronics.py's torsoReservations() order, which is also the order
+    # simulation/robot.py places a mass in each.
+    items = ("battery", "power entry", "controller carrier", "SBC", "IMU")
     checked = failed = 0
     for name, item in zip(items, groups["reservations"]):
         distance, shared = measure([item], shell)
@@ -341,6 +405,141 @@ def check_packing() -> tuple[int, int]:
             f" {mark} {name:<20} shell gap {distance:6.3f} mm  shared "
             f"{shared:8.3f} mm3  tightest wall {inside:6.3f} mm"
         )
+
+    more, wrong = check_fits(items)
+    return checked + more, failed + wrong
+
+
+# The fits inside the torso that are tight enough to be worth a number, and what
+# each one has to be. Written as EQUALITIES, which is the difference between this
+# table and the clearance table above: these are not "stay clear of each other",
+# they are "sit exactly here". A pack that stops resting on its rails, or a deck
+# that stops landing on its ledges, is a defect even though nothing interferes
+# and nothing in gates A to E would say a word about it.
+#
+# Two of these numbers were arrived at backwards. The shell's depth was chosen to
+# make the first 1.6 mm rather than 0.1, and its width to make the fifth 10.2
+# rather than 0.2 -- so if either ever fails, the shell section is what has to
+# move, not the tolerance.
+FITS = [
+    (
+        "battery bay vs the four deck ledges",
+        "battery",
+        "ledges",
+        1.6,
+        "the tightest clearance in this torso, and what set the shell's depth: "
+        "a 68 mm shell leaves a tenth of a millimetre here",
+    ),
+    (
+        "power block vs the four deck ledges",
+        "power entry",
+        "ledges",
+        1.0,
+        "the ledges are 5 mm tall and the power block is 30 in a 36 mm band",
+    ),
+    (
+        "battery packs vs their rails",
+        "packs",
+        "rails",
+        0.0,
+        "the packs SIT ON the rails, so any gap here means they are floating",
+    ),
+    (
+        "battery packs vs the deck above",
+        "packs",
+        "deck",
+        3.0,
+        "the squeeze that holds the packs down, and the only thing that does",
+    ),
+    (
+        "battery bay vs the power block",
+        "battery",
+        "power entry",
+        10.2,
+        "the lead chase, and what the shell's extra 10 mm of width bought",
+    ),
+    (
+        "IMU vs the battery over it",
+        "IMU",
+        "battery",
+        3.0,
+        "the IMU stays on the shell floor with the battery above it, which is "
+        "why cad/torso.py's rails run across the robot rather than along it",
+    ),
+]
+
+
+def check_fits(items: tuple) -> tuple[int, int]:
+    """The tight fits inside the torso, each against the figure it was drawn to."""
+    from cad import deck, electronics, torso
+
+    # Built here rather than lifted out of the scene above, and that matters:
+    # the scene places the pelvis at the robot's own standing height and these
+    # are all torso-local. Mixing the two frames measures the 281 mm between
+    # them instead of the millimetre and a half that is actually in question.
+    bodies = {
+        "ledges": torso.deckLedges(),
+        "rails": torso.batteryRails(),
+        "packs": electronics.batteryPacks(),
+        "deck": deck.electronicsDeck(),
+        **{
+            name: [solid] for name, solid in zip(items, electronics.torsoReservations())
+        },
+    }
+
+    print()
+    print("THE FITS INSIDE IT, AGAINST WHAT EACH WAS DRAWN TO")
+    checked = failed = 0
+    for what, left, right, wanted, why in FITS:
+        distance, shared = measure(bodies[left], bodies[right])
+        ok = abs(distance - wanted) <= 0.001 and shared <= CONTACT_MM3
+        checked += 1
+        failed += 0 if ok else 1
+        mark = "  ok  " if ok else " FAIL "
+        print(
+            f" {mark} {what:<38} gap {distance:6.3f} mm  shared "
+            f"{shared:8.3f} mm3  wants {wanted:5.2f}"
+        )
+        if not ok:
+            print(f"        {why}")
+    return checked, failed
+
+
+def check_no_clashes() -> tuple[int, int]:
+    """Every drawn thing in the torso against every other, pair by pair.
+
+    THE CHECK ABOVE IS ABOUT RESERVATIONS AND THIS ONE IS ABOUT HARDWARE, and the
+    difference is the whole point. A reserved volume clearing the shell says the
+    layout is possible; it says nothing about whether the connector actually drawn
+    in it fouls the standoff actually drawn beside it. The torso holds two battery
+    packs, four boards, seven connectors and modules, four looms, twelve standoffs,
+    a printed deck and ten printed features inside the shell, and every one of
+    them was placed by hand against numbers in another file.
+
+    So they are all measured against each other rather than eyeballed. It is a few
+    hundred pairs and it costs a couple of seconds, which is the trade this whole
+    gate suite is built on.
+    """
+    from cad import deck, electronics, torso
+
+    groups = dict(electronics.torsoElectronicsGroups())
+    groups["deck"] = deck.electronicsDeck()
+    groups["battery rails"] = torso.batteryRails()
+    groups["power-entry posts"] = torso.powerEntryPosts()
+    groups["deck ledges"] = torso.deckLedges()
+    groups["pelvis"] = torso.pelvisShell()
+
+    print()
+    print("EVERY DRAWN THING IN THE TORSO, AGAINST EVERY OTHER")
+    checked = failed = 0
+    for left, right in itertools.combinations(sorted(groups), 2):
+        _, shared = measure(groups[left], groups[right])
+        checked += 1
+        if shared > CONTACT_MM3:
+            failed += 1
+            print(f"  FAIL  {left:<26} x {right:<26} shares {shared:10.2f} mm3")
+    mark = "  ok  " if not failed else " FAIL "
+    print(f" {mark} {checked} pairs, {failed} sharing volume")
     return checked, failed
 
 
@@ -355,7 +554,7 @@ def main() -> int:
 
     checked, failed = check_poses()
     if not args.poses:
-        for stage in (check_clearances, check_packing):
+        for stage in (check_clearances, check_packing, check_no_clashes):
             more, wrong = stage()
             checked += more
             failed += wrong

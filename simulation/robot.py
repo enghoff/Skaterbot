@@ -227,7 +227,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             piece="pelvis-shell",
             at=(0.0, 0.0, 0.0),
             source="measured",
-            note="cad/torso.py:pelvisShell, seven bodies",
+            note="cad/torso.py:pelvisShell, seventeen bodies",
         ),
         Solid(
             label="torso cover",
@@ -237,6 +237,17 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             at=(0.0, 0.0, 0.0),
             source="measured",
             note="cad/torso.py:torsoCover",
+        ),
+        # Bolted to four ledges on the shell walls and carrying two boards, so
+        # it is rigidly part of the base link even though it lifts out.
+        Solid(
+            label="electronics deck",
+            grams=0.0,
+            shape="mesh",
+            piece="electronics-deck",
+            at=(0.0, 0.0, 0.0),
+            source="measured",
+            note="cad/deck.py:electronicsDeck, plate and four SBC posts",
         ),
     ]
 
@@ -258,18 +269,20 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 note="DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g",
             )
         )
-        # The flanged carrier is bonded into the pelvis cheek and the bearing
-        # sits in it; only the journal turns with the thigh.
+        # The bearing is bonded straight into the pelvis cheek, so its mass is
+        # the pelvis's; only the journal turns with the thigh. The turned
+        # carrier that used to be bonded in with it is gone -- see
+        # cad/parameters.py -- which takes 6.4 g a side off this body.
         base.solids.append(
             Solid(
-                label=f"hip pitch bearing and carrier, {side}",
-                grams=11.4,
+                label=f"hip pitch bearing, {side}",
+                grams=5.0,
                 shape="cylinder_x",
-                dims=(d["bearingCarrierFlangeDiameter"], d["bearingWidth"] + 3.0),
-                at=(sign * (hip_x + d["frontCheekX"]), 0.0, hip_local_z),
+                dims=(d["bearingOuterDiameter"], d["bearingWidth"]),
+                at=(sign * (hip_x + d["bearingCenterX"]), 0.0, hip_local_z),
                 source="bom",
                 material="bearingSteel",
-                note="6800-2RS at 5.0 g and the turned carrier at 6.4 g, docs/BOM.md section 10",
+                note="6800-2RS at 5.0 g, docs/BOM.md section 9",
             )
         )
 
@@ -278,9 +291,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
     #
-    # mass_budget.toml carries these as two lines: 100 g of "electronics and
-    # wiring" and 60 g of power entry. The 100 is split below across the boards
-    # that make it up. The split is an assumption; the total is not.
+    # mass_budget.toml carries these as four lines now: 100 g of "electronics and
+    # wiring", 60 g of power entry, 288 g of battery and 85 g of battery wiring,
+    # connectors and mounts. The 100 and the 85 are split below across the items
+    # that make them up. Each split is an assumption; the totals are not.
+    #
+    # THE BATTERY IS THE HEAVIEST SINGLE THING IN THIS TORSO, at 288 g against
+    # the pelvis print's own 216, and it sits in the bottom band. That is not
+    # incidental to the model: it is most of what decides where the standing
+    # centre of mass ends up, and therefore the pendulum length the balance
+    # section below reports.
     #
     # The colours are cad/electronics.py's own, so a board is the same
     # colour in the simulator as it is in the packing scene, and `draw` is what
@@ -288,6 +308,33 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # standing in a real reserved envelope except the wiring, which is a mass
     # spread through the whole cavity and would be drawn as a slab filling it.
     payload = [
+        (
+            "battery",
+            288.0,
+            "battery",
+            "estimate",
+            "cellGrey",
+            True,
+            "two 3S 2200 mAh LiPo bricks in series, 144 g each. CATALOGUE FIGURE, NEVER WEIGHED",
+        ),
+        (
+            "battery wiring and mounts",
+            60.0,
+            "wiring",
+            "assumption",
+            "copperRed",
+            False,
+            "pack leads, series link, panel connectors, bus monitor and twelve standoffs",
+        ),
+        (
+            "logic DC/DC",
+            25.0,
+            "dcdc",
+            "assumption",
+            "componentBlack",
+            True,
+            "24 V to 5 V buck module, the heaviest item in the 85 g wiring line",
+        ),
         (
             "SBC",
             45.0,
@@ -327,6 +374,20 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         ),
     ]
     envelopes = {
+        "battery": (
+            d["batteryWidth"],
+            d["batteryDepth"],
+            d["batteryHeight"],
+            d["batteryX"],
+            d["lowerBandZ"],
+        ),
+        "dcdc": (
+            d["dcdcWidth"],
+            d["dcdcDepth"],
+            d["dcdcHeight"],
+            d["interiorHalfWidth"] - d["wallClearance"] - d["dcdcWidth"] / 2,
+            d["deckBandZ"],
+        ),
         "power": (
             d["powerWidth"],
             d["powerDepth"],
@@ -339,7 +400,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["controllerDepth"],
             d["controllerHeight"],
             d["controllerX"],
-            d["lowerBandZ"],
+            d["deckBandZ"],
         ),
         "sbc": (d["sbcWidth"], d["sbcDepth"], d["sbcHeight"], 0.0, d["upperBandZ"]),
         "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, d["floorZ"]),

@@ -1350,3 +1350,125 @@ shells rather than single solids, because the Zoo engine refused to union them.
 OCCT will, so that is now a matter of doing it -- with one obstacle: a body
 carrying the 0.5 mm chamfer segfaults OCCT in any subsequent boolean, so as
 things stand the union and the chamfer cannot both be had.
+
+---
+
+## The battery is back, and the torso grew 21 mm to take it — September 11, 2026
+
+The umbilical is gone. The robot carries a 6S 2200 mAh pack of its own, made of
+two 3S bricks in series, and 24 V and CAN no longer come from a bench.
+
+This reverses the August 28 decision above rather than amending it, so both
+objections it rested on have to be answered.
+
+**"No 6S brick fits."** True, and still true: every 6S pack on the market is 108
+to 125 mm long and this cavity's longest dimension is across the robot. What was
+never tried is two 3S bricks, which are 76 mm each, wired in series. Stood ON
+EDGE side by side they are 52 mm across the robot where flat they would be 66,
+and 63 mm of interior depth is what there was. That orientation is the whole
+design.
+
+**"190 g is the entire mass headroom."** It was, in August. Deleting hip roll
+gave back 700 g. The pack is heavier than that old reservation assumed as well:
+288 g for 48.8 Wh, where NOTES had 190 g for 29 Wh. The old figure was
+optimistic — it works out at 153 Wh/kg, and no high-discharge 6S pack on the
+market reaches that. The two 3S bricks manage 169 Wh/kg, which is better per
+watt-hour and half again the mass.
+
+### Why two 3S rather than one 6S, in mass terms as well as packaging
+
+| | Mass | Energy | Longest side |
+|---|---:|---:|---:|
+| 2 × Gens Ace 3S 2200 mAh 35C | **288 g** | 48.8 Wh | 76 mm |
+| 1 × Gens Ace 6S 2200 mAh 45C | 374 g | 48.8 Wh | 125 mm |
+| 1 × GenX 6S 2200 mAh 40C | 420 g | 48.8 Wh | 108 mm |
+| 1 × GenX 6S 1550 mAh 95C | 363 g | 34.4 Wh | 86 mm |
+
+The last row is the one to look at before anyone buys on C-rating. Peak draw is
+six actuators at 4 A, which is 24 A — 11C on a 2200 mAh pack, against a 35C
+rating. A 95C pack buys discharge headroom nobody needs and pays for it in
+energy density.
+
+### The objection to 6S that turned out not to matter
+
+A 6S LiPo charges to 25.2 V and falls to 19.8, so it spends most of its
+discharge below the actuator's 24 V nominal — which is what the August note
+recorded as the trade. **The undervoltage cutout is 15 V, not 24.** Below
+nominal you lose top speed, because back-EMF limits it, and nothing else. 7S
+would have been the real problem: 29.4 V charged against a 30 V overvoltage trip
+leaves six tenths of a volt for regenerative overshoot.
+
+### What it costs
+
+| | Tethered | On a battery |
+|---|---:|---:|
+| Total mass | 1 606 g | **2 045 g** |
+| Under the 2 300 g ceiling | 694 g | **255 g** |
+| Torso | 125 × 68 × 65 | **135 × 72 × 86** |
+| Standing height | 339 mm | **360 mm** |
+| Centre of mass | 168 mm | **201 mm** |
+| Pendulum above the axle | 128 mm | **161 mm** |
+| Time constant of the fall | 114 ms | **126 ms** |
+| Lean before the CoM leaves the track | 34° | **28°** |
+
+438 g and six degrees of lateral margin, for cutting the umbilical. The sagittal
+balance problem got very slightly easier — a taller pendulum falls more slowly —
+and the lateral one got harder, because there is no hip roll and a higher centre
+of mass leaves a 170 mm track sooner. **If lateral margin is what matters,
+widening the track is far cheaper than moving mass**: 170 to 220 mm takes the
+tip angle from 28° to 36°, which no rearrangement of 288 g comes close to.
+
+### The three millimetres that set the shell section
+
+The torso is derived from what fits inside it, and two of its three dimensions
+were decided by clearances rather than by contents:
+
+* **135 mm wide, not 125.** Both packs bring their leads out of the end facing
+  the power-entry block, and an XT60 is 8.1 mm across its moulded body. With
+  2 mm at each wall a 125 mm shell leaves those two blocks 0.2 mm apart and a
+  130 mm shell leaves 5.2, neither of which will take a connector. 135 leaves
+  10.2 mm, which is the lead chase.
+* **72 mm deep, not 68.** The four ledges the electronics deck lands on stand
+  5 mm proud of the front and rear walls, right beside the packs. At 68 mm the
+  pack and the ledge are a tenth of a millimetre apart; at 72 they are 1.6.
+* **86 mm tall.** 9 of hip saddle, 36 of battery, 3 of deck, 12 of controller,
+  16 of SBC, two 2 mm band gaps and 2.6 under the lid, plus floor and cover.
+
+`tools/gate_f.py` measures all of those rather than asserting them, and the
+1.6 mm is the tightest fit in the robot.
+
+### A new printed part, and the problem it was always going to solve
+
+`cad/deck.py` is the first piece on this robot the Zoo engine never built. It is
+a 3 mm plate on four wall ledges carrying the controller carrier and the SBC
+above the battery, and it holds the packs down through 3 mm of squeeze.
+
+It is not really the battery's doing. **The SBC has floated in its reserved
+volume with no mount drawn since the layout was first done**, because the cavity
+is full at floor level and there has never been anywhere for a standoff to land.
+The battery made that impossible to keep ignoring. Two of the deck's four SBC
+posts pass through clearance holes in the controller carrier, which is
+unavoidable rather than untidy: 76 mm of carrier plus 85 of SBC is more than the
+shell is wide however they are arranged.
+
+### The setting that matters more than any part on the bill
+
+The DM-J3507's undervoltage threshold is configurable and its floor is 15 V. Six
+backdrivable motors will drag a 6S pack well past 3.0 V a cell and destroy it.
+**Set the threshold to about 21.6 V — 3.6 V per cell.** On a bench supply this
+was irrelevant; on a battery it is one mistake per pack.
+
+### What is still not known
+
+* **Runtime.** Computed, never measured: about two hours standing and balancing,
+  an hour driving, under twenty minutes holding a loaded crouch. The fixed
+  overhead is a guess, the gearbox friction that decides the cost of holding a
+  pose has never been characterised, and a twitchy balance loop at 100 Hz could
+  burn several times the calm figure. The INA226 on the bill is what closes this.
+* **The capacitor bank.** Still not sized, and its reservation is unchanged. The
+  pack is the regeneration sink now, which is a reason to expect the bank to
+  shrink and not a measurement of how far.
+* **The emergency stop.** It has no home in the CAD, and it matters more now
+  than it did: on a tether the bench supply was always the stop of last resort.
+* **The torque envelope.** Still not re-derived for the wheeled robot, so the
+  255 g of remaining headroom is measured against a walking robot's ceiling.

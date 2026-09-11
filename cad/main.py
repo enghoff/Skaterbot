@@ -23,6 +23,7 @@ from __future__ import annotations
 from build123d import Axis, Pos
 
 from cad.actuator import actuatorAssembly
+from cad.deck import electronicsDeck
 from cad.electronics import torsoPayload
 from cad.hardware import jointHardware
 from cad.parameters import hipCenterX
@@ -83,6 +84,7 @@ def robotAssembly() -> list:
     ]
 
     bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in torsoAssembly()]
+    bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in electronicsDeck()]
     # The payload: each board, and the volume reserved around it that nothing may
     # be designed through. The torso's height is derived from these.
     bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in torsoPayload()]

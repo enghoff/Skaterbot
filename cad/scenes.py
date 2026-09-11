@@ -38,7 +38,8 @@ from __future__ import annotations
 from build123d import Axis, Pos
 
 from cad.actuator import actuatorAssembly
-from cad.electronics import torsoElectronics, torsoReservations
+from cad.deck import electronicsDeck
+from cad.electronics import torsoElectronicsGroups, torsoReservations
 from cad.hardware import jointHardware
 from cad.limb import limbAssembly
 from cad.parameters import hipCenterX, upperLegLength
@@ -139,13 +140,26 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
 
 
 def _torso_groups(centerZ: float) -> dict[str, list]:
-    """The pelvis, its lid and what stands inside it, at one height."""
-    return {
+    """The pelvis, its lid and what stands inside it, at one height.
+
+    The payload arrives as the named groups cad/electronics.py builds it in --
+    one per board and one per thing standing on a board -- rather than as a
+    single "electronics" bag. That is what lets a viewer's tree say which board
+    is which and hide one without hiding the torso, and it costs nothing here
+    because nothing selects a body by index.
+    """
+    groups = {
         "pelvis": _at(pelvisShell(), z=centerZ),
         "cover": _at([torsoCover()], z=centerZ),
-        "electronics": _at(torsoElectronics(), z=centerZ),
-        "reservations": _at(torsoReservations(), z=centerZ),
+        # A print of its own, like the cover, and placed beside the pelvis rather
+        # than inside torsoAssembly() for the same reason: mass_budget.toml
+        # weighs it as its own piece.
+        "deck": _at(electronicsDeck(), z=centerZ),
     }
+    for name, bodies in torsoElectronicsGroups().items():
+        groups[name] = _at(bodies, z=centerZ)
+    groups["reservations"] = _at(torsoReservations(), z=centerZ)
+    return groups
 
 
 def poseCheckGroups() -> dict[str, list]:

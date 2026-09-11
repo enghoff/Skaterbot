@@ -12,9 +12,10 @@ uv run simulation/check_model.py
 
 Both are free and offline. Dimensions are re-read from the KCL on every build,
 so the kinematics can never be stale — but the meshes are engine output, and
-`build_urdf.py` **refuses to build against a mesh older than the KCL it came
+`build_urdf.py` **refuses to build against a mesh older than the CAD it came
 from**, naming the file that moved and printing the exact re-export command for
-just the affected pieces. That export is the only metered step:
+just the affected pieces. That export is free and offline like everything else
+here, and it writes the pieces as they would be printed:
 
 ```
 uv run tools/export.py --format stl --out simulation/meshes --pieces <the ones it named>

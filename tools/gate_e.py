@@ -118,14 +118,19 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     Each row is a feature the part must have, named so a failure reads as a
     sentence rather than as a number.
     """
+    from cad.electronics import sbcHoleDiameter, sbcPostClearance
     from cad.parameters import (
-        bearingCarrierBore,
+        bearingSeatBossDiameter,
+        bearingSeatDiameter,
+        bearingSeatShoulderBore,
         journalSeatDiameter,
         m3CapCounterbore,
         m3Clearance,
+        m25InsertBore,
         rotorFilletRadius,
         rotorRegisterDiameter,
     )
+    from cad.torso_shell import bossHoleDiameter
 
     rows = {
         "joint-rotor-hub": [
@@ -145,8 +150,23 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         "joint-stator-clevis": [
             ("M3 clearance holes on the Ø41 rear pattern", m3Clearance / 2, 4),
             (
-                "Ø30.2 bearing carrier bore in the front cheek",
-                bearingCarrierBore / 2,
+                "Ø19.2 bearing seat in the front cheek",
+                bearingSeatDiameter / 2,
+                1,
+            ),
+            # The seat is 5 mm deep and the cheek is 3, so both of these are
+            # the boss that makes up the difference. If a rebuild ever unions the
+            # boss on AFTER the seat is cut, the seat fills back in and the
+            # shoulder bore is the only cylinder left -- so they are asserted
+            # together on purpose.
+            (
+                "Ø17.5 shoulder the bearing seats against",
+                bearingSeatShoulderBore / 2,
+                1,
+            ),
+            (
+                "Ø26 boss carrying that shoulder",
+                bearingSeatBossDiameter / 2,
                 1,
             ),
         ],
@@ -163,6 +183,73 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             ("cap counterbores over the output six", m3CapCounterbore / 2, 6),
             ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
             ("Ø10.2 journal seat", journalSeatDiameter / 2, 1),
+        ],
+        # The payload boards are not printed, and they are here anyway. They are
+        # mocks, but they are mocks that a printed standoff is going to be drawn
+        # against, and they are built the one way this gate exists to police --
+        # a slab with holes cut in it, standing in a list beside the components
+        # that sit on top of it. Union one of those components on by accident and
+        # the holes fill back in exactly as the rotor hub's did, with nothing to
+        # report it but this count.
+        "pcb-power-entry": [
+            ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
+        ],
+        "pcb-controller-carrier": [
+            ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
+            # The two the SBC's posts pass through. Asserted separately from the
+            # four above and not merely counted with them, because they are a
+            # different diameter and a different job: lose these and the board
+            # cannot be fitted at all, while the part still looks right.
+            (
+                "clearances for the two SBC posts that pass through",
+                sbcPostClearance / 2,
+                2,
+            ),
+        ],
+        "pcb-sbc": [
+            (
+                "Ø2.75 mounting holes on the Pi Zero 58 x 23 pattern",
+                sbcHoleDiameter / 2,
+                4,
+            ),
+        ],
+        # THE PELVIS, asserted here for the first time. It had nothing in this
+        # gate while its only round features were the two bearing seats its
+        # clevises bring with them, and those are already counted on the clevis
+        # itself. The battery gave it ten mounting features of its own, every one
+        # of them a pilot hole in a body that stands in a list beside sixteen
+        # others -- which is precisely the arrangement that filled the rotor
+        # hub's six bolt holes back in. Four of the eight are under the
+        # power-entry board and four carry the electronics deck.
+        #
+        # Each clevis contributes its own bearing seat, shoulder and boss, so
+        # those come in twos here where they come in ones on the clevis.
+        "pelvis-shell": [
+            # Twelve at this radius, not eight: the four cover bosses have
+            # carried the same Ø2.5 pilot since the pelvis was first drawn, and
+            # they are on the same part. Counting only the new eight would fail
+            # the moment anyone looked, so all twelve are named here.
+            (
+                "pilots: four cover bosses, four power-entry posts, four deck ledges",
+                bossHoleDiameter / 2,
+                12,
+            ),
+            ("Ø19.2 bearing seats, one per hip", bearingSeatDiameter / 2, 2),
+            (
+                "Ø17.5 shoulders the bearings seat against",
+                bearingSeatShoulderBore / 2,
+                2,
+            ),
+            ("Ø26 bosses carrying those shoulders", bearingSeatBossDiameter / 2, 2),
+            ("M3 clearance holes on the two Ø41 rear patterns", m3Clearance / 2, 8),
+        ],
+        # THE ELECTRONICS DECK, which is the one piece on this robot with no
+        # golden STEP behind it -- the KCL never had it, so gate B cannot say
+        # anything about it and this is the only arithmetic it answers to.
+        "electronics-deck": [
+            ("M3 clearances onto the four wall ledges", m3Clearance / 2, 4),
+            ("pilots under the controller's four standoffs", bossHoleDiameter / 2, 4),
+            ("M2.5 insert bores in the four SBC posts", m25InsertBore / 2, 4),
         ],
     }
     rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
@@ -186,13 +273,18 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
 
 
 def registry() -> dict[str, callable]:
-    from cad import joint, thigh
+    from cad import deck, electronics, joint, thigh, torso
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
         "limb-105-unmirrored": thigh.thighRight,
         "limb-105-mirrored": thigh.thighLeft,
+        "pelvis-shell": torso.pelvisShell,
+        "electronics-deck": deck.electronicsDeck,
+        "pcb-power-entry": electronics.powerEntryBoard,
+        "pcb-controller-carrier": electronics.controllerCarrierBoard,
+        "pcb-sbc": electronics.sbcBoard,
     }
 
 

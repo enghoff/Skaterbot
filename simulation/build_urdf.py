@@ -140,7 +140,8 @@ def header(dimensions: dict[str, float], materials: dict) -> str:
   the Isaac Lab config instead.
 
   WHAT IS DRAWN. Everything the robot is made of, not just the printed parts.
-  The six printed pieces are their exported meshes; the actuators, wheels,
+  The printed pieces are their exported meshes, as they would be printed with
+  their arrises broken at 0.5 mm; the actuators, wheels,
   bearings, boards and power entry are the primitives simulation/robot.py gives
   them, and each of those primitives is the part's real envelope -- it is the
   SAME solid its mass and inertia were computed from, so what you see is what

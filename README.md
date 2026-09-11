@@ -90,7 +90,7 @@ offline and take seconds** — the metered engine is gone.
 uv run tools/check.py              # build every part and scene, then lint and format
 uv run tools/gate_a.py             # … through gate_f.py: the six gates
 uv run tools/mass.py               # mass roll-up against the 2 300 g ceiling
-uv run tools/export.py             # one STEP per printable piece, into exports/
+uv run tools/export.py             # one STEP per printable piece, as it would be printed
 uv run tools/view.py               # show a model in the OCP CAD Viewer
 uv run simulation/build_urdf.py    # the simulation model
 ```
@@ -114,9 +114,12 @@ measures every clearance the check scenes were drawn to show.
 re-reads each file to check it against the body count declared in the
 `[[printed.piece]]` register in
 [`tools/mass_budget.toml`](tools/mass_budget.toml) — the same file that lists what
-is printed for the mass roll-up, so the two cannot drift apart. `--finished`
-applies the 0.5 mm chamfer; the default is the part as drawn, which is what the
-gates compare.
+is printed for the mass roll-up, so the two cannot drift apart. What comes out
+is the part **as it would be printed**, its arrises broken at 0.5 mm by
+[`cad/finish.py`](cad/finish.py) — and the run says how many it broke and how
+many OCCT left sharp rather than taking the pass on trust. `--as-drawn` asks for
+the other form, the one gate B compares against the golden STEP, and a
+`manifest.json` beside the files records which of the two each of them is.
 
 Exported geometry (`*.stl`, `*.step`) is deliberately untracked. Geometry under
 [`reference/`](reference/) is the exception: it is an input rather than an export,

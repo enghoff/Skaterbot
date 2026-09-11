@@ -34,6 +34,12 @@ uv run tools/export.py --format stl --out simulation/meshes --pieces <those>
 That used to be the one metered step in the pipeline and is now free, and only a printed part changing
 *shape* needs it. Everything else is arithmetic.
 
+The meshes are the pieces **as they would be printed**, arrises broken at 0.5 mm
+by `cad/finish.py`, which is the exporter's default rather than something this
+pipeline asks for. It costs about a gram across the robot, and it means the
+collision geometry is the part that gets made rather than the part before it is
+finished.
+
 ## Simulating it
 
 Rebuild the Isaac Sim robot after every `/urdf` run, and check what PhysX made

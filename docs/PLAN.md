@@ -1,8 +1,8 @@
 # Shell-Structure Overhaul Plan
 
 **Status: active. Phases 2, 3, 4 and 5 are complete, and the Phase 7 poses and
-torque models are done. The robot is now tethered and carries no battery — see
-Phase 5a — and all eight models execute on the engine with that change in.
+torque models are done. The robot carries its own 6S battery again — see
+Phase 5b, which reverses Phase 5a — and stands 360 mm rather than 339.
 Phase 1 is drawn but waits on a printer, about a week out. What remains is hard
 stops, a simultaneous-extremes pose, cable routing, and ribbing. See section 11
 for what has been made. This supersedes `CHECKLIST.md`,** which stays in the repository
@@ -131,15 +131,14 @@ Two decisions were added that the plan had not anticipated:
    29 August 2026 -- see decision 9.** It was the right call while the only
    asymmetry was which side of an actuator a hub sat on. It stopped being right
    when the limbs became flat plates that stand 25 mm off to one side.
-6. **The robot is tethered and carries no battery.** 24 V and CAN come in on one
-   umbilical from the bench supply. This frees 190 g against a 2.3 kg ceiling
-   that had 5 g left in it, and it sidesteps having to hand-build a pouch pack
-   because nothing off the shelf fits between the hip actuators. It is not free:
-   the pack was also the bus's only sink for regeneration, so a bulk capacitor
-   bank becomes required hardware, and the umbilical has to be carried on a boom
-   rather than hung off the machine. Phase 5a has the detail. Reversible in
-   principle -- the keel would take a pouch pack again -- but the mass budget
-   below now assumes the tether.
+6. ~~**The robot is tethered and carries no battery.**~~ **Reversed on
+   11 September 2026 -- see Phase 5b.** It was right on the mass alone: 190 g
+   against a ceiling with 5 g left in it. Deleting hip roll gave back 700 g and
+   took that argument away, and the packaging argument turned out to be about
+   pack SHAPE rather than pack existence -- no 6S brick fits across this torso,
+   but two 3S bricks in series, stood on edge, do. The robot carries 48.8 Wh for
+   288 g, the umbilical is deleted along with the boom nobody had designed, and
+   the mass budget below assumes the pack.
 7. **A limb is a flat plate, and the knee actuator is turned round to allow
    it.** This went in two steps. First the shell was shifted outboard so its
    outer wall lay in the output plane, which deleted the arm and the bridge.
@@ -340,7 +339,7 @@ brick is 70–110 mm long, and even a single 18650 cell is 65 mm, so no pack cou
 be bought — one would have had to be assembled from pouch cells. **The robot is
 tethered instead, and carries no battery.** See Phase 5a.
 
-### Phase 5a — the tether, and what replaces the battery
+### Phase 5a — the tether, and what replaced the battery *(reversed; see Phase 5b)*
 
 The pack is gone. 24 V and CAN arrive on a single umbilical from the bench
 supply, and the keel that was drawn as a battery bay is now a power-entry bay.
@@ -375,15 +374,71 @@ carried in shear by 2.4 mm of wall and never reaches the terminal — and every
 cut stays rectangular, which is the only blind pocket shape the engine accepts
 in this shell.
 
-- [ ] **The tether must be carried on a boom, not hung off the robot.** An
-      unsupported umbilical puts an unmodelled and *moving* load on a 2.165 kg
-      biped whose hip roll actuator already sits at 88 per cent of its
-      continuous rating in single support. That is a rig requirement, and it is
-      not yet designed.
-- [ ] Size the bulk capacitance from measured bus excursion and tether length
-- [ ] Measure the real umbilical and check it against `tetherCableDiameter`,
-      currently 12 mm and estimated from the wire the BOM already specifies
-      rather than from a cable in hand
+~~The tether must be carried on a boom~~, ~~size the bulk capacitance from the
+tether length~~ and ~~measure the real umbilical~~ are all struck out by Phase
+5b. The boom is the one worth remembering: it was a rig requirement nobody had
+designed, hanging a moving unmodelled load on a biped with a 170 mm track and no
+hip roll, and the battery removes it rather than solving it. What survives of
+this list -- sizing the bank against a measured excursion -- has moved to Phase
+5b, because the excursion is now a pack's rather than a bench supply's.
+
+### Phase 5b — the battery is back, and the torso grew to take it
+
+**This reverses Phase 5a.** Both of the objections that removed the pack have
+been answered rather than waved away, and `docs/NOTES.md` carries the full
+record; what follows is the shape of it.
+
+The pack is two 3S 2200 mAh bricks in series, 48.8 Wh for 288 g, stood ON EDGE
+side by side in the bottom band of the pelvis. That orientation is the design:
+laid flat the pair is 66 mm across the robot and misses, on edge it is 52 and
+fits. No 6S brick was ever going to -- every one on the market is 108 to 125 mm
+long -- which is what made Phase 5a's packaging argument look like a law rather
+than a shape.
+
+The mass argument is simply out of date. 190 g was the whole headroom in August;
+deleting hip roll left 700. The real pack is heavier than that reservation
+assumed as well, 288 g rather than 190, because the old figure worked out at
+153 Wh/kg and no high-discharge 6S pack reaches it.
+
+**The torso is 135 × 72 × 86 where it was 125 × 68 × 65**, and all three
+dimensions are derived in `cad/wheeled_parameters.py` from what has to fit. Two
+of them are set by clearances rather than by contents: the width buys a 10.2 mm
+lead chase, because an XT60 is 8.1 mm across and both packs bring their leads
+out of the end facing the power block; the depth buys 1.6 mm between a pack and
+the ledges the electronics deck lands on. The robot stands 360 mm.
+
+**One new printed part**, `cad/deck.py` -- the first piece on this robot the Zoo
+engine never built, so the one piece gate B has nothing to compare against. It
+is a 3 mm plate on four wall ledges, carrying the controller and the SBC over
+the battery and holding the packs down. It is only half the battery's doing: the
+SBC has had no mount drawn since the layout was first done, because the cavity
+is full at floor level and a standoff has never had anywhere to land.
+
+**What it costs.** 438 g all in -- 288 of cells, 85 of wiring and mounts, 48 of
+extra pelvis and 29 of deck -- so the headroom goes from 694 g to 255. The
+centre of mass rises from 168 mm to 201, which lengthens the pendulum from 128
+to 161 and slows the fall from 114 ms to 126, and costs six degrees of lateral
+margin: the lean at which the centre of mass leaves the 170 mm track falls from
+34° to 28°. On a robot with no hip roll that is the price to watch, and the cheap
+fix is track width rather than mass placement.
+
+- [ ] **Set the actuator undervoltage threshold to about 21.6 V**, 3.6 V a cell.
+      It is configurable and its floor is 15 V, so six backdrivable motors will
+      otherwise drag a pack past 3.0 V a cell and destroy it. This was irrelevant
+      on a bench supply and it is one mistake per pack now.
+- [ ] Size the bulk capacitance from the measured bus excursion. The pack is the
+      regeneration sink now, which is a reason to expect the bank to shrink and
+      not a measurement of how far; the 38 × 62 × 30 reservation stands.
+- [ ] **Measure a pack, an XT90-S housing and a JST-XH shell before the pelvis is
+      printed.** All three are catalogue figures, and all three are cut into a
+      wall that cannot be adjusted afterwards.
+- [ ] Find a home for the emergency stop. It matters more on a battery than it
+      did on a tether, where the bench supply was always the stop of last resort,
+      and a 22 mm mushroom wants 22 mm of hole and 30 mm behind it.
+- [ ] Measure the actual bus current through a first stand and a first drive. The
+      runtime estimate -- roughly two hours balancing, an hour driving, under
+      twenty minutes holding a loaded crouch -- is computed and nothing in it has
+      been seen. The INA226 on the bill is what closes it.
 
 ### Phase 6 — assembly, cables and service
 

@@ -74,7 +74,7 @@ six are free and offline.**
 | `/check` | `tools/check.py` | build every part and scene, then lint and format-check `cad/`, `tools/` and `simulation/`. A few seconds. |
 | `/gates` | `tools/gate_[a-f].py` | the six gates the CAD is held to: dimensions, solid identity, mass, kinematics, features, clearances. About a minute. |
 | `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. |
-| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads, checking each against its declared body count. |
+| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads, checking each against its declared body count. Pieces come out as they would be printed, arrises broken; `--as-drawn` is the form the gates compare. |
 | `/view` | `tools/view.py` | show a model in the OCP CAD Viewer, tessellated locally. |
 | `/urdf` | `simulation/build_urdf.py` | regenerate the simulation URDF from the CAD and check it against the pose scenes. |
 

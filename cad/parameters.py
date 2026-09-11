@@ -140,17 +140,20 @@ torsoFloorThickness = 3.0
 torsoCoverThickness = 2.4
 
 # ---------------------------------------------------------------------------
-# Tether
+# Tether -- DELETED, September 2026
 #
-# The robot is tethered: 24 V and CAN arrive down one umbilical from the bench
-# supply, and there is no pack on board. The only dimension the structure needs
-# from that decision is the cable's outside diameter, and this figure follows
-# from the wire the BOM already specifies -- two 14 AWG silicone conductors at
-# about 3.5 mm each, a 24 AWG twisted CAN pair, and a braided sleeve over the
-# lot. It is an estimate from those parts, not a measurement of a made-up
-# cable. The keel's entry slot and its tie-down slots are all derived from it,
-# so a fatter tether is a one-line change here.
-tetherCableDiameter = 12.0
+# The robot was tethered from August 2026 to September 2026: 24 V and CAN came
+# down one umbilical from a bench supply and there was no pack on board.
+# tetherCableDiameter lived here, 12 mm, an estimate from the wire the BOM
+# specifies rather than a measurement of a made-up cable, and the entry slot and
+# both tie-down slots in the pelvis were derived from it.
+#
+# It is gone because the battery came back. The wall it entered through now
+# carries an XT90-S disconnect and two balance ports instead, which are
+# cad/electronics.py's dimensions and not this file's: they are connector
+# mouldings, and a connector is payload rather than structure. What the robot
+# lost with the umbilical is a moving external load that was never modelled and
+# a boom that was never designed; docs/NOTES.md carries the decision.
 
 # ---------------------------------------------------------------------------
 # Stressed-shell limb architecture -- see PLAN.md
@@ -347,10 +350,22 @@ limbWaistUpperZ = 38.5
 # All of it is arithmetic against 75 MPa in plane and 30 MPa across layers for
 # PA12-CF, which this project has still never measured on a coupon.
 
-# Far support. The bearing seat is metal, not printed: NOTES.md records printed
-# pockets ovalising, and this one sets the coaxiality of the whole joint. The
-# carrier is a flanged ring bonded into the cheek bore with retaining compound,
-# which avoids putting screws through a 3 mm printed wall.
+# Far support. The bearing is bonded straight into the printed front cheek.
+#
+# It used to sit in a turned aluminium carrier -- a Ø30 x 3 mm flanged ring in a
+# Ø30.2 cheek bore -- and that carrier was the only part of this robot with no
+# source. docs/BOM.md had it as a bespoke turned part from a local machine shop,
+# against a table on which everything else is a catalogue item or a print, and
+# docs/OPUS_HANDOFF.md asks for exactly that to be avoided unless there is a
+# clear reason. Boring the cheek to the bearing itself deletes the part.
+#
+# What the carrier was for does not go away with it. NOTES.md records printed
+# pockets ovalising, and this seat sets the coaxiality of the whole joint, so the
+# case for a printed seat rests on its being BONDED rather than pressed: the
+# retaining compound takes up the gap, which removes the interference fit that
+# makes a printed pocket creep. That is an argument and not a measurement, and
+# docs/BOM.md's fit coupon is where it has to be settled. What the flange did,
+# and what nothing does now, is recorded where the seat is cut in cad/joint.py.
 journalDiameter = 10.0
 journalSeatDiameter = 10.2
 journalSeatDepth = 2.2
@@ -358,10 +373,35 @@ journalLength = 8.0
 bearingBore = 10.0
 bearingOuterDiameter = 19.0
 bearingWidth = 5.0
-bearingCarrierDiameter = 30.0
-bearingCarrierBore = 30.2
-bearingCarrierFlangeDiameter = 36.0
-bearingCarrierFlangeThickness = 1.5
+# The cheek's bore for it: the bearing's own Ø19 outside diameter plus 0.2 mm for
+# the retaining compound. That is the allowance the Ø10 journal's Ø10.2 seat in
+# the rotor hub has always carried for the same bond, and the same 0.2 mm the
+# deleted carrier had in its Ø30.2 bore. A CLEARANCE, deliberately: an
+# interference fit is what makes a printed pocket creep, and a bore this process
+# holds to about ±0.2 mm cannot be given a controlled press fit anyway.
+bearingSeatDiameter = 19.2
+
+# The shoulder the bearing seats against, and the boss that carries it.
+#
+# The cheek is 3 mm and the bearing is 5 mm wide, so the seat can be neither deep
+# enough nor shouldered within the cheek alone. The boss stands off the cheek's
+# outer face, makes up the missing 2 mm of seat and carries 1.5 mm of shoulder
+# beyond it. The bearing is then supported across its whole width and cannot be
+# pushed outboard, which is the direction the journal loads it on assembly, so
+# the bond is left holding it against nothing worse than falling back inboard.
+#
+# The shoulder lands on the OUTER RACE ONLY. Ø17.5 leaves 0.85 mm of land on a
+# race that runs out to Ø19, and clears both the seal and the inner race, which
+# turn with the journal and must touch nothing. The same bore is the way a pin
+# reaches the bearing to push it out, since a bonded seat has no other exit.
+#
+# Ø26 keeps 3.4 mm of wall around the seat, about the cheek's own thickness. The
+# boss stands proud of the widest part of the pelvis, at ±77 mm, and the wheels
+# are at ±104, so it costs nothing in the robot's envelope.
+bearingSeatShoulderBore = 17.5
+bearingSeatShoulderThickness = 1.5
+bearingSeatBossDiameter = 26.0
+bearingSeatBossThickness = bearingWidth - cheekThickness + bearingSeatShoulderThickness
 
 # The rear cheek's lightening bore -- REMOVED, and the history kept because it
 # is the second time the same hole has had to go.
@@ -449,6 +489,23 @@ jointKeepOut = actuatorDiameter / 2 + jointBodyClearance
 m3Clearance = 3.4
 m3CapCounterbore = 6.0
 m3CapCounterboreDepth = 3.2
+
+# HEAT-SET INSERTS, for the board mounts and the electronics deck.
+#
+# PROVENANCE: catalogue dimensions for the brass knurled inserts docs/BOM.md
+# already stocks for "covers/light-duty interfaces", which is what every mount
+# that uses these is. The M3 is the common Ø4.0 x 5.7 short-body part and the
+# M2.5 the Ø3.2 x 4.0 -- both are the same table at every maker, which is why
+# neither is in reference/. The BORE is the insert's outside diameter, not its
+# thread: the brass melts its own knurl into the wall.
+#
+# The depths are the bore, not the insert: an insert wants a little room under
+# it for displaced material, so each is a millimetre or so deeper than the part
+# it takes. The same allowance the wheel spigot's M5 bore already carries.
+m3InsertBore = 4.0
+m3InsertDepth = 7.0
+m25InsertBore = 3.2
+m25InsertDepth = 5.0
 # What a printed feature has to leave round a bolt centre for the cap head to
 # seat and a driver to reach it: the Ø6 head's own radius plus a 0.4 mm wall.
 m3CapHeadStandoff = m3CapCounterbore / 2 + 0.4

@@ -143,6 +143,104 @@ DEVIATIONS = {
             ),
         },
     ],
+    "joint-stator-clevis": [
+        {
+            "added_mm3": 1280.3560859705,
+            "why": (
+                "the front cheek is bored Ø19.2 for the bearing itself, where it "
+                "was bored Ø30.2 for a turned aluminium carrier that the bearing "
+                "then sat in. The carrier was the only bespoke machined part on "
+                "the robot and docs/BOM.md had no supplier for it, so it is "
+                "deleted and the bearing is bonded into the print with the same "
+                "retaining compound. The material is the annulus between the two "
+                "bores through a 3 mm cheek, and it goes back INTO the cheek, "
+                "which is the wall the joint's load crosses."
+            ),
+        },
+        {
+            "added_mm3": 918.4014153780,
+            "why": (
+                "the boss on the cheek's outer face that carries the bearing's "
+                "shoulder: Ø26 x 3.5 mm, with the seat cut 2 mm into it and a "
+                "Ø17.5 bore through the 1.5 mm that is left. A 3 mm cheek cannot "
+                "seat a 5 mm bearing, so this is what makes the seat full depth "
+                "and gives the race a face to sit against, which the deleted "
+                "carrier's flange used to be. It stands proud of the pelvis at "
+                "±77 mm and the wheels are at ±104, so it costs no envelope."
+            ),
+        },
+    ],
+    "pelvis-shell": [
+        # A WHOLE-PART RESIZE, and it is a different kind of entry from every
+        # other one in this register. The rest are features: a bore, a boss, a
+        # relief, each a number you can go and measure on the part. This is the
+        # box being a different box -- 125 x 68 x 65 tethered, 135 x 72 x 86
+        # carrying a battery -- plus the ten mounting features that came with it.
+        #
+        # BE CLEAR ABOUT WHAT IS AND IS NOT STILL BEING CHECKED. For a change of
+        # this shape the two halves of the test can always be satisfied, because
+        # any pair of numbers with the right sum and difference will do, and
+        # these two were computed from the built part rather than derived from
+        # intent. So this entry proves nothing about the DECISION. What it does
+        # still do, and the reason it is written out to ten places rather than
+        # waved through, is PIN THE RESULT: the next change to this part, however
+        # small, breaks both sums at once and has to come back here. The decision
+        # itself is checked elsewhere -- gate A holds every dimension that moved
+        # against both of its values, gate E counts the new features on the
+        # finished solid, and gate F measures the packing the height was derived
+        # from.
+        {
+            "added_mm3": 119101.4817759765,
+            "removed_mm3": 84930.4212284464,
+            "why": (
+                "the torso grew to carry a battery: 135 x 72 x 86 where it was "
+                "125 x 68 x 65. Ten millimetres of width for the pack's lead "
+                "chase, four of depth for the electronics deck's ledges and "
+                "twenty-one of height for the packs and the deck over them, all "
+                "of it derived in cad/wheeled_parameters.py from what has to fit "
+                "inside. The added figure also carries the ten mounting features "
+                "that came with it -- two battery rails, four posts under the "
+                "power-entry board and four deck ledges -- and the removed one "
+                "carries the tether slot and its two cable-tie slots, which went "
+                "when the umbilical did."
+            ),
+        },
+        {
+            "added_mm3": 2560.7121719410,
+            "why": (
+                "the same bore, on the two hip pitch clevises the pelvis carries: "
+                "exactly twice the clevis figure above, which is also the check "
+                "that the added material lands in the cheeks and nowhere else."
+            ),
+        },
+        {
+            "added_mm3": 1836.8028307560,
+            "why": (
+                "the same shoulder boss, twice: exactly twice the clevis figure "
+                "above again, on the two hips."
+            ),
+        },
+    ],
+    # The lid, and this is the cleanest example of what a resize does to this
+    # test: the figures below are EXACTLY the new lid's volume and exactly the
+    # old lid's, because the two do not overlap at all. The shell's top face went
+    # from 30.1 mm above the torso centre to 40.6, which is more than the lid is
+    # thick, so the new one stands entirely clear of where the old one was. The
+    # part is otherwise the same design at a new size -- cad/torso_shell.py's
+    # torsoLid drawn to a 135 x 72 box instead of a 125 x 68 one.
+    "torso-cover": [
+        {
+            "added_mm3": 43963.2153068376,
+            "removed_mm3": 38281.9353068376,
+            "why": (
+                "the same lid on the same four bosses with the same lip and the "
+                "same four screws, drawn to the taller, wider box the battery "
+                "made of this pelvis. It shares no volume with the lid it "
+                "replaces because the shell's top face moved further than the "
+                "lid is thick."
+            ),
+        },
+    ],
 }
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 
