@@ -191,8 +191,14 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         # that sit on top of it. Union one of those components on by accident and
         # the holes fill back in exactly as the rotor hub's did, with nothing to
         # report it but this count.
-        "pcb-power-entry": [
-            ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
+        # THE BOUGHT BOARD, and it is here for a reason the others are not: its
+        # four holes are the only thing on this robot that a printed feature has
+        # to agree with and that NOBODY HERE CHOSE. cad/torso.py stands four
+        # posts on a 45 mm square because a datasheet says so, and if the board
+        # is ever swapped for another the posts move with it. Counting them on
+        # the drawn board is what keeps the two in step.
+        "pcb-distribution": [
+            ("M3 clearance holes on the datasheet's 45 mm square", m3Clearance / 2, 4),
         ],
         "pcb-controller-carrier": [
             ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
@@ -282,7 +288,7 @@ def registry() -> dict[str, callable]:
         "limb-105-mirrored": thigh.thighLeft,
         "pelvis-shell": torso.pelvisShell,
         "electronics-deck": deck.electronicsDeck,
-        "pcb-power-entry": electronics.powerEntryBoard,
+        "pcb-distribution": electronics.distributionBoard,
         "pcb-controller-carrier": electronics.controllerCarrierBoard,
         "pcb-sbc": electronics.sbcBoard,
     }

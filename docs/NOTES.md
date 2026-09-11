@@ -1402,16 +1402,16 @@ leaves six tenths of a volt for regenerative overshoot.
 
 | | Tethered | On a battery |
 |---|---:|---:|
-| Total mass | 1 606 g | **2 045 g** |
-| Under the 2 300 g ceiling | 694 g | **255 g** |
-| Torso | 125 × 68 × 65 | **135 × 72 × 86** |
+| Total mass | 1 606 g | **2 060 g** |
+| Under the 2 300 g ceiling | 694 g | **240 g** |
+| Torso | 125 × 68 × 65 | **153.9 × 72 × 86** |
 | Standing height | 339 mm | **360 mm** |
-| Centre of mass | 168 mm | **201 mm** |
-| Pendulum above the axle | 128 mm | **161 mm** |
-| Time constant of the fall | 114 ms | **126 ms** |
+| Centre of mass | 168 mm | **202 mm** |
+| Pendulum above the axle | 128 mm | **162 mm** |
+| Time constant of the fall | 114 ms | **128 ms** |
 | Lean before the CoM leaves the track | 34° | **28°** |
 
-438 g and six degrees of lateral margin, for cutting the umbilical. The sagittal
+454 g and six degrees of lateral margin, for cutting the umbilical. The sagittal
 balance problem got very slightly easier — a taller pendulum falls more slowly —
 and the lateral one got harder, because there is no hip roll and a higher centre
 of mass leaves a 170 mm track sooner. **If lateral margin is what matters,
@@ -1423,11 +1423,16 @@ tip angle from 28° to 36°, which no rearrangement of 288 g comes close to.
 The torso is derived from what fits inside it, and two of its three dimensions
 were decided by clearances rather than by contents:
 
-* **135 mm wide, not 125.** Both packs bring their leads out of the end facing
-  the power-entry block, and an XT60 is 8.1 mm across its moulded body. With
-  2 mm at each wall a 125 mm shell leaves those two blocks 0.2 mm apart and a
-  130 mm shell leaves 5.2, neither of which will take a connector. 135 leaves
-  10.2 mm, which is the lead chase.
+* **153.9 mm wide, and nobody chose it.** This number moved three times in a
+  day and the last move is the one that matters. 135 was picked to leave a
+  10.2 mm cable chase between the battery and a 38 mm power block of our own
+  design. Buying the distribution board took that back -- it is 50 mm square
+  where the custom PCB was 38 wide -- and 141 was what fitting it needed. Then
+  the width stopped being a free number at all: it is derived from the hip
+  clevises now, twice the hip half-spacing plus the clevis's own outboard face,
+  so the shell ends exactly where the joints it carries do. That is 12.9 mm more
+  than the payload asks for, none of it is spent on either bay, and it lands in
+  the gap between them -- so there is a 15.1 mm chase again, by accident.
 * **72 mm deep, not 68.** The four ledges the electronics deck lands on stand
   5 mm proud of the front and rear walls, right beside the packs. At 68 mm the
   pack and the ledge are a tenth of a millimetre apart; at 72 they are 1.6.

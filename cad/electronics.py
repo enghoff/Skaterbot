@@ -98,9 +98,21 @@ batteryWidth = 78.0
 batteryDepth = 54.0
 batteryHeight = 36.0
 
-powerWidth = 38.0
-powerDepth = 62.0
-powerHeight = 30.0
+# THE POWER BAY. 52 wide for a bought 50 x 50 distribution board, where it was
+# 38 for a PCB we would have drawn ourselves, and 36 tall rather than 30 because
+# the battery beside it already sets this band's height and there is no reason to
+# reserve less than the band holds. The bank has not been sized, so the extra
+# 6 mm of height is headroom rather than a decision.
+#
+# 54 DEEP AND NOT 62, which is the battery's depth rather than the old block's,
+# and for the same reason: the four ledges carrying the electronics deck stand
+# 5 mm proud of the front and rear walls, and a 62 mm bay reaching a 36 mm band's
+# full height runs 270 mm3 of reserved volume straight through two of them. That
+# was found by tools/gate_f.py after its shared-volume test was fixed -- see the
+# note on measure() there, which had been reporting every such overlap as zero.
+powerWidth = 52.0
+powerDepth = 54.0
+powerHeight = 36.0
 controllerWidth = 76.0
 controllerDepth = 46.0
 controllerHeight = 12.0
@@ -120,16 +132,20 @@ batteryX = -interiorHalfWidth + wallClearance + (batteryWidth / 2)
 powerX = interiorHalfWidth - wallClearance - (powerWidth / 2)
 controllerX = -interiorHalfWidth + wallClearance + (controllerWidth / 2)
 
-# WHAT THE GAP BETWEEN BATTERY AND POWER ENTRY IS FOR. Both packs bring their
-# leads out of the same end, the end that faces the power block, and an XT60 is
-# 16 x 8.1 x 7.5 mm of moulded body. Two pack leads, the series link that joins
-# them and the pair that leaves for the panel connector all live in this chase,
-# stacked up its 36 mm rather than laid across it. Two tenths of a millimetre --
-# what the 125 mm shell would have left once both blocks are off their walls --
-# is not a chase, it is an interference, and 130 would leave 5.2 mm, which still
-# will not take a connector body lying in it.
-leadChaseWidth = (powerX - powerWidth / 2) - (batteryX + batteryWidth / 2)
-leadChaseX = (powerX - powerWidth / 2 + batteryX + batteryWidth / 2) / 2
+# THE GAP BETWEEN THE TWO BAYS, AND IT HAS BEEN A CHASE, THEN NOT, THEN A CHASE
+# AGAIN. It was 10.2 mm of deliberate cable chase while the shell's width was a
+# number somebody picked. The bought 50 x 50 distribution board then took that
+# width back, and the pack's connectors moved INSIDE the power bay, into the
+# 23 mm of air above the board -- which is still where they are drawn, and still
+# where they should be, because that is the shortest route from a pack to a fuse.
+#
+# Then the shell's width stopped being anybody's choice: it is derived from the
+# hip clevises now, and it comes out 12.9 mm wider than the payload needs. None
+# of the slack is spent on either bay -- both stay 2 mm off their own wall -- so
+# all of it lands here, and the gap is 15.1 mm. It is a chase again by accident
+# rather than by design, and that is the honest way to describe it: nothing is
+# routed through it on purpose, and there is room if anything needs to be.
+bayGap = (powerX - powerWidth / 2) - (batteryX + batteryWidth / 2)
 
 # THE BANDS. Four of them now where there were three, and the deck is what makes
 # the fourth possible: the battery fills the bottom band across most of the
@@ -164,13 +180,11 @@ standoffDiameter = 6.0
 sbcStandoffHeight = bandGap
 sbcStandoffDiameter = 5.0
 
-powerBoardZ = lowerBandZ + standoffHeight
 controllerBoardZ = deckBandZ + standoffHeight
 
 pcbThickness = 1.6
 capacitorDiameter = 16.0
 capacitorHeight = 25.0
-capacitorZ = powerBoardZ + pcbThickness
 
 pcbGreen = "#1c6b42"
 componentBlack = "#20232a"
@@ -188,6 +202,32 @@ cellGrey = "#4a4f57"
 # cad/torso.py are cut to these, and a cutout is the one thing that cannot be
 # adjusted after the pelvis is printed.
 #
+# THE DISTRIBUTION BOARD, and it is the reason this file no longer draws a
+# power-entry PCB of its own. SwiftWing PDB-02-XT60: 50 x 50 x 1.6 mm, 13 g,
+# four M3 holes on a 45 mm square, a factory-fitted XT60 socket for the bus and
+# six pairs of solder tabs for the motor branches. 3S-6S, direct battery bus --
+# no active parts on it at all, which is why it needs the BEC below and why its
+# stated 26 V maximum is a statement of scope rather than a dielectric limit.
+# THAT 26 V IS THE ONE FIGURE ON THIS PART THAT DOES NOT MATCH THE APPLICATION:
+# the actuators tolerate 30 and regeneration pushes the bus up, so confirm it
+# with the vendor before trusting it.
+#
+# Solder tabs rather than the sibling board's six XT30 sockets, deliberately: the
+# tabs are flat, the sockets are not, and the connectors belong at the motor end
+# of each branch where they are actually undone.
+pdbWidth = 50.0
+pdbDepth = 50.0
+pdbThickness = 1.6
+pdbHolePitch = 45.0
+# The Matek 12S Pro BEC, which is what makes the bus into a logic rail: 9-55 V in,
+# 5 V at 5 A out, 35 x 24 x 5.5 mm and 5 g. It replaces the generic buck module
+# this file used to reserve 26 x 42 x 14 for on the deck, and it moves down here
+# because its input is the raw bus and it belongs with the rest of power entry.
+# It is a switching regulator in a sealed box under a deck, so watch its
+# temperature on the first sustained run -- about 3 W at full output.
+becWidth = 35.0
+becDepth = 24.0
+becHeight = 5.5
 # AMASS XT60, the pack and series-link connector.
 xt60Length = 16.0
 xt60Width = 8.1
@@ -204,16 +244,6 @@ xt90Depth = 21.0
 balancePortWidth = 12.5
 balancePortHeight = 7.0
 balancePortDepth = 8.0
-# 24 V bus to 5 V logic, >= 5 A: docs/BOM.md's "Logic DC/DC", which had no
-# reserved volume at all until now. A synchronous buck module in this class is
-# about this size; it sits on the deck beside the controller where it can be
-# reached and where its heat is not under anything.
-# It stands with its long side fore and aft, which is not cosmetic: the SBC's
-# right-hand posts come up through this band on a 58 mm pitch, and a module lying
-# the other way runs straight into them.
-dcdcWidth = 26.0
-dcdcDepth = 42.0
-dcdcHeight = 14.0
 # INA226 bus monitor and its shunt, on the power-entry board. New hardware: the
 # controller has had no way to read pack state, which matters on a battery in a
 # way it never did on a bench supply.
@@ -231,15 +261,41 @@ balanceLeadThickness = 2.0
 harnessBundleWidth = 9.0
 harnessBundleHeight = 7.0
 harnessRunY = -27.0
+# WHERE ANYTHING GETS FROM THE FLOOR TO THE DECK. The bought board took the lead
+# chase with it, so the only clear column left is the 6.6 mm strip between the
+# battery's rear face and the shell wall. It is enough for a sleeved pair and it
+# is where the CAN loom runs -- and it is worth knowing that it is now the ONLY
+# such path, so anything else crossing the deck plane has to share it.
+loomRunY = -30.3
 
-# WHERE THE PANEL SITS IN THE REAR WALL. Both cutouts have to land inside the
-# battery band -- below the deck, above the shell floor -- because that is the
-# only height at which the wall is not behind something. The disconnect is
-# centred on the packs' own lead height and the balance ports go straight above
-# it, which is also the order a hand meets them.
+# WHERE THE PANEL SITS IN THE REAR WALL, and the heights are not free any more.
+# The distribution board fills the floor of this bay and reaches 50 mm forward of
+# a wall that is only 67.2 from the other one, so an XT90-S protruding 21 mm
+# cannot share a height with it. It goes ABOVE the board instead, in the 23 mm of
+# air the bay has over it, with the balance ports above that -- which is also the
+# order a hand meets them.
+pdbY = 0.0
+pdbBoardZ = lowerBandZ + standoffHeight
+pdbTopZ = pdbBoardZ + pdbThickness
+disconnectZ = pdbTopZ + 1.0
+balancePortZ = disconnectZ + xt90Width + 1.0
 batteryLeadZ = saddleTopZ + (batteryPackWidth / 2)
-disconnectZ = batteryLeadZ - (xt90Width / 2)
-balancePortZ = disconnectZ + xt90Width + 2.0
+# Both cutouts sit over the board's REAR six millimetres, which is the strip of
+# it nothing stands on: the board is pushed 6 mm forward in the bay for exactly
+# that, and the connectors straddle the wall rather than hanging off its inside
+# face, so each reaches about 10 mm in rather than its full body length.
+panelX = powerX - 10.0
+# BOTH BALANCE PORTS GO OUTBOARD of the disconnect rather than one either side of
+# it. The pack's own connectors live at this bay's inboard end, above the fuse
+# and the monitor, and a port on that side would sit directly behind them.
+balancePortOffsets = (8.0, 22.0)
+# Where the pack's own connectors sit: above the fuse and the monitor, clear of
+# the disconnect that reaches in over the board's rear edge.
+packLeadZ = pdbTopZ + 17.0
+# The cans stand on the bought board now rather than on one of ours, which is why
+# this station has moved down here: it cannot be stated until that board's own
+# thickness and standoff are.
+capacitorZ = pdbTopZ
 
 # ---- where the screws go ----------------------------------------------------
 #
@@ -318,6 +374,25 @@ def sbc_posts_through_carrier() -> list[tuple[float, float]]:
     ]
 
 
+# WHERE THE WeAct SITS ON THE CARRIER, and it is derived rather than placed. The
+# SBC's posts cut this board into two unequal pieces and the core board goes in
+# the larger one; this is that piece's centre line. It moves if the shell's width
+# moves, which it now does on its own -- cad/wheeled_parameters.py builds it from
+# the hip clevises -- so a number typed here would go stale silently and
+# tools/gate_f.py would be the only thing to notice.
+_postsThrough = sbc_posts_through_carrier()
+weActX = (
+    (
+        (controllerX - (controllerWidth / 2))
+        + min(dx for dx, _ in _postsThrough)
+        - (sbcPostDiameter / 2)
+    )
+    / 2
+    if _postsThrough
+    else controllerX
+)
+
+
 # ---- the boards themselves --------------------------------------------------
 #
 # Every one of these is a stand-in for a bought board, pack or connector, drawn
@@ -386,11 +461,29 @@ def _corner_standoffs(width, depth, atX, atY, atZ, inset, diameter, height):
     ]
 
 
-def powerEntryBoard():
-    """The power-entry board on its own, so its holes can be counted."""
-    return board(
-        powerWidth, powerDepth, powerX, 0.0, powerBoardZ, m3Clearance, boardHoleInset
+def distributionBoard():
+    """The bought distribution board on its own, so its holes can be counted.
+
+    NOT OURS ANY MORE. This was a 38 x 62 PCB the project would have laid out and
+    had fabricated, whose entire job was to join a pack to six branches through a
+    fuse. It is a SwiftWing PDB-02-XT60 now -- 50 x 50, four M3 holes on a 45 mm
+    square, an XT60 socket and six pairs of solder tabs -- so the hole pattern
+    below is READ OFF A DATASHEET rather than chosen, which is the difference
+    between this function and the controller carrier beside it.
+
+    It is still drawn as a slab with its holes cut and nothing unioned back on,
+    for the reason every board here is: tools/gate_e.py counts them, and a
+    component unioned over one would fill it in with nothing else to report it.
+    """
+    blank = Pos(powerX, pdbY, pdbBoardZ) * Box(
+        pdbWidth, pdbDepth, pdbThickness, align=(Align.CENTER, Align.CENTER, Align.MIN)
     )
+    for dx in (-pdbHolePitch / 2, pdbHolePitch / 2):
+        for dy in (-pdbHolePitch / 2, pdbHolePitch / 2):
+            blank -= Pos(
+                powerX + dx, pdbY + dy, pdbBoardZ + (pdbThickness / 2)
+            ) * Cylinder(m3Clearance / 2, pdbThickness * 3)
+    return blank
 
 
 def controllerCarrierBoard():
@@ -459,103 +552,128 @@ def torsoElectronicsGroups() -> dict[str, list]:
     what tools/view.py colours by.
     """
     upperZ = upperBandZ + pcbThickness
-    packOffset = (batteryPackGap + batteryPackThickness) / 2
-    leadZ = batteryLeadZ
     rearWallY = -interiorHalfDepth
 
     return {
         # ---- the battery ----------------------------------------------------
         "battery packs": batteryPacks(),
-        # Each pack's own XT60, standing in the chase off the end it leaves by.
-        "battery pack connectors": [
-            slab(
-                xt60Length,
-                xt60Width,
-                xt60Height,
-                leadChaseX,
-                sy * packOffset,
-                leadZ - (xt60Height / 2),
-            )
-            for sy in (-1, 1)
-        ],
-        # The series link that makes 6S of two 3S: one male XT60 at each end and
-        # about 40 mm of 14 AWG between them, folded in the chase. This is the
-        # single item that turns two bought packs into this robot's pack, and it
-        # is the one piece of the power path nobody sells ready-made.
-        "battery series link": [
-            slab(
-                busWireDiameter,
-                packOffset * 2,
-                busWireDiameter,
-                leadChaseX,
-                0.0,
-                leadZ + (xt60Height / 2) + 1.0,
-            )
-        ],
-        # Pack positive and pack negative, up the chase to the panel connector.
-        "battery main leads": [
-            Pos(leadChaseX + sx * (busWireDiameter / 2 + 0.5), 0.0, disconnectZ)
-            * Box(
-                busWireDiameter,
-                busWireDiameter,
-                leadZ - disconnectZ,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            for sx in (-1, 1)
-        ],
         # Two 4-way balance leads, one per pack, run to the ports in the rear
         # wall. They are what makes charging possible without opening the lid.
         "battery balance leads": [
             slab(
                 balanceLeadWidth,
-                abs(rearWallY) - packOffset,
+                10.0,
                 balanceLeadThickness,
-                leadChaseX + sx * (balancePortWidth / 2 + 1.5),
-                (rearWallY - packOffset) / 2,
+                panelX + dx,
+                rearWallY + balancePortDepth + 5.0,
                 balancePortZ + (balancePortHeight / 2),
             )
-            for sx in (-1, 1)
+            for dx in balancePortOffsets
         ],
-        # ---- power entry: bank, fuse, terminal, monitor ----------------------
-        "power entry standoffs": _corner_standoffs(
-            powerWidth,
-            powerDepth,
-            powerX,
-            0.0,
-            lowerBandZ,
-            boardHoleInset,
-            standoffDiameter,
-            standoffHeight,
-        ),
-        "power entry board": [powerEntryBoard()],
+        # ---- power entry: a bought board and what stands on it ---------------
+        # THERE IS NO BUS TERMINAL HERE ANY MORE. It was a 24 x 10 x 12 block
+        # standing in for the strip the six motor branches landed on, and the
+        # distribution board's own copper is that strip -- six pairs of solder
+        # tabs on a direct battery bus. One bought part removed two drawn ones.
+        "distribution board standoffs": [
+            standoff(
+                standoffDiameter,
+                standoffHeight,
+                powerX + dx,
+                pdbY + dy,
+                lowerBandZ,
+            )
+            for dx in (-pdbHolePitch / 2, pdbHolePitch / 2)
+            for dy in (-pdbHolePitch / 2, pdbHolePitch / 2)
+        ],
+        "distribution board": [distributionBoard()],
+        # The pack's own socket, on the board's inboard edge where the leads from
+        # the battery reach it.
+        "bus input socket": [
+            slab(
+                xt60Width,
+                xt60Length,
+                xt60Height,
+                powerX - (pdbWidth / 2) + (xt60Width / 2) + 2.0,
+                pdbY - 8.0,
+                pdbTopZ,
+            )
+        ],
+        # The pack's own two XT60s and the link between them. They used to stand
+        # in the lead chase beside the battery; the bought board took that width,
+        # so they live here instead, in the air above the fuse and the monitor.
+        "battery pack connectors": [
+            slab(xt60Width, xt60Length, xt60Height, powerX - 21.0, dy, packLeadZ)
+            for dy in (-4.0, -18.0)
+        ],
+        "battery series link": [
+            slab(
+                busWireDiameter,
+                14.0,
+                busWireDiameter,
+                powerX - 21.0,
+                -11.0,
+                packLeadZ + xt60Height + 0.5,
+            )
+        ],
+        "battery main leads": [
+            slab(
+                abs(panelX - (powerX - 21.0)) + 6.0,
+                busWireDiameter,
+                busWireDiameter,
+                (panelX + powerX - 21.0) / 2,
+                -24.0,
+                packLeadZ + xt60Height + 1.0,
+            )
+            for _ in (0,)
+        ],
+        # Four cans in a row along the board's forward edge. STILL NOT SIZED --
+        # cad/wheeled_parameters.py and tools/mass_budget.toml both say so, and
+        # buying the board underneath them did not change that.
         "capacitor bank": [
-            can(capacitorDiameter, capacitorHeight, powerX + dx, dy, capacitorZ)
-            for dx in (-9.0, 9.0)
-            for dy in (-11.0, 11.0)
+            can(capacitorDiameter, capacitorHeight, powerX + dx, pdbY + 16.0, pdbTopZ)
+            for dx in (-17.0, -5.7, 5.7, 17.0)
         ],
-        # The bus terminal, which is where the main disconnect lands inside. It
-        # was the tether terminal until the battery came back and it is the same
-        # block doing the same job: the XT90-S in the rear wall is the only thing
-        # that changed, and either a pack or a bench supply plugs into it.
-        "bus terminal": [slab(24.0, 10.0, 12.0, powerX, -25.0, capacitorZ)],
-        "fuse holder": [slab(20.0, 10.0, 14.0, powerX, 25.0, capacitorZ)],
+        "fuse holder": [slab(20.0, 10.0, 14.0, powerX + 12.0, pdbY + 2.0, pdbTopZ)],
         "bus monitor": [
-            slab(busSenseWidth, busSenseDepth, busSenseHeight, powerX, 8.0, capacitorZ)
+            slab(
+                busSenseWidth,
+                busSenseDepth,
+                busSenseHeight,
+                powerX + 8.0,
+                pdbY - 12.0,
+                pdbTopZ,
+            )
+        ],
+        # The logic rail. It was a generic buck module reserved on the deck and it
+        # is a Matek 12S Pro BEC now: a fifth of the volume, and down here with
+        # the bus it steps down. It rides on a bracket over the bank because the
+        # board's own area is spoken for, which is also the coolest place in this
+        # bay -- it is the one item in the torso that makes real heat.
+        "logic BEC": [
+            slab(
+                becWidth,
+                becDepth,
+                becHeight,
+                powerX,
+                pdbY + 12.0,
+                pdbTopZ + capacitorHeight,
+            )
         ],
         # ---- the panel: what the rear wall is cut for ------------------------
         "main disconnect": [
-            slab(xt90Length, xt90Depth, xt90Width, leadChaseX, rearWallY, disconnectZ)
+            slab(xt90Length, xt90Depth, xt90Width, panelX, rearWallY, disconnectZ)
         ],
         "balance ports": [
             slab(
                 balancePortWidth,
                 balancePortDepth,
                 balancePortHeight,
-                leadChaseX + sx * (balancePortWidth / 2 + 1.5),
+                panelX + dx,
                 rearWallY,
                 balancePortZ,
             )
-            for sx in (-1, 1)
+            for dx in balancePortOffsets
         ],
         # ---- controller carrier, on the deck --------------------------------
         "controller standoffs": _corner_standoffs(
@@ -574,51 +692,45 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # is measured off the vendor STEP; docs/BOM.md's 36.3 x 28.1 came off a
         # shop listing and is near enough to be the same board, but this is the
         # drawing.
+        # OUTBOARD OF THE POST, not centred on the carrier. One column of the
+        # SBC's four posts comes up through this board -- unavoidably, because
+        # 76 mm of carrier plus 85 of SBC is wider than any shell this robot can
+        # have -- and it cuts the carrier into two unequal pieces. The WeAct goes
+        # in the larger one, and weActX is derived from the post rather than from
+        # the board so that it stays there if either moves.
         "WeAct core board": [
+            slab(36.53, 28.40, 6.0, weActX, 2.0, controllerBoardZ + pcbThickness)
+        ],
+        # And the transceivers go in the smaller piece, on the other side of it.
+        "CAN transceivers": [
             slab(
-                36.53,
-                28.40,
                 6.0,
-                controllerX + 19.0,
-                3.0,
+                4.0,
+                1.5,
+                controllerX + (controllerWidth / 2) - 10.0,
+                dy,
                 controllerBoardZ + pcbThickness,
             )
-        ],
-        "CAN transceivers": [
-            slab(6.0, 4.0, 1.5, controllerX + 33.0, dy, controllerBoardZ + pcbThickness)
             for dy in (8.0, 0.0)
         ],
         # Where the six actuator harnesses land, facing the rear wall and its
         # ports.
         "actuator harness bank": [
             slab(
-                46.0,
+                40.0,
                 6.0,
                 8.0,
-                controllerX + 8.0,
+                controllerX - 16.0,
                 -19.0,
                 controllerBoardZ + pcbThickness,
             )
         ],
-        # 24 V to 5 V, beside the controller on the deck rather than under
-        # anything: it is the one item in here that makes real heat.
-        "logic DC/DC": [
-            slab(
-                dcdcWidth,
-                dcdcDepth,
-                dcdcHeight,
-                interiorHalfWidth - wallClearance - dcdcWidth / 2,
-                0.0,
-                deckBandZ,
-            )
-        ],
         # ---- SBC: a Banana Pi BPI-M4 Zero, 65 x 30 --------------------------
-        "SBC standoffs": [
-            standoff(
-                sbcStandoffDiameter, sbcStandoffHeight, dx, dy, upperBandZ - bandGap
-            )
-            for dx, dy in _sbc_post_xy()
-        ],
+        # There is no "SBC standoffs" group. There was, and it was four stock
+        # pillars drawn inside the four posts cad/deck.py prints -- the same
+        # 2 mm of air modelled twice, which tools/gate_f.py reported as 93 mm3
+        # of shared volume the moment its intersection test was fixed. The
+        # deck's posts ARE the standoffs; the SBC screws into their inserts.
         "SBC board": [sbcBoard()],
         # The 40-pin header is the tall thing on this board and the only part of
         # it that asks for headroom: 8.5 mm of body over a 1.6 mm board, against
@@ -654,21 +766,23 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # chase to the harness bank on the carrier.
         "actuator harness runs": [
             slab(
-                abs(cablePortX - leadChaseX) + harnessBundleWidth,
+                abs(cablePortX - panelX) + harnessBundleWidth,
                 harnessBundleWidth,
                 harnessBundleHeight,
-                (sx * cablePortX + leadChaseX) / 2,
+                (sx * cablePortX + panelX) / 2,
                 harnessRunY,
                 floorZ,
             )
             for sx in (1, -1)
         ],
+        # Up the inboard end of the power bay with the rest of the harness,
+        # rather than up the back of it where the disconnect reaches in.
         "CAN loom": [
-            Pos(leadChaseX, harnessRunY, floorZ)
+            Pos(-20.0, loomRunY, floorZ)
             * Box(
                 canWireDiameter * 2,
                 canWireDiameter * 2,
-                controllerBoardZ - floorZ,
+                deckZ - floorZ,
                 align=(Align.CENTER, Align.CENTER, Align.MIN),
             )
         ],

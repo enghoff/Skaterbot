@@ -88,12 +88,16 @@ EXPECTED_CHANGE_G = {
         "the same three changes on the same shared limb geometry",
     ),
     "cad/torso.py": (
-        +47.7,
-        "the torso grew from 125 x 68 x 65 to 135 x 72 x 86 to carry a battery, "
-        "and gained the ten features that hold one: two rails under the packs, "
-        "four posts under the power-entry board and four ledges carrying the "
-        "electronics deck. 43 g of that is the bigger box and the features, and "
-        "4.7 is the older bearing-seat change this line already carried -- "
+        +66.4,
+        "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
+        "141 wide to carry a battery and a bought distribution board, with the "
+        "ten features that hold them -- two rails under the packs, four posts on "
+        "the board's own 45 mm square and four ledges carrying the electronics "
+        "deck -- and then to 153.9 to bring the flank out to the plane the hip "
+        "saddle ends at, which is 12.8 g of wall, floor and lid for a step the "
+        "saddle no longer stands proud of. 61.7 g of the figure is the bigger "
+        "box and the features, and 4.7 is the older bearing-seat "
+        "change this line already carried -- "
         "the two hip pitch cheeks are bored Ø19.2 for the bearing itself "
         "rather than Ø30.2 for the turned carrier it used to sit in, and each "
         "carries a Ø26 boss for the bearing's shoulder where the carrier's "

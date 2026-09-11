@@ -62,16 +62,18 @@ NOT_DIMENSIONS = {"torsoElectronics", "torsoReservations", "torsoPayload"}
 # They are not waved through. Each is checked by hand here, against the same
 # arithmetic the KCL function does -- coverBossInset(span) = span / 2 - bossSize / 2:
 #
-#   bossX = coverBossInset(torsoInnerWidth) = 130.2 / 2 - 8 / 2 = 61.1
+#   bossX = coverBossInset(torsoInnerWidth) = 149.1 / 2 - 8 / 2 = 70.55
 #   bossY = coverBossInset(torsoInnerDepth) =  67.2 / 2 - 8 / 2 = 29.6
 #
-# and cad/torso.py computes 61.1 and 29.6. If either moves, this note is wrong and
-# has to be redone rather than extended -- which is what happened in September
-# 2026, when the battery went back in and the shell grew from 125 x 68 to
-# 135 x 72. The spans above are the cavity's, so both bosses moved with it. The
-# arithmetic is the same arithmetic; only the two spans changed.
+# and cad/torso.py computes 70.55 and 29.6. If either moves, this note is wrong
+# and has to be redone rather than extended -- which has now happened twice in
+# September 2026: once when the battery went back in and the shell grew from
+# 125 x 68 to 141 x 72, and again when the flank was taken out to the hip
+# clevis's own end plane and the width went to 153.9. The spans above are the
+# cavity's, so both bosses move with it. The arithmetic is the same arithmetic;
+# only the two spans changed.
 UNEVALUATABLE = {
-    "bossX": 130.2 / 2 - 8 / 2,
+    "bossX": 149.1 / 2 - 8 / 2,
     "bossY": 67.2 / 2 - 8 / 2,
 }
 
@@ -196,6 +198,15 @@ ADDED = {
     "bearingSeatBossDiameter": 26.0,
     "bearingSeatBossThickness": 3.5,
     "bearingCenterX": 28.45,
+    # cad/joint.py: the outboard end of the clevis -- the plane the front cheek's
+    # outer face and the saddle's end share, and the last plane of printed
+    # structure on a joint. The KCL computed it inline inside the clevis function
+    # and so had no name for it. It is a name now because a second part depends on
+    # it: cad/wheeled_parameters.py builds the pelvis's width on this plane so the
+    # torso's flank comes out flush with the hip saddle instead of 6.45 mm inside
+    # it. The value is frontCheekX + cheekThickness / 2, both of them ported
+    # dimensions this gate already holds.
+    "clevisOuterX": 28.95,
     # cad/electronics.py: where the payload boards are screwed down. The KCL drew
     # every board as a plain slab and so had no hole anywhere in the torso, which
     # left the packing half answered -- a reserved volume says where a board may
@@ -223,8 +234,6 @@ ADDED = {
     # cad/parameters.py: heat-set inserts, for the board mounts and the deck's
     # SBC posts. Catalogue dimensions for the brass parts docs/BOM.md already
     # stocks; each bore is the insert's outside diameter, not its thread.
-    "m3InsertBore": 4.0,
-    "m3InsertDepth": 7.0,
     "m25InsertBore": 3.2,
     "m25InsertDepth": 5.0,
     # cad/electronics.py: the pack, in TORSO axes rather than catalogue axes,
@@ -237,13 +246,36 @@ ADDED = {
     "batteryWidth": 78.0,
     "batteryDepth": 54.0,
     "batteryHeight": 36.0,
-    "batteryX": -24.099999999999994,
+    "batteryX": -33.55,
     "batteryLeadZ": -14.5,
-    # The chase between battery and power block, which is what the shell's extra
-    # 10 mm of width was bought for: both packs bring their leads out of the end
-    # that faces the power block, and an XT60 is 8.1 mm across its body.
-    "leadChaseWidth": 10.199999999999989,
-    "leadChaseX": 20.0,
+    # THE BOUGHT DISTRIBUTION BOARD, September 2026, and the parts it displaced.
+    # The power-entry PCB this project was going to lay out and have fabricated
+    # is gone: a SwiftWing PDB-02-XT60 does the same job -- pack in through an
+    # XT60, six branches out on solder tabs -- for about three hundred rupees and
+    # no design time. Its 50 mm square is 12 mm wider than the bay the custom
+    # board needed, which is what took the shell from 135 to 141 and what took
+    # the 10.2 mm lead chase with it. The pack's connectors live above the board
+    # instead, and what is left between the bays is ordinary clearance.
+    "pdbWidth": 50.0,
+    "pdbDepth": 50.0,
+    "pdbThickness": 1.6,
+    "pdbHolePitch": 45.0,
+    "pdbY": 0.0,
+    "pdbBoardZ": -28.0,
+    "pdbTopZ": -26.4,
+    "bayGap": 15.099999999999994,
+    "panelX": 36.55,
+    "packLeadZ": -9.399999999999999,
+    # The Matek 12S Pro BEC, which replaced the generic buck module this file
+    # used to reserve 26 x 42 x 14 for on the deck. 9-55 V in, 5 V at 5 A out,
+    # and a fifth of the volume -- so it moved down into the power bay, where its
+    # input already is.
+    "becWidth": 35.0,
+    "becDepth": 24.0,
+    "becHeight": 5.5,
+    # The only floor-to-deck path left once the board took the chase: the strip
+    # between the battery's rear face and the shell wall.
+    "loomRunY": -30.3,
     # The fourth band and the plate that makes it possible. The cavity is full at
     # floor level, so the upper two boards have nothing to stand on and
     # cad/deck.py bridges to four ledges on the walls instead.
@@ -256,7 +288,7 @@ ADDED = {
     "deckLedgeHeight": 5.0,
     "deckLedgeX": 52.0,
     "deckLedgeY": 31.1,
-    "deckWidth": 129.39999999999998,
+    "deckWidth": 148.29999999999998,
     "deckDepth": 66.4,
     "deckDropClearance": 0.4,
     "deckCornerNotch": 9.0,
@@ -277,6 +309,13 @@ ADDED = {
     "sbcPostDiameter": 8.0,
     "sbcPostHeight": 14.0,
     "sbcPostClearance": 8.6,
+    # Where the WeAct core board sits on the carrier, derived from the post that
+    # crosses it rather than from the board it sits on. The posts cut the carrier
+    # into two unequal pieces; this is the centre of the larger one. It is a
+    # derived name rather than a placement because the shell's width now moves on
+    # its own -- cad/wheeled_parameters.py builds it from the hip clevises -- and
+    # a number typed into the drawing function would go stale in silence.
+    "weActX": -52.775,
     # Bought electrical hardware at catalogue size, none of it in reference/:
     # connector shells and converter modules are commodity parts and every maker
     # builds them to the same table. The panel cutouts are cut to these, so they
@@ -309,20 +348,20 @@ ADDED = {
     # replaced the tether slot in the rear wall.
     "batteryRailThickness": 3.0,
     "batteryRailY": 20.0,
-    "batteryRailEndX": 14.900000000000006,
+    "batteryRailEndX": 5.450000000000003,
     "boardPostSize": 8.0,
-    "powerPostX": 15.0,
-    "powerPostY": 27.0,
+    "powerPostX": 22.5,
+    "powerPostY": 22.5,
     "panelClearance": 0.5,
     "panelWallY": -34.8,
-    "disconnectZ": -22.25,
+    "disconnectZ": -25.4,
     "disconnectPortWidth": 21.5,
     "disconnectPortHeight": 16.5,
-    "disconnectPortZ": -14.5,
-    "balancePortZ": -4.75,
+    "disconnectPortZ": -17.65,
+    "balancePortZ": -8.899999999999999,
     "balanceSlotWidth": 13.5,
     "balanceSlotHeight": 8.0,
-    "balanceSlotZ": -1.25,
+    "balanceSlotZ": -5.399999999999999,
     "balanceSlotX": 7.75,
     # Two colours, for the two things in the torso that are neither board nor
     # can: the cells themselves and the copper that leaves them.
@@ -357,10 +396,14 @@ CHANGED = {
     ),
     "wheeledTorsoShellWidth": (
         125.0,
-        135.0,
-        "ten millimetres bought for the LEADS rather than for the pack. Both 3S "
-        "bricks bring their leads out of the end facing the power block, and 125 "
-        "leaves those two blocks two tenths of a millimetre apart",
+        153.9,
+        "THE PAYLOAD NO LONGER SETS THIS. 125 held two boards lying flat, 135 "
+        "the pack and a 38 mm power block of our own, 141 the pack and a bought "
+        "50 x 50 distribution board -- and 136.2 mm of interior is still all the "
+        "payload asks for. 153.9 is the hip clevis instead: twice the hip half-"
+        "spacing plus the clevis's outboard face, so the shell's flank lands on "
+        "the plane the saddle ends at rather than 6.45 mm inside it. The 12.9 mm "
+        "is slack, and all of it falls in the gap between the two bays",
     ),
     "torsoShellDepth": (
         68.0,
@@ -377,12 +420,12 @@ CHANGED = {
     "wheeledTorsoCenterHeight": (306.5, 317.0, "half of that 21 mm"),
     "wheeledTorsoInteriorFloorZ": (-29.5, -40.0, "torso-local, so half the height"),
     "floorZ": (-29.5, -40.0, "the same floor, as the payload layout reads it"),
-    "torsoShellWidth": (125.0, 135.0, "cad/torso.py reading the width above"),
-    "torsoInnerWidth": (120.2, 130.2, "the same width, less two walls"),
+    "torsoShellWidth": (125.0, 153.9, "cad/torso.py reading the width above"),
+    "torsoInnerWidth": (120.2, 149.1, "the same width, less two walls"),
     "torsoInnerDepth": (63.2, 67.2, "the same depth, less two walls"),
     "interiorHalfWidth": (
         60.1,
-        65.1,
+        74.55,
         "half the cavity, as the payload layout reads it",
     ),
     "shellFloorZ": (-32.5, -43.0, "torso-local, so half the height"),
@@ -417,13 +460,34 @@ CHANGED = {
     ),
     "powerX": (
         39.1,
-        44.099999999999994,
-        "still 2 mm off the right wall, and that wall moved out 5",
+        46.55,
+        "still 2 mm off the right wall, which is where this bay has always been "
+        "pinned. The wall went out 14.45 mm in two steps -- 8 for the bought "
+        "board, 6.45 to meet the hip clevis -- and the bay went 14 wider, so it "
+        "rides out with the wall",
     ),
     "controllerX": (
         -20.1,
-        -25.099999999999994,
-        "still 2 mm off the left wall, and it has moved up onto the deck",
+        -34.55,
+        "still 2 mm off the left wall, and it has moved up onto the deck. It "
+        "rides out with that wall for the same reason the power bay does",
+    ),
+    "powerWidth": (
+        38.0,
+        52.0,
+        "a bought 50 x 50 distribution board where a 38 mm PCB of our own used to be",
+    ),
+    "powerDepth": (
+        62.0,
+        54.0,
+        "the battery's depth rather than the old block's, so that both bays "
+        "clear the deck's wall ledges by the same 1.6 mm",
+    ),
+    "powerHeight": (
+        30.0,
+        36.0,
+        "the full height of a band the battery already sets, which costs "
+        "nothing and gives the bank room it has still not been sized for",
     ),
     "statorPlateFlatOffset": (
         19.0,

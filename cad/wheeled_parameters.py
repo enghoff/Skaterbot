@@ -8,8 +8,9 @@ it rather than being picked.
 
 from __future__ import annotations
 
-from cad.joint import statorEndHeight
+from cad.joint import clevisOuterX, statorEndHeight
 from cad.parameters import (
+    hipCenterX,
     jointKeepOut,
     lowerLegLength,
     rotorHubOuterX,
@@ -195,12 +196,12 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # level. Nothing reserved is narrow enough to use it except the IMU, which
 # goes there -- it is the stiffest spot in the pelvis, directly between the
 # two hip joints, which is where an IMU wants to be anyway.
-# * 36 mm for the battery, 78 x 56 x 36, which is two 3S 2200 mAh bricks ON
+# * 36 mm for the battery, 78 x 54 x 36, which is two 3S 2200 mAh bricks ON
 # EDGE side by side. That orientation is the whole reason a pack fits at all:
-# laid flat the pair is 68 mm across the robot against 63.2 mm of interior
-# depth, and on edge it is 52. The power-entry block, 38 x 62 x 30, sits
-# BESIDE it in the same band and is the shorter of the two, so the battery
-# alone sets this band's height.
+# laid flat the pair is 66 mm across the robot against 67.2 mm of interior
+# depth, and on edge it is 52. The power bay, 52 x 62 x 36, sits BESIDE it in
+# the same band and is now the same height, because the battery sets it and
+# the bay may as well use what the battery has already paid for.
 # * 3 mm of electronics deck, cad/deck.py, which is a printed plate screwed to
 # four bosses on the side walls. It carries both boards above the battery and
 # holds the packs down, and it lifts out to reach them.
@@ -208,22 +209,46 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # * 16 mm for the SBC, 85 x 58 x 16. It is wider than either of the other two,
 # so it cannot share a band with them and has to go over the top.
 #
-# THE BATTERY IS WHY THE SHELL IS 135 mm WIDE and not the 125 it was, and the
-# 10 mm is bought for the LEADS rather than for the pack. Battery and power
-# entry need 116 mm of interior between them where the old pair needed 114, and
-# with 2 mm at each wall a 125 mm shell leaves them two tenths of a millimetre
-# apart -- not a gap at all. Both packs bring their leads out of the end that
-# faces the power block and an XT60 is 8.1 mm across its moulded body, so what
-# has to fit between those two blocks is a cable chase and not slack: 130 would
-# leave 5.2 mm and still not take a connector, and 135 leaves 10.2, which does.
-# It costs nothing in envelope: the robot is already 148 mm across at the hip
-# saddles, so the torso is still not what makes it wide.
+# THE SHELL'S WIDTH IS NO LONGER SET BY THE PAYLOAD. It was, and the history is
+# worth keeping because it is what makes the present number free: 125 held the
+# tethered pair of boards lying flat; 135 held the pack and a 38 mm power block
+# built around a PCB we would have drawn ourselves; 141 held the pack and a
+# BOUGHT 50 x 50 mm distribution board, which is the smallest 3S-6S board on the
+# market and 12 mm wider than the bay the custom one needed. The pack is 78 mm of
+# reservation and the power bay is 52, which with 2 mm at each wall and 2.2
+# between them is the 136.2 mm of interior that asked for 141.
+#
+# WHAT SETS IT NOW IS THE HIP JOINT, because the payload's requirement is a floor
+# and the joint's is a plane. Each hip clevis is rooted in this floor and runs out
+# through the lower side wall -- cad/torso.py says why the load wants two faces
+# rather than one -- and its saddle ends at the front cheek's outer face, 76.95 mm
+# from the centre line. At 141 the shell stopped 6.45 mm short of that, so the
+# saddle stood proud of its own wall on both sides: a step in the flank, an
+# overhang the printer has to bridge, and a ledge on the outside of a pelvis that
+# has to shed a fall. Taking the wall out to the same plane removes all three, and
+# the joint's structure runs into a flat side rather than out of one.
+#
+# So it is derived, and derived from cad/joint.py rather than typed here: twice
+# the hip half-spacing plus the clevis's outboard face. Move the hips or change
+# the actuator's depth and the pelvis follows, which is the relationship the rest
+# of this file already has with the leg.
+#
+# THE 12.9 mm IT ADDS IS ALL SLACK. The interior goes to 149.1 mm against the
+# 136.2 the payload needs, and cad/electronics.py spends none of it: battery and
+# power bay each stay 2 mm off their own wall, so the whole of it lands in the gap
+# between the two bays, which goes from 2.2 mm to 15.1. That is a lead chase back,
+# having been lost to the bought board.
+#
+# It still costs nothing in envelope, for a better reason than before. The shell
+# is now exactly as wide as the hip clevises it carries, and only their Ø26
+# bearing bosses stand outside it, at +/-80.45; the wheels are at +/-104 either
+# way.
 #
 # With 2 mm between the two upper bands and 2.6 mm under the cover that is
 # 80.6 mm of interior; 3 mm of floor and 2.4 mm of cover make 86 mm of torso,
 # and the robot stands 360 mm rather than 339. Those 21 mm are what the battery
 # costs in height, and cad/electronics.py's bands are where they went.
-wheeledTorsoShellWidth = 135.0
+wheeledTorsoShellWidth = (hipCenterX + clevisOuterX) * 2
 wheeledTorsoBottom = wheeledHipPitchAxisHeight + jointKeepOut
 wheeledTorsoHeight = 86.0
 wheeledTorsoTop = wheeledTorsoBottom + wheeledTorsoHeight

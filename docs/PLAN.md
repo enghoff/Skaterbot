@@ -400,12 +400,21 @@ deleting hip roll left 700. The real pack is heavier than that reservation
 assumed as well, 288 g rather than 190, because the old figure worked out at
 153 Wh/kg and no high-discharge 6S pack reaches it.
 
-**The torso is 135 × 72 × 86 where it was 125 × 68 × 65**, and all three
-dimensions are derived in `cad/wheeled_parameters.py` from what has to fit. Two
-of them are set by clearances rather than by contents: the width buys a 10.2 mm
-lead chase, because an XT60 is 8.1 mm across and both packs bring their leads
-out of the end facing the power block; the depth buys 1.6 mm between a pack and
-the ledges the electronics deck lands on. The robot stands 360 mm.
+**The torso is 153.9 × 72 × 86 where it was 125 × 68 × 65.** The height is
+derived in `cad/wheeled_parameters.py` from what has to fit; the depth is set by
+a clearance, 1.6 mm between a pack and the ledges the electronics deck lands on;
+and the width is not derived from the payload at all any more. It is twice the
+hip half-spacing plus the clevis's own outboard face, so the shell ends exactly
+where the joints it carries do. That gives 12.9 mm more than the payload needs,
+which lands in the gap between the two bays. The robot stands 360 mm.
+
+**The power hardware is bought rather than drawn.** The power-entry PCB this
+project was going to lay out is gone; a SwiftWing PDB-02-XT60 distribution board
+does that job, a Matek 12S Pro BEC makes the logic rail, and an INA226 watches
+the bus. That deleted three BOM lines outright -- the tether's main connector,
+the DC power switch the XT90-S replaced, and the M3 heat-set inserts every board
+mount used to need -- and it is why the capacitor bank now stands on somebody
+else's copper.
 
 **One new printed part**, `cad/deck.py` -- the first piece on this robot the Zoo
 engine never built, so the one piece gate B has nothing to compare against. It
@@ -414,10 +423,11 @@ the battery and holding the packs down. It is only half the battery's doing: the
 SBC has had no mount drawn since the layout was first done, because the cavity
 is full at floor level and a standoff has never had anywhere to land.
 
-**What it costs.** 438 g all in -- 288 of cells, 85 of wiring and mounts, 48 of
-extra pelvis and 29 of deck -- so the headroom goes from 694 g to 255. The
-centre of mass rises from 168 mm to 201, which lengthens the pendulum from 128
-to 161 and slows the fall from 114 ms to 126, and costs six degrees of lateral
+**What it costs.** 454 g all in -- 288 of cells, 65 of wiring and mounts, 13 of
+distribution board, 66 of extra pelvis and cover and 33 of deck -- so the
+headroom goes from 694 g to 240. The centre of mass rises from 168 mm to 202,
+which lengthens the pendulum from 128 to 162 and slows the fall from 114 ms to
+128, and costs six degrees of lateral
 margin: the lean at which the centre of mass leaves the 170 mm track falls from
 34° to 28°. On a robot with no hip roll that is the price to watch, and the cheap
 fix is track width rather than mass placement.

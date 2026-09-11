@@ -69,12 +69,30 @@ def union(bodies: list):
 
 
 def measure(first: list, second: list) -> tuple[float, float]:
-    """(distance, shared volume) between two groups of bodies, in mm and mm3."""
+    """(distance, shared volume) between two groups of bodies, in mm and mm3.
+
+    THIS USED `a.intersect(b)` AND IT WAS REPORTING ZERO FOR REAL OVERLAPS.
+    In this build123d, Shape.intersect() hands back a ShapeList rather than a
+    shape, and a ShapeList has no `.volume` -- so every call raised
+    AttributeError, and the except clause below was written for a genuinely
+    empty intersection and swallowed it. Two solids could share any amount of
+    volume at all and this function would say 0.000, which is the number the
+    whole packing story rests on.
+
+    It was found in September 2026 by cross-checking one pair by hand against
+    `a & b`: 270 mm3 of a reserved volume was inside a printed ledge and every
+    check here had passed it. The `&` operator returns a shape, and where there
+    is no intersection it returns something with no volume rather than raising,
+    so the guard below is now the belt and not the mechanism.
+
+    A distance of zero with a shared volume of zero still means the two touch,
+    which several pairs here are meant to do -- see the note at the top.
+    """
     a, b = union(first), union(second)
+    common = a & b
     try:
-        shared = abs(a.intersect(b).volume)
-    except (ValueError, AttributeError):
-        # An empty intersection: OCCT hands back a compound with no solids in it.
+        shared = abs(common.volume)
+    except (ValueError, AttributeError, TypeError):
         shared = 0.0
     return a.distance_to(b), shared
 
@@ -431,11 +449,13 @@ FITS = [
         "a 68 mm shell leaves a tenth of a millimetre here",
     ),
     (
-        "power block vs the four deck ledges",
+        "power bay vs the four deck ledges",
         "power entry",
         "ledges",
-        1.0,
-        "the ledges are 5 mm tall and the power block is 30 in a 36 mm band",
+        1.6,
+        "the same 1.6 mm the battery clears them by, and it is why the bay is "
+        "54 deep rather than the 62 the old power block was: at 62 it runs "
+        "270 mm3 straight through two of them",
     ),
     (
         "battery packs vs their rails",
@@ -452,11 +472,13 @@ FITS = [
         "the squeeze that holds the packs down, and the only thing that does",
     ),
     (
-        "battery bay vs the power block",
+        "battery bay vs the power bay",
         "battery",
         "power entry",
-        10.2,
-        "the lead chase, and what the shell's extra 10 mm of width bought",
+        15.1,
+        "slack rather than a chase, and the only number in this table nobody "
+        "chose. The shell is as wide as the hip clevises make it, which is "
+        "12.9 mm more than the payload needs, and neither bay spends any of it",
     ),
     (
         "IMU vs the battery over it",
@@ -525,9 +547,14 @@ def check_no_clashes() -> tuple[int, int]:
     groups = dict(electronics.torsoElectronicsGroups())
     groups["deck"] = deck.electronicsDeck()
     groups["battery rails"] = torso.batteryRails()
-    groups["power-entry posts"] = torso.powerEntryPosts()
+    groups["board posts"] = torso.powerEntryPosts()
     groups["deck ledges"] = torso.deckLedges()
-    groups["pelvis"] = torso.pelvisShell()
+    # The shell WITHOUT the three feature sets listed above it, because
+    # pelvisShell() returns all of them in one list and comparing a part with
+    # its own features is not a finding. Seven bodies: the shell, four cover
+    # bosses and two hip clevises, which is what the pelvis was before the
+    # battery gave it ten more.
+    groups["pelvis"] = torso.pelvisShell()[:7]
 
     print()
     print("EVERY DRAWN THING IN THE TORSO, AGAINST EVERY OTHER")

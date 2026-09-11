@@ -502,8 +502,12 @@ m3CapCounterboreDepth = 3.2
 # The depths are the bore, not the insert: an insert wants a little room under
 # it for displaced material, so each is a millimetre or so deeper than the part
 # it takes. The same allowance the wheel spigot's M5 bore already carries.
-m3InsertBore = 4.0
-m3InsertDepth = 7.0
+# The M3 pair that used to be here is gone. Every board on this robot is held by
+# a self-tapping M3 into a Ø2.5 pilot instead -- the same fastener the cover
+# bosses have always used -- because none of the walls a board mount lands on is
+# thick enough to sink a 5.7 mm insert: the deck plate is 3 mm and its wall
+# ledges are 5. The M2.5 pair below survives because the deck's SBC posts are
+# 14 mm tall and have the depth for one.
 m25InsertBore = 3.2
 m25InsertDepth = 5.0
 # What a printed feature has to leave round a bolt centre for the cap head to

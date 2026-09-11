@@ -174,35 +174,54 @@ DEVIATIONS = {
         # A WHOLE-PART RESIZE, and it is a different kind of entry from every
         # other one in this register. The rest are features: a bore, a boss, a
         # relief, each a number you can go and measure on the part. This is the
-        # box being a different box -- 125 x 68 x 65 tethered, 135 x 72 x 86
-        # carrying a battery -- plus the ten mounting features that came with it.
+        # box being a different box -- 125 x 68 x 65 tethered, 153.9 x 72 x 86
+        # now -- plus the ten mounting features that came with the battery.
+        #
+        # IT IS ONE ENTRY COVERING TWO DECISIONS, which every other line in this
+        # register would call a failure of discipline, and the reason is worth
+        # stating rather than hiding. The battery resize took the box to
+        # 141 x 72 x 86; taking the flank out to the hip clevis's own end plane
+        # then took the width to 153.9. Against a FROZEN 125 mm reference those
+        # two cannot be separated: the second change moves material that the
+        # first change had already moved, so its own add and remove against the
+        # golden are not the difference between the two entries -- asked for
+        # separately it comes out as +4945.899 added and -977.109 removed, and a
+        # negative removal is not a thing that can be written down. Folding is
+        # the honest answer; splitting would have meant inventing a pair of
+        # numbers that summed correctly and described nothing.
         #
         # BE CLEAR ABOUT WHAT IS AND IS NOT STILL BEING CHECKED. For a change of
         # this shape the two halves of the test can always be satisfied, because
         # any pair of numbers with the right sum and difference will do, and
         # these two were computed from the built part rather than derived from
-        # intent. So this entry proves nothing about the DECISION. What it does
+        # intent. So this entry proves nothing about either DECISION. What it does
         # still do, and the reason it is written out to ten places rather than
         # waved through, is PIN THE RESULT: the next change to this part, however
-        # small, breaks both sums at once and has to come back here. The decision
-        # itself is checked elsewhere -- gate A holds every dimension that moved
-        # against both of its values, gate E counts the new features on the
+        # small, breaks both sums at once and has to come back here. The decisions
+        # themselves are checked elsewhere -- gate A holds every dimension that
+        # moved against both of its values, gate E counts the new features on the
         # finished solid, and gate F measures the packing the height was derived
         # from.
         {
-            "added_mm3": 119101.4817759765,
-            "removed_mm3": 84930.4212284464,
+            "added_mm3": 127436.3830903076,
+            "removed_mm3": 84174.3145427769,
             "why": (
-                "the torso grew to carry a battery: 135 x 72 x 86 where it was "
-                "125 x 68 x 65. Ten millimetres of width for the pack's lead "
-                "chase, four of depth for the electronics deck's ledges and "
-                "twenty-one of height for the packs and the deck over them, all "
-                "of it derived in cad/wheeled_parameters.py from what has to fit "
-                "inside. The added figure also carries the ten mounting features "
-                "that came with it -- two battery rails, four posts under the "
-                "power-entry board and four deck ledges -- and the removed one "
-                "carries the tether slot and its two cable-tie slots, which went "
-                "when the umbilical did."
+                "the torso grew to carry a battery and then grew again to meet "
+                "its own hip joints: 153.9 x 72 x 86 where it was 125 x 68 x 65. "
+                "Sixteen millimetres of width for the pack and a bought 50 x 50 "
+                "distribution board beside it, four of depth for the electronics "
+                "deck's ledges, twenty-one of height for the packs and the deck "
+                "over them, and then a further 12.9 of width to bring the flank "
+                "out to the plane the hip saddle ends at, which is where the "
+                "saddle had been standing 6.45 mm proud of its own wall. All of "
+                "it derived in cad/wheeled_parameters.py -- the first three from "
+                "what has to fit inside, the last from cad/joint.py. The added "
+                "figure also carries the ten mounting features that came with the "
+                "battery -- two battery rails, four posts under the distribution "
+                "board and four deck ledges -- and the removed one carries the "
+                "tether slot and its two cable-tie slots, which went when the "
+                "umbilical did, and the material the two bays' posts and rails "
+                "vacated when they rode outboard with the wall."
             ),
         },
         {
@@ -227,10 +246,15 @@ DEVIATIONS = {
     # from 30.1 mm above the torso centre to 40.6, which is more than the lid is
     # thick, so the new one stands entirely clear of where the old one was. The
     # part is otherwise the same design at a new size -- cad/torso_shell.py's
-    # torsoLid drawn to a 135 x 72 box instead of a 125 x 68 one.
+    # torsoLid drawn to a 153.9 x 72 box instead of a 125 x 68 one.
+    #
+    # It also shows why the shell above had to fold its two resizes into one
+    # entry and this one did not. The lid does not overlap the reference at all,
+    # so widening it again adds material and removes none, and the second change
+    # states its own figure cleanly.
     "torso-cover": [
         {
-            "added_mm3": 43963.2153068376,
+            "added_mm3": 45961.9353068376,
             "removed_mm3": 38281.9353068376,
             "why": (
                 "the same lid on the same four bosses with the same lip and the "
@@ -238,6 +262,15 @@ DEVIATIONS = {
                 "made of this pelvis. It shares no volume with the lid it "
                 "replaces because the shell's top face moved further than the "
                 "lid is thick."
+            ),
+        },
+        {
+            "added_mm3": 4297.2480000000,
+            "why": (
+                "the 12.9 mm the shell gained when its flank was taken out to "
+                "the hip clevis's end plane, on a lid that is simply drawn to "
+                "whatever box it closes: 12.9 mm of the lid's own 333.12 mm2 "
+                "section, and nothing else about it changes."
             ),
         },
     ],

@@ -7,9 +7,12 @@ hip pitch axis or the actuator diameter moves the whole shell with it. The floor
 is one joint keep-out above hip pitch and nothing else; the torso bottom follows
 it rather than the other way round.
 
-The hip clevis cheeks are Ø52 discs centred on the leg axes, so they still reach
-74 mm from the centre line and the robot is still 148 mm across at the hips. The
-joints are the visible hardware, the shell is not.
+The shell is now exactly as wide as the joints it carries. Each hip clevis ends
+at its front cheek's outer face, 76.95 mm from the centre line, and
+cad/wheeled_parameters.py builds the shell's width on that plane rather than on
+the payload, so the saddle runs out flush with the flank instead of standing
+6.45 mm proud of it. The only hardware outside that plane is the two Ø26 bearing
+bosses, at 80.45, and the wheels at 104.
 """
 
 from __future__ import annotations
@@ -18,11 +21,11 @@ from build123d import Box, Cylinder, Plane, Pos
 
 from cad.electronics import (
     balancePortHeight,
+    balancePortOffsets,
     balancePortWidth,
     balancePortZ,
     batteryWidth,
     batteryX,
-    boardHoleInset,
     deckLedgeDepth,
     deckLedgeHeight,
     deckLedgeWidth,
@@ -31,10 +34,10 @@ from cad.electronics import (
     deckZ,
     disconnectZ,
     interiorHalfWidth,
-    leadChaseX,
     lowerBandZ,
-    powerDepth,
-    powerWidth,
+    panelX,
+    pdbHolePitch,
+    pdbY,
     powerX,
     xt90Length,
     xt90Width,
@@ -109,7 +112,7 @@ disconnectPortZ = disconnectZ + (xt90Width / 2)
 balanceSlotWidth = balancePortWidth + (panelClearance * 2)
 balanceSlotHeight = balancePortHeight + (panelClearance * 2)
 balanceSlotZ = balancePortZ + (balancePortHeight / 2)
-balanceSlotX = balancePortWidth / 2 + 1.5
+balanceSlotOffsets = balancePortOffsets
 # Negative Y is the rear: the foot's front pressure pads sit at y = +51 and its
 # rear pads at y = -40, and the leading leg swings to +Y.
 panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
@@ -132,13 +135,17 @@ batteryRailThickness = 3.0
 batteryRailY = 20.0
 batteryRailEndX = batteryX + (batteryWidth / 2)
 
-# THE POWER-ENTRY POSTS. Four, on the board's own corner pattern, standing from
-# the shell floor to the plane its standoffs sit on. They pass through the hip
-# saddle where they meet it and are left interpenetrating, like everything else
-# on this part.
+# THE DISTRIBUTION-BOARD POSTS. Four, standing from the shell floor to the plane
+# the board's standoffs sit on, and THE PATTERN IS THE BOARD'S RATHER THAN OURS:
+# a 45 mm square, read off the SwiftWing datasheet. That is the difference the
+# bought board makes to this part -- these four posts have to be where somebody
+# else decided, and if the board is ever swapped they move.
+#
+# They pass through the hip saddle where they meet it and are left
+# interpenetrating, like everything else on this print.
 boardPostSize = 8.0
-powerPostX = (powerWidth / 2) - boardHoleInset
-powerPostY = (powerDepth / 2) - boardHoleInset
+powerPostX = pdbHolePitch / 2
+powerPostY = pdbHolePitch / 2
 
 # THE DECK LEDGES stand on the four stations cad/electronics.py names, because
 # cad/deck.py's plate has to land on the same four. Both they and the posts above
@@ -182,13 +189,13 @@ def batteryRails() -> list:
 
 
 def powerEntryPosts() -> list:
-    """Four posts from the shell floor to the power-entry board's standoffs."""
+    """Four posts from the shell floor to the distribution board's standoffs."""
     postHeight = lowerBandZ - cavityBottomZ
     posts = []
     for sx in (1, -1):
         for sy in (1, -1):
             atX = powerX + sx * powerPostX
-            atY = sy * powerPostY
+            atY = pdbY + sy * powerPostY
             block = Pos(atX, atY, cavityBottomZ + postHeight / 2) * Box(
                 boardPostSize, boardPostSize, postHeight
             )
@@ -237,13 +244,13 @@ def pelvisShell() -> list:
         for sx in (1, -1)
     ]
 
-    disconnectPort = Pos(leadChaseX, panelWallY, disconnectPortZ) * Box(
+    disconnectPort = Pos(panelX, panelWallY, disconnectPortZ) * Box(
         disconnectPortWidth, shellWall + 4.0, disconnectPortHeight
     )
     balanceSlots = [
-        Pos(leadChaseX + sx * balanceSlotX, panelWallY, balanceSlotZ)
+        Pos(panelX + dx, panelWallY, balanceSlotZ)
         * Box(balanceSlotWidth, shellWall + 4.0, balanceSlotHeight)
-        for sx in (1, -1)
+        for dx in balanceSlotOffsets
     ]
 
     # KCL-SHAPED: slots first, into the simple box, then the cavity. Taking them
@@ -256,9 +263,11 @@ def pelvisShell() -> list:
 
     # No quarter turn: the clevis is used exactly as cad/joint.py draws it, axis
     # across the robot, because a hip pitch joint is what it was drawn for. The
-    # saddle lands in the shell floor and, being 51 mm across against a shell
-    # half-width of 59, it runs out through the lower side wall as well -- so this
-    # hip's load enters the closed section through two faces rather than one.
+    # saddle lands in the shell floor and, spanning 25.75 to 76.95 against a shell
+    # half-width of 76.95, it runs the whole way out through the lower side wall
+    # as well -- so this hip's load enters the closed section through two faces
+    # rather than one. It now STOPS in that wall's outer face rather than crossing
+    # it: the wall is built on this plane, which is what makes the flank flush.
     rightHipPitchJoint = Pos(hipCenterX, 0, hipPitchZ) * statorClevis()
 
     # The left hip is the right one reflected, not a second copy of it. The rear

@@ -49,7 +49,6 @@
   <material name="bearingSteel"><color rgba="0.788235294 0.815686275 0.835294118 1"/></material>
   <material name="canSilver"><color rgba="0.549019608 0.576470588 0.611764706 1"/></material>
   <material name="cellGrey"><color rgba="0.290196078 0.309803922 0.341176471 1"/></material>
-  <material name="componentBlack"><color rgba="0.125490196 0.137254902 0.164705882 1"/></material>
   <material name="motorGrey"><color rgba="0.349019608 0.388235294 0.423529412 1"/></material>
   <material name="pcbGreen"><color rgba="0.109803922 0.419607843 0.258823529 1"/></material>
   <material name="printedOrange"><color rgba="0.850980392 0.509803922 0.168627451 1"/></material>
@@ -58,12 +57,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="9.06087308e-05 0.00339269911 -0.0237418645" rpy="0 0 0"/>
-      <mass value="1.094069"/>
-      <inertia ixx="3.396010927e-03" ixy="1.346910118e-06" ixz="7.463960057e-07"
-               iyy="1.716776937e-03" iyz="-2.942991434e-05" izz="2.303203086e-03"/>
+      <origin xyz="9.08479295e-05 0.00653801132 -0.0236086096" rpy="0 0 0"/>
+      <mass value="1.107313"/>
+      <inertia ixx="3.724747647e-03" ixy="2.826614271e-06" ixz="9.290762243e-07"
+               iyy="1.742387159e-03" iyz="-9.900047652e-05" izz="2.628263864e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 160.3 g, measured: cad/torso.py:pelvisShell, seventeen bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 170.1 g, measured: cad/torso.py:pelvisShell, seventeen bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -71,7 +70,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- torso cover — 46.6 g, measured: cad/torso.py:torsoCover -->
+    <!-- torso cover — 53.2 g, measured: cad/torso.py:torsoCover -->
     <visual name="torso_cover">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -79,7 +78,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 29.1 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 33.1 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -121,19 +120,11 @@
     </visual>
     <!-- battery — 288.0 g, estimate: two 3S 2200 mAh LiPo bricks in series, 144 g each. CATALOGUE FIGURE, NEVER WEIGHED -->
     <visual name="battery">
-      <origin xyz="0 0.0241 -0.013" rpy="0 0 0"/>
+      <origin xyz="0 0.03355 -0.013" rpy="0 0 0"/>
       <geometry>
         <box size="0.054 0.078 0.036"/>
       </geometry>
       <material name="cellGrey"/>
-    </visual>
-    <!-- logic DC/DC — 25.0 g, assumption: 24 V to 5 V buck module, the heaviest item in the 85 g wiring line -->
-    <visual name="logic_dc_dc">
-      <origin xyz="0 -0.0501 0.015" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.042 0.026 0.014"/>
-      </geometry>
-      <material name="componentBlack"/>
     </visual>
     <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
     <visual name="sbc">
@@ -145,7 +136,7 @@
     </visual>
     <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
     <visual name="controller_carrier">
-      <origin xyz="0 0.0251 0.014" rpy="0 0 0"/>
+      <origin xyz="0 0.03455 0.014" rpy="0 0 0"/>
       <geometry>
         <box size="0.046 0.076 0.012"/>
       </geometry>
@@ -161,16 +152,16 @@
     </visual>
     <!-- power entry — 60.0 g, estimate: capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED – docs/BOM.md red line -->
     <visual name="power_entry">
-      <origin xyz="0 -0.0441 -0.016" rpy="0 0 0"/>
+      <origin xyz="0 -0.04655 -0.013" rpy="0 0 0"/>
       <geometry>
-        <box size="0.062 0.038 0.03"/>
+        <box size="0.054 0.052 0.036"/>
       </geometry>
       <material name="canSilver"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.072 0.135 0.086"/>
+        <box size="0.072 0.1539 0.086"/>
       </geometry>
     </collision>
     <collision>
@@ -189,12 +180,12 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="-9.85746706e-05 -0.00442502079 -0.0947979178" rpy="0 0 0"/>
-      <mass value="0.196924"/>
-      <inertia ixx="2.058915951e-04" ixy="-3.401895745e-07" ixz="-1.980409842e-07"
-               iyy="1.970170655e-04" iyz="3.584245864e-05" izz="5.810717703e-05"/>
+      <origin xyz="-9.84337366e-05 -0.00441673449 -0.0948151189" rpy="0 0 0"/>
+      <mass value="0.196831"/>
+      <inertia ixx="2.055246324e-04" ixy="-3.397031993e-07" ixz="-1.973917109e-07"
+               iyy="1.966479401e-04" iyz="3.578309633e-05" izz="5.804633159e-05"/>
     </inertial>
-    <!-- thigh limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, right — 34.4 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -228,12 +219,12 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="-0.000101090067 0.0039523064 -0.0972169402" rpy="0 0 0"/>
-      <mass value="0.192024"/>
-      <inertia ixx="1.589521494e-04" ixy="3.493657623e-07" ixz="-1.510836577e-07"
-               iyy="1.517975455e-04" iyz="-2.701784383e-05" izz="5.632590366e-05"/>
+      <origin xyz="-9.99749321e-05 0.00394446655 -0.0972361572" rpy="0 0 0"/>
+      <mass value="0.191940"/>
+      <inertia ixx="1.585714523e-04" ixy="3.455118728e-07" ixz="-1.489830660e-07"
+               iyy="1.514168657e-04" iyz="-2.695143057e-05" izz="5.627038735e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, right — 34.4 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -259,12 +250,12 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="2.9115046e-16 -0.0365395724 1.13925065e-15" rpy="0 0 0"/>
-      <mass value="0.076158"/>
-      <inertia ixx="3.747094974e-05" ixy="-5.295981416e-20" ixz="6.035464661e-19"
-               iyy="6.487085522e-05" iyz="-2.073196744e-19" izz="3.747094974e-05"/>
+      <origin xyz="-6.72005247e-11 -0.0365452759 -4.74623959e-11" rpy="0 0 0"/>
+      <mass value="0.076116"/>
+      <inertia ixx="3.745738474e-05" ixy="4.894961215e-16" ixz="3.317881715e-14"
+               iyy="6.485998237e-05" iyz="3.549586141e-16" izz="3.745738460e-05"/>
     </inertial>
-    <!-- wheel adapter, right — 13.2 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, right — 13.1 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -298,12 +289,12 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="-9.85746706e-05 0.00442502079 -0.0947979178" rpy="0 0 0"/>
-      <mass value="0.196924"/>
-      <inertia ixx="2.058915951e-04" ixy="3.401895745e-07" ixz="-1.980409842e-07"
-               iyy="1.970170655e-04" iyz="-3.584245864e-05" izz="5.810717703e-05"/>
+      <origin xyz="-9.74862267e-05 0.00441757689 -0.0948156289" rpy="0 0 0"/>
+      <mass value="0.196840"/>
+      <inertia ixx="2.055296680e-04" ixy="3.364332618e-07" ixz="-1.954310777e-07"
+               iyy="1.966537497e-04" iyz="-3.578133644e-05" izz="5.805306452e-05"/>
     </inertial>
-    <!-- thigh limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, left — 34.4 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="thigh_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -337,12 +328,12 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="-0.000101090067 -0.0039523064 -0.0972169402" rpy="0 0 0"/>
-      <mass value="0.192024"/>
-      <inertia ixx="1.589521494e-04" ixy="-3.493657623e-07" ixz="-1.510836577e-07"
-               iyy="1.517975455e-04" iyz="2.701784383e-05" izz="5.632590366e-05"/>
+      <origin xyz="-0.000100946755 -0.00394357933 -0.0972357535" rpy="0 0 0"/>
+      <mass value="0.191931"/>
+      <inertia ixx="1.585666883e-04" ixy="-3.488704771e-07" ixz="-1.504924461e-07"
+               iyy="1.514114857e-04" iyz="2.695282575e-05" izz="5.626349446e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 34.5 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, left — 34.4 g, measured: cad/limb.py, 105 mm, five bodies -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -368,12 +359,12 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="2.91184216e-16 0.0365395724 1.13928441e-15" rpy="0 0 0"/>
-      <mass value="0.076158"/>
-      <inertia ixx="3.747094974e-05" ixy="5.292212457e-20" ixz="6.035629194e-19"
-               iyy="6.487085522e-05" iyz="2.074300651e-19" izz="3.747094974e-05"/>
+      <origin xyz="-6.72005248e-11 0.0365452759 -4.74623959e-11" rpy="0 0 0"/>
+      <mass value="0.076116"/>
+      <inertia ixx="3.745738474e-05" ixy="-4.894960132e-16" ixz="3.317881714e-14"
+               iyy="6.485998237e-05" iyz="-3.549585719e-16" izz="3.745738460e-05"/>
     </inertial>
-    <!-- wheel adapter, left — 13.2 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, left — 13.1 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>

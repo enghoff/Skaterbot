@@ -98,6 +98,14 @@ rearBoltOffset = actuatorRearBoltOffset
 rotorHubCenterX = rotorHubInnerX + rotorHubThickness / 2
 shellInnerDepth = shellDepth - (shellWall * 2)
 
+# The outboard end of the clevis, and the reason it is a name rather than a sum
+# spelled out where it is used. The front cheek's outer face and the saddle's
+# outboard end are the same plane -- the saddle spans from the rear cheek's outer
+# face to this one -- so this is the last plane of printed structure on a joint,
+# with only the bearing boss standing proud of it. cad/wheeled_parameters.py
+# builds the pelvis's width on it so that the torso's side wall lands here too.
+clevisOuterX = frontCheekX + cheekThickness / 2
+
 # Both ends are the same height whatever limb they belong to: the saddle and the
 # bridge each start one actuator radius plus a millimetre clear of the joint.
 saddleHeight = 12.0
@@ -187,17 +195,16 @@ def statorClevis():
     # The seat cutter runs 1 mm past the cheek's inner face rather than stopping
     # on it, and the shoulder bore starts inside the seat it is cut through, so
     # neither cut ends coplanar with a face it does not mean to touch.
-    cheekOuterX = frontCheekX + cheekThickness / 2
     frontSeatBoss = _disc(
         bearingSeatBossDiameter,
         bearingSeatBossThickness,
-        cheekOuterX + bearingSeatBossThickness / 2,
+        clevisOuterX + bearingSeatBossThickness / 2,
     )
     frontBearingSeat = _disc(bearingSeatDiameter, bearingWidth + 2.0, frontCheekX)
     frontShoulderBore = _disc(
         bearingSeatShoulderBore,
         bearingSeatBossThickness + 2.0,
-        cheekOuterX + (bearingSeatBossThickness + 2.0) / 2,
+        clevisOuterX + (bearingSeatBossThickness + 2.0) / 2,
     )
 
     # KCL-SHAPED: each cut is taken on the simple body it belongs to, before

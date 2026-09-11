@@ -199,9 +199,15 @@ total_g = 100.0
 note = "SBC, CAN wiring and looms. docs/BOM.md estimate; nothing is in hand."
 
 [[fixed]]
-label = "Power entry — capacitors, fuse, terminal"
+label = "Power entry — capacitor bank and fuse"
 total_g = 60.0
-note = """Allowance, and still one of the softest figures in the table. THE BANK'S JOB CHANGED WITH THE BATTERY AND ITS SIZE HAS NOT BEEN RE-DERIVED. It was sized to be the bus's only regeneration sink, because a bench supply cannot take current back; the pack is that sink now, and what is left for the bank is local decoupling and lead inductance. That is a reason to expect it to shrink, and expecting is not measuring, so both the reservation and this figure stand until the bus excursion is measured. docs/BOM.md red line."""
+note = """Allowance, and still one of the softest figures in the table. THE BANK'S JOB CHANGED WITH THE BATTERY AND ITS SIZE HAS NOT BEEN RE-DERIVED. It was sized to be the bus's only regeneration sink, because a bench supply cannot take current back; the pack is that sink now, and what is left for the bank is local decoupling and lead inductance. That is a reason to expect it to shrink, and expecting is not measuring, so both the reservation and this figure stand until the bus excursion is measured. The bus TERMINAL this line used to include is gone -- the bought distribution board's own copper is the strip the six branches land on. docs/BOM.md red line."""
+
+[[fixed]]
+label = "Distribution board"
+each_g = 13.0
+count = 1
+note = """SwiftWing PDB-02-XT60: 50 x 50 x 1.6 mm, 4-layer 2 oz copper, an XT60 socket and six pairs of solder tabs, 3S-6S. CATALOGUE FIGURE from the v1.2 datasheet, which is better than most lines here -- it is a published number for a specific part rather than an allowance. It replaces a PCB this project was going to lay out and have fabricated, and it is why the shell is 141 mm wide rather than 135: at 50 mm square it is 12 wider than the bay the custom board needed. Its stated 26 V maximum is the one figure on it that does not match this application and wants confirming -- there are no active parts on the board, so it should be a statement of scope."""
 
 [[fixed]]
 label = "Battery — 6S 2200 mAh, two 3S packs in series"
@@ -211,5 +217,5 @@ note = """Gens Ace class 3S 2200 mAh 35C soft-case LiPo, 76 x 33 x 25 mm and 144
 
 [[fixed]]
 label = "Battery wiring, connectors and mounts"
-total_g = 85.0
-note = """ESTIMATE, nothing weighed, and a line the budget did not have at all while the robot was tethered. It is the pack harness plus everything that holds the payload down: the XT60 series link and pack leads, the panel-mounted XT90-S anti-spark disconnect, two JST-XH balance-lead extensions, the INA226 bus monitor, the 24 V to 5 V DC/DC module and the twelve board standoffs. The DC/DC is the heaviest single item at about 25 g. docs/BOM.md section 1 lists them one by one."""
+total_g = 65.0
+note = """ESTIMATE, nothing weighed, and a line the budget did not have at all while the robot was tethered. It is the pack harness plus everything that holds the payload down: the XT60 series harness and pack leads, the panel-mounted XT90-S anti-spark disconnect, two JST-XH balance-lead extensions, the INA226 bus monitor, the Matek 12S Pro BEC and the board standoffs. DOWN FROM 85 g, and the 20 is one line: the logic converter was a generic buck module estimated at 25 g and it is a Matek BEC now, 35 x 24 x 5.5 mm and 5 g to catalogue. Nothing else in this lump has been re-estimated. docs/BOM.md section 1 lists them one by one."""
