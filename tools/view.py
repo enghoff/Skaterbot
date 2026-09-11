@@ -44,14 +44,40 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
-def whole_robot(finished: bool = False, size: float = 0.5):
-    """The neutral assembly, grouped so each material reads as itself.
+def _piece(label: str, bodies, colour):
+    """One piece of the machine, as one node of the viewer's tree.
 
-    With `finished`, the two PRINTED groups get their outer edges broken. The
+    A piece drawn as several interpenetrating bodies -- which here is most of
+    them -- becomes a named node with its shells underneath, so the tree says
+    "thigh" once and keeps the five bodies it is made of behind that. A piece
+    that is a single body is shown as that body, rather than as a node with one
+    thing in it.
+    """
+    from build123d import Color, Compound
+
+    bodies = list(bodies)
+    for i, body in enumerate(bodies):
+        body.color = Color(colour)
+        body.label = label if len(bodies) == 1 else f"{label} {i + 1}"
+    if len(bodies) == 1:
+        return bodies[0]
+    return Compound(children=bodies, label=label)
+
+
+def whole_robot(finished: bool = False, size: float = 0.5):
+    """The neutral assembly, as the tree the machine actually is.
+
+    Torso, left leg, right leg; and within a leg the three actuators, the thigh,
+    the shin and the wheel module, in the order they are stacked. Colour still
+    says what a thing is made of, but the tree now says what it IS, so hiding a
+    leg hides its wheel -- which a flat list of thirty-three bodies all called
+    "printed structure" could not do.
+
+    With `finished`, every printed piece gets its outer edges broken. The
     actuators, the wheels and the clamp hardware are bought and are left alone --
     nothing chamfers a motor casing.
     """
-    from build123d import Axis, Plane, Pos, mirror
+    from build123d import Axis, Compound, Plane, Pos, mirror
 
     from cad import parameters as P
     from cad.actuator import actuatorAssembly
@@ -71,66 +97,100 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         wheeledTorsoCenterHeight,
     )
 
+    sides = {"left leg": -1, "right leg": 1}
+    thigh_of = {-1: thighLeft, 1: thighRight}
+    shin_of = {-1: shinLeft, 1: shinRight}
+    adapter_of = {-1: wheelAdapterLeft, 1: wheelAdapterRight}
+
     def motor(x, z, spin):
         return [Pos(x, 0, z) * b.rotate(Axis.Y, spin) for b in actuatorAssembly()]
 
-    motors = (
-        motor(-hipCenterX, wheeledHipPitchAxisHeight, -90)
-        + motor(-hipCenterX, wheeledKneeAxisHeight, 90)
-        + motor(-hipCenterX, prototypeWheelAxisHeight, -90)
-        + motor(hipCenterX, wheeledHipPitchAxisHeight, 90)
-        + motor(hipCenterX, wheeledKneeAxisHeight, -90)
-        + motor(hipCenterX, prototypeWheelAxisHeight, 90)
-    )
+    # The printed pieces are gathered before anything is assembled, and kept
+    # piece by piece, because the finish pass has to know where each piece ends:
+    # it decides which arrises are real by merging a piece's bodies, and a thigh
+    # and a shin are as interpenetrating at the knee as two bodies of either one.
+    torso_at = Pos(0, 0, wheeledTorsoCenterHeight)
+    printed = {
+        ("torso", "pelvis shell"): [torso_at * b for b in pelvisShell()],
+        ("torso", "cover"): [torso_at * torsoCover()],
+    }
+    for leg, sign in sides.items():
+        x = sign * hipCenterX
+        printed[leg, "thigh"] = [
+            Pos(x, 0, wheeledThighCenterZ) * b for b in thigh_of[sign]()
+        ]
+        printed[leg, "shin"] = [
+            Pos(x, 0, wheeledShinCenterZ) * b for b in shin_of[sign]()
+        ]
+        printed[leg, "wheel adapter"] = [
+            Pos(x, 0, prototypeWheelAxisHeight) * b for b in adapter_of[sign]()
+        ]
 
-    # Kept as a list of PIECES rather than one flat list of bodies, because the
-    # finish pass has to know where each piece ends: it decides which arrises are
-    # real by merging a piece's bodies, and a thigh and a shin are as
-    # interpenetrating at the knee as two bodies of either one.
-    printed_pieces = [
-        [Pos(-hipCenterX, 0, wheeledThighCenterZ) * b for b in thighLeft()],
-        [Pos(hipCenterX, 0, wheeledThighCenterZ) * b for b in thighRight()],
-        [Pos(-hipCenterX, 0, wheeledShinCenterZ) * b for b in shinLeft()],
-        [Pos(hipCenterX, 0, wheeledShinCenterZ) * b for b in shinRight()],
-        [Pos(-hipCenterX, 0, prototypeWheelAxisHeight) * b for b in wheelAdapterLeft()],
-        [Pos(hipCenterX, 0, prototypeWheelAxisHeight) * b for b in wheelAdapterRight()],
-        [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in pelvisShell()],
-    ]
-    printed = [body for piece in printed_pieces for body in piece]
+    if finished:
+        from cad.finish import chamfered_pieces
 
-    hubs, treads, clamps = [], [], []
-    for sign in (-1, 1):
+        pieces, cut, sharp = chamfered_pieces(printed.values(), size)
+        printed = dict(zip(printed, pieces))
+        print(
+            f"finished: {cut} edges chamfered, {sharp} left sharp (printed parts only)"
+        )
+
+    def wheel_module(leg, sign):
+        """The printed adapter, the skate wheel it carries, and its clamp."""
         at = Pos(sign * hipCenterX, 0, prototypeWheelAxisHeight)
-        hub, tread = skateWheelHub(), skateWheelTread()
-        clamp = _clampHardware()
+        hub, tread, clamp = skateWheelHub(), skateWheelTread(), _clampHardware()
         if sign < 0:
             hub = mirror(hub, Plane.YZ)
             tread = mirror(tread, Plane.YZ)
             clamp = [mirror(c, Plane.YZ) for c in clamp]
-        hubs.append(at * hub)
-        treads.append(at * tread)
-        clamps += [at * c for c in clamp]
-
-    cover = [Pos(0, 0, wheeledTorsoCenterHeight) * torsoCover()]
-
-    if finished:
-        from cad.finish import chamfered, chamfered_pieces
-
-        printed, cut_a, sharp_a = chamfered_pieces(printed_pieces, size)
-        cover, cut_b, sharp_b = chamfered(cover, size)
-        print(
-            f"finished: {cut_a + cut_b} edges chamfered, "
-            f"{sharp_a + sharp_b} left sharp (printed parts only)"
+        return Compound(
+            children=[
+                _piece("adapter", printed[leg, "wheel adapter"], P.printedOrange),
+                _piece("hub", [at * hub], P.printedDark),
+                _piece("tyre", [at * tread], P.soleBlack),
+                _piece("clamp hardware", [at * c for c in clamp], P.bearingSteel),
+            ],
+            label="wheel module",
         )
 
-    return {
-        "printed structure": (printed, P.printedOrange),
-        "torso cover": (cover, P.printedDark),
-        "actuators": (motors, P.motorGrey),
-        "wheel hubs": (hubs, P.printedDark),
-        "tyres": (treads, P.soleBlack),
-        "clamp hardware": (clamps, P.bearingSteel),
-    }
+    def one_leg(leg, sign):
+        """Hip to tyre, in the order the joints are stacked."""
+        x = sign * hipCenterX
+        return Compound(
+            children=[
+                _piece(
+                    "hip pitch actuator",
+                    motor(x, wheeledHipPitchAxisHeight, sign * 90),
+                    P.motorGrey,
+                ),
+                _piece("thigh", printed[leg, "thigh"], P.printedOrange),
+                _piece(
+                    "knee actuator",
+                    motor(x, wheeledKneeAxisHeight, -sign * 90),
+                    P.motorGrey,
+                ),
+                _piece("shin", printed[leg, "shin"], P.printedOrange),
+                _piece(
+                    "wheel actuator",
+                    motor(x, prototypeWheelAxisHeight, sign * 90),
+                    P.motorGrey,
+                ),
+                wheel_module(leg, sign),
+            ],
+            label=leg,
+        )
+
+    torso = Compound(
+        children=[
+            _piece("pelvis shell", printed["torso", "pelvis shell"], P.printedOrange),
+            _piece("cover", printed["torso", "cover"], P.printedDark),
+        ],
+        label="torso",
+    )
+    return Compound(
+        children=[torso] + [one_leg(leg, sign) for leg, sign in sides.items()],
+        label="robot",
+    )
 
 
 def _describe(raw, finished) -> str:
@@ -212,7 +272,6 @@ def main() -> int:
         return 0
 
     import ocp_vscode
-    from build123d import Color
 
     ocp_vscode.set_port(args.port)
 
@@ -234,23 +293,17 @@ def main() -> int:
                 print("  " + _describe(raw, bodies))
         if not isinstance(bodies, (list, tuple)):
             bodies = [bodies]
-        for body in bodies:
-            body.color = Color(printedOrange)
-        ocp_vscode.show(
-            *bodies, names=[f"{args.piece}-{i}" for i in range(len(bodies))]
-        )
+        ocp_vscode.show(_piece(args.piece, bodies, printedOrange))
         print(f"showing {args.piece}: {len(bodies)} bodies")
         return 0
 
-    grouped = whole_robot(finished=args.finished, size=args.size or 0.5)
-    objs, names = [], []
-    for label, (bodies, colour) in grouped.items():
-        for i, body in enumerate(bodies):
-            body.color = Color(colour)
-            objs.append(body)
-            names.append(f"{label} {i}")
-    ocp_vscode.show(*objs, names=names)
-    print(f"showing the robot: {len(objs)} bodies in {len(grouped)} groups")
+    robot = whole_robot(finished=args.finished, size=args.size or 0.5)
+    # One object, not a list: the viewer's tree is the assembly's own tree, so
+    # the names and the nesting come from the labels rather than from a parallel
+    # list of strings that has to be kept in step with the bodies.
+    ocp_vscode.show(robot)
+    parts = sum(len(leg.children) for leg in robot.children)
+    print(f"showing the robot: {len(robot.solids())} bodies in {parts} components")
     return 0
 
 

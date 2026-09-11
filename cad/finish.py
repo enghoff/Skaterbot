@@ -447,20 +447,25 @@ def chamfered(bodies, size: float = CHAMFER) -> tuple:
 
 
 def chamfered_pieces(pieces, size: float = CHAMFER) -> tuple:
-    """Several pieces, each finished as itself, flattened into one list.
+    """Several pieces, each finished as itself, and handed back piece by piece.
 
-    For a caller that wants a whole assembly's printed bodies in one bucket --
-    tools/view.py does. It has to say where each piece ends, because nothing can
-    work that out from a flat list: two parts of an assembly are as
-    interpenetrating as two bodies of one part, and guessing from that is how a
-    thigh and a shin end up merged into a single "piece" at the knee and lose the
-    arrises where they meet.
+    The pieces stay separate on the way in AND on the way out. Separate on the
+    way in because nothing can work out where one piece ends from a flat list of
+    bodies: two parts of an assembly are as interpenetrating as two bodies of one
+    part, and guessing from that is how a thigh and a shin end up merged into a
+    single "piece" at the knee and lose the arrises where they meet. Separate on
+    the way out because the caller knows what each piece is -- tools/view.py puts
+    each one under its own name in the viewer's tree -- and re-splitting a
+    flattened list by counting bodies is a way to get that wrong.
+
+    Returns (list_of_pieces, chamfered_edge_count, skipped_edge_count), where
+    each piece is the list of bodies chamfered() gave back for it.
     """
-    bodies: list = []
+    finished_pieces: list = []
     done = skipped = 0
     for piece in pieces:
         finished, d, s = chamfered(piece, size)
-        bodies += finished
+        finished_pieces.append(finished)
         done += d
         skipped += s
-    return bodies, done, skipped
+    return finished_pieces, done, skipped
