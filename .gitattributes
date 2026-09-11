@@ -19,3 +19,8 @@
 # PDFs are binary; never eol-convert them
 *.pdf -text
 *.PDF -text
+
+# The launch scripts at the project root. cmd.exe wants CRLF and sh chokes on a
+# carriage return, so neither can be left to core.autocrlf.
+*.cmd   text eol=crlf
+*.sh    text eol=lf
