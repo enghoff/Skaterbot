@@ -128,6 +128,20 @@ DEVIATIONS = {
                 "on the piece the wheeled robot actually prints."
             ),
         },
+        {
+            "added_mm3": 8.5686735,
+            "why": (
+                "the waist's two bottom corners carry down to where the Ø52 "
+                "stator plate's rim has come out to the waist's own 20 mm. The "
+                "end of the waist is held a cap head clear of the rear bolts, "
+                "1.28 mm short of that, so the limb's outline dipped in to "
+                "follow the rim and then stepped back out to the flank: a notch "
+                "1.14 mm deep at each corner with the waist's end face showing "
+                "as a ledge in the floor of it. Same class of accident as the "
+                "1 mm silhouette step above, one corner away on the same joint, "
+                "and found the same way -- by looking at the finished part."
+            ),
+        },
     ],
 }
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]

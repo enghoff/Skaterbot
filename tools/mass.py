@@ -78,13 +78,14 @@ EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
         +0.4,
         "the connector relief cut flush with the waist adds 206 mm3 to each of "
-        "the two plates and the register pocket cut clear of the waist takes "
-        "11 mm3 off, so +195 mm3 a limb, twice over on the pair. Gate B holds "
-        "the volumes exactly",
+        "the two plates, the register pocket cut clear of the waist takes "
+        "11 mm3 off and the waist's two bottom corners carried down to the "
+        "plate's rim add 9, so +204 mm3 a limb, twice over on the pair. Gate B "
+        "holds the volumes exactly",
     ),
     "cad/shin.py": (
         +0.4,
-        "the same two changes on the same shared limb geometry",
+        "the same three changes on the same shared limb geometry",
     ),
 }
 

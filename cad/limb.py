@@ -61,6 +61,7 @@ from cad.parameters import (
     m3CapHeadStandoff,
     rotorHubDiameter,
     rotorHubInnerX,
+    statorPlateDiameter,
 )
 
 
@@ -94,6 +95,44 @@ def limbAssembly(limbLength: float) -> list:
         waistUpperZ - waistLowerZ,
         align=(Align.MIN, Align.MIN, Align.MIN),
     )
+
+    # THE WAIST'S TWO BOTTOM CORNERS REACH FURTHER DOWN THAN THE REST OF IT.
+    #
+    # The end above is held a cap head clear of the rear bolts, and at that
+    # height the Ø52 stator plate's own rim has come out to only 18.86 mm of the
+    # waist's 20. So the limb's outline dipped in to follow the rim for 1.28 mm
+    # and then stepped back out to the flank, leaving a notch at each bottom
+    # corner 1.14 mm deep, with the waist's end face showing as a ledge in the
+    # floor of it. Nobody drew that: it is the same accident as the 1 mm step in
+    # the silhouette that statorPlateFlatOffset was introduced to cure, one
+    # corner away on the same joint.
+    #
+    # Taking the corners off instead does not work. The flank is 40 mm wide for
+    # the whole length of the limb and the plate is a Ø52 disc, so above this
+    # point the waist is LEGITIMATELY outside the rim and trimming it back would
+    # only move the step rather than remove it. Carrying the corners down to
+    # where the rim is 20 mm wide closes it for good: on the inboard side the
+    # flank runs flush into the connector relief, which is cut at that same
+    # 20 mm, and on the outboard side it runs tangent into the rim.
+    #
+    # Only the corners can go down. The middle of the end stays where the bolts
+    # put it, and this reaches no further inboard than y = 17.90, which leaves
+    # the nearest bolt centre 4.00 mm -- more than the 3.40 the whole end is
+    # already held to.
+    cornerHalfWidth = limbWaistDepth / 2
+    cornerDepth = cornerHalfWidth - (actuatorRearBoltOffset + m3CapHeadStandoff)
+    cornerFlushZ = -jointZ + sqrt((statorPlateDiameter / 2) ** 2 - cornerHalfWidth**2)
+    for side in (1, -1):
+        waistBlank += Pos(
+            rotorHubInnerX,
+            side * (cornerHalfWidth - cornerDepth / 2),
+            cornerFlushZ,
+        ) * Box(
+            limbPlateThickness,
+            cornerDepth,
+            waistLowerZ - cornerFlushZ,
+            align=(Align.MIN, Align.CENTER, Align.MIN),
+        )
 
     # The waist has to cut itself clear of the rotor disc's register pocket,
     # because it reaches far enough into the disc to fill part of it in.
