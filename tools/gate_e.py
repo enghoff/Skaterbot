@@ -278,6 +278,84 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
     }
 
 
+def panel_openings() -> dict[str, list[tuple[str, tuple, tuple]]]:
+    """piece -> [(what it is, centre, the box the opening must clear), ...]
+
+    RECTANGULAR CUTS, WHICH cylinder_radii() CANNOT SEE AT ALL. A panel cutout
+    leaves four planar faces and not one arc, so a wall that closed back over one
+    would pass every assertion above it in this file. That matters more than it
+    used to: the rear wall is three connectors now, and one of them is the only
+    way to charge the pack without opening the torso.
+
+    Each opening is asked two questions rather than one -- is it empty, and is
+    there wall around it -- because an opening drawn off the end of the part
+    would answer the first perfectly and mean nothing.
+    """
+    from cad.electronics import panelX
+    from cad.parameters import shellWall
+    from cad.torso import (
+        balanceSlotHeight,
+        balanceSlotWidth,
+        balanceSlotX,
+        balanceSlotZ,
+        chargeSlotHeight,
+        chargeSlotWidth,
+        chargeSlotX,
+        chargeSlotZ,
+        disconnectPortHeight,
+        disconnectPortWidth,
+        disconnectPortZ,
+        panelWallY,
+    )
+
+    def wall(x, z, w, h):
+        return ((x, panelWallY, z), (w, shellWall, h))
+
+    return {
+        "pelvis-shell": [
+            (
+                "XT90-S disconnect, the pack's way off the bus",
+                *wall(
+                    panelX, disconnectPortZ, disconnectPortWidth, disconnectPortHeight
+                ),
+            ),
+            (
+                "6S balance port, both packs' tails on one connector",
+                *wall(
+                    panelX + balanceSlotX,
+                    balanceSlotZ,
+                    balanceSlotWidth,
+                    balanceSlotHeight,
+                ),
+            ),
+            (
+                "charge port, across the pack ahead of the disconnect",
+                *wall(
+                    panelX + chargeSlotX, chargeSlotZ, chargeSlotWidth, chargeSlotHeight
+                ),
+            ),
+        ]
+    }
+
+
+def opening_material(part, centre, size, margin: float = 1.0) -> tuple[float, float]:
+    """(material standing in the opening, material in the frame around it), mm3."""
+    from build123d import Box, Pos
+
+    cx, cy, cz = centre
+    w, d, h = size
+
+    def shared(solid):
+        both = part & solid
+        return 0.0 if both is None else both.volume
+
+    # Inside the opening, held 0.1 mm off its own faces so a coincident face is
+    # not mistaken for material.
+    inner = Pos(cx, cy, cz) * Box(w - 0.2, d, h - 0.2)
+    outer = Pos(cx, cy, cz) * Box(w + margin * 2, d + margin * 2, h + margin * 2)
+    return shared(inner), shared(outer - inner)
+
+
 def registry() -> dict[str, callable]:
     from cad import deck, electronics, joint, thigh, torso
 
@@ -304,13 +382,15 @@ def main() -> int:
     built = registry()
     declared = expectations()
     pockets = complete_pockets()
-    wanted = args.pieces or sorted(set(declared) | set(pockets))
+    openings = panel_openings()
+    wanted = args.pieces or sorted(set(declared) | set(pockets) | set(openings))
 
     failures = 0
     for name in wanted:
         rows = declared.get(name, [])
         whole = pockets.get(name, [])
-        if not (rows or whole) or name not in built:
+        cuts = openings.get(name, [])
+        if not (rows or whole or cuts) or name not in built:
             print(f"{name}: nothing declared yet")
             failures += 1
             continue
@@ -333,6 +413,16 @@ def main() -> int:
             failures += 0 if ok else 1
             mark = "  ok  " if ok else " FAIL "
             print(f" {mark} 360 deg at r{radius:<7.3f}  found {span:6.2f}   {what}")
+        for what, centre, size in cuts:
+            standing, frame = opening_material(part, centre, size)
+            ok = standing <= 1e-6 and frame > 1.0
+            failures += 0 if ok else 1
+            mark = "  ok  " if ok else " FAIL "
+            print(
+                f" {mark} opening {size[0]:5.1f} x {size[2]:4.1f}"
+                f"  {standing:7.3f} mm3 standing in it, {frame:8.1f} mm3 of wall round it"
+                f"   {what}"
+            )
 
     print()
     print("gate E: FAIL" if failures else "gate E: pass")

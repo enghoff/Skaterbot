@@ -239,11 +239,32 @@ xt60Height = 7.5
 xt90Length = 20.5
 xt90Width = 15.5
 xt90Depth = 21.0
-# JST-XH 4-pin, the balance-lead port. Two of them, one per 3S pack, brought out
-# through the rear wall so that charging does not mean opening the torso.
-balancePortWidth = 12.5
+# JST-XH 7-pin, the balance port, and there is ONE of it where there were two.
+# The two packs' 4-pin tails are merged inside the shell instead of outside it,
+# so the charger sees the pair as the single 6S pack they are wired as and
+# charges them in one session. That merge could have been a two-into-one adapter
+# on the bench, but nothing of the sort is stocked in India and everything sold
+# as a "2S-6S balance board" is a parallel breakout, which across a series pair
+# is a short. Made once, inside, it can be metered and then left alone.
+#
+# THE MERGE LEAVES ONE PIN OUT. Pack A's negative tap and pack B's positive tap
+# are the same node only because the series harness joins them, so only one of
+# them is wired to the 7-pin -- otherwise 22 AWG sense wire would stand in for
+# that harness the moment it was unplugged.
+balancePortWidth = 19.5
 balancePortHeight = 7.0
 balancePortDepth = 8.0
+# AMASS XT30, the charge port: the pack's own terminals brought out AHEAD of the
+# disconnect, so a charger reaches the cells with the bus dead. Charging through
+# the XT90-S instead leaves six actuator controllers, the BEC and the SBC sitting
+# across the charger at something like half an amp, and a constant-voltage taper
+# never falls below that, so the charge never terminates and the pack is held at
+# 25.2 V for as long as it stays plugged in. XT30 rather than XT60 deliberately:
+# 2.2 A at 1C needs nothing bigger, and no two connectors on this panel should
+# mate with each other.
+chargePortWidth = 11.0
+chargePortHeight = 6.2
+chargePortDepth = 15.0
 # INA226 bus monitor and its shunt, on the power-entry board. New hardware: the
 # controller has had no way to read pack state, which matters on a battery in a
 # way it never did on a bench supply.
@@ -272,8 +293,8 @@ loomRunY = -30.3
 # The distribution board fills the floor of this bay and reaches 50 mm forward of
 # a wall that is only 67.2 from the other one, so an XT90-S protruding 21 mm
 # cannot share a height with it. It goes ABOVE the board instead, in the 23 mm of
-# air the bay has over it, with the balance ports above that -- which is also the
-# order a hand meets them.
+# air the bay has over it, with the balance port above that and the charge port
+# outboard of it -- which is also the order a hand meets them.
 pdbY = 0.0
 pdbBoardZ = lowerBandZ + standoffHeight
 pdbTopZ = pdbBoardZ + pdbThickness
@@ -285,10 +306,16 @@ batteryLeadZ = saddleTopZ + (batteryPackWidth / 2)
 # that, and the connectors straddle the wall rather than hanging off its inside
 # face, so each reaches about 10 mm in rather than its full body length.
 panelX = powerX - 10.0
-# BOTH BALANCE PORTS GO OUTBOARD of the disconnect rather than one either side of
-# it. The pack's own connectors live at this bay's inboard end, above the fuse
-# and the monitor, and a port on that side would sit directly behind them.
-balancePortOffsets = (8.0, 22.0)
+# BOTH REMAINING PANEL ITEMS GO OUTBOARD of the disconnect rather than one either
+# side of it. The pack's own connectors live at this bay's inboard end, above the
+# fuse and the monitor, and a port on that side would sit directly behind them.
+# The balance port takes the upper band the two 4-pin ports used to share; the
+# charge port goes in the air outboard of the disconnect and below it, which is
+# the only pocket in this wall deep enough for a connector body and not already
+# spoken for by the board, the fuse or the bus monitor.
+balancePortOffset = 15.0
+chargePortOffset = 24.0
+chargePortZ = disconnectZ + 5.4
 # Where the pack's own connectors sit: above the fuse and the monitor, clear of
 # the disconnect that reaches in over the board's rear edge.
 packLeadZ = pdbTopZ + 17.0
@@ -557,18 +584,20 @@ def torsoElectronicsGroups() -> dict[str, list]:
     return {
         # ---- the battery ----------------------------------------------------
         "battery packs": batteryPacks(),
-        # Two 4-way balance leads, one per pack, run to the ports in the rear
-        # wall. They are what makes charging possible without opening the lid.
+        # Two 4-way balance leads, one per pack, running to the single 7-way
+        # port in the rear wall where they are joined. They are what makes
+        # charging possible without opening the lid, and joining them here
+        # rather than outside is what makes it one charge instead of two.
         "battery balance leads": [
             slab(
                 balanceLeadWidth,
                 10.0,
                 balanceLeadThickness,
-                panelX + dx,
+                panelX + balancePortOffset + dx,
                 rearWallY + balancePortDepth + 5.0,
                 balancePortZ + (balancePortHeight / 2),
             )
-            for dx in balancePortOffsets
+            for dx in (-4.0, 4.0)
         ],
         # ---- power entry: a bought board and what stands on it ---------------
         # THERE IS NO BUS TERMINAL HERE ANY MORE. It was a 24 x 10 x 12 block
@@ -664,16 +693,27 @@ def torsoElectronicsGroups() -> dict[str, list]:
         "main disconnect": [
             slab(xt90Length, xt90Depth, xt90Width, panelX, rearWallY, disconnectZ)
         ],
-        "balance ports": [
+        "balance port": [
             slab(
                 balancePortWidth,
                 balancePortDepth,
                 balancePortHeight,
-                panelX + dx,
+                panelX + balancePortOffset,
                 rearWallY,
                 balancePortZ,
             )
-            for dx in balancePortOffsets
+        ],
+        # The charge port, wired across the pack ahead of the disconnect. It is
+        # the only connector here that is not part of running the robot.
+        "charge port": [
+            slab(
+                chargePortWidth,
+                chargePortDepth,
+                chargePortHeight,
+                panelX + chargePortOffset,
+                rearWallY,
+                chargePortZ,
+            )
         ],
         # ---- controller carrier, on the deck --------------------------------
         "controller standoffs": _corner_standoffs(

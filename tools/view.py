@@ -99,7 +99,13 @@ def _payload_colour(name: str) -> str:
         return copperRed
     if name == "capacitor bank":
         return canSilver
-    if name in ("bus terminal", "fuse holder", "main disconnect", "balance ports"):
+    if name in (
+        "bus terminal",
+        "fuse holder",
+        "main disconnect",
+        "balance port",
+        "charge port",
+    ):
         return terminalBlue
     return componentBlack
 

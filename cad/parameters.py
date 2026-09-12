@@ -149,7 +149,8 @@ torsoCoverThickness = 2.4
 # both tie-down slots in the pelvis were derived from it.
 #
 # It is gone because the battery came back. The wall it entered through now
-# carries an XT90-S disconnect and two balance ports instead, which are
+# carries an XT90-S disconnect, a 6S balance port and a charge port instead,
+# which are
 # cad/electronics.py's dimensions and not this file's: they are connector
 # mouldings, and a connector is payload rather than structure. What the robot
 # lost with the umbilical is a moving external load that was never modelled and

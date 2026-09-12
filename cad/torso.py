@@ -21,11 +21,15 @@ from build123d import Box, Cylinder, Plane, Pos
 
 from cad.electronics import (
     balancePortHeight,
-    balancePortOffsets,
+    balancePortOffset,
     balancePortWidth,
     balancePortZ,
     batteryWidth,
     batteryX,
+    chargePortHeight,
+    chargePortOffset,
+    chargePortWidth,
+    chargePortZ,
     deckLedgeDepth,
     deckLedgeHeight,
     deckLedgeWidth,
@@ -91,7 +95,15 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # 24 V and CAN came in from a bench supply down one cable. The battery came back
 # in September 2026 -- cad/electronics.py says how and why -- and what the wall
 # carries instead is the three things a pack needs brought outside: the main
-# disconnect and one balance port per 3S brick.
+# disconnect, one 7-way balance port for the whole 6S string, and a charge port
+# wired across the pack ahead of that disconnect.
+#
+# THE BALANCE PORT WAS TWO PORTS AND IS NOW ONE, and that is a charging decision
+# rather than a packaging one. Joining the two packs' 4-way tails inside the
+# shell is what lets a charger see the single 6S pack they are wired as and
+# finish in one session; the charge port is the other half of the same decision,
+# because the bus has to be dead while the cells charge and so the charger
+# cannot come in through the disconnect.
 #
 # The strain relief went with the tether and is not missed. A cable tie carrying
 # a moving umbilical's pull in shear through 2.4 mm of wall was solving a problem
@@ -112,7 +124,11 @@ disconnectPortZ = disconnectZ + (xt90Width / 2)
 balanceSlotWidth = balancePortWidth + (panelClearance * 2)
 balanceSlotHeight = balancePortHeight + (panelClearance * 2)
 balanceSlotZ = balancePortZ + (balancePortHeight / 2)
-balanceSlotOffsets = balancePortOffsets
+balanceSlotX = balancePortOffset
+chargeSlotWidth = chargePortWidth + (panelClearance * 2)
+chargeSlotHeight = chargePortHeight + (panelClearance * 2)
+chargeSlotZ = chargePortZ + (chargePortHeight / 2)
+chargeSlotX = chargePortOffset
 # Negative Y is the rear: the foot's front pressure pads sit at y = +51 and its
 # rear pads at y = -40, and the leading leg swings to +Y.
 panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
@@ -247,17 +263,18 @@ def pelvisShell() -> list:
     disconnectPort = Pos(panelX, panelWallY, disconnectPortZ) * Box(
         disconnectPortWidth, shellWall + 4.0, disconnectPortHeight
     )
-    balanceSlots = [
-        Pos(panelX + dx, panelWallY, balanceSlotZ)
-        * Box(balanceSlotWidth, shellWall + 4.0, balanceSlotHeight)
-        for dx in balanceSlotOffsets
-    ]
+    balanceSlot = Pos(panelX + balanceSlotX, panelWallY, balanceSlotZ) * Box(
+        balanceSlotWidth, shellWall + 4.0, balanceSlotHeight
+    )
+    chargeSlot = Pos(panelX + chargeSlotX, panelWallY, chargeSlotZ) * Box(
+        chargeSlotWidth, shellWall + 4.0, chargeSlotHeight
+    )
 
     # KCL-SHAPED: slots first, into the simple box, then the cavity. Taking them
     # out of the already-hollowed shell is the ordering the engine rejects, and it
     # is the same ordering the keel needed when the tether entered through that.
     shellSlotted = shellBlank
-    for cutter in [*cablePorts, disconnectPort, *balanceSlots]:
+    for cutter in [*cablePorts, disconnectPort, balanceSlot, chargeSlot]:
         shellSlotted -= cutter
     shellRaw = shellSlotted - shellCavity
 

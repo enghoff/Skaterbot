@@ -1477,3 +1477,43 @@ was irrelevant; on a battery it is one mistake per pack.
   than it did: on a tether the bench supply was always the stop of last resort.
 * **The torque envelope.** Still not re-derived for the wheeled robot, so the
   255 g of remaining headroom is measured against a walking robot's ceiling.
+
+## The pack charges in one go, and the rear wall carries a charge port — September 11, 2026
+
+The panel the battery came with had one balance port per 3S brick, which meant
+one charging session per brick. That is now a single 7-way port with the two
+packs' tails joined **inside** the shell, so a charger sees the 6S pack they are
+already wired as and finishes the lot in one session, at 1C and 55 W on the
+B6AC's 80.
+
+The merge could have been an adapter on the bench and very nearly was. Nothing of
+the kind is stocked in India: everything sold there as a "2S–6S balance board" is
+a breakout on common pins, which across a series pair shorts a pack through its
+own balance wires, and the one ready-made twin-pack lead that does the job
+properly is discontinued. Made once, inside the robot, it can be metered and then
+left alone — which is the better place for it anyway.
+
+### Why there is a second power connector now
+
+**The charger cannot come in through the disconnect.** Charging through the
+XT90-S leaves six actuator controllers, the BEC and the SBC across the charger at
+something like half an amp, and a constant-voltage taper never falls below that,
+so the charge never terminates and the pack is held at 25.2 V for as long as it
+is plugged in. So the pack's own terminals come out on an XT30 ahead of the
+disconnect, and the routine is: pull the XT90-S to kill the bus, then charge.
+
+XT30 rather than XT60 is deliberate — 2.2 A needs nothing bigger, and no two
+connectors on this panel should mate with each other.
+
+### What it cost
+
+The rear wall lost 82.56 mm3 of material, which is 0.1 g, and nothing else moved:
+one 20.5 × 8 opening and one 12 × 7.2 where there were two of 13.5 × 8. The robot
+still totals 2 060 g against its 2 300 ceiling. Gate E now asserts all three
+panel openings on the finished solid — empty, with wall around them — which
+rectangular cuts had never been held to, because counting cylindrical faces
+cannot see them.
+
+**Still unmeasured, and it is the same warning as before:** the 7-pin JST-XH and
+the XT30 are catalogue-class figures. A panel cutout is the one thing that cannot
+be adjusted after printing, so measure both mouldings first.

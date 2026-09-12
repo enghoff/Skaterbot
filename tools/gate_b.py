@@ -224,6 +224,30 @@ DEVIATIONS = {
                 "vacated when they rode outboard with the wall."
             ),
         },
+        # THE ONLY NEGATIVE FIGURE IN THIS REGISTER, and it is not a typo. This
+        # change takes 82.56 mm3 of wall out, and 71.5 of that is wall the resize
+        # entry above had counted as ADDED -- the panel sits where the old 125 mm
+        # box had no material at all -- so against the golden it shows up as
+        # material un-added rather than material removed. The other 11.1 mm3 is
+        # the sliver of the cut that does fall inside the old box's own rear wall,
+        # and that is a removal like any other. Two figures rather than one
+        # because the gate checks the volume and the symmetric difference
+        # separately, and only this pair satisfies both.
+        {
+            "added_mm3": -71.5039978891,
+            "removed_mm3": 11.0559978414,
+            "why": (
+                "the service panel now carries ONE 7-way balance port where it "
+                "carried two 4-way ones, and a charge port beside them. Joining "
+                "the two packs' balance tails inside the shell is what lets a "
+                "charger see the single 6S pack they are wired as and finish in "
+                "one session; the charge port is the other half of that decision, "
+                "because the bus has to be dead while the cells charge and so the "
+                "charger cannot come in through the disconnect. The arithmetic is "
+                "three cuts through a 2.4 mm wall -- 20.5 x 8 and 12 x 7.2 in, "
+                "two of 13.5 x 8 out -- which is 600.96 mm3 against 518.4."
+            ),
+        },
         {
             "added_mm3": 2560.7121719410,
             "why": (

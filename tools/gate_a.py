@@ -128,7 +128,8 @@ RETIRED = {
     # through a 12 mm slot with a cable-tie strain relief either side of it.
     # A battery went back in and the umbilical went out, so the cable's diameter
     # and every feature derived from it are gone. What that wall carries now is
-    # an XT90-S disconnect and two balance ports, whose dimensions are connector
+    # an XT90-S disconnect, a 6S balance port and a charge port, whose dimensions
+    # are connector
     # mouldings and live in cad/electronics.py -- they are ADDED below rather
     # than replacements for these, because a panel cutout is not a cable slot.
     "tetherCableDiameter",
@@ -326,9 +327,24 @@ ADDED = {
     "xt90Length": 20.5,
     "xt90Width": 15.5,
     "xt90Depth": 21.0,
-    "balancePortWidth": 12.5,
+    # ONE 7-WAY BALANCE PORT WHERE THERE WERE TWO 4-WAY ONES, September 2026:
+    # the packs' tails are joined inside the shell so a charger sees the 6S pack
+    # they are wired as and charges it in a single session. 19.5 is the 7-pin
+    # JST-XH shell against 12.5 for the 4-pin, and it is a catalogue-class figure
+    # to be measured before the pelvis is printed, like every other moulding here.
+    "balancePortWidth": 19.5,
     "balancePortHeight": 7.0,
     "balancePortDepth": 8.0,
+    "balancePortOffset": 15.0,
+    # The charge port that came with it: an XT30 across the pack, ahead of the
+    # disconnect, so the cells can be charged with the bus dead. Charging through
+    # the XT90-S would leave the actuators, the BEC and the SBC across the
+    # charger, and a constant-voltage taper never falls below that load.
+    "chargePortWidth": 11.0,
+    "chargePortHeight": 6.2,
+    "chargePortDepth": 15.0,
+    "chargePortOffset": 24.0,
+    "chargePortZ": -20.0,
     "dcdcWidth": 26.0,
     "dcdcDepth": 42.0,
     "dcdcHeight": 14.0,
@@ -359,10 +375,14 @@ ADDED = {
     "disconnectPortHeight": 16.5,
     "disconnectPortZ": -17.65,
     "balancePortZ": -8.899999999999999,
-    "balanceSlotWidth": 13.5,
+    "balanceSlotWidth": 20.5,
     "balanceSlotHeight": 8.0,
     "balanceSlotZ": -5.399999999999999,
-    "balanceSlotX": 7.75,
+    "balanceSlotX": 15.0,
+    "chargeSlotWidth": 12.0,
+    "chargeSlotHeight": 7.2,
+    "chargeSlotZ": -16.9,
+    "chargeSlotX": 24.0,
     # Two colours, for the two things in the torso that are neither board nor
     # can: the cells themselves and the copper that leaves them.
     "cellGrey": "#4a4f57",
