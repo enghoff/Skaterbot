@@ -155,6 +155,8 @@ def _torso_groups(centerZ: float) -> dict[str, list]:
         # than inside torsoAssembly() for the same reason: mass_budget.toml
         # weighs it as its own piece.
         "deck": _at(electronicsDeck(), z=centerZ),
+        # And a third print beside them: what the three external connectors are
+        # bonded into, lying against the rear wall's inner face.
     }
     for name, bodies in torsoElectronicsGroups().items():
         groups[name] = _at(bodies, z=centerZ)

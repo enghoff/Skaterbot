@@ -248,6 +248,185 @@ DEVIATIONS = {
                 "two of 13.5 x 8 out -- which is 600.96 mm3 against 518.4."
             ),
         },
+        # THE SECOND NEGATIVE ADDED FIGURE, and for exactly the reason the first
+        # one carries: almost all of this change happens in the rear wall and in
+        # the battery rails, and both of those stand where the old 125 x 68 x 65
+        # box had no material at all. Cutting them shows up against the golden as
+        # material UN-ADDED rather than material removed. The 152.4 mm3 that is a
+        # genuine removal is the sliver of the three apertures falling inside the
+        # old box's own rear wall, which overlaps the new one by 0.4 mm.
+        #
+        # The net is -862.36 mm3 and it is accounted for feature by feature:
+        # three apertures where three precision cutouts were, four Ø3.4 fixings
+        # through the wall, and four strap slots through the two battery rails
+        # (-576.0), against two things this change ADDS -- the IMU's seat
+        # (+132.0) and the two BMS card guides (+784.8). The apertures also moved
+        # with the balance port when that rose 1.5 mm off the disconnect, which is
+        # part of the same change.
+        {
+            "added_mm3": -698.7569845061,
+            "removed_mm3": 163.6033622137,
+            "why": (
+                "EVERYTHING IN THE TORSO GETS A MOUNT. The rear wall's three "
+                "precision cutouts are three coarse apertures now, because the "
+                "connectors they passed were held by nothing: all three housings "
+                "are constant-section prisms, so no cut in 2.4 mm of wall can "
+                "capture one. They are bonded into cad/connector_panel.py "
+                "instead, which lands on this wall's inner face and is screwed "
+                "through it -- hence the four Ø3.4 fixings. The rails gained a "
+                "strap slot each end, because docs/BOM.md buys two cinch straps "
+                "for the packs and this shell gave them nothing to thread "
+                "through; and the floor gained a three-rib seat for the IMU, "
+                "which at 11 x 10 is too small to screw and is the one board "
+                "whose orientation is half its worth, and two card guides for a "
+                "6S BMS standing on edge in the gap between the two bays -- a "
+                "bare PCB with no mounting holes, so its bottom edge drops into "
+                "a 2.4 mm slot and the electronics deck over it stops it rising."
+            ),
+        },
+        # A NEGATIVE REMOVED FIGURE, which is the third odd sign in this register
+        # and the mirror of the two above it. This change puts material BACK: the
+        # balance port's aperture is not cut any more, so 703.2 mm3 of rear wall
+        # that the cad had been losing is present again. 107.84 of it stands
+        # where the old 125 x 68 x 65 box had wall of its own -- the 0.4 mm the
+        # two rear walls overlap by, across the 269.6 mm2 the aperture covered
+        # that the disconnect's does not -- so against the golden that part reads
+        # as material UN-REMOVED, hence the minus. The other 595.36 is in the
+        # 28.9 mm the new box stands proud of the old, and reads as added.
+        #
+        # 703.2 is arithmetic and not a measurement: the aperture is the port's
+        # opening plus a socket wall, an aperture gap and a seat all round --
+        # 25.5 x 13 -- through 2.4 mm of wall, less the 11 x 3.5 of it the
+        # disconnect's own aperture had already taken.
+        {
+            "added_mm3": 595.3600000000,
+            "removed_mm3": -107.8400000000,
+            "why": (
+                "THE BALANCE PORT IS NOT IN THIS WALL ANY MORE. A 6S BMS now "
+                "sits on the same seven cell taps inside the shell and balances "
+                "the string on every charge, so a socket presenting those taps "
+                "to the outside offered nothing the board already held -- and a "
+                "second path to an unfused pack is a thing to insulate rather "
+                "than a convenience. The wall keeps two connectors: the XT90-S "
+                "that arms the robot, and the charge port that feeds the BMS "
+                "with the bus dead. Everything downstream followed on its own, "
+                "because cad/electronics.py's connectorOpenings() is what the "
+                "aperture, the socket, the collar and the panel's outline are "
+                "all derived from."
+            ),
+        },
+        # THE CARD GUIDES WERE CUT TO A BOARD THAT DID NOT EXIST, and both things
+        # wrong with them only became measurable when one was chosen. The Daly
+        # 6S 20 A is 58 x 33 x 8.2 mm, and against it:
+        #
+        #   THE BOARD FELL OUT. A 33 mm card standing on the bay floor left its
+        #   top edge 8.5 mm under the deck, and the deck is the whole of the
+        #   hold-down -- lift it 4 mm and it clears a 4 mm slot with 4.5 to
+        #   spare. The stand-in drawn here was full height, so it touched the
+        #   deck and the defect could not show. The board now hangs 1.5 mm under
+        #   the deck and the guides rise to meet it: 14.5 mm tall where they were
+        #   7.5, and it can rise 1.5 mm while still 2.5 mm into its slot.
+        #
+        #   THE SLOT ASSUMED A BARE EDGE. 2.4 mm took a 1.6 mm PCB and assumed
+        #   nothing was soldered within a guide's width of it. 9 mm takes the
+        #   whole 8.2 mm board however its components fall, which needed the
+        #   guides 12 mm wide rather than 10 to keep 1.5 mm of wall either side.
+        #
+        # +871.2 mm3 of material, and that much is arithmetic: two guides of
+        # 12 x 6 x 14.5 less a 9 x 6 x 4 slot each is 1 656, against 10 x 6 x 7.5
+        # less 2.4 x 6 x 4 each, which was 784.8. They also moved 46 mm apart and
+        # symmetric under the card, from 35 mm apart and off centre, which the
+        # IMU's reservation had decided when there was no board to set them to.
+        #
+        # IT SPLITS +439.2 / -432.0 AGAINST THE GOLDEN, and the reason is worth
+        # writing down because it is not an error. The guides now rise through
+        # z = -32.5 to -29.5, which is where the TETHERED torso's cavity floor
+        # was: 12 x 6 x 3 of each guide stands in material the golden already
+        # had, twice over, and material that was already there cannot be added
+        # to it. So 1 224 of the 1 656 reads as added and 432 reads as material
+        # the golden holds that this pelvis does not. The old guides stopped at
+        # -32.5 and never reached that band, which is why the split is new.
+        {
+            "added_mm3": 439.2000000000,
+            "removed_mm3": -432.0000000000,
+            "why": (
+                "THE BMS CARD GUIDES ARE CUT TO A CHOSEN BOARD. They were drawn "
+                "to a class -- a bare 1.6 mm PCB of unknown height -- and a "
+                "chosen board made two things measurable that had not been: a "
+                "33 mm card stood on the bay floor lifts clear of a 4 mm slot "
+                "before the deck stops it, and a 2.4 mm slot only works if "
+                "nothing is soldered near the board's bottom edge. So the board "
+                "now hangs 1.5 mm under the deck with the guides risen to meet "
+                "it, and the slot takes its whole 8.2 mm envelope rather than "
+                "the laminate inside it."
+            ),
+        },
+        # THE FOURTH ODD SIGN IN THIS REGISTER, and by now the pattern is worth
+        # stating once: almost everything that happens in this rear wall happens
+        # where the old 125 x 68 x 65 box had no material at all. The two walls
+        # overlap by 0.4 mm -- the golden's runs y -34.0 to -31.6 and this one
+        # -36.0 to -33.6 -- so a sixth of any cut in it lands inside the golden
+        # solid and five sixths outside. Material this change PUTS BACK therefore
+        # reads as added where it is outside and as UN-REMOVED where it is
+        # inside, which is the minus below.
+        #
+        # The net is +1022.28 mm3 and every part of it is arithmetic:
+        #
+        #   back in   the disconnect's old aperture   26.5 x 21.5 x 2.4  1367.40
+        #             the charge port's old aperture  17.0 x 12.2 x 2.4   497.76
+        #             four Ø3.4 panel fixings                             87.16
+        #   cut out   the XT60E-M's nose              14.7 x  7.2 x 2.4  -254.02
+        #             its two Ø2.4 ear holes                             -21.71
+        #             the XT60E-F's body              19.2 x 12.0 x 2.4  -552.96
+        #             its two Ø2.4 flange holes                          -21.71
+        #             the SMA's Ø6.5 hole                                -79.64
+        #
+        # THE CHARGE SOCKET'S TWO LINES AND BOTH SCREW SIZES MOVED THIS ENTRY
+        # AGAIN, the same month. The charge socket was a GX16's Ø16 hole at x 50
+        # and is an XT60E-F's body at x 55.5, square, 19.2 x 12.0, with two
+        # screws; the antenna crossed from x 68 to x -8; and the disconnect's ear
+        # holes went from Ø2.8 to Ø2.4 when M2.5 nuts turned out not to fit beside
+        # its body. THE SPLIT BELOW IS WHAT MAKES THAT MOVE WORTH WRITING DOWN:
+        # the socket's cut runs from x 45.9 to 65.1 and the old box's flank is at
+        # 62.5, so 2.6 mm of it is outside the band, and so are its outer screw
+        # at x 68 and the antenna's old hole -- while the antenna's new one is
+        # inside. Worked feature by feature that way, the two figures came out of
+        # the arithmetic and matched the measured difference first time.
+        #
+        # THE DISCONNECT'S TWO LINES ARE WHY THIS ENTRY MOVED, September 2026,
+        # and the movement is the whole point of having it. They read 25.0 x 16.0
+        # and Ø3.4 while this wall was cut for an AMASS XT90E-M on a marketplace
+        # listing's figures. Against the maker's own drawing that part is 42.0
+        # across with its screws 32.4 apart and 19.7 mm of it inside the wall --
+        # so the cut was wrong, the drilling was wrong, and the connector fouled
+        # the SBC. What is here now is an XT60E-M, cut to its 14.20 nose rather
+        # than to its body, and the wall keeps 720.01 mm3 it used to lose.
+        #
+        # Of that, 145.44 mm3 falls in the 0.4 mm the two walls share -- which
+        # everything inside the old box's flank at |x| = 62.5 does, and the
+        # charge socket's outermost 2.6 mm and its outer screw do not. It was
+        # 38.47 while the disconnect was cut 25 x 16, and 158.47 while the charge
+        # socket was still a GX16 and the antenna still stood outboard at x 68.
+        {
+            "added_mm3": 876.8341449586,
+            "removed_mm3": -145.4414830802,
+            "why": (
+                "THE CONNECTOR PANEL IS GONE AND THE WALL CARRIES ITS OWN "
+                "HOLES AGAIN. Three coarse apertures and four screw holes went "
+                "back in, and what replaced them is one hole per bought part: a "
+                "14.7 x 7.2 nose cut and two Ø2.4 ear holes for an AMASS "
+                "XT60E-M disconnect, a 19.2 x 12.0 body cut and two Ø2.4 flange "
+                "holes for its female twin the XT60E-F as the charge socket, and "
+                "a Ø6.5 for an SMA antenna bulkhead. Every one of those parts "
+                "retains itself -- ears or a flange bolted through the wall, or "
+                "a shoulder and a nut clamping it -- which is what the 6 mm "
+                "printed plate existed to do for connectors that could not. There "
+                "is no bonded joint anywhere on this robot now. All three stand "
+                "at z = 22, above the electronics deck, because below it this "
+                "wall is committed end to end: the bus monitor comes within "
+                "12.6 mm of it and the deck's own ledges stand on it."
+            ),
+        },
         {
             "added_mm3": 2560.7121719410,
             "why": (

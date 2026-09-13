@@ -227,7 +227,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             piece="pelvis-shell",
             at=(0.0, 0.0, 0.0),
             source="measured",
-            note="cad/torso.py:pelvisShell, seventeen bodies",
+            note="cad/torso.py:pelvisShell, twenty bodies",
         ),
         Solid(
             label="torso cover",
@@ -291,8 +291,9 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
     #
-    # mass_budget.toml carries these as four lines now: 100 g of "electronics and
-    # wiring", 60 g of power entry, 288 g of battery and 85 g of battery wiring,
+    # mass_budget.toml carries these as five lines now: 100 g of "electronics and
+    # wiring", 60 g of power entry, 45 g of BMS, 288 g of battery and 85 g of
+    # battery wiring,
     # connectors and mounts. The 100 and the 85 are split below across the items
     # that make them up. Each split is an assumption; the totals are not.
     #
@@ -364,6 +365,15 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             "the remainder of the budget's 100 g, spread through the cavity",
         ),
         (
+            "battery management system",
+            45.0,
+            "bms",
+            "vendor",
+            "pcbGreen",
+            True,
+            "Daly 6S 24V 20A on the cell taps, wired charge-only. The vendor's own 45 g, beside its own 58 x 33 x 8.2",
+        ),
+        (
             "power entry",
             60.0,
             "power",
@@ -379,6 +389,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["batteryDepth"],
             d["batteryHeight"],
             d["batteryX"],
+            0.0,
             d["lowerBandZ"],
         ),
         "power": (
@@ -386,6 +397,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["powerDepth"],
             d["powerHeight"],
             d["powerX"],
+            0.0,
             d["lowerBandZ"],
         ),
         "controller": (
@@ -393,10 +405,36 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["controllerDepth"],
             d["controllerHeight"],
             d["controllerX"],
+            0.0,
             d["deckBandZ"],
         ),
-        "sbc": (d["sbcWidth"], d["sbcDepth"], d["sbcHeight"], 0.0, d["upperBandZ"]),
-        "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, d["floorZ"]),
+        "sbc": (
+            d["sbcWidth"],
+            d["sbcDepth"],
+            d["sbcHeight"],
+            0.0,
+            0.0,
+            d["upperBandZ"],
+        ),
+        "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, 0.0, d["floorZ"]),
+        # THE ONE ENVELOPE THAT IS NOT ON THE CENTRE LINE, which is why every
+        # tuple here carries a y at all. The board stands on edge in the gap
+        # between the two bays, and that gap is off the middle of the robot.
+        #
+        # THE BOARD RATHER THAN ITS BAY, unlike every other line here, and that
+        # is what a chosen part buys. The other five are reserved volumes with a
+        # mass assumed spread through them because nobody knows the outline yet.
+        # This one has a catalogue outline, so the 45 g sits where the 45 g
+        # actually is -- 8.2 mm of board in a 12.1 mm bay, and 2 mm lower than
+        # the bay's own centroid, because it hangs from the deck.
+        "bms": (
+            d["bmsBoardThickness"],
+            d["bmsBoardLength"],
+            d["bmsBoardHeight"],
+            d["bmsX"],
+            d["bmsY"],
+            d["bmsBoardBottomZ"],
+        ),
         # Wiring has no envelope; it is spread through the box, so it is given
         # the cavity's own extent and sat in the middle of it.
         "wiring": (
@@ -404,18 +442,19 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["torsoShellDepth"] - 2 * d["shellWall"],
             d["upperBandZ"] + d["sbcHeight"] - d["floorZ"],
             0.0,
+            0.0,
             d["floorZ"],
         ),
     }
     for label, grams, key, source, material, draw, note in payload:
-        width, depth, height, at_x, base_z = envelopes[key]
+        width, depth, height, at_x, at_y, base_z = envelopes[key]
         base.solids.append(
             Solid(
                 label=label,
                 grams=grams,
                 shape="box",
                 dims=(width, depth, height),
-                at=(at_x, 0.0, base_z + height / 2),
+                at=(at_x, at_y, base_z + height / 2),
                 source=source,
                 material=material,
                 draw=draw,

@@ -138,7 +138,7 @@ count = 1
 name = "pelvis-shell"
 export = "pelvisShell"
 prints = 1
-bodies = 17  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges
+bodies = 20  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges, two BMS guides, IMU seat
 note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are."""
 
 [[printed.piece]]
@@ -164,9 +164,19 @@ count = 1
 name = "electronics-deck"
 export = "electronicsDeck"
 prints = 1
-bodies = 5  # the plate and four SBC posts
-note = "Carries the controller carrier and the SBC over the battery, and holds the packs down."
+bodies = 7  # the plate, four SBC posts and two BMS card guides
+note = "Carries the controller carrier and the SBC over the battery, and holds the packs down. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in."
 
+# THE SECOND PIECE WITH NO GOLDEN STEP, and it exists for a plain finding rather
+# than a refinement: the rear wall was cut to pass three connectors and nothing
+# anywhere held any of them. All three housings are constant-section prisms, so
+# no cut in a 2.4 mm wall can capture one -- a wall locates them and only a bond
+# retains them, and a bond wants depth. This carries the three openings on 6 mm
+# of plate, puts a collar through the wall to make each socket 8.4 mm deep, and
+# is screwed on from outside.
+#
+# It also moves the one cut that cannot be adjusted after printing off the 188 g
+# pelvis and onto a 9 g part. That is most of why it is a separate print.
 # ---- bought and estimated, not modelled at PA12 density ---------------------
 
 [[fixed]]
@@ -202,6 +212,12 @@ note = "SBC, CAN wiring and looms. docs/BOM.md estimate; nothing is in hand."
 label = "Power entry — capacitor bank and fuse"
 total_g = 60.0
 note = """Allowance, and still one of the softest figures in the table. THE BANK'S JOB CHANGED WITH THE BATTERY AND ITS SIZE HAS NOT BEEN RE-DERIVED. It was sized to be the bus's only regeneration sink, because a bench supply cannot take current back; the pack is that sink now, and what is left for the bank is local decoupling and lead inductance. That is a reason to expect it to shrink, and expecting is not measuring, so both the reservation and this figure stand until the bus excursion is measured. The bus TERMINAL this line used to include is gone -- the bought distribution board's own copper is the strip the six branches land on. docs/BOM.md red line."""
+
+[[fixed]]
+label = "Battery management system"
+each_g = 45.0
+count = 1
+note = """Daly Li-ion NMC 6S 24V 20A, chosen 2026-09-13. 45 g is the VENDOR'S OWN figure from the same specification table as its 58 x 33 x 8.2 mm outline, so this line stopped being a class estimate and became a catalogue mass -- it was 30 g while no board had been chosen, and the 15 g is real. WIRED CHARGE-ONLY: the discharge path stays direct from the pack to the distribution board, so this board only ever sees the charge current of about 2.2 A. That is what lets it be a small board, and no large one fits -- the torso was swept for free volume and the biggest box left anywhere in it is 38 x 64 x 12 mm. It was chosen because it BALANCES, at 30 mA from 4.18 V per cell, and because it fits: the 30 A boards in its own family are 75 mm long and the cheap generic 6S boards that would fit balance nothing at all. cad/electronics.py draws it at catalogue size, standing on edge in the gap between the two bays. What it does NOT buy is an over-discharge cutoff -- that stays the main disconnect's job."""
 
 [[fixed]]
 label = "Distribution board"

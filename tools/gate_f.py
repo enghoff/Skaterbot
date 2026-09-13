@@ -384,6 +384,26 @@ def check_packing() -> tuple[int, int]:
     the tightest clearance in this torso is the 1.6 mm between a battery pack and
     a deck ledge, and it would mean nothing if the ledges were left out of the
     body the packing is measured against.
+
+    THE IMU'S SEAT IS THE ONE EXCEPTION, and it is a real one rather than a
+    tolerance quietly widened. Every other printed feature in this cavity sits
+    BESIDE or BELOW the thing it carries -- the rails stop at the plane the packs
+    start on, the ledges stand between two bays, the posts are under a board --
+    so a reservation fouling one is always a fault. The IMU's three ribs stand
+    INSIDE its reservation by definition: an 11 x 10 board is too small to screw
+    to anything, so the only mount available is one that surrounds it. Measured
+    against the whole shell the seat reads as 132 mm3 of printed material in the
+    payload's own envelope, which is true and is not a finding.
+
+    So the IMU's row is measured against the shell LESS that seat, and the fit
+    that actually matters -- the 0.2 mm between the ribs and the board they aim
+    -- is asserted in FITS below, exactly as the packs resting on their rails is.
+    The seat is still measured against everything else by check_no_clashes().
+
+    WHAT THIS GIVES UP is worth writing down. The 22 x 22 reservation used to say
+    that any breakout up to that size would fit, and the seat is cut to 11 x 10.
+    The reservation still holds the headroom, but spending it now means
+    reprinting the pelvis, because the ribs are part of it.
     """
     from cad import scenes, torso
     from cad.wheeled_parameters import wheeledTorsoCenterHeight
@@ -392,6 +412,10 @@ def check_packing() -> tuple[int, int]:
     print("WHAT STANDS IN THE TORSO, AND WHETHER IT FITS")
     groups = scenes.GROUPS["torso_packing_check"]()
     shell = groups["pelvis"]
+    # cad/torso.py returns the seat last, and the docstring above says why the
+    # IMU alone is measured without it. Sliced rather than named so that a new
+    # feature on the pelvis cannot quietly drop out of this check as well.
+    shellLessImuSeat = shell[:-1]
 
     # The cavity, in the robot's frame: the shell's inner walls, its cavity floor
     # and the underside of the lid.
@@ -402,10 +426,11 @@ def check_packing() -> tuple[int, int]:
 
     # In cad/electronics.py's torsoReservations() order, which is also the order
     # simulation/robot.py places a mass in each.
-    items = ("battery", "power entry", "controller carrier", "SBC", "IMU")
+    items = ("battery", "power entry", "controller carrier", "SBC", "IMU", "BMS")
     checked = failed = 0
     for name, item in zip(items, groups["reservations"]):
-        distance, shared = measure([item], shell)
+        against = shellLessImuSeat if name == "IMU" else shell
+        distance, shared = measure([item], against)
         box = item.bounding_box()
         inside = min(
             halfWidth - abs(box.min.X),
@@ -467,9 +492,12 @@ FITS = [
     (
         "battery packs vs the deck above",
         "packs",
-        "deck",
+        "deck plate",
         3.0,
-        "the squeeze that holds the packs down, and the only thing that does",
+        "the squeeze that holds the packs down, and the only thing that does. "
+        "Against the PLATE and not the whole deck, because the deck grew two "
+        "guides that hang down beside the BMS and one of them is 2.55 mm off the "
+        "nearer pack -- a real clearance, but not this one",
     ),
     (
         "battery bay vs the power bay",
@@ -488,6 +516,149 @@ FITS = [
         "the IMU stays on the shell floor with the battery above it, which is "
         "why cad/torso.py's rails run across the robot rather than along it",
     ),
+    # THE PANEL HARDWARE, AND WHAT IT HAS TO MISS. There are no bond lines in
+    # this robot any more: every one of these three parts holds itself into the
+    # wall, so what matters is no longer a gap of exactly half a millimetre but
+    # whether the body behind each one has the room its nut and its barrel need.
+    # EVERY FIGURE HERE IS WHAT THE DRAWING PRODUCES, and this gate checks it to
+    # a thousandth rather than as a minimum, which is what caught the disconnect:
+    # while the connector stood here as a 25 x 16 slab -- neither the flange of
+    # the part named nor its body -- these three read 6.00, 8.00 and 8.50 and
+    # passed, and the real part would have fouled the SBC by 1.8 mm. So what a
+    # number in this column means is "the part as AMASS draws it, where this file
+    # puts it". Change either and the number changes with it, on purpose.
+    (
+        "the disconnect vs the deck below it",
+        "main disconnect",
+        "deck plate",
+        9.95,
+        "the whole reason this hardware stands above the deck rather than down "
+        "in the bay with the bus it breaks: below the plate the rear wall is "
+        "committed end to end and a bushing's nut fits nowhere. This is the air "
+        "between the XT60E-M's rear body and the top face of the plate its leads "
+        "drop through, and it is what a lead needs to turn in. It was 6.00 while "
+        "the drawn body was a 16 mm slab; the real connector is 8.1 mm tall, so "
+        "the same station leaves four millimetres more",
+    ),
+    (
+        "the disconnect vs the SBC in front of it",
+        "main disconnect",
+        "SBC board",
+        10.3,
+        "the price of putting the bus link in the logic band, and the figure to "
+        "watch if the SBC ever moves back. THIS IS THE NUMBER THE XT90 DIED ON: "
+        "an XT90E-M stands 19.7 mm inside this wall and the board's rear edge is "
+        "18.6 mm from it, so the part named here used to overlap the board it "
+        "was gated as clearing by 8 mm. The XT60E-M stands 8.3 mm in -- an ear "
+        "plate 3.2 thick and a rear body 5.1 behind it -- which is what makes "
+        "this station possible at all",
+    ),
+    (
+        "the charge socket vs the disconnect beside it",
+        "charge socket",
+        "main disconnect",
+        7.4,
+        "diagonally through the wall, from the XT60E-F's flange edge outside to "
+        "the XT60E-M's ear tip inside, which is nearer than anything on the same "
+        "side: 9.5 mm between the socket's nut and that ear, 13.4 between its "
+        "flange and the disconnect's nose. The two genders of one family stand "
+        "side by side here ON PURPOSE -- the key only fits the male and the "
+        "charger's lead only the female -- so this station is solved rather "
+        "than laid out: the socket went as far outboard as its 34 mm flange "
+        "still lands on the wall",
+    ),
+    (
+        "the charge socket's flange vs the deck below it",
+        "charge socket",
+        "deck plate",
+        6.712,
+        "also diagonal, flange outside to plate inside; the socket's body, "
+        "which is what the leads leave from, stands 8.25 over the plate",
+    ),
+    (
+        "the antenna vs the SBC in front of it",
+        "antenna bulkhead",
+        "SBC board",
+        6.0,
+        "THE TIGHTEST FIGURE ON THIS WALL NOW, AND NO LAYOUT CAN MOVE IT: it is "
+        "the bushing's own 15 mm of depth against the board's rear edge, and it "
+        "is the same 6.00 at any x over the board. The antenna crossed to this "
+        "side of the disconnect when the charge socket became a 34 mm flange "
+        "and left no room for an 11 mm nut beyond it. The 1.5 mm nut to nut it "
+        "used to have with the GX16 is gone with the GX16",
+    ),
+    (
+        "the antenna vs the disconnect beside it",
+        "antenna bulkhead",
+        "main disconnect",
+        7.0,
+        "nut circle to ear tip, both on the inside face. Chosen together with "
+        "the board figure above: x -8 keeps this at 7 and puts the bushing in "
+        "the gap between the SBC's mini-HDMI and its first USB-C rather than "
+        "square in front of either",
+    ),
+    # THE BMS BAY, and all three of its bounds are somebody else's face. It is the
+    # last free column in this torso -- 15.1 mm of slack between the two bays that
+    # nobody chose, because the shell is as wide as the hip clevises make it -- so
+    # every one of these is what stops the bay being bigger.
+    (
+        "BMS bay vs the deck that closes it",
+        "BMS",
+        "deck",
+        0.0,
+        "the deck's two guides come down the bay's own SIDES to take the board's "
+        "top edge, so they touch it -- which they must, because the bay is the "
+        "slot. The 1.5 mm over the bay's top face is the plate, and it is the "
+        "row two below",
+    ),
+    (
+        "BMS bay vs the guides that hold it",
+        "BMS",
+        "BMS guides",
+        0.0,
+        "the board SITS ON the guides, so any gap here means it is floating -- "
+        "the same test the packs on their rails get",
+    ),
+    # AND THE BOARD ITSELF, not only the volume reserved for it. These two are the
+    # whole of the hold-down and they are a pair: 4 mm of slot under it and 1.5 mm
+    # of air over it, so it can rise 1.5 and is still 2.5 mm engaged. Get them the
+    # wrong way round -- which is what a full-height stand-in hid until a real
+    # board was chosen -- and the card lifts clear of its guides.
+    (
+        "BMS board vs the deck plate over it",
+        "BMS board",
+        "deck plate",
+        1.5,
+        "the board can rise by THIS before the plate stops it, and the slot under "
+        "it is 4 mm deep, so it cannot leave its guides. 8.5 mm here with the "
+        "board stood on the bay floor is the defect this pair was added to catch",
+    ),
+    (
+        "BMS board vs the deck's top guides",
+        "BMS board",
+        "deck",
+        0.4,
+        "the running fit at the card's top edge, and half the shim: 9 mm of slot "
+        "on an 8.2 mm board. The board is held at BOTH ends because of it -- at "
+        "the bottom alone it is a cantilever 33 mm long on 4 mm of engagement",
+    ),
+    (
+        "BMS board vs its card guides",
+        "BMS board",
+        "BMS guides",
+        0.0,
+        "its bottom edge SITS ON the slot floor, so any gap here means the board "
+        "is hanging on nothing -- the same test the packs on their rails get",
+    ),
+    (
+        "IMU board vs the ribs that aim it",
+        "IMU board",
+        "IMU seat",
+        0.2,
+        "the one board too small to take a screw, so a printed seat decides "
+        "where it points and adhesive holds it down. Any looser than this and "
+        "it can turn in its own seat, which is the whole thing the seat is for",
+    ),
 ]
 
 
@@ -504,6 +675,24 @@ def check_fits(items: tuple) -> tuple[int, int]:
         "rails": torso.batteryRails(),
         "packs": electronics.batteryPacks(),
         "deck": deck.electronicsDeck(),
+        # The plate on its own, which is the first body cad/deck.py returns.
+        # Sliced rather than named for the same reason the shell is: the whole
+        # deck now includes the two guides that come down BESIDE the board, and
+        # measuring the air OVER it has to ignore them.
+        "deck plate": [deck.electronicsDeck()[0]],
+        "IMU seat": torso.imuSeat(),
+        "BMS guides": torso.bmsGuides(),
+        **{
+            name: electronics.torsoElectronicsGroups()[name]
+            for name in (
+                "IMU board",
+                "main disconnect",
+                "charge socket",
+                "antenna bulkhead",
+                "SBC board",
+                "BMS board",
+            )
+        },
         **{
             name: [solid] for name, solid in zip(items, electronics.torsoReservations())
         },
@@ -549,11 +738,13 @@ def check_no_clashes() -> tuple[int, int]:
     groups["battery rails"] = torso.batteryRails()
     groups["board posts"] = torso.powerEntryPosts()
     groups["deck ledges"] = torso.deckLedges()
-    # The shell WITHOUT the three feature sets listed above it, because
+    groups["IMU seat"] = torso.imuSeat()
+    groups["BMS guides"] = torso.bmsGuides()
+    # The shell WITHOUT the four feature sets listed above it, because
     # pelvisShell() returns all of them in one list and comparing a part with
     # its own features is not a finding. Seven bodies: the shell, four cover
     # bosses and two hip clevises, which is what the pelvis was before the
-    # battery gave it ten more.
+    # battery gave it ten more and the mounting sweep an eleventh.
     groups["pelvis"] = torso.pelvisShell()[:7]
 
     print()

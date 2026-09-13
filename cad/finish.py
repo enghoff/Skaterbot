@@ -101,12 +101,40 @@ faces either side of them do not move at all.
 
 A part that comes back with skipped edges is still correct. It has a few arrises
 left sharp, and tools/finish_report.py says how many rather than passing over it.
+
+AND WHEN OCCT ACCEPTS A SET IT SHOULD HAVE REFUSED.
+
+This is the same lesson as "a boolean that succeeds is not a boolean that worked",
+one pass further down. A chamfer can return without raising and hand back a solid
+whose faces run through each other: on the pelvis, one aperture's side wall came
+back SIX MILLIMETRES TALLER than the aperture it belongs to, overlapping the flat
+above it, with two edges lying on top of one another along the same line. Nothing
+complained. BRepCheck_Analyzer, which is what `Shape.is_valid` asks, called it
+valid -- it checks each face against its own geometry and has no opinion about two
+faces occupying the same space. The part built, the gates passed, and the only
+thing that ever noticed was the exporter: a tessellator cannot triangulate an
+overlap, so it left a degenerate sliver and the STL came out with a hole in it,
+which simulation/inertia.py refused. That is three passes and a day's work
+downstream of the thing that was actually wrong.
+
+So every accepted chamfer is now asked the stronger question, BRepAlgoAPI_Check
+with the self-intersection tests on, and a set that fails it is rejected exactly
+as if OCCT had raised: bisect, try the halves, and leave the edge sharp if it
+comes to that. It costs about a second on the pelvis's main body and nothing
+measurable on anything else, because the check is only as expensive as the solid
+is complicated.
+
+WHAT THIS DOES NOT DO is make the chamfer deterministic. Which edges survive still
+depends on how the bisection splits, and that still reshuffles when the geometry
+changes. What it guarantees is that the part that comes out is sound -- the
+alternative was a part that was quietly corrupt.
 """
 
 from __future__ import annotations
 
 import build123d as bd
 from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Check
 from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.GeomAbs import GeomAbs_SurfaceType
 from OCP.gp import gp_Pnt
@@ -291,15 +319,36 @@ def _long_enough(edges: list, size: float) -> tuple[list, list]:
     return keep, slivers
 
 
+def _sound(solid) -> bool:
+    """Is this solid free of faces running through one another?
+
+    Asked of every chamfer this module accepts, because a chamfer that returns
+    without raising can still hand back a solid whose faces overlap -- see the
+    module docstring for the one that did, and for why `Shape.is_valid` says
+    nothing about it. This is the check that has an opinion.
+    """
+    try:
+        return BRepAlgoAPI_Check(solid.wrapped, True, True).IsValid()
+    except Exception:
+        return False
+
+
 def _apply(solid, keys: list, size: float) -> tuple:
-    """Chamfer as many of `keys` as OCCT will accept. Returns (solid, done, skipped)."""
+    """Chamfer as many of `keys` as OCCT will accept. Returns (solid, done, skipped).
+
+    "Accept" means both halves of the question: the call returned, and what it
+    returned is sound. A set that fails the second is put back exactly as if it
+    had failed the first.
+    """
     if not keys:
         return solid, 0, 0
     available = _edge_keys(solid)
     edges = [available[k] for k in keys if k in available]
     if edges:
         try:
-            return bd.chamfer(edges, length=size), len(edges), len(keys) - len(edges)
+            cut = bd.chamfer(edges, length=size)
+            if _sound(cut):
+                return cut, len(edges), len(keys) - len(edges)
         except Exception:
             pass
     if len(keys) == 1:
@@ -320,7 +369,9 @@ def chamfer_body(body, size: float = CHAMFER, merge=None) -> tuple:
     if not wanted:
         return body, 0, len(slivers)
     try:
-        return bd.chamfer(wanted, length=size), len(wanted), len(slivers)
+        cut = bd.chamfer(wanted, length=size)
+        if _sound(cut):
+            return cut, len(wanted), len(slivers)
     except Exception:
         pass
     numbered = _edge_keys(body)

@@ -20,6 +20,27 @@ The check scenes are new here too: cad/scenes.py already builds each one as
 named groups, which is exactly the tree a viewer wants, so any of them can be
 named instead of a piece.
 
+A PRINTED PIECE WENT MISSING FROM IT UNTIL SEPTEMBER 2026, and the way it went
+missing is worth recording, because nothing in this repository reported it. The
+electronics deck is a separate print beside the pelvis, so it is not inside
+cad/torso.py's `torsoAssembly` -- and the robot tree here is built by naming
+pieces one at a time rather than by walking mass_budget.toml, so a new print
+joins the mass roll-up, the gates, the export and the URDF and still does not
+appear on screen. The four posts the SBC is bolted to are part of the deck,
+which is how "the posts are not in the CAD" happened to a part that builds,
+weighs 33.1 g and is counted by gate E. It is in the torso node below, and it
+can be shown on its own. A PRINT LEAVING the model is the same blind spot from
+the other side, and it happened next: the connector panel was deleted a week
+later and this file was the last thing in the repository still asking cad/ for
+it, which is a crash rather than an absence and is how it was noticed at all.
+
+A PAYLOAD NODE CARRIES ITS PART NUMBER, so the tree reads "distribution board
+(SwiftWing PDB-02-XT60)" rather than leaving you to go and look it up. The
+designations are cad/electronics.py's `partNumbers`, which is the CAD's own
+table and not a second copy of docs/BOM.md, and they are applied at the LABEL
+only -- `_payload_colour` and `_group_colour` below still match on the bare
+name, so a part number can never change what colour a body comes out.
+
 A 0.5 mm chamfer on a 339 mm robot is about a seventh of one per cent of its
 height, so it is not visible until you zoom into an edge. It is not meant to be
 seen from across the room; tools/finish_report.py is how you check it is there,
@@ -103,8 +124,8 @@ def _payload_colour(name: str) -> str:
         "bus terminal",
         "fuse holder",
         "main disconnect",
-        "balance port",
-        "charge port",
+        "charge socket",
+        "antenna bulkhead",
     ):
         return terminalBlue
     return componentBlack
@@ -128,7 +149,7 @@ def _group_colour(name: str) -> str:
         return P.bearingSteel
     if "wheel" in name:
         return P.soleBlack
-    if name == "pelvis" or name.endswith(("thigh", "shin", "limb")):
+    if name in ("pelvis", "deck") or name.endswith(("thigh", "shin", "limb")):
         return P.printedOrange
     return _payload_colour(name)
 
@@ -142,12 +163,13 @@ def check_scene(name: str):
     """
     from build123d import Compound
 
+    from cad.electronics import labelled
     from cad.scenes import GROUPS
 
     groups = GROUPS[name]()
     return Compound(
         children=[
-            _piece(group, bodies, _group_colour(group))
+            _piece(labelled(group), bodies, _group_colour(group))
             for group, bodies in groups.items()
             if bodies
         ],
@@ -158,9 +180,11 @@ def check_scene(name: str):
 def whole_robot(finished: bool = False, size: float = 0.5):
     """The neutral assembly, as the tree the machine actually is.
 
-    Torso, left leg, right leg; and within a leg the three actuators, the steel
-    that closes the hip, the thigh, the shin and the wheel module, in the order
-    they are stacked. Colour still
+    Torso, left leg, right leg; within the torso the three prints it is made of
+    in the order they go together -- shell, electronics deck, cover -- with the
+    payload that stands between the last two; and within a leg
+    the three actuators, the steel that closes the hip, the thigh, the shin and
+    the wheel module, in the order they are stacked. Colour still
     says what a thing is made of, but the tree now says what it IS, so hiding a
     leg hides its wheel -- which a flat list of thirty-three bodies all called
     "printed structure" could not do.
@@ -173,7 +197,8 @@ def whole_robot(finished: bool = False, size: float = 0.5):
 
     from cad import parameters as P
     from cad.actuator import actuatorAssembly
-    from cad.electronics import torsoElectronicsGroups
+    from cad.deck import electronicsDeck
+    from cad.electronics import labelled, torsoElectronicsGroups
     from cad.hardware import jointHardware
     from cad.parameters import hipCenterX
     from cad.shin import shinLeft, shinRight
@@ -206,6 +231,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     torso_at = Pos(0, 0, wheeledTorsoCenterHeight)
     printed = {
         ("torso", "pelvis shell"): [torso_at * b for b in pelvisShell()],
+        ("torso", "electronics deck"): [torso_at * b for b in electronicsDeck()],
         ("torso", "cover"): [torso_at * torsoCover()],
     }
     for leg, sign in sides.items():
@@ -315,7 +341,11 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     # the reservations belong, and that scene is now viewable.
     payload = Compound(
         children=[
-            _piece(name, [torso_at * body for body in bodies], _payload_colour(name))
+            _piece(
+                labelled(name),
+                [torso_at * body for body in bodies],
+                _payload_colour(name),
+            )
             for name, bodies in torsoElectronicsGroups().items()
         ],
         label="payload",
@@ -323,8 +353,16 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     torso = Compound(
         children=[
             _piece("pelvis shell", printed["torso", "pelvis shell"], P.printedOrange),
-            _piece("cover", printed["torso", "cover"], P.printedDark),
+            # The plate and the four Ø8 posts the SBC is bolted to. It is under
+            # the payload in the tree because it is under it in the machine:
+            # hiding the deck leaves the boards hanging where it held them.
+            _piece(
+                "electronics deck",
+                printed["torso", "electronics deck"],
+                P.printedOrange,
+            ),
             payload,
+            _piece("cover", printed["torso", "cover"], P.printedDark),
         ],
         label="torso",
     )
@@ -362,7 +400,7 @@ def _describe(raw, finished) -> str:
 
 
 def pieces() -> dict[str, callable]:
-    from cad import joint, thigh, torso, wheel_adapter
+    from cad import deck, joint, thigh, torso, wheel_adapter
 
     return {
         "joint-stator-clevis": joint.statorClevis,
@@ -373,6 +411,7 @@ def pieces() -> dict[str, callable]:
         "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
         "pelvis-shell": torso.pelvisShell,
         "torso-cover": torso.torsoCover,
+        "electronics-deck": deck.electronicsDeck,
     }
 
 

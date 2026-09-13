@@ -128,8 +128,8 @@ RETIRED = {
     # through a 12 mm slot with a cable-tie strain relief either side of it.
     # A battery went back in and the umbilical went out, so the cable's diameter
     # and every feature derived from it are gone. What that wall carries now is
-    # an XT90-S disconnect, a 6S balance port and a charge port, whose dimensions
-    # are connector
+    # an XT90-S disconnect and a charge port (it carried a 6S balance port too
+    # until a BMS took the cell taps over), whose dimensions are connector
     # mouldings and live in cad/electronics.py -- they are ADDED below rather
     # than replacements for these, because a panel cutout is not a cable slot.
     "tetherCableDiameter",
@@ -324,27 +324,36 @@ ADDED = {
     "xt60Length": 16.0,
     "xt60Width": 8.1,
     "xt60Height": 7.5,
-    "xt90Length": 20.5,
-    "xt90Width": 15.5,
-    "xt90Depth": 21.0,
-    # ONE 7-WAY BALANCE PORT WHERE THERE WERE TWO 4-WAY ONES, September 2026:
-    # the packs' tails are joined inside the shell so a charger sees the 6S pack
-    # they are wired as and charges it in a single session. 19.5 is the 7-pin
-    # JST-XH shell against 12.5 for the 4-pin, and it is a catalogue-class figure
-    # to be measured before the pelvis is printed, like every other moulding here.
-    "balancePortWidth": 19.5,
-    "balancePortHeight": 7.0,
-    "balancePortDepth": 8.0,
-    "balancePortOffset": 15.0,
-    # The charge port that came with it: an XT30 across the pack, ahead of the
-    # disconnect, so the cells can be charged with the bus dead. Charging through
-    # the XT90-S would leave the actuators, the BEC and the SBC across the
-    # charger, and a constant-voltage taper never falls below that load.
-    "chargePortWidth": 11.0,
-    "chargePortHeight": 6.2,
-    "chargePortDepth": 15.0,
-    "chargePortOffset": 24.0,
-    "chargePortZ": -20.0,
+    # THE XT90'S THREE NAMES ARE GONE, September 2026, and this is where they
+    # were: xt90Length 20.5, xt90Width 15.5, xt90Depth 21.0, the bare connector
+    # the main disconnect used to be. They went with the part. The rear wall was
+    # swept position by position against every solid in the cavity and the
+    # flanged XT90E-M -- 42.0 x 22.8 x 15.1 on AMASS's own drawing, 19.7 mm of it
+    # inside the wall -- clears 6 mm at x 50 to 53 and nowhere else, which is the
+    # patch the charge inlet already holds. An XT60E-M took its place: same 30 A
+    # contact rating from the same maker, 8.3 mm inside the wall instead of 19.7.
+    # THE BALANCE PORT WAS HERE AND IS GONE, September 2026, and this is the only
+    # place its figures survive. It was added as ONE 7-way JST-XH where the packs
+    # offer two 4-way tails -- 19.5 wide, 7.0 high, 8.0 deep, at +15.0 outboard of
+    # the disconnect -- because joining those tails inside the shell let a bench
+    # charger see the single 6S pack the pair are wired as. It was removed in the
+    # same month, when a balancing BMS went onto those same cell taps in the bay
+    # gap: the socket then presented nothing the board inside did not already
+    # hold, and a second path to an unfused pack is a liability rather than a
+    # convenience. Four names left cad/ with it, and balancePortZ, balanceSlot*
+    # below went too. Put a port back in that wall and every one of them has to be
+    # re-derived, not retyped -- the panel's outline is computed from whatever
+    # connectorOpenings() returns.
+    # The charge port's height, which has not moved through any of this. The rule
+    # that was learned above it is worth keeping even though the pair it was
+    # learned on is now a single connector: each opening is its connector plus
+    # half a millimetre all round, so ONE MILLIMETRE BETWEEN TWO BODIES IS ZERO
+    # MILLIMETRES BETWEEN TWO OPENINGS. The disconnect's socket and the balance
+    # port's ran into one another along a six-millimetre edge on that arithmetic,
+    # which was equally true of the bare 2.4 mm wall and had never been measured;
+    # it surfaced when the connector panel was drawn, because a knife edge is the
+    # one thing cad/finish.py cannot chamfer. Anything put back in this wall wants
+    # two bond gaps plus a socket wall -- 2.5 mm -- from its neighbour.
     "dcdcWidth": 26.0,
     "dcdcDepth": 42.0,
     "dcdcHeight": 14.0,
@@ -368,25 +377,232 @@ ADDED = {
     "boardPostSize": 8.0,
     "powerPostX": 22.5,
     "powerPostY": 22.5,
-    "panelClearance": 0.5,
     "panelWallY": -34.8,
-    "disconnectZ": -25.4,
-    "disconnectPortWidth": 21.5,
-    "disconnectPortHeight": 16.5,
-    "disconnectPortZ": -17.65,
-    "balancePortZ": -8.899999999999999,
-    "balanceSlotWidth": 20.5,
-    "balanceSlotHeight": 8.0,
-    "balanceSlotZ": -5.399999999999999,
-    "balanceSlotX": 15.0,
-    "chargeSlotWidth": 12.0,
-    "chargeSlotHeight": 7.2,
-    "chargeSlotZ": -16.9,
-    "chargeSlotX": 24.0,
     # Two colours, for the two things in the torso that are neither board nor
     # can: the cells themselves and the copper that leaves them.
     "cellGrey": "#4a4f57",
     "copperRed": "#a8452a",
+    # ---- EVERYTHING GETS A MOUNT, September 2026 ---------------------------
+    #
+    # A sweep of the torso for hardware that was DRAWN but not HELD, prompted by
+    # a plain question -- are the external connectors mounted, or are they wires
+    # through holes? They were neither: the rear wall passed three connector
+    # bodies and nothing retained any of them. Two more items were found in the
+    # same state, and the three answers below are the printed half of the fix.
+    # docs/BOM.md carries the rest, which is a method per item rather than
+    # geometry, because tape and epoxy are the right answer for most of them.
+    #
+    # THE REAR WALL'S PANEL HARDWARE, September 2026, and it replaced a printed
+    # part rather than joining one. cad/connector_panel.py was a 6 mm plate that
+    # the three external connectors were epoxied into, because an XT90-S, a
+    # JST-XH and an XT30 are constant-section prisms that nothing cut in a 2.4 mm
+    # wall can capture. The panel is deleted and so are its fifteen names --
+    # connectorPanelThickness, ...ApertureGap, ...Seat, ...Edge, the four fixing
+    # stations, the four outline figures and ...FrontY -- along with
+    # panelClearance, the bond gap they existed to carry, and the XT30's own
+    # catalogue block.
+    #
+    # What answered the same problem is bought hardware that retains itself: an
+    # AMASS XT60E-M and XT60E-F that bolt through the wall by their own ears and
+    # flange, and an SMA antenna bulkhead that clamps it between a shoulder and a
+    # nut. The connector figures below are the maker's drawings and not
+    # measured; the station figures are this robot's own.
+    #
+    # z = 22 IS THE ONLY BAND THAT WORKS and it is measured rather than chosen.
+    # Below the electronics deck the rear wall is committed end to end -- the bus
+    # monitor comes within 12.6 mm of it, and the deck's own wall ledges stand ON
+    # it between x 46 and 58 -- so a bushing whose nut wants a clear 22 mm circle
+    # 6 mm deep fits nowhere down there. Above the deck the same wall has 18 to
+    # 67 mm of clear depth, between the deck's top face at z = 8 and the cover's
+    # lip at 38.2, which puts a 20 mm window's centre between 19 and 30.
+    # THE DISCONNECT'S OWN FIGURES ARE OFF AMASS'S DIMENSIONED DRAWING and the
+    # ones they replaced were off a marketplace listing. That is the whole reason
+    # this block was rewritten: the listing gave the XT90E-M a 25 x 16 cutout
+    # with its screws 29 mm apart, the maker's drawing gives 32.4 mm and a flange
+    # 42.0 across, and a pelvis drilled at 29 is a 182 g part no screw goes into.
+    # The XT60E-M below is measured the same way -- 27.00 tip to tip, ears 20.00
+    # apart, 16.70 along its axis in three sections. Measure one even so.
+    "xt60PanelNoseWidth": 14.2,
+    "xt60PanelNoseHeight": 6.7,
+    "xt60PanelCutWidth": 14.7,
+    "xt60PanelCutHeight": 7.2,
+    "xt60PanelFixingPitch": 20.0,
+    "xt60PanelEarSpan": 27.0,
+    "xt60PanelEarWidth": 6.13,
+    "xt60PanelEarThickness": 3.2,
+    "xt60PanelBodyWidth": 15.5,
+    "xt60PanelBodyDepth": 5.1,
+    "xt60PanelOutboardDepth": 6.0,
+    "xt60PanelInboardDepth": 8.3,
+    # The one M2 clearance on this robot, and the nuts it takes, in
+    # cad/parameters.py with the M3 ones. Forced by the disconnect's nuts: they
+    # sit 2.25 mm from its body, which an M2 clears by 0.25 and an M2.5 fouls by
+    # the same. It was m25Clearance, 2.8, for one revision before anybody asked
+    # where the nut went.
+    "m2Clearance": 2.4,
+    "m2NutAcrossFlats": 4.0,
+    "m2NutThickness": 1.6,
+    # THE CHARGE SOCKET IS AN XT60E-F, September 2026, and its names kept the
+    # word socket because it is one. The GX16-2's five figures went with it --
+    # chargeSocketHoleDiameter 16.0, NutDiameter 22.0, NutDepth 6.0, BodyDepth
+    # 19.0 and OutboardDepth 12.0 -- because every stocked GX16 pair put live
+    # pins on the robot, and a female XT60 puts sockets there and cannot take the
+    # disconnect's key. BodyDepth is reused for the XT60E-F's own 17.10 behind
+    # its flange. Every figure is AMASS's drawing of the female, which differs
+    # from the male's on every one that matters: 34.00 across where the male is
+    # 27.00, screws 25.00 apart where the male's are 20.00.
+    "chargeSocketFlangeWidth": 34.0,
+    "chargeSocketFlangeHeight": 15.8,
+    "chargeSocketFlangeThickness": 3.1,
+    "chargeSocketBodyWidth": 18.7,
+    "chargeSocketBodyHeight": 11.5,
+    "chargeSocketBodyDepth": 17.1,
+    "chargeSocketCutWidth": 19.2,
+    "chargeSocketCutHeight": 12.0,
+    "chargeSocketFixingPitch": 25.0,
+    "antennaHoleDiameter": 6.5,
+    "antennaNutDiameter": 11.0,
+    # The antenna's nut had borrowed chargeSocketNutDepth; it has its own name
+    # now that the figure it borrowed is gone, at the same 6.0.
+    "antennaNutDepth": 6.0,
+    "antennaBodyDepth": 15.0,
+    "antennaOutboardDepth": 8.0,
+    "panelHardwareZ": 22.0,
+    "disconnectPanelX": 18.0,
+    # BOTH OTHER STATIONS MOVED WITH THE CHARGE SOCKET, and were solved for:
+    # swept across the wall against every solid in the cavity and each other.
+    # The socket went outboard from 50.0 to where its flange still lands on the
+    # wall, and the antenna from 68.0 to the far side of the disconnect, because
+    # nothing fits beyond a 34 mm flange before the wall ends.
+    "chargeSocketPanelX": 55.5,
+    "antennaPanelX": -8.0,
+    # THE CHASE THROUGH THE ELECTRONICS DECK, cad/deck.py, and it is an old gap
+    # being closed rather than a cost of the above. That plate has spanned the
+    # cavity wall to wall with no way through it since it was drawn, while the
+    # actuator harnesses have always had to get from the two floor cable ports to
+    # the controller carrier above it. The panel hardware's two power leads share
+    # it. 34 mm wide takes the two 9 mm actuator bundles, the 2.6 mm CAN loom and
+    # two 14 AWG leads; 6 mm deep stops short of the battery's squeeze, because
+    # the packs end at y = -26 and this reaches -27.2; and x = 27 is the only
+    # stretch of the rear edge that is neither a fixing nor over the packs.
+    "deckChaseWidth": 34.0,
+    "deckChaseDepth": 6.0,
+    "deckChaseX": 27.0,
+    # How far the screw taps into the plate, and what the plate is notched by
+    # where the deck's rear ledge comes down through its top edge. The second was
+    # a real collision before it was measured -- 148 mm3 of printed ledge
+    # standing in the plate -- and it is the same 0.4 mm cad/deck.py holds its
+    # own corner notches off the cover bosses by.
+    "fixingPilotDepth": 5.0,
+    "ledgeNotchClearance": 0.4,
+    # THE IMU SEAT, cad/torso.py. The BNO085 Nano breakout is 11 x 10 and too
+    # small to carry a screw, so it had no mount at all -- and it is the one
+    # board whose ORIENTATION is half its worth. Three ribs decide where it
+    # points and adhesive holds it down; the fourth side is open to the rear for
+    # its flylead. The board's own outline is a named dimension now for the
+    # reason every board's is: a printed feature has to agree with it.
+    "imuBoardWidth": 11.0,
+    "imuBoardDepth": 10.0,
+    "imuSeatClearance": 0.2,
+    "imuSeatWall": 1.5,
+    "imuSeatHeight": 2.5,
+    # THE BATTERY STRAP SLOTS, cad/torso.py. docs/BOM.md buys two cinch straps
+    # for the packs and the shell gave them nothing to pass through, so they
+    # could only be wrapped and left to slide. One slot through each rail anchors
+    # a strap under the packs. They are not what holds the packs in flight --
+    # cad/deck.py bearing on 3 mm of squeeze is, and tools/gate_f.py measures it.
+    "strapSlotWidth": 16.0,
+    "strapSlotHeight": 3.0,
+    # ---- THE PACK GETS A BMS, September 2026 -------------------------------
+    #
+    # The robot carries a 6S pack with NO protection of any kind: no cell
+    # monitoring beyond the INA226's view of the bus, no over-discharge cutoff,
+    # and balancing only when somebody plugs a charger into the 7-way port. A 6S
+    # BMS on the cell taps answers two of those three and is the precondition for
+    # ever charging the pack in place.
+    #
+    # WIRED CHARGE-ONLY, which is what lets it be a small board. The discharge
+    # path is unchanged, so the BMS sees about 2.2 A rather than the bus's 24 A
+    # peak -- a common-port board carrying the whole bus would want 30 to 40 A of
+    # FET in a sealed box, and no board that size fits this torso anyway: the
+    # cavity was swept for free volume and the largest box left in it is
+    # 38 x 64 x 12 mm. The cost is stated rather than hidden: no over-discharge
+    # cutoff, so the main disconnect is still what stops a parked robot flattening
+    # its own pack.
+    #
+    # NOT ONE OF THE BAY'S DIMENSIONS IS CHOSEN. Each is another part's face: the
+    # slot the board is held in across the robot; the connector panel behind and
+    # the shell wall in front, each less 1.5 mm; the electronics deck above, less
+    # the air the board hangs under; and the tops of its own card guides below.
+    # It lands on 9 x 58.2 x 29 in the 15.1 mm of slack between the two bays --
+    # the gap nobody chose, which exists because the shell is as wide as the hip
+    # clevises make it. tools/gate_f.py measures all four bounds.
+    #
+    # THE RESERVATION IS THE SLOT RATHER THAN THE COLUMN, and it stopped being the
+    # column when a board was chosen: 12.1 held the whole gap because nothing had
+    # been picked, and 9 is what the board occupies. The three millimetres either
+    # side are where its own leads go.
+    "bmsBayClearance": 1.5,
+    "bmsWidth": 9.0,
+    # THE BAY GOT 6 mm DEEPER when the connector panel went: its rear limit was
+    # that panel's front face, and it is the shell wall itself now, less the same
+    # 1.5 mm everything in this bay is held off its neighbours by. Nothing was
+    # retyped -- both figures are derived, and both moved on their own.
+    "bmsDepth": 64.2,
+    "bmsHeight": 29.0,
+    "bmsX": 13.0,
+    "bmsY": 0.0,
+    "bmsZ": -25.5,
+    # ---- AND THE BOARD THAT WAS CHOSEN FOR IT, 2026-09-13 ------------------
+    #
+    # The Daly Li-ion NMC 6S 24V 20A, at its vendor specification table's own
+    # figures: 58 long, 33 across, 8.2 over the components, 45 g. It was chosen
+    # on two counts, neither of them its current rating -- which is nearly
+    # irrelevant on a board wired charge-only and seeing 2.2 A. It BALANCES, at
+    # 30 mA from 4.18 V per cell, and it FITS, which between them ruled out
+    # everything else on the market: the 30 A boards in its own family are 75 mm
+    # long, and the cheap generic 6S protection boards that would fit balance
+    # nothing at all.
+    "bmsBoardLength": 58.0,
+    "bmsBoardHeight": 33.0,
+    "bmsBoardThickness": 8.2,
+    # THE BOARD HANGS FROM THE DECK, which is the one thing here that is not
+    # obvious and is why these two are derived rather than typed. What stops a
+    # card lifting out of a slot is the deck over its top edge, so it has to be
+    # able to rise by LESS than the slot is deep. Stood on the cavity floor this
+    # board leaves 8.5 mm of air under a 4 mm slot and falls out of its guides --
+    # found the moment a real board replaced the full-height stand-in that was
+    # drawn here while none had been chosen. So the top edge is set 1.5 mm under
+    # the deck and the slot floor follows it down the board's own height.
+    "bmsDeckGap": 1.5,
+    "bmsBoardTopZ": 3.5,
+    "bmsBoardBottomZ": -29.5,
+    # The two guides that hold it. THE SLOT IS NOW CUT TO THE WHOLE BOARD AND NOT
+    # TO ITS PCB, which is the change a chosen board bought: 2.4 mm took a bare
+    # 1.6 mm PCB edge and assumed nothing was soldered within a guide's width of
+    # it, which was an assumption about a board nobody had and a way to find out
+    # only after printing. 9 mm takes the 8.2 mm envelope however the components
+    # fall, and the 0.8 left over is the foam shim that stops it rattling. They
+    # stand BELOW the reserved bay, so nothing is designed through a payload
+    # volume; the deck 1.5 mm over the board's top is what stops it lifting out.
+    "bmsGuideWidth": 12.0,
+    "bmsGuideDepth": 6.0,
+    "bmsGuideSlot": 9.0,
+    "bmsGuideSlotDepth": 4.0,
+    "bmsGuideShim": 0.8,
+    "bmsGuideWall": 1.5,
+    # Set in from each END OF THE BOARD rather than placed on the floor, which is
+    # what they were while the board was a guess: 6 mm in from each end puts them
+    # 46 mm apart under a 58 mm card and symmetric about it, where the IMU's
+    # reservation had previously decided them at 35 mm apart and off centre.
+    "bmsGuideInset": 6.0,
+    # AND TWO MORE GUIDES HANGING OFF THE DECK, over the first two and cut to the
+    # same slot. What they buy is not hold-down -- the plate 1.5 mm over the top
+    # edge was already doing that -- but LATERAL SUPPORT AT THE FAR END: held only
+    # at the bottom, a 33 mm card on 4 mm of engagement is a cantilever and its
+    # top edge swings. They drop 4 mm and the board stands 2.5 mm up inside them,
+    # so it is still free to rise its 1.5 mm without leaving them.
+    "bmsTopGuideDrop": 4.0,
 }
 
 

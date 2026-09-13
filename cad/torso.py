@@ -17,40 +17,42 @@ bosses, at 80.45, and the wheels at 104.
 
 from __future__ import annotations
 
-from build123d import Box, Cylinder, Plane, Pos
+from build123d import Box, Cylinder, Plane, Pos, Rot
 
 from cad.electronics import (
-    balancePortHeight,
-    balancePortOffset,
-    balancePortWidth,
-    balancePortZ,
     batteryWidth,
     batteryX,
-    chargePortHeight,
-    chargePortOffset,
-    chargePortWidth,
-    chargePortZ,
+    bmsGuideDepth,
+    bmsGuideSlot,
+    bmsGuideSlotDepth,
+    bmsGuideWidth,
+    bmsGuideY,
+    bmsX,
+    bmsZ,
+    chargeSocketFixings,
     deckLedgeDepth,
     deckLedgeHeight,
     deckLedgeWidth,
     deckLedgeX,
     deckLedgeY,
     deckZ,
-    disconnectZ,
+    disconnectFlangeFixings,
+    imuBoardDepth,
+    imuBoardWidth,
     interiorHalfWidth,
     lowerBandZ,
-    panelX,
+    panelWallY,
     pdbHolePitch,
     pdbY,
     powerX,
-    xt90Length,
-    xt90Width,
+    rearWallCutouts,
 )
 from cad.geometry import mirrored
 from cad.joint import saddleHeight, statorClevis
 from cad.parameters import (
     hipCenterX,
     jointKeepOut,
+    m2Clearance,
     shellWall,
     torsoCoverThickness,
     torsoFloorThickness,
@@ -94,44 +96,46 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # and two cable-tie slots either side of it, because the robot had no battery and
 # 24 V and CAN came in from a bench supply down one cable. The battery came back
 # in September 2026 -- cad/electronics.py says how and why -- and what the wall
-# carries instead is the three things a pack needs brought outside: the main
-# disconnect, one 7-way balance port for the whole 6S string, and a charge port
-# wired across the pack ahead of that disconnect.
+# carries instead is the two things a pack needs brought outside: the main
+# disconnect, and a charge port ahead of it.
 #
-# THE BALANCE PORT WAS TWO PORTS AND IS NOW ONE, and that is a charging decision
-# rather than a packaging one. Joining the two packs' 4-way tails inside the
-# shell is what lets a charger see the single 6S pack they are wired as and
-# finish in one session; the charge port is the other half of the same decision,
-# because the bus has to be dead while the cells charge and so the charger
-# cannot come in through the disconnect.
+# IT CARRIED THREE UNTIL THE BMS WENT IN. The third was a 7-way balance port for
+# the whole 6S string -- itself two 4-way ports joined into one inside the shell,
+# so a bench charger saw the single 6S pack the pair are wired as and finished in
+# one session. A balancing BMS now sits on those same seven cell taps
+# permanently, so the socket presented nothing the board inside does not already
+# hold, and a second path to the cells is a thing to insulate rather than a
+# convenience. It went, and this wall gained 703 mm3 of shell back.
+#
+# The charge port stays and is now the only way in: the bus has to be dead while
+# the cells charge, so a charger cannot come in through the disconnect.
 #
 # The strain relief went with the tether and is not missed. A cable tie carrying
 # a moving umbilical's pull in shear through 2.4 mm of wall was solving a problem
 # this robot no longer has: nothing now pulls on this wall at all, because
 # everything it connects to is inside the shell.
 #
-# EVERY CUT IS STILL RECTANGULAR, and now for a reason of its own rather than an
-# engine's: an XT90-S housing and a JST-XH shell are both rectangular mouldings,
-# so a round hole would have to be bigger than either to pass it. The cutouts are
-# the connector bodies plus half a millimetre all round, which means they are
-# only as good as the catalogue figures in cad/electronics.py -- measure the
-# connectors before this part is printed, because a panel cutout is the one thing
-# that cannot be adjusted afterwards.
-panelClearance = 0.5
-disconnectPortWidth = xt90Length + (panelClearance * 2)
-disconnectPortHeight = xt90Width + (panelClearance * 2)
-disconnectPortZ = disconnectZ + (xt90Width / 2)
-balanceSlotWidth = balancePortWidth + (panelClearance * 2)
-balanceSlotHeight = balancePortHeight + (panelClearance * 2)
-balanceSlotZ = balancePortZ + (balancePortHeight / 2)
-balanceSlotX = balancePortOffset
-chargeSlotWidth = chargePortWidth + (panelClearance * 2)
-chargeSlotHeight = chargePortHeight + (panelClearance * 2)
-chargeSlotZ = chargePortZ + (chargePortHeight / 2)
-chargeSlotX = chargePortOffset
-# Negative Y is the rear: the foot's front pressure pads sit at y = +51 and its
-# rear pads at y = -40, and the leading leg swings to +Y.
-panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
+# THE CONNECTORS ARE BACK IN THIS WALL, AND THE PRINTED PANEL IS GONE. For a
+# fortnight this wall carried three coarse apertures and four screw holes, and a
+# 6 mm plate behind it held the connectors, because the three fitted then -- an
+# XT90-S, a JST-XH and an XT30 -- are constant-section prisms that no cut in
+# 2.4 mm of shell can capture. That argument was right and is kept in
+# cad/electronics.py. What answered it in the end was not a printed part but
+# different hardware: a male and a female XT60 that each bolt through this wall
+# by their own ears or flange, and an antenna bushing that clamps it between a
+# shoulder and a nut.
+#
+# So the wall carries its holes again -- one per part, plus two for each XT60's
+# screws -- and this pelvis is the only printed piece involved.
+# There is no bonded joint anywhere on the robot now.
+#
+# THEY ALL SIT ABOVE THE ELECTRONICS DECK, at z = 22, which is new. Below the
+# deck this wall is full: the bus monitor comes within 12.6 mm of it and the
+# deck's own ledges stand on it. A bare prism could thread between those; the
+# GX16 bushing whose nut wanted a clear 22 mm circle could not, and it is what
+# first put the row up here. It has gone, and the row has stayed: every station
+# on it is now solved against the cavity, and cad/electronics.py has the
+# measurements.
 
 # ---- what stands inside ------------------------------------------------------
 #
@@ -150,6 +154,34 @@ panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
 batteryRailThickness = 3.0
 batteryRailY = 20.0
 batteryRailEndX = batteryX + (batteryWidth / 2)
+
+# AND THE RAILS CARRY THE STRAPS, which until now had nowhere to go. docs/BOM.md
+# buys two hook-and-loop cinch straps for the packs and the shell offered them
+# nothing to pass through, so they could only be wrapped round the cells and left
+# to slide. A slot through each rail anchors them: a strap goes down through the
+# front rail, under the packs in the 9 mm the saddle rise leaves, up through the
+# rear rail and over the top.
+#
+# They are NOT what holds the packs in flight -- cad/deck.py's plate bearing on
+# 3 mm of squeeze is, and tools/gate_f.py measures it. These are for when the
+# deck is off, which is whenever anyone is working in this bay.
+strapSlotWidth = 16.0
+strapSlotHeight = 3.0
+strapSlotX = (-55.0, -15.0)
+
+# THE IMU SEAT. The one board in this torso small enough that no screw will fit
+# it -- a BNO085 Nano breakout is 11 x 10 -- and the one board whose ORIENTATION
+# is half its value. Adhesive holds it down and three ribs decide where it
+# points; the fourth side is left open to the rear, which is where its flylead
+# leaves to join the harness run along the back of the cavity.
+#
+# It sits in the square of floor between the two hip saddles, which is the
+# stiffest spot in the pelvis and the reason the battery rails were laid across
+# the robot rather than along it.
+imuSeatClearance = 0.2
+imuSeatWall = 1.5
+imuSeatHeight = 2.5
+
 
 # THE DISTRIBUTION-BOARD POSTS. Four, standing from the shell floor to the plane
 # the board's standoffs sit on, and THE PATTERN IS THE BOARD'S RATHER THAN OURS:
@@ -192,16 +224,67 @@ def batteryRails() -> list:
     """The two rails the packs sit on, laid across the robot.
 
     They start at the left wall and stop at the battery's own inboard end, so
-    the lead chase beyond it is clear to the floor.
+    the lead chase beyond it is clear to the floor. Each carries two strap slots
+    at mid-height, cut out of the rail itself and nothing unioned on after.
     """
     railLength = batteryRailEndX + interiorHalfWidth
     railCenterX = (batteryRailEndX - interiorHalfWidth) / 2
     railHeight = lowerBandZ - cavityBottomZ
-    return [
-        Pos(railCenterX, sy * batteryRailY, cavityBottomZ + railHeight / 2)
-        * Box(railLength, batteryRailThickness, railHeight)
-        for sy in (1, -1)
-    ]
+    slotZ = cavityBottomZ + railHeight / 2
+    rails = []
+    for sy in (1, -1):
+        rail = Pos(
+            railCenterX, sy * batteryRailY, cavityBottomZ + railHeight / 2
+        ) * Box(railLength, batteryRailThickness, railHeight)
+        for atX in strapSlotX:
+            rail -= Pos(atX, sy * batteryRailY, slotZ) * Box(
+                strapSlotWidth, batteryRailThickness + 4.0, strapSlotHeight
+            )
+        rails.append(rail)
+    return rails
+
+
+def bmsGuides() -> list:
+    """Two slotted guides the battery management board's lower edge drops into.
+
+    The slot is taken out of the guide it belongs to and NOTHING IS UNIONED ON
+    afterwards, which is this part's rule everywhere: a body unioned over a slot
+    would close it with nothing to report it.
+    """
+    guideHeight = bmsZ - cavityBottomZ
+    guides = []
+    for atY in bmsGuideY:
+        block = Pos(bmsX, atY, cavityBottomZ + (guideHeight / 2)) * Box(
+            bmsGuideWidth, bmsGuideDepth, guideHeight
+        )
+        slot = Pos(bmsX, atY, bmsZ - (bmsGuideSlotDepth / 2)) * Box(
+            bmsGuideSlot, bmsGuideDepth + 2.0, bmsGuideSlotDepth
+        )
+        guides.append(block - slot)
+    return guides
+
+
+def imuSeat() -> list:
+    """Three ribs on the shell floor that decide which way the IMU faces.
+
+    One body, and it is a block with a pocket taken out of it rather than three
+    ribs drawn separately: the pocket runs out through the rear face, which is
+    what leaves that side open for the flylead.
+    """
+    pocketWidth = imuBoardWidth + (imuSeatClearance * 2)
+    pocketDepth = imuBoardDepth + (imuSeatClearance * 2)
+    blockDepth = pocketDepth + imuSeatWall
+    blockCenterY = (pocketDepth + imuSeatWall) / 2 - (pocketDepth / 2)
+    block = Pos(0, blockCenterY, cavityBottomZ + (imuSeatHeight / 2)) * Box(
+        pocketWidth + (imuSeatWall * 2), blockDepth, imuSeatHeight
+    )
+    # Taken out towards -Y and beyond the block, so the rear rib is never drawn.
+    pocket = Pos(
+        0,
+        (pocketDepth / 2) - (pocketDepth + blockDepth) / 2,
+        cavityBottomZ + (imuSeatHeight / 2),
+    ) * Box(pocketWidth, pocketDepth + blockDepth, imuSeatHeight + 2.0)
+    return [block - pocket]
 
 
 def powerEntryPosts() -> list:
@@ -260,21 +343,49 @@ def pelvisShell() -> list:
         for sx in (1, -1)
     ]
 
-    disconnectPort = Pos(panelX, panelWallY, disconnectPortZ) * Box(
-        disconnectPortWidth, shellWall + 4.0, disconnectPortHeight
-    )
-    balanceSlot = Pos(panelX + balanceSlotX, panelWallY, balanceSlotZ) * Box(
-        balanceSlotWidth, shellWall + 4.0, balanceSlotHeight
-    )
-    chargeSlot = Pos(panelX + chargeSlotX, panelWallY, chargeSlotZ) * Box(
-        chargeSlotWidth, shellWall + 4.0, chargeSlotHeight
-    )
+    # WHAT THE REAR WALL IS CUT FOR, AND IT IS THE HARDWARE ITSELF NOW. One hole
+    # per bought part -- a rectangle for the XT60E-M's nose, a rectangle for the
+    # XT60E-F's body, a round hole for the antenna's bushing -- plus two
+    # clearance holes for each XT60's screws. A round hole is square in
+    # cad/electronics.py's table, which is why this is the one place that has to
+    # tell them apart.
+    panelCutouts = []
+    for _, atX, atZ, width, height in rearWallCutouts():
+        if width == height:
+            panelCutouts.append(
+                Pos(atX, panelWallY, atZ)
+                * Rot(90, 0, 0)
+                * Cylinder(width / 2, shellWall + 4.0)
+            )
+        else:
+            panelCutouts.append(
+                Pos(atX, panelWallY, atZ) * Box(width, shellWall + 4.0, height)
+            )
+
+    # The two XT60s' four screws, and they are M2 where everything else on this
+    # robot is M3. Each connector is clamped to the wall by its own ears or
+    # flange and a nut, so this wall is clamped rather than threaded. That is
+    # what a panel-mount part buys over a bonded one -- 2.4 mm of shell will not
+    # hold a thread, and the printed panel that used to carry these needed 6 mm
+    # of plate to tap into.
+    #
+    # THE SIZE IS THE DISCONNECT'S NUTS' DOING: they sit 2.25 mm from its body,
+    # which an M2 clears and an M2.5 does not. It leaves 1.45 mm of wall between
+    # each disconnect screw and its cutout and 1.7 at the charge socket, the
+    # thinnest material anywhere on this wall; cad/parameters.py has the reason
+    # and tools/gate_e.py counts all four holes on the finished solid.
+    panelFixings = [
+        Pos(atX, panelWallY, atZ)
+        * Rot(90, 0, 0)
+        * Cylinder(m2Clearance / 2, shellWall + 4.0)
+        for atX, atZ in [*disconnectFlangeFixings(), *chargeSocketFixings()]
+    ]
 
     # KCL-SHAPED: slots first, into the simple box, then the cavity. Taking them
     # out of the already-hollowed shell is the ordering the engine rejects, and it
     # is the same ordering the keel needed when the tether entered through that.
     shellSlotted = shellBlank
-    for cutter in [*cablePorts, disconnectPort, balanceSlot, chargeSlot]:
+    for cutter in [*cablePorts, *panelCutouts, *panelFixings]:
         shellSlotted -= cutter
     shellRaw = shellSlotted - shellCavity
 
@@ -307,6 +418,11 @@ def pelvisShell() -> list:
         *batteryRails(),
         *powerEntryPosts(),
         *deckLedges(),
+        *bmsGuides(),
+        # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
+        # printed feature in this cavity that stands inside its own reserved
+        # volume, so that gate measures the IMU against the shell less this body.
+        *imuSeat(),
     ]
 
 

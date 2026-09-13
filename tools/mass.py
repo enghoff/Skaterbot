@@ -88,7 +88,7 @@ EXPECTED_CHANGE_G = {
         "the same three changes on the same shared limb geometry",
     ),
     "cad/torso.py": (
-        +66.4,
+        +68.2,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -105,7 +105,40 @@ EXPECTED_CHANGE_G = {
         "load crosses, and 1 837 standing off its outer face. The carrier was "
         "6.4 g of aluminium apiece. Gate B holds every one of those volumes "
         "exactly, and cad/wheeled_parameters.py derives the box from what has "
-        "to fit inside it",
+        "to fit inside it. The figure then moved 1.0 g DOWN on balance when "
+        "everything in the torso was given a mount: three coarse apertures "
+        "where three precision connector cutouts were, four fixings for the "
+        "connector panel that carries them now, and four strap slots through the "
+        "battery rails, against the two things the sweep added -- the IMU's "
+        "three-rib seat and the two card guides a 6S BMS stands on edge in. "
+        "It then came back UP 0.8 g when that BMS made the balance port "
+        "redundant: the board balances the string on the cell taps inside the "
+        "shell, so the seven-way socket in the rear wall went, and 703 mm3 of "
+        "wall the aperture used to take is wall again. A further 0.9 g went "
+        "into those two card guides when a board was finally chosen and they "
+        "could be cut to it rather than to its class: a 33 mm card stood on the "
+        "bay floor lifts clear of a 4 mm slot before the deck over it can stop "
+        "it, so the guides rise 7 mm to hang the board 1.5 mm under the deck, "
+        "and the slot widens from a bare PCB to the board's whole 8.2 mm "
+        "envelope. 871 mm3 of PA12, and gate B holds it exactly. It moved a "
+        "last 0.4 g UP when the connector panel was deleted and this wall took "
+        "its own hardware back: three coarse apertures and four screw holes "
+        "filled in, against the disconnect's cut, two screw holes, a 16 mm hole "
+        "for the charge socket and a 6.5 for the antenna bulkhead. The 8.6 g "
+        "panel it replaced is off this bill altogether. It then gained a final "
+        "0.8 g when the disconnect's own cut was corrected: this wall was cut "
+        "25 x 16 with two Ø3.4 screw holes for an AMASS XT90E-M on a "
+        "marketplace listing's figures, and the maker's drawing makes that part "
+        "42.0 across with its screws 32.4 apart and 19.7 mm of it inside the "
+        "wall -- too deep for this cavity at any station the charge inlet "
+        "leaves free. What is here now is an XT60E-M cut to its 14.20 nose, "
+        "14.7 x 7.2 with two Ø2.8 holes, which is 720 mm3 of wall the pelvis "
+        "used to throw away. And it gave 0.1 g of that back when the charge "
+        "socket became the disconnect's female twin: an XT60E-F body cut of "
+        "19.2 x 12.0 and two screw holes where the GX16's 16 mm hole was, the "
+        "antenna's hole moved to the far side of the disconnect, and every "
+        "screw on the wall down to M2, which is 84 mm3 net. Gate B holds it "
+        "exactly",
     ),
 }
 

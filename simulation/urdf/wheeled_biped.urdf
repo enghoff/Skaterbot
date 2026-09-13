@@ -57,12 +57,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="9.38941043e-05 0.00654494266 -0.0236078173" rpy="0 0 0"/>
-      <mass value="1.107216"/>
-      <inertia ixx="3.724215713e-03" ixy="3.094390142e-06" ixz="9.597581677e-07"
-               iyy="1.742302918e-03" iyz="-9.896315282e-05" izz="2.627580704e-03"/>
+      <origin xyz="9.06839237e-05 0.00572433143 -0.0232459893" rpy="0 0 0"/>
+      <mass value="1.153451"/>
+      <inertia ixx="3.748390228e-03" ixy="2.510998878e-06" ixz="-6.925614933e-07"
+               iyy="1.762467451e-03" iyz="-9.246323965e-05" izz="2.658450493e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 170.0 g, measured: cad/torso.py:pelvisShell, seventeen bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 171.8 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -78,7 +78,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 33.1 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 32.5 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -149,6 +149,14 @@
         <box size="0.022 0.022 0.006"/>
       </geometry>
       <material name="sensorBlue"/>
+    </visual>
+    <!-- battery management system — 45.0 g, vendor: Daly 6S 24V 20A on the cell taps, wired charge-only. The vendor's own 45 g, beside its own 58 x 33 x 8.2 -->
+    <visual name="battery_management_system">
+      <origin xyz="0 -0.013 -0.013" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.058 0.0082 0.033"/>
+      </geometry>
+      <material name="pcbGreen"/>
     </visual>
     <!-- power entry — 60.0 g, estimate: capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED – docs/BOM.md red line -->
     <visual name="power_entry">

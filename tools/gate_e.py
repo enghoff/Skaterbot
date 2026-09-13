@@ -118,12 +118,17 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     Each row is a feature the part must have, named so a failure reads as a
     sentence rather than as a number.
     """
-    from cad.electronics import sbcHoleDiameter, sbcPostClearance
+    from cad.electronics import (
+        antennaHoleDiameter,
+        sbcHoleDiameter,
+        sbcPostClearance,
+    )
     from cad.parameters import (
         bearingSeatBossDiameter,
         bearingSeatDiameter,
         bearingSeatShoulderBore,
         journalSeatDiameter,
+        m2Clearance,
         m3CapCounterbore,
         m3Clearance,
         m25InsertBore,
@@ -247,7 +252,26 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 2,
             ),
             ("Ø26 bosses carrying those shoulders", bearingSeatBossDiameter / 2, 2),
-            ("M3 clearance holes on the two Ø41 rear patterns", m3Clearance / 2, 8),
+            # Eight, not ten: the two Ø41 rear patterns carry eight between them
+            # and nothing else on this piece is an M3 clearance any more. It was
+            # twelve while a printed connector panel hung on four screws and ten
+            # while the disconnect's two ear screws were M3; the rear wall's
+            # screws are M2 now and are counted separately below, because a
+            # wrong size is exactly what this gate is for.
+            ("M3 clearances: two Ø41 rear patterns", m3Clearance / 2, 8),
+            # THE TWO XT60s' FOUR SCREWS, the only M2 on the robot. Four and not
+            # two: a pair 20.00 apart for the disconnect and a pair 25.00 apart
+            # for the charge socket, each 1.45 or 1.7 mm from the edge of its
+            # own cutout. If one of those bridges ever closes, that pair merges
+            # into its cutout and this reads two rather than four.
+            ("M2 clearances: two XT60E-M ear screws, two XT60E-F", m2Clearance / 2, 4),
+            # THE ANTENNA'S BUSHING, counted here rather than as an opening below
+            # because a round hole leaves a cylindrical face and this is what
+            # reads those. One: a hole that closed back over would leave none,
+            # and a hole cut twice would leave two. The charge socket's Ø16 hole
+            # used to be counted beside it; the XT60E-F is cut square and is
+            # asked about as an opening instead.
+            ("Ø6.5 for the SMA antenna bulkhead", antennaHoleDiameter / 2, 1),
         ],
         # THE ELECTRONICS DECK, which is the one piece on this robot with no
         # golden STEP behind it -- the KCL never had it, so gate B cannot say
@@ -281,61 +305,50 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
 def panel_openings() -> dict[str, list[tuple[str, tuple, tuple]]]:
     """piece -> [(what it is, centre, the box the opening must clear), ...]
 
-    RECTANGULAR CUTS, WHICH cylinder_radii() CANNOT SEE AT ALL. A panel cutout
-    leaves four planar faces and not one arc, so a wall that closed back over one
-    would pass every assertion above it in this file. That matters more than it
-    used to: the rear wall is three connectors now, and one of them is the only
-    way to charge the pack without opening the torso.
+    RECTANGULAR CUTS, WHICH cylinder_radii() CANNOT SEE AT ALL. A rectangular
+    cutout leaves four planar faces and not one arc, so a wall that closed back
+    over one would pass every assertion above it in this file. The round holes in
+    this wall are counted above, where their cylindrical faces can be; what is
+    left for here is the two cuts that have no arc in them at all -- the
+    XT60E-M's nose and the XT60E-F's body -- and the chase through the
+    electronics deck.
 
     Each opening is asked two questions rather than one -- is it empty, and is
-    there wall around it -- because an opening drawn off the end of the part
+    there material round it -- because an opening drawn off the end of a part
     would answer the first perfectly and mean nothing.
+
+    THE DECK'S CHASE IS ASKED A WEAKER SECOND QUESTION, and deliberately: it is a
+    notch in the plate's rear edge rather than a hole in the middle of it, so
+    there is material on three sides and open air on the fourth. The frame test
+    is given the three, which is the whole of what holds it.
     """
-    from cad.electronics import panelX
+    from cad.deck import deckChaseDepth, deckChaseWidth, deckChaseX, deckThickness
+    from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
     from cad.parameters import shellWall
-    from cad.torso import (
-        balanceSlotHeight,
-        balanceSlotWidth,
-        balanceSlotX,
-        balanceSlotZ,
-        chargeSlotHeight,
-        chargeSlotWidth,
-        chargeSlotX,
-        chargeSlotZ,
-        disconnectPortHeight,
-        disconnectPortWidth,
-        disconnectPortZ,
-        panelWallY,
-    )
 
-    def wall(x, z, w, h):
-        return ((x, panelWallY, z), (w, shellWall, h))
+    pelvis = [
+        (
+            f"{what}: its own cut in the rear wall",
+            (atX, panelWallY, atZ),
+            (width, shellWall, height),
+        )
+        for what, atX, atZ, width, height in rearWallCutouts()
+        if width != height
+    ]
 
-    return {
-        "pelvis-shell": [
+    deck = [
+        (
+            "cable chase through the electronics deck",
             (
-                "XT90-S disconnect, the pack's way off the bus",
-                *wall(
-                    panelX, disconnectPortZ, disconnectPortWidth, disconnectPortHeight
-                ),
+                deckChaseX,
+                -(interiorHalfDepth) + (deckChaseDepth / 2),
+                deckZ + (deckThickness / 2),
             ),
-            (
-                "6S balance port, both packs' tails on one connector",
-                *wall(
-                    panelX + balanceSlotX,
-                    balanceSlotZ,
-                    balanceSlotWidth,
-                    balanceSlotHeight,
-                ),
-            ),
-            (
-                "charge port, across the pack ahead of the disconnect",
-                *wall(
-                    panelX + chargeSlotX, chargeSlotZ, chargeSlotWidth, chargeSlotHeight
-                ),
-            ),
-        ]
-    }
+            (deckChaseWidth, deckChaseDepth, deckThickness),
+        )
+    ]
+
+    return {"pelvis-shell": pelvis, "electronics-deck": deck}
 
 
 def opening_material(part, centre, size, margin: float = 1.0) -> tuple[float, float]:

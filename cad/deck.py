@@ -23,9 +23,16 @@ deck is what releases them and nothing else holds them down. Two of the four SBC
 posts pass THROUGH the controller carrier, which is drilled for them --
 cad/electronics.py says why that is unavoidable rather than untidy.
 
-Four bodies: the plate and the four posts, left interpenetrating like every other
-printed piece here, because a slicer merges coincident shells and cad/finish.py's
-chamfer cannot be applied to a solid that is then booleaned again.
+AND IT IS THE TOP HALF OF THE BMS's MOUNT, which is what the two guides on its
+underside are. The board stands on edge in a slot in the cavity floor and the
+plate over it stops it lifting; these take its TOP edge in the same 9 mm slot, so
+a card that was held at one end only is held at both. The deck goes on last and
+comes straight down, so they swallow the top edge as it lands.
+
+Seven bodies: the plate, the four posts and the two BMS guides, left
+interpenetrating like every other printed piece here, because a slicer merges
+coincident shells and cad/finish.py's chamfer cannot be applied to a solid that
+is then booleaned again.
 
 It has no golden STEP and it never will: the KCL had no such part, so gate B has
 nothing to compare it against and does not list it. Gate E does -- every hole in
@@ -38,6 +45,12 @@ from build123d import Align, Box, Cylinder, Pos
 
 from cad.electronics import (
     _sbc_post_xy,
+    bmsGuideDepth,
+    bmsGuideSlot,
+    bmsGuideWidth,
+    bmsGuideY,
+    bmsTopGuideDrop,
+    bmsX,
     boardHoleInset,
     controllerDepth,
     controllerWidth,
@@ -67,6 +80,16 @@ deckDepth = (interiorHalfDepth * 2) - (deckDropClearance * 2)
 # clearance for the ASSEMBLY and not for the assembled position, which is the
 # kind of interference a static check never finds.
 deckCornerNotch = bossSize + 1.0
+
+# THE CABLE CHASE THROUGH THE PLATE. Wide enough for the two actuator bundles
+# and the CAN loom the shell already reserves -- 9 and 2.6 mm across -- plus the
+# two 14 AWG leads that now come down off the rear wall, and no wider: every
+# millimetre of it is plate taken out of the span that holds the battery down.
+# It sits between the bay gap and the right-hand wall ledge, which is the only
+# stretch of the rear edge that is neither a fixing nor over the packs' hold-down.
+deckChaseWidth = 34.0
+deckChaseDepth = 6.0
+deckChaseX = 27.0
 
 # The controller's four standoffs land here, on its own corner pattern.
 controllerScrewX = (controllerWidth / 2) - boardHoleInset
@@ -107,6 +130,25 @@ def _plate():
                 sy * controllerScrewY,
                 deckZ + deckThickness / 2,
             ) * Cylinder(bossHoleDiameter / 2, deckThickness * 3)
+
+    # THE CABLE CHASE, and it is a debt being paid rather than a new feature.
+    # This plate has spanned the cavity wall to wall with no way through it since
+    # it was drawn, while the actuator harnesses have always had to get from the
+    # two floor cable ports up to the controller carrier above -- drawn at both
+    # ends and nowhere in between. It is now also the only route for the two
+    # power leads off the rear wall's panel hardware, which stands above this
+    # plate and feeds a bay below it.
+    #
+    # An open notch in the rear edge rather than a closed slot: a loom is dressed
+    # into it from the side once the deck is down, where a closed hole has to be
+    # threaded before anything is terminated. It stops short of the battery's
+    # squeeze -- the packs end at y = -26 and this reaches y = -27.2 -- so the
+    # plate still bears on the cells across their whole width.
+    blank -= Pos(
+        deckChaseX,
+        -(deckDepth / 2) + (deckChaseDepth / 2) - 1.0,
+        deckZ + deckThickness / 2,
+    ) * Box(deckChaseWidth, deckChaseDepth + 2.0, deckThickness * 3)
     return blank
 
 
@@ -123,6 +165,31 @@ def _post(atX: float, atY: float):
     return pillar - bore
 
 
+def _bmsGuide(atY: float):
+    """One pair of ribs off the plate's underside, straddling the board's top.
+
+    A block with the slot taken straight out of it, and the slot runs the block's
+    WHOLE drop so that what is left is two ribs with the plate itself closing the
+    top. The 1.5 mm of air between that face and the board's top edge is the
+    hold-down, and cutting the slot any shallower would take it away.
+
+    The slot is subtracted from the block it belongs to and nothing is unioned on
+    afterwards, which is the rule on every printed piece here: a body unioned
+    over a slot closes it with nothing to report it.
+    """
+    block = Pos(bmsX, atY, deckZ - (bmsTopGuideDrop / 2)) * Box(
+        bmsGuideWidth, bmsGuideDepth, bmsTopGuideDrop
+    )
+    slot = Pos(bmsX, atY, deckZ - (bmsTopGuideDrop / 2)) * Box(
+        bmsGuideSlot, bmsGuideDepth + 2.0, bmsTopGuideDrop
+    )
+    return block - slot
+
+
 def electronicsDeck() -> list:
-    """The deck as printed: one plate and four posts."""
-    return [_plate(), *(_post(dx, dy) for dx, dy in _sbc_post_xy())]
+    """The deck as printed: one plate, four posts and the two BMS guides."""
+    return [
+        _plate(),
+        *(_post(dx, dy) for dx, dy in _sbc_post_xy()),
+        *(_bmsGuide(atY) for atY in bmsGuideY),
+    ]
