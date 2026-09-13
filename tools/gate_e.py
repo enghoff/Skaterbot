@@ -302,8 +302,8 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
     }
 
 
-def panel_openings() -> dict[str, list[tuple[str, tuple, tuple]]]:
-    """piece -> [(what it is, centre, the box the opening must clear), ...]
+def panel_openings() -> dict[str, list[tuple]]:
+    """piece -> [(what it is, centre, the box the opening must clear, axis), ...]
 
     RECTANGULAR CUTS, WHICH cylinder_radii() CANNOT SEE AT ALL. A rectangular
     cutout leaves four planar faces and not one arc, so a wall that closed back
@@ -321,10 +321,26 @@ def panel_openings() -> dict[str, list[tuple[str, tuple, tuple]]]:
     notch in the plate's rear edge rather than a hole in the middle of it, so
     there is material on three sides and open air on the fourth. The frame test
     is given the three, which is the whole of what holds it.
+
+    THE LIMB'S TIE TUNNELS ARE HERE FOR THE SAME REASON, and they are why each
+    row now carries the axis it is pierced along -- theirs runs across the limb
+    rather than through a wall. They are the whole of what a harness can be tied
+    to outside the pelvis, each is a gap under an arch that is unioned into the
+    piece afterwards, and an arch drawn a millimetre lower would close one
+    without leaving an arc for cylinder_radii() to find.
     """
     from cad.deck import deckChaseDepth, deckChaseWidth, deckChaseX, deckThickness
     from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
-    from cad.parameters import shellWall
+    from cad.parameters import (
+        limbTieArchTunnel,
+        limbTieArchWidth,
+        limbTieArchY,
+        limbTieArchZ,
+        limbTieSlotWidth,
+        rotorHubInnerX,
+        shellWall,
+        upperLegLength,
+    )
 
     pelvis = [
         (
@@ -348,15 +364,42 @@ def panel_openings() -> dict[str, list[tuple[str, tuple, tuple]]]:
         )
     ]
 
-    return {"pelvis-shell": pelvis, "electronics-deck": deck}
+    def tieTunnels(hand: int) -> list:
+        archZ = upperLegLength / 2 - limbTieArchZ
+        return [
+            (
+                f"cable-tie tunnel, {end} arch",
+                (
+                    hand * (rotorHubInnerX - limbTieArchTunnel / 2),
+                    limbTieArchY,
+                    side * archZ,
+                ),
+                (limbTieArchTunnel, limbTieArchWidth, limbTieSlotWidth),
+                "Y",
+            )
+            for end, side in (("rotor-end", 1), ("stator-end", -1))
+        ]
+
+    return {
+        "pelvis-shell": pelvis,
+        "electronics-deck": deck,
+        "limb-105-unmirrored": tieTunnels(1),
+        "limb-105-mirrored": tieTunnels(-1),
+    }
 
 
-def opening_material(part, centre, size, margin: float = 1.0) -> tuple[float, float]:
-    """(material standing in the opening, material in the frame around it), mm3."""
+def opening_material(
+    part, centre, size, margin: float = 1.0, through: str = "Y"
+) -> tuple[float, float]:
+    """(material standing in the opening, material in the frame around it), mm3.
+
+    `through` is the axis the opening is pierced along -- the wall's normal --
+    and it is the one dimension the inner probe keeps in full, because the
+    probe is held off the opening's SIDES and has to run right through it.
+    """
     from build123d import Box, Pos
 
-    cx, cy, cz = centre
-    w, d, h = size
+    axis = {"X": 0, "Y": 1, "Z": 2}[through]
 
     def shared(solid):
         both = part & solid
@@ -364,9 +407,15 @@ def opening_material(part, centre, size, margin: float = 1.0) -> tuple[float, fl
 
     # Inside the opening, held 0.1 mm off its own faces so a coincident face is
     # not mistaken for material.
-    inner = Pos(cx, cy, cz) * Box(w - 0.2, d, h - 0.2)
-    outer = Pos(cx, cy, cz) * Box(w + margin * 2, d + margin * 2, h + margin * 2)
-    return shared(inner), shared(outer - inner)
+    inner = [length - 0.2 for length in size]
+    inner[axis] = size[axis]
+    return (
+        shared(Pos(*centre) * Box(*inner)),
+        shared(
+            (Pos(*centre) * Box(*[length + margin * 2 for length in size]))
+            - (Pos(*centre) * Box(*inner))
+        ),
+    )
 
 
 def registry() -> dict[str, callable]:
@@ -426,8 +475,10 @@ def main() -> int:
             failures += 0 if ok else 1
             mark = "  ok  " if ok else " FAIL "
             print(f" {mark} 360 deg at r{radius:<7.3f}  found {span:6.2f}   {what}")
-        for what, centre, size in cuts:
-            standing, frame = opening_material(part, centre, size)
+        for what, centre, size, *axis in cuts:
+            standing, frame = opening_material(
+                part, centre, size, through=axis[0] if axis else "Y"
+            )
             ok = standing <= 1e-6 and frame > 1.0
             failures += 0 if ok else 1
             mark = "  ok  " if ok else " FAIL "

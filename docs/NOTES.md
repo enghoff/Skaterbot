@@ -1517,3 +1517,94 @@ cannot see them.
 **Still unmeasured, and it is the same warning as before:** the 7-pin JST-XH and
 the XT30 are catalogue-class figures. A panel cutout is the one thing that cannot
 be adjusted after printing, so measure both mouldings first.
+
+
+## The harness gets a side, and something to hold on to — September 13, 2026
+
+Two changes to the one limb part, which is every limb on the robot. Neither is
+large and one of them is free.
+
+### The connector relief faces aft
+
+The flat limb's lower plate is drawn behind an actuator whose output faces +X
+and then brought to the near side to land on the rear cover, because the lower
+actuator at every joint is turned round. It had always been brought across by a
+half turn about Z, which is a true mirror of everything on that plate except the
+one feature that is not symmetric fore and aft: the connector relief. So the
+relief ended up forward.
+
+Nothing was wrong with that until somebody routed a cable. The hip actuators'
+connectors face aft, and both floor ports into the pelvis are aft, so with the
+knee's and the wheel motor's facing forward, all four leads on the robot would
+have had to cross their own limb front to back before they could go anywhere.
+Reflecting the plate across YZ instead of spinning it puts it in exactly the
+same place with its relief still aft — the same thing as installing that
+actuator the other way up.
+
+Gate B measures it as +817.87 mm3 added and 817.87 removed, the same number to
+1e-5, and that agreement is the check rather than the cost: the forward segment
+the relief used to take is filled back in and the identical segment comes off
+the aft one. No material, no mass, one silhouette mirrored.
+
+### Two cable-tie arches on each limb's inboard face
+
+Nothing outside the pelvis anchored a lead. `docs/BOM.md` buys adhesive tie
+mounts, but they were bought for the torso floor, and a limb that swings through
+110 degrees is not where to trust an adhesive pad. Each limb now carries two
+arches — a 6 x 10 block standing 4 mm off the plate with a 3.5 x 2.0 tunnel
+under it, so a 2.5 mm tie passes through and closes round the bundle lying
+beside it. 237 mm3 apiece, 1.1 g across the four limbs.
+
+**A slot through the plate was never an option, and the arithmetic is the
+reason.** The waist is 40 x 6 and its weak direction is sideways, out of the
+plate's plane, where the whole section modulus is 240 mm3. A tie needs two slots
+to straddle a bundle; a 2 mm pair takes a tenth of that, and a slot in a bending
+plate concentrates stress at its edge by something like 1.5 to 2. Together, at
+the station these sit at, that lands 1.5 to 2 MPa per newton of sideways load at
+the wheel against the 0.99 the limb's worst section carries today. The tie point
+would have become the weakest thing on the robot: roughly 30 N sideways down to
+15 or 20. Anything standing ON the plate costs the section nothing.
+
+**They were ears in the plate's own plane for one revision**, reaching 12 mm aft
+of the flank, which is cheaper to print and is what a slot would have been
+replaced by if only strength mattered. They moved because of what they were
+exposed to: the ear and the bundle tied to it were the aft-most material at
+their own station by 12 mm, inside the robot's silhouette only by the 4 mm the
+wheels and the torso's back stand proud of them. A fall onto a flat floor would
+not reach them; a doorway, a bench leg or a table edge would. On the inboard
+face the whole run is inside the box the two limb plates and the actuators make,
+and that is the side every connector on the leg is on anyway.
+
+**What that costs is a print orientation.** The arch is 4 mm proud of one face,
+so that face has to be uppermost on the bed or it wants support. It is the face
+the Ø30.4 register pocket is in, which would rather be uppermost than bridged,
+and which way up a flat plate lies costs nothing structurally — the layers run
+along the limb either way.
+
+### What the run is, and what still is not known
+
+The bundle lies on the inboard face 17 mm aft of the limb's centre line, beside
+the arches. There it is clear of both Ø46 actuator bodies from z -35 to +35 and
+swings out past the flank over the last 17 mm at each end, which is where its
+connector is. The arches are the rigid part and are held further off: 30.5 mm
+from their own joint axis, which leaves **3.44 mm between an arch and its
+actuator**, measured by `tools/gate_f.py`. The limb check scene carries the
+actuator at BOTH ends now for exactly that reason — it held only the lower one
+while nothing stood off the limb's faces.
+
+**The loops at the joints are still arithmetic, not geometry.** Anchor to
+anchor, the knee crossing runs 31 mm folded to 68 mm straight, so it wants 68 mm
+of lead carrying 37 mm of slack; the hip runs 34 to 75 over the provisional
++/-60 degrees of travel, and wants 40 mm of slack. Those are spans between tie
+points and not cable lengths, they assume a hip range no swept clearance check
+has ever confirmed, and they wait on the same measurement Phase 6 has been
+blocked on since the limb was drawn: how far a mated SH1.0 plug and its strain
+relief stand off the actuator's rear face.
+
+### What it cost
+
++1.5 g on each limb pair — 0.4 of that is the relief and register corrections
+this line already carried, 1.1 is the arches. The robot totals 2 108.6 g against
+its 2 300 ceiling, 191.4 g under. All six gates pass, the URDF is rebuilt from
+the re-exported meshes, and `simulation/check_model.py` still agrees with the
+CAD.

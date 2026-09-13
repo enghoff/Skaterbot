@@ -29,6 +29,14 @@ What is left is a single flat profile, 6 mm thick from one end to the other,
 which is both the cheapest thing to print and the strongest way to print it:
 laid flat, every fibre runs along the limb and no load crosses a layer line.
 
+Two cable-tie arches stand on the INBOARD face, one at each end of the waist,
+and they are the only thing on the robot outside the pelvis that a harness can
+be tied to. They put the run inside the box the limb plates and the actuators
+make rather than hanging it off the back of the leg, and they add material
+where a slot through the plate would have taken it away. The reasoning, and
+why the lower joint's connector relief now faces aft to meet the harness, is
+in cad/parameters.py.
+
 The waist is not symmetric about the limb centre. Each end runs as far into its
 disc as that disc's bolt pattern allows, and the two patterns are not the same
 distance out, so the two ends are not either.
@@ -46,7 +54,6 @@ from build123d import (
     Plane,
     Polyline,
     Pos,
-    Rot,
     extrude,
     make_face,
 )
@@ -56,6 +63,14 @@ from cad.joint import outputDisc, outputRegisterCutter, statorPlate
 from cad.parameters import (
     actuatorRearBoltOffset,
     limbPlateThickness,
+    limbTieArchHeight,
+    limbTieArchLap,
+    limbTieArchLength,
+    limbTieArchTunnel,
+    limbTieArchWidth,
+    limbTieArchY,
+    limbTieArchZ,
+    limbTieSlotWidth,
     limbWaistDepth,
     limbWaistUpperZ,
     m3CapHeadStandoff,
@@ -219,8 +234,56 @@ def limbAssembly(limbLength: float) -> list:
 
     upperDisc = Pos(0, 0, jointZ) * outputDisc()
     # The stator plate is drawn behind an actuator whose output faces +X. This
-    # limb's lower actuator is turned round, so the plate is spun to the near side
-    # to land on the rear cover that now faces +X with everything else.
-    lowerPlate = Pos(0, 0, -jointZ) * (Rot(0, 0, 180) * statorPlate())
+    # limb's lower actuator is turned round, so the plate has to come to the near
+    # side to land on the rear cover that now faces +X with everything else.
+    #
+    # REFLECTED RATHER THAN SPUN, September 2026, AND THE CONNECTORS ARE WHY.
+    # A half turn about Z brings the plate across and takes its connector relief
+    # with it, from the aft flank to the forward one -- which is where the relief
+    # sat from the day this part was drawn, because the spin was chosen when
+    # nobody was routing a cable. It put every lead on this robot on the wrong
+    # side: the hip actuators' connectors face aft, both floor ports into the
+    # pelvis are aft, and the knee's and the wheel motor's faced forward, so each
+    # of the four leads had to cross its own limb front to back to get home.
+    # Mirroring across YZ moves the plate the same way and leaves the relief
+    # where it is, which is the same thing as installing that actuator the other
+    # way up. Every feature on this plate is symmetric fore and aft except the
+    # relief, so nothing else moves; gate B holds the pair of segments it swaps.
+    lowerPlate = Pos(0, 0, -jointZ) * mirrored(statorPlate(), Plane.YZ)
 
-    return [waistPlate, gussetFront, gussetRear, upperDisc, lowerPlate]
+    # The two cable-tie arches, standing on the INBOARD face at each end of the
+    # waist -- the face the actuators are on, where a lead is inside the leg
+    # rather than hanging off the back of it. A tie passes under the arch and
+    # closes round the bundle lying beside it, holding the bundle against the
+    # plate. cad/parameters.py carries why they are here and not cut through the
+    # plate, and why the harness runs on this face and not aft of the flank.
+    #
+    # Each is a plain block lapped 1 mm into the plate with its tunnel cut
+    # before it goes anywhere near the rest of the piece, and each stays its own
+    # body like everything else here, so what it weighs and what it adds can be
+    # measured on its own. The tunnel is cut through the lap as well: that part
+    # of it is buried in the plate, which fills it back in, and the plate's own
+    # face is what the strap runs on.
+    arches = []
+    archOuterX = rotorHubInnerX - limbTieArchHeight
+    archZ = jointZ - limbTieArchZ
+    for side in (1, -1):
+        archBlank = Pos(archOuterX, limbTieArchY, side * archZ) * Box(
+            limbTieArchHeight + limbTieArchLap,
+            limbTieArchWidth,
+            limbTieArchLength,
+            align=(Align.MIN, Align.CENTER, Align.CENTER),
+        )
+        tunnel = Pos(
+            rotorHubInnerX - limbTieArchTunnel,
+            limbTieArchY,
+            side * archZ,
+        ) * Box(
+            limbTieArchTunnel + limbTieArchLap + 1.0,
+            limbTieArchWidth + 2.0,
+            limbTieSlotWidth,
+            align=(Align.MIN, Align.CENTER, Align.CENTER),
+        )
+        arches.append(archBlank - tunnel)
+
+    return [waistPlate, gussetFront, gussetRear, upperDisc, lowerPlate, *arches]

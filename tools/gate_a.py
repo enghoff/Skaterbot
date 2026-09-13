@@ -596,6 +596,40 @@ ADDED = {
     # 46 mm apart under a 58 mm card and symmetric about it, where the IMU's
     # reservation had previously decided them at 35 mm apart and off centre.
     "bmsGuideInset": 6.0,
+    # ---- THE HARNESS GETS SOMETHING TO BE TIED TO, September 2026 ----------
+    #
+    # cad/limb.py: two arches on each limb's inboard face, one at each end of
+    # the waist, each a block standing 4 mm off the plate with a tunnel under it
+    # for a 2.5 mm cable tie. Nothing outside the pelvis anchored a lead before
+    # them -- docs/BOM.md's adhesive tie mounts were bought for the torso floor,
+    # and a limb that swings is not where to trust an adhesive pad.
+    #
+    # THE ARCH ADDS MATERIAL WHERE A SLOT WOULD HAVE REMOVED IT, which is the
+    # first reason for the shape. A tie needs two slots to straddle a bundle,
+    # and a 2 mm pair cut through the 40 x 6 waist takes a tenth of the section
+    # it stands in and brings a notch with it, on the plate this project already
+    # calls the weakest printed thing on the robot: roughly 30 N sideways at the
+    # wheel down to 15 or 20. Anything standing ON the plate costs the section
+    # nothing.
+    #
+    # AND IT IS ON THE INBOARD FACE, which is the second. These were ears in the
+    # plate's own plane reaching 12 mm aft of the flank, which put the tie point
+    # and the bundle on it outside the limb's own silhouette -- inside the
+    # robot's only by the 4 mm the wheels and the torso's back stand proud of
+    # them, which is a fall onto a flat floor and not a fall onto anything else.
+    # On this face the whole run is inside the box the two limb plates and the
+    # actuators make, and it is the side every connector on the leg is on. What
+    # it costs is a print orientation: this face has to be uppermost on the bed.
+    # gate B holds the volume, gate E counts the tunnels and gate F measures the
+    # 3.4 mm between each arch and its own actuator.
+    "limbTieArchHeight": 4.0,
+    "limbTieArchLength": 10.0,
+    "limbTieArchWidth": 6.0,
+    "limbTieArchTunnel": 2.0,
+    "limbTieArchLap": 1.0,
+    "limbTieArchY": -10.0,
+    "limbTieArchZ": 30.5,
+    "limbTieSlotWidth": 3.5,
     # AND TWO MORE GUIDES HANGING OFF THE DECK, over the first two and cut to the
     # same slot. What they buy is not hold-down -- the plate 1.5 mm over the top
     # edge was already doing that -- but LATERAL SUPPORT AT THE FAR END: held only

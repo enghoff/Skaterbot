@@ -290,6 +290,21 @@ CLEARANCES = (
         "touch",
         0.0,
     ),
+    # THE CABLE-TIE ARCHES, at both ends, and this row is why the scene carries
+    # the upper actuator at all. The arches stand 4 mm off the same face the
+    # actuators sit against, so what stops them fouling a Ø46 body is 30.5 mm of
+    # limb between each arch and its joint axis and nothing else. The pair is
+    # asked to TOUCH rather than to clear because the disc lands on the output
+    # face in this scene as the plate lands on the rear cover below: the
+    # assertion is the shared volume, which is zero only if the arch misses.
+    (
+        "limb_check",
+        "the limb, arches and all, against the actuator above",
+        ("motor above",),
+        ("limb",),
+        "touch",
+        0.0,
+    ),
 )
 
 # Where each wheel has to be, and why. The two poses put a wheel on the floor by

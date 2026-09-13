@@ -76,16 +76,23 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +0.4,
+        +1.5,
         "the connector relief cut flush with the waist adds 206 mm3 to each of "
         "the two plates, the register pocket cut clear of the waist takes "
         "11 mm3 off and the waist's two bottom corners carried down to the "
         "plate's rim add 9, so +204 mm3 a limb, twice over on the pair. Gate B "
-        "holds the volumes exactly",
+        "holds the volumes exactly. The other 1.1 g is the two cable-tie "
+        "arches each limb now carries on its inboard face, 237 mm3 apiece: the "
+        "harness had nothing to be tied to anywhere outside the pelvis, and a "
+        "slot cut through the waist instead would have taken section off the "
+        "plate that breaks first. Moving the connector relief to the aft flank, "
+        "so the leads leave on the side the pelvis's ports are on, costs no "
+        "mass at all -- it fills one segment of the plate in and takes the "
+        "identical segment off the other",
     ),
     "cad/shin.py": (
-        +0.4,
-        "the same three changes on the same shared limb geometry",
+        +1.5,
+        "the same changes on the same shared limb geometry",
     ),
     "cad/torso.py": (
         +68.2,

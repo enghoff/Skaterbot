@@ -112,7 +112,10 @@ DEVIATIONS = {
             "why": (
                 "the stator plate's connector relief is cut flush with the "
                 "waist's flank at 20 mm rather than on the housing's connector "
-                "flat at 19. Widening the waist from 30 mm to 40 in August 2026 "
+                "flat at 19 -- which flank is the entry below's business, and "
+                "does not change this figure: the plate is a disc and the two "
+                "segments are the same segment. Widening the waist from 30 mm "
+                "to 40 in August 2026 "
                 "had put the limb's edge a millimetre PROUD of the relief, which "
                 "is the 1 mm step in the silhouette above the lower joint. See "
                 "statorPlateFlatOffset in cad/parameters.py for why the "
@@ -126,6 +129,40 @@ DEVIATIONS = {
                 "which it filled a 45.8 degree segment of -- 11.8 mm across and "
                 "the pocket's full depth. Same defect as the rotor hub's above, "
                 "on the piece the wheeled robot actually prints."
+            ),
+        },
+        {
+            "added_mm3": 817.8668634,
+            "removed_mm3": 817.8668634,
+            "why": (
+                "THE CONNECTOR RELIEF IS ON THE AFT FLANK NOW. The lower plate "
+                "is reflected across YZ to bring it to the near side rather than "
+                "spun half a turn about Z, which leaves its relief facing aft "
+                "with the hip actuators' connectors and both floor ports into "
+                "the pelvis, instead of forward and away from them. The two "
+                "figures are the same number to 1e-5 mm3 and that is the check "
+                "rather than the cost: the forward segment the relief used to "
+                "take is filled back in and the identical segment is taken off "
+                "the aft one, so if anything but the side of the cut had moved, "
+                "they would differ. No material, no mass, one silhouette "
+                "mirrored about the limb's own plane of symmetry."
+            ),
+        },
+        {
+            "added_mm3": 396.0000000,
+            "why": (
+                "two cable-tie arches, one at each end of the waist, standing "
+                "4 mm off the limb's INBOARD face with a 3.5 x 2.0 tunnel under "
+                "each for a 2.5 mm tie. 237 mm3 apiece as drawn, of which 39 is "
+                "the millimetre it laps into the plate, so 198 each is material "
+                "the golden does not have. Nothing outside the pelvis anchored a "
+                "lead before this. They were ears in the plate's own plane for "
+                "one revision, reaching 12 mm aft of the flank, and they moved "
+                "to this face because that put the tie point and the bundle on "
+                "it outside the limb's silhouette, where a doorway or a bench "
+                "leg reaches them. A slot through the waist instead was never "
+                "an option: it costs section on the plate that already breaks "
+                "first. See cad/parameters.py."
             ),
         },
         {

@@ -230,15 +230,23 @@ def kneePreLimitGroups() -> dict[str, list]:
 
 
 def limbCheckGroups() -> dict[str, list]:
-    """One flat limb bolted to the actuator below it.
+    """One flat limb with the actuator at each end of it.
 
-    There is no hardware left to show at this joint -- the plate lands straight on
-    the actuator's rear cover, and the far bearing that used to close the joint
-    went with the clevis.
+    There is no hardware left to show at either joint -- the plate lands straight
+    on the actuator's rear cover below, the disc on the output face above, and
+    the far bearing that used to close the joint went with the clevis.
+
+    THE UPPER ACTUATOR IS HERE BECAUSE OF THE CABLE-TIE ARCHES. This scene held
+    only the lower one while the limb was a plate and nothing stood off its
+    faces: one joint was the whole of what there was to look at. The arches
+    stand 4 mm proud of the inboard face at BOTH ends, on the same side as the
+    actuators and 30.5 mm from each joint axis, so each of them has a Ø46 body
+    to miss and tools/gate_f.py now measures both.
     """
     return {
         "limb": limbAssembly(upperLegLength),
         "motor": _turned(actuatorAssembly(), Axis.Y, -90, z=-upperLegLength / 2),
+        "motor above": _turned(actuatorAssembly(), Axis.Y, 90, z=upperLegLength / 2),
     }
 
 

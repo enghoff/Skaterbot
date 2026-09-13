@@ -257,6 +257,8 @@ being a separate printed part and becomes the moulded end of a limb shell.
 - [ ] Route the actuator's cable into the shell interior at the joint, with a
       bend radius and a service loop. The cavity is left clear for it, but no
       routing is modelled, and this is blocked on the Phase 6 plug measurement.
+      The limb end of it is answered: the connector relief faces aft and two
+      cable-tie arches on the inboard face carry the run up the leg.
 - [x] Mock-execute, then engine-execute, a single-joint review model —
       `limb_check.kcl`
 
@@ -453,7 +455,12 @@ fix is track width rather than mass placement.
 ### Phase 6 — assembly, cables and service
 
 - [ ] Every actuator removable without destroying a printed part
-- [ ] Cable runs closed end to end, with strain relief at each joint
+- [ ] Cable runs closed end to end, with strain relief at each joint. **Half
+      done.** Each limb carries two cable-tie arches on its inboard face, and
+      the connector relief at its lower joint faces aft, so a lead runs from its
+      plug straight up the leg inside the limb's own silhouette. The crossings
+      at the knee and the hip are measured as spans between tie points and are
+      not drawn as cable.
 - [ ] **Measure how far a mated plug and its strain relief project past the rear
       face** — carried over from `CHECKLIST.md` and now blocking, because the
       shell has to clear it
@@ -802,9 +809,14 @@ cent of the box.
       cavity, because they no longer have an inside: the closed shell that used
       to carry the cable went when the legs went flat. Routing is now external
       along the plate, which means clips, a service loop at each joint and
-      abrasion protection where a cable crosses a rotating face -- none of it
-      modelled, and all of it more work than threading a tube. The pelvis slots
-      at each hip are unchanged. Still blocked on the mated-plug measurement.
+      abrasion protection where a cable crosses a rotating face. **The clips
+      exist now** -- two cable-tie arches on each limb's inboard face, and the
+      lower joint's connector relief turned round to face aft so that every lead
+      on the robot leaves on the side the pelvis's floor ports are on. What is
+      still only arithmetic is the loop at each joint: 68 mm of lead with 37 of
+      slack at the knee, 75 with 40 at the hip on a travel nothing has confirmed.
+      The pelvis slots at each hip are unchanged. Still blocked on the
+      mated-plug measurement.
 - [ ] **Designed hard stops matter more than they did.** The knee fold used to
       be backed up by structure at 116°. Flat limbs lie in different planes and
       cannot touch, so there is no longer any structural backstop anywhere on

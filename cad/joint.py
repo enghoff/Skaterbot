@@ -437,10 +437,12 @@ def statorPlate():
 
     Drawn in the same frame as everything else here -- joint centre at the
     origin, axis along X, actuator output towards +X -- so the plate sits behind
-    the motor at -X. A limb whose lower actuator is turned round spins it 180
-    degrees about Z to bring it to +X, which is a true mirror here because every
-    feature is symmetric fore and aft except the connector flat, and where that
-    flat points is a mounting choice.
+    the motor at -X. A limb whose lower actuator is turned round REFLECTS it
+    across YZ to bring it to +X, rather than spinning it half a turn about Z.
+    The two are the same plate everywhere but the connector flat, which is the
+    one feature that is not symmetric fore and aft -- and that flat is where the
+    actuator's leads come out, so it has to stay aft, with the hip's and with
+    both floor ports into the pelvis. See cad/limb.py.
 
     It is solid inside the bolt circle. It carried the clevis's Ø30.2 lightening
     bore until that was measured on a 6 mm plate rather than a 3 mm cheek: the

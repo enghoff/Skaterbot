@@ -351,6 +351,68 @@ limbWaistUpperZ = 38.5
 # All of it is arithmetic against 75 MPa in plane and 30 MPa across layers for
 # PA12-CF, which this project has still never measured on a coupon.
 
+# ---------------------------------------------------------------------------
+# Where the harness is tied down, September 2026
+#
+# Each limb carries two arches on its INBOARD face, one at each end of the
+# waist: a block standing 4 mm off the plate with a 3.5 x 2.0 tunnel under it,
+# so a cable tie passes through and closes round the bundle lying beside it.
+# Nothing else on this robot anchors a lead outside the pelvis; docs/BOM.md's
+# adhesive tie mounts were bought for the torso floor and are not what should
+# hold a loom on a limb that swings.
+#
+# NOT A SLOT THROUGH THE PLATE, and this is the first of the two decisions. The
+# waist is 40 x 6 and takes its load ACROSS the plate, where the whole section
+# is 240 mm3. A tie needs two slots to straddle a bundle; a 2 mm pair costs a
+# tenth of that and brings a notch of 1.5 to 2 with it, which lands the stress
+# at the slot above the 0.99 MPa per newton that the limb's worst section
+# carries today. The tie point would become the weakest thing on the robot --
+# roughly 30 N sideways at the wheel down to 15 or 20. Anything standing ON the
+# plate adds material instead, carries no load, and costs the section nothing.
+#
+# ON THE INBOARD FACE RATHER THAN OFF THE AFT FLANK, and this is the second.
+# These were ears in the plate's own plane for a few hours, reaching 12 mm aft
+# of the flank, which is the cheapest thing to print and the most exposed thing
+# on the limb: the ear and the bundle on it were the aft-most material at their
+# own station by 12 mm, inside the robot's silhouette only by the 4 mm the
+# wheels and the torso's back stand proud of them. A fall onto a flat floor
+# would not reach them; an edge, a doorway or a bench leg would. On this face
+# the whole run is inside the box the two limb plates and the actuators make,
+# which is also the side every connector on the leg is on.
+#
+# WHAT IT COSTS IS A PRINT ORIENTATION. The arch is 4 mm proud of one face, so
+# that face has to be uppermost on the bed or it needs support. That is the
+# face the Ø30.4 register pocket is in, which wants to be uppermost anyway
+# rather than bridged, and which way up a flat plate lies costs nothing
+# structurally -- the layers run along the limb either way.
+#
+# AND THE HARNESS NOW RUNS ON THE FACE, inside the flank line, which the
+# actuators make room for only in the middle: a Ø46 body sits against this face
+# at each end of the limb. At the bundle's station -- 17 mm off the centre line,
+# on the aft side, beside the arches -- it is clear of both bodies from z -35 to
+# +35 and swings out past the flank over the last 17 mm at each end, which is
+# where its connector is anyway. The arches are the rigid part and they are held
+# further off: the nearest corner of one stands 26.4 mm from its joint axis
+# against the Ø46 body's 23.
+limbTieArchHeight = 4.0
+limbTieArchLength = 10.0
+limbTieArchWidth = 6.0
+limbTieArchTunnel = 2.0
+# How far the arch's root runs INTO the plate, so the two shells merge in the
+# slicer the way every other overlap on this piece does.
+limbTieArchLap = 1.0
+# Where the two arches sit. 10 mm aft of the limb's centre line keeps the
+# bundle beside them inside the flank and off the rear bolt heads; and each
+# arch is placed from ITS OWN JOINT AXIS rather than from the limb's centre,
+# because what it has to miss is the actuator at that joint and not the middle
+# of the leg. 30.5 mm clears the Ø46 body by 3.4 mm at the arch's nearest
+# corner, clears the Ø52 plate's rim, and stays out of the 12 to 18 mm band
+# under the rotor hub where the peak stress is.
+limbTieArchY = -10.0
+limbTieArchZ = 30.5
+# The strap's own width, which is what the tunnel is cut to: a 2.5 mm tie.
+limbTieSlotWidth = 3.5
+
 # Far support. The bearing is bonded straight into the printed front cheek.
 #
 # It used to sit in a turned aluminium carrier -- a Ø30 x 3 mm flanged ring in a

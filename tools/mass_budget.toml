@@ -81,14 +81,14 @@ count = 1
 name = "limb-105-unmirrored"
 export = "thighRight"
 prints = 2
-bodies = 5  # waist plate, two gussets, output disc, stator plate
+bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
 note = "Right thigh and left shin -- limbAssembly as built, stator plate on +X."
 
 [[printed.piece]]
 name = "limb-105-mirrored"
 export = "thighLeft"
 prints = 2
-bodies = 5  # waist plate, two gussets, output disc, stator plate
+bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
 note = "Left thigh and right shin -- the mirror, stator plate on -X."
 
 # Measured for mass because the robot carries four limbs, but printed from
