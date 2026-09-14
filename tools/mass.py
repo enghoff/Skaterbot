@@ -77,7 +77,7 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +22.5,
+        +22.1,
         "THE JOURNAL IS NOT PART OF THIS PRINT AND CANNOT BE, which is -0.2 g of "
         "the figure. It was a bonded dowel, then a printed stub worth 1.4 g on "
         "the pair, and neither can be assembled: both stand proud of the output "
@@ -106,7 +106,7 @@ EXPECTED_CHANGE_G = {
         "the two plates and the waist's two bottom corners carried down to the "
         "plate's rim add 9, so +215 mm3 a limb, twice over on the pair. The "
         "waist used to be cut clear of the register pocket for 11 mm3 more and "
-        "is not any longer, the pocket having moved out of its plane. Gate B "
+        "is not any longer, there being no pocket to clear. Gate B "
         "holds the volumes exactly. The other 1.1 g is the two cable-tie "
         "arches each limb now carries on its inboard face, 237 mm3 apiece: the "
         "harness had nothing to be tied to anywhere outside the pelvis, and a "
@@ -115,24 +115,27 @@ EXPECTED_CHANGE_G = {
         "so the leads leave on the side the pelvis's ports are on, costs no "
         "mass at all -- it fills one segment of the plate in and takes the "
         "identical segment off the other. "
-        "AND THE REGISTER POCKET TURNED INSIDE OUT on 14 September 2026, which "
-        "is 2.1 g of this line and about 1.0 g a limb. The actuator's Ø30 "
-        "output register stands 1.0 mm proud of its housing -- the body is 36.9 "
-        "mm long where the actuator is 37.9, both figures on the vendor 2D "
-        "print -- so the plate seats on the register and clears the housing, "
-        "where this model had it landing on the housing with the register "
-        "filling a 1.2 mm pocket in it. The plate was floating 1.0 mm off "
-        "anything at all, with the six M3 that carry the joint's whole output "
-        "torque clamping across the gap. What is there now is a Ø36 x 0.7 rim "
-        "on the plate's inboard face, bored Ø30.4 to pilot on the register, and "
-        "the 1.2 mm pocket filled back in: 944 mm3 a limb against the golden, "
-        "and gate B holds it exactly. It is material in the right place -- the "
-        "plate is 0.7 mm thicker where its output screws clamp -- and it costs "
-        "nothing anywhere else, because the seating face has not moved and "
-        "neither has anything measured from it.",
+        "AND THE Ø30.4 REGISTER POCKET IS RETIRED, 14 September 2026, which is "
+        "1.7 g of this line and about 0.8 g a limb. The actuator's Ø30 output "
+        "register stands 1.0 mm proud of its housing -- the body is 36.9 mm "
+        "long where the actuator is 37.9, both figures on the vendor 2D print "
+        "-- so the plate seats on the register and clears the housing, where "
+        "this model had it landing on the housing with the register filling a "
+        "1.2 mm pocket in it. The plate was seating on nothing at all, with the "
+        "six M3 that carry the joint's whole output torque clamping across the "
+        "gap. The pocket is simply not cut now and the plate lands flat, so it "
+        "keeps 871 mm3 the golden throws away, less 65 the six output holes "
+        "take crossing 1.2 mm more plate. Turning the pocket inside out instead "
+        "-- a Ø36 x 0.7 rim to pilot on -- was drawn first and taken off, "
+        "because the rim's height and the plate's air over the housing are the "
+        "same millimetre shared out and a rim that prints long lands on the "
+        "housing and stops the plate seating at all. What the plate gives up is "
+        "its pilot, which cad/parameters.py argues is worth less than the "
+        "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
+        "asserts the millimetre in front of the plate is empty.",
     ),
     "cad/shin.py": (
-        +3.3,
+        +2.9,
         "the same changes on the same shared limb geometry, which now includes "
         "the journal's anchor: a shin carries one at its knee end exactly as a "
         "thigh does at its hip, and the sleeve itself is a print of its own, "
@@ -142,35 +145,37 @@ EXPECTED_CHANGE_G = {
         "limbs already ask of the same bearing, so it stays a plate. That is "
         "also why this piece keeps the golden STEP gate B holds it against, and "
         "the thigh has none. "
-        "AND THE REGISTER POCKET TURNED INSIDE OUT on 14 September 2026, which "
-        "is 2.1 g of this line and about 1.0 g a limb. The actuator's Ø30 "
-        "output register stands 1.0 mm proud of its housing -- the body is 36.9 "
-        "mm long where the actuator is 37.9, both figures on the vendor 2D "
-        "print -- so the plate seats on the register and clears the housing, "
-        "where this model had it landing on the housing with the register "
-        "filling a 1.2 mm pocket in it. The plate was floating 1.0 mm off "
-        "anything at all, with the six M3 that carry the joint's whole output "
-        "torque clamping across the gap. What is there now is a Ø36 x 0.7 rim "
-        "on the plate's inboard face, bored Ø30.4 to pilot on the register, and "
-        "the 1.2 mm pocket filled back in: 944 mm3 a limb against the golden, "
-        "and gate B holds it exactly. It is material in the right place -- the "
-        "plate is 0.7 mm thicker where its output screws clamp -- and it costs "
-        "nothing anywhere else, because the seating face has not moved and "
-        "neither has anything measured from it.",
+        "AND THE Ø30.4 REGISTER POCKET IS RETIRED, 14 September 2026, which is "
+        "1.7 g of this line and about 0.8 g a limb. The actuator's Ø30 output "
+        "register stands 1.0 mm proud of its housing -- the body is 36.9 mm "
+        "long where the actuator is 37.9, both figures on the vendor 2D print "
+        "-- so the plate seats on the register and clears the housing, where "
+        "this model had it landing on the housing with the register filling a "
+        "1.2 mm pocket in it. The plate was seating on nothing at all, with the "
+        "six M3 that carry the joint's whole output torque clamping across the "
+        "gap. The pocket is simply not cut now and the plate lands flat, so it "
+        "keeps 871 mm3 the golden throws away, less 65 the six output holes "
+        "take crossing 1.2 mm more plate. Turning the pocket inside out instead "
+        "-- a Ø36 x 0.7 rim to pilot on -- was drawn first and taken off, "
+        "because the rim's height and the plate's air over the housing are the "
+        "same millimetre shared out and a rim that prints long lands on the "
+        "housing and stops the plate seating at all. What the plate gives up is "
+        "its pilot, which cad/parameters.py argues is worth less than the "
+        "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
+        "asserts the millimetre in front of the plate is empty.",
     ),
     "cad/wheel_adapter.py": (
-        +2.1,
-        "THE REGISTER POCKET TURNED INSIDE OUT, and this is the first time this "
+        +1.7,
+        "THE Ø30.4 REGISTER POCKET IS RETIRED, and this is the first time this "
         "piece has been off the engine's figure at all. It shares "
         "cad/joint.py's output disc with the limbs, so it takes the correction "
         "with them: the actuator's Ø30 output register stands 1.0 mm proud of "
         "its housing rather than 1.2 mm into the plate, so the plate seats on "
-        "the register and clears the housing, and the pocket that pilots it is "
-        "a Ø36 x 0.7 rim on the inboard face instead of a counterbore in the "
-        "outboard one. 1010 mm3 an adapter, and gate B holds it exactly. This "
-        "piece wanted it more than most: the wheel hub it clamps is piloted by "
-        "this plate and by nothing else, and until now the plate itself was "
-        "piloted by nothing.",
+        "the register and clears the housing, and the pocket that used to pilot "
+        "it is not cut at all. 806 mm3 an adapter, and gate B holds it exactly. "
+        "Of the three pieces that share this disc it loses least by having no "
+        "pilot: there is no far bearing on a wheel joint, and half a per cent "
+        "of runout on an Ø80 wheel is nothing.",
     ),
     "cad/torso.py": (
         +68.8,

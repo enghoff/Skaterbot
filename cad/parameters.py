@@ -49,12 +49,13 @@ actuatorClearance = 0.3
 # in that pocket was floating in it too.
 #
 # Nothing on the robot moves because of it. The correction is local to the
-# plate: rotorRegisterDepth below turns the pocket inside out, so the plate
-# seats where it always sat and grows a rim on its inboard face to pilot on.
-# Had the plate been moved out to meet the register instead, its two ends would
-# have ended up 0.7 mm apart along the joint axis -- the limb lands a plate on a
-# rear cover at one end and on this register at the other -- and the flat limb's
-# whole point is that its exterior is one plane.
+# plate: the register pocket is retired -- see the block further down where its
+# two dimensions used to be declared -- and the plate lands flat on the register
+# where it always sat, one of these projections clear of the housing behind it.
+# Had the plate been moved OUT to meet a register believed to fill a 1.2 mm
+# pocket, its two ends would have finished 0.7 mm apart along the joint axis --
+# the limb lands a plate on a rear cover at one end and on this register at the
+# other -- and the flat limb's whole point is that its exterior is one plane.
 actuatorHousingDepth = 36.9
 actuatorOutputProjection = 1.0
 

@@ -74,10 +74,11 @@ journalInnerX = rotorHubOuterX
 journalOuterX = rotorHubOuterX + journalLength
 # Where the nut sits: pulled up against the outboard end of its pocket, which is
 # the face the sleeve clamps the disc's web against. The pocket's mouth is the
-# register pocket's floor, and that floor is the plate's own seating face now
-# rather than rotorRegisterDepth outboard of it -- so the nut sits 1.2 mm
-# further in than it did, with the actuator's output register closing the mouth
-# against it instead of leaving it open across a gap.
+# plate's own seating face, so the actuator's Ø30 output register lands across
+# it and closes it -- which is what makes the nut captive. It used to be 1.2 mm
+# outboard of that face, on the floor of a register pocket that has since been
+# retired, so the nut sits 1.2 mm further in than it did and the web goes from
+# 1.5 mm to 2.7.
 journalNutOuterX = rotorHubInnerX + journalNutPocketDepth
 
 

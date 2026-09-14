@@ -135,7 +135,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         m3Clearance,
         m25InsertBore,
         rotorFilletRadius,
-        rotorRegisterDiameter,
     )
     from cad.torso_shell import bossHoleDiameter
 
@@ -144,7 +143,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # The six that were filled. This is the whole reason the gate exists.
             ("M3 clearance holes on the Ø24 output circle", m3Clearance / 2, 6),
             ("cap counterbores over them", m3CapCounterbore / 2, 6),
-            ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
             ("Ø10.2 journal seat", journalSeatDiameter / 2, 1),
             # Not a hole, and the one exception to the rule below. It is here
             # because this blend was wrong for as long as the part existed -- the
@@ -178,7 +176,8 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             ),
         ],
         # The limb is the piece the wheeled robot actually prints, and it is here
-        # because the register pocket defect below bit it as well as the hub. Its
+        # because the register pocket defect bit it as well as the hub, back when
+        # there was a register pocket. Its
         # ten M3 holes are the six on the Ø24 output circle plus the four on the
         # Ø41 rear pattern, which are the same clearance and so the same radius.
         #
@@ -194,7 +193,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 10,
             ),
             ("cap counterbores over the output six", m3CapCounterbore / 2, 6),
-            ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
             # WHAT THE JOURNAL SCREWS INTO. There was a Ø10.2 seat here for a
             # bonded dowel, and then a Ø10 stub printed with the disc, and
             # neither could be got into the far bearing at all -- the fork is one
@@ -349,17 +347,22 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
 
     Features that have to be complete and not merely present, because something
     is going to be piloted in them. See open_arc() for what filled them in.
-    """
-    from cad.parameters import rotorRegisterDiameter
 
-    register = ("Ø30.4 register pocket, all the way round", rotorRegisterDiameter / 2)
-    return {
-        "joint-rotor-hub": [register],
-        "limb-105-unmirrored": [register],
-        "limb-105-mirrored": [register],
-        "thigh-105-unmirrored": [register],
-        "thigh-105-mirrored": [register],
-    }
+    EMPTY, AND THAT IS A DESIGN CHANGE RATHER THAN A GAP. The only entry this
+    ever had was the Ø30.4 register pocket, on all five pieces that carry an
+    output plate, and the pocket is retired: the plate lands flat on the
+    actuator's Ø30 register and pilots on nothing. cad/parameters.py says why
+    where its dimensions used to be declared. What replaced the check is in
+    panel_openings() below -- the register needs a clear millimetre in front of
+    the plate now rather than a clear pocket in it, and that is the assertion
+    that matters.
+
+    The machinery stays because the question it answers -- is this locating
+    feature all the way round, or has a union eaten a segment out of it -- is
+    the one that caught the defect, and the next pilot drawn on this robot wants
+    asking it on the day it is drawn.
+    """
+    return {}
 
 
 def panel_openings() -> dict[str, list[tuple]]:
@@ -393,6 +396,8 @@ def panel_openings() -> dict[str, list[tuple]]:
     from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
     from cad.hardware import journalInnerX
     from cad.parameters import (
+        actuatorOutputProjection,
+        actuatorOutputRegister,
         journalLength,
         journalNutPocketDepth,
         limbTieArchTunnel,
@@ -480,6 +485,42 @@ def panel_openings() -> dict[str, list[tuple]]:
             )
         ]
 
+    # THE MILLIMETRE IN FRONT OF THE PLATE, which is what replaced the register
+    # pocket's own check when the pocket was retired.
+    #
+    # The actuator's Ø30 output register stands 1.0 mm proud of its housing and
+    # the plate lands flat on it, so the plate's whole inboard face has to be one
+    # plane and there has to be NOTHING between that plane and the housing for
+    # the register to occupy. Anything at all there -- a pilot rim, a waist that
+    # crept towards the joint, a boss somebody added -- lands on the housing
+    # before the plate reaches the register, which stops the plate seating on the
+    # motor at all and does it on a face that turns. That is the failure this
+    # joint has already had twice in other forms, and it is cheap to assert: a
+    # probe filling the register's own footprint, with nothing allowed to stand
+    # in it.
+    #
+    # It is a square probe rather than a Ø30 one, which makes it stronger than
+    # the register is wide and costs nothing -- the plate begins outboard of this
+    # box and the nearest thing on the inboard side, the cable-tie arch, is
+    # 30.5 mm from the joint axis.
+    def seatingFace(hand: int, atZ: float) -> list:
+        return [
+            (
+                "the millimetre the output register needs in front of the plate",
+                (
+                    hand * (rotorHubInnerX - actuatorOutputProjection / 2),
+                    0.0,
+                    atZ,
+                ),
+                (
+                    actuatorOutputProjection,
+                    actuatorOutputRegister,
+                    actuatorOutputRegister,
+                ),
+                "X",
+            )
+        ]
+
     # AND THE ONE BOUGHT PART IN THIS GATE, which is here because it was wrong.
     # The journal sleeve is a tube the screw passes through, its bore was cut by
     # a cylinder centred on the wrong station, and it came out capped a
@@ -501,10 +542,19 @@ def panel_openings() -> dict[str, list[tuple]]:
         "journal-sleeve": sleeve,
         "pelvis-shell": pelvis,
         "electronics-deck": deck,
-        "limb-105-unmirrored": tieTunnels(1, limbTieArchZ) + nutPocket(1),
-        "limb-105-mirrored": tieTunnels(-1, limbTieArchZ) + nutPocket(-1),
-        "thigh-105-unmirrored": tieTunnels(1, limbTieArchZClevis) + nutPocket(1),
-        "thigh-105-mirrored": tieTunnels(-1, limbTieArchZClevis) + nutPocket(-1),
+        "joint-rotor-hub": seatingFace(1, 0.0),
+        "limb-105-unmirrored": tieTunnels(1, limbTieArchZ)
+        + nutPocket(1)
+        + seatingFace(1, upperLegLength / 2),
+        "limb-105-mirrored": tieTunnels(-1, limbTieArchZ)
+        + nutPocket(-1)
+        + seatingFace(-1, upperLegLength / 2),
+        "thigh-105-unmirrored": tieTunnels(1, limbTieArchZClevis)
+        + nutPocket(1)
+        + seatingFace(1, upperLegLength / 2),
+        "thigh-105-mirrored": tieTunnels(-1, limbTieArchZClevis)
+        + nutPocket(-1)
+        + seatingFace(-1, upperLegLength / 2),
     }
 
 
