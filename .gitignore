@@ -36,3 +36,11 @@ simulation/isaacsim/usd/
 # Obsidian's per-vault workspace state, written into docs/ when the notes are
 # opened as a vault. Editor settings, not project content.
 .obsidian/
+
+# Export records. tools/export.py writes a manifest.json beside whatever it
+# wrote, as a record of that run rather than as an input, and it goes stale
+# against the part set. exports/ and simulation/meshes/ are output directories
+# entire; only the meshes the URDF points at are tracked, not the record.
+exports/
+simulation/meshes/
+simulation/urdf/meshes/manifest.json

@@ -14,7 +14,10 @@ forced by the actuator, not chosen, and it makes every joint the same shape:
   with a saddle over the top that carries the load into whatever is above.
 * `rotorHub` -- a plate bolted to the output circle and piloted on the Ø30
   register, carrying a Ø10 journal outboard into that bearing, with an arm
-  and bridge that take its offset back to the centre line below.
+  and bridge that take its offset back to the centre line below. The journal is
+  a bought sleeve screwed on from outside once the joint is closed, because the
+  fork is one print and nothing standing proud of this plate can be brought in
+  past its far cheek -- see cad/parameters.py beside journalDiameter.
 
 Both are positioned with the joint centre at the origin and the joint axis
 along X. The clevis rises in +Z, the hub descends in -Z, so a limb is a shell
@@ -49,8 +52,8 @@ from build123d import (
     Line,
     Plane,
     Pos,
+    RegularPolygon,
     Rot,
-    Torus,
     extrude,
     make_face,
 )
@@ -68,8 +71,9 @@ from cad.parameters import (
     cheekThickness,
     frontCheekX,
     jointKeepOut,
-    journalDiameter,
-    journalRootFillet,
+    journalNutPocketDepth,
+    journalNutPocketFlats,
+    journalScrewClearance,
     journalSeatDepth,
     journalSeatDiameter,
     limbPlateThickness,
@@ -276,54 +280,57 @@ def outputRegisterCutter():
     )
 
 
-def _journalRoot():
-    """The fillet where an integral journal meets the disc it grew out of.
+def _nutPocket():
+    """The hex pocket the journal's nut sits in, cut from the register pocket floor.
 
-    A quarter-round, tangent to the disc's outer face and to the journal's own
-    surface, built as a ring with a torus taken out of it rather than asked of
-    OCCT's filleter. cad/finish.py records why a filleted body is something to
-    keep away from a boolean, and this one has bolt holes still to be cut.
+    The nut is what the journal screws into, and it has to be captive before the
+    disc goes onto the motor, because the motor's own output face is what closes
+    this pocket. So it is cut from the INBOARD face -- the one the actuator is
+    on -- and opens into the Ø30.4 register pocket.
 
-    Ø10 with a 0.8 mm root is r/d = 0.08, which is not a generous fillet. It is
-    the one the space allows: the bearing's inner face is 1 mm off the disc, and
-    the fillet stops 0.2 mm short of it.
+    The cutter starts a millimetre inboard of that floor rather than on it, which
+    is the same rule the bearing seat is cut to in the clevis above: a cut that
+    ends coplanar with a face it does not mean to touch is a cut waiting to leave
+    a zero-thickness sliver.
     """
-    radius = journalRootFillet
-    ring = _disc(journalDiameter + 2 * radius, radius, rotorHubOuterX + radius / 2)
-    relief = (
-        Pos(rotorHubOuterX + radius, 0, 0)
-        * Rot(0, 90, 0)
-        * Torus(journalDiameter / 2 + radius, radius)
+    mouth = rotorHubInnerX + rotorRegisterDepth
+    overshoot = 1.0
+    with BuildSketch(Plane.YZ) as hexProfile:
+        RegularPolygon(journalNutPocketFlats / 2, 6, major_radius=False)
+    return Pos(mouth - overshoot, 0, 0) * extrude(
+        hexProfile.sketch, amount=journalNutPocketDepth + overshoot
     )
-    return ring - relief
 
 
-def outputDisc(journalStub: float = 0.0):
+def outputDisc(journalAnchor: bool = False):
     """The plate that bolts to the actuator's output.
 
     Kept on its own so that the two rotor ends -- the offset hub the hip carrier
     and the foot use, and the in-plane plate the limbs use -- are the same disc
     with different structure hung off it. Ø30 register, six M3 counterbored into
-    the Ø24 output circle, and at the centre either a seat for a journal or a
-    journal.
+    the Ø24 output circle, and at the centre either a seat for a journal or the
+    anchor a journal screws into.
 
-    `journalStub` grows the Ø10 journal OUT of this disc, printed with it, and
-    takes the blind seat away -- there is nothing to seat any more. Zero leaves
-    the seat, which is what the wheel adapter wants: it shares this disc and has
-    never carried a journal, and leaving it alone is what keeps that piece
-    identical to its golden STEP. cad/parameters.py carries why the stub only
-    became structurally honest when the material went isotropic.
+    `journalAnchor` takes the blind seat away and puts a through hole and a
+    captive nut's pocket at the centre instead, which is what a straddled joint
+    needs: the journal is a bought Ø10 sleeve fitted from outside after the motor
+    is in its fork, because nothing that is part of this disc before then can be
+    brought into the far bearing at all. cad/parameters.py carries that
+    arithmetic, and what the anchor costs against the stub it replaces.
+
+    False leaves the seat, which is what the wheel adapter wants: it shares this
+    disc and has never carried a journal, and leaving it alone is what keeps that
+    piece identical to its golden STEP.
     """
     hubRaw = _disc(rotorHubDiameter, rotorHubThickness, rotorHubCenterX)
     part = hubRaw - outputRegisterCutter()
 
-    if journalStub:
-        # The stub, then the fillet at its root, BOTH before the bolt holes are
-        # drilled. Neither reaches r5.8 and the counterbores start at r12, so
-        # they cannot meet -- but the ordering is the one CLAUDE.md insists on,
-        # because a union over a hole is the failure this project has shipped.
-        part += _disc(journalDiameter, journalStub, rotorHubOuterX + journalStub / 2)
-        part += _journalRoot()
+    if journalAnchor:
+        # Both cuts before the bolt holes, like everything else on this disc.
+        # Neither reaches r4.2 and the counterbores start at r9, so they cannot
+        # meet; the ordering is the one CLAUDE.md insists on all the same.
+        part -= _disc(journalScrewClearance, rotorHubThickness + 2.0, rotorHubCenterX)
+        part -= _nutPocket()
     else:
         part -= _disc(
             journalSeatDiameter,

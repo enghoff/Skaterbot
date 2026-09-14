@@ -93,7 +93,6 @@ from cad.joint import (
 from cad.parameters import (
     actuatorRearBoltOffset,
     jointKeepOut,
-    journalLength,
     kneeOutboardOffset,
     limbPlateThickness,
     limbTieArchHeight,
@@ -301,12 +300,15 @@ def limbAssembly(limbLength: float, lowerEnd: str = "plate") -> list:
     # that gate C keeps exercising the fix.
     gussetRear = mirrored(gussetFront, Plane.XZ)
 
-    # THE JOURNAL IS PART OF THIS DISC, not a dowel bonded into it. The rotor end
-    # of a limb is the hip on a thigh and the knee on a shin, and both are
-    # straddled joints, so both grow their own Ø10 stub into the far bearing.
-    # cad/parameters.py carries why that only became sound once the material
-    # went isotropic, and what about it is still unquantified.
-    upperDisc = Pos(0, 0, jointZ) * outputDisc(journalStub=journalLength)
+    # THE JOURNAL IS NOT PART OF THIS DISC, and it cannot be. The rotor end of a
+    # limb is the hip on a thigh and the knee on a shin, both straddled, and a
+    # journal standing proud of this face -- a printed stub, or the dowel before
+    # it -- cannot be brought into the far bearing at all: the fork is one print
+    # and the motor with this disc bolted to it is 4.7 mm too long to enter it.
+    # So the disc carries the ANCHOR and the journal is a sleeve fitted from
+    # outside at the end. cad/parameters.py carries the arithmetic, what the
+    # anchor costs against the stub, and what would give it back.
+    upperDisc = Pos(0, 0, jointZ) * outputDisc(journalAnchor=True)
     # The stator plate is drawn behind an actuator whose output faces +X. This
     # limb's lower actuator is turned round, so the plate has to come to the near
     # side to land on the rear cover that now faces +X with everything else.

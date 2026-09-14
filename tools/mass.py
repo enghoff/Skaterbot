@@ -77,13 +77,17 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +22.0,
-        "THE JOURNAL IS PART OF THIS PRINT, which is 1.4 g of the figure: the "
-        "Ø10 stub the limb's output disc now grows into the far bearing, less "
-        "the blind seat it used to be bonded into. It deletes a bought dowel "
-        "from four joints and 29.6 g of steel from the robot, and it is only "
-        "sound because the material went isotropic -- cad/parameters.py has "
-        "that arithmetic and what about it is still unquantified. "
+        +20.4,
+        "THE JOURNAL IS NOT PART OF THIS PRINT AND CANNOT BE, which is -0.2 g of "
+        "the figure. It was a bonded dowel, then a printed stub worth 1.4 g on "
+        "the pair, and neither can be assembled: both stand proud of the output "
+        "disc before the joint is closed, and the fork is one print whose cheeks "
+        "are 4.7 mm closer together than the motor and disc that have to enter "
+        "it. So the journal is a Ø10 sleeve printed on its own and "
+        "fitted from outside at the end, and this print carries what it screws into -- no seat, a Ø5.5 hole "
+        "and a hex pocket for a captive M5 nut, which take 103 mm3 more out of "
+        "each limb than the old blind seat did. cad/parameters.py carries the "
+        "interference and what the anchor is worth against the stub. "
         "THE KNEE IS STRADDLED, which is 19.2 g of the figure and 9.6 g a "
         "thigh: the flat plate on the knee motor's rear cover is cad/joint.py's "
         "statorClevis instead, two cheeks reaching round the motor to a 6800 "
@@ -112,10 +116,11 @@ EXPECTED_CHANGE_G = {
         "identical segment off the other",
     ),
     "cad/shin.py": (
-        +2.8,
+        +1.2,
         "the same changes on the same shared limb geometry, which now includes "
-        "the integral journal: a shin grows one at its knee end exactly as a "
-        "thigh does at its hip. THE SHIN DID NOT "
+        "the journal's anchor: a shin carries one at its knee end exactly as a "
+        "thigh does at its hip, and the sleeve itself is a print of its own, "
+        "fitted last at both. THE SHIN DID NOT "
         "TAKE THE CLEVIS: the wheel joint carries the wheel alone on a 12 mm "
         "arm, which is a third of the knee's overhang and inside what the flat "
         "limbs already ask of the same bearing, so it stays a plate. That is "

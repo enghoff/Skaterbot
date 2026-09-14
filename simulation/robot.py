@@ -200,6 +200,11 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     motor_d = d["actuatorDiameter"]
     motor_l = d["actuatorDepth"]
 
+    # Where a journal sleeve sits on its joint axis: the middle of the 6 mm of
+    # Ø10 that stands proud of the limb's output disc, which is also where the
+    # exported mesh arrives centred in its own frame.
+    journal_centre = d["journalInnerX"] + d["journalLength"] / 2
+
     # These relationships are what make a silent parse failure loud. They are
     # relations rather than constants, so a real design change does not trip
     # them but a dimension that came back wrong does.
@@ -270,9 +275,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             )
         )
         # The bearing is bonded straight into the pelvis cheek, so its mass is
-        # the pelvis's. Nothing else at this joint is bought any more: the
-        # journal that used to turn with the thigh is part of the thigh's own
-        # print, so its mass arrives with the mesh rather than as a line here.
+        # the pelvis's. The journal it runs on is bought too, but it turns with
+        # the thigh, so it is a line on that link rather than on this one.
         base.solids.append(
             Solid(
                 label=f"hip pitch bearing, {side}",
@@ -569,6 +573,36 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 source="assumption",
                 note="the budget's 45 g of M3, split evenly over the six joints",
             ),
+            # THE HIP'S JOURNAL TURNS WITH THIS LINK, in two pieces of different
+            # provenance. The sleeve is printed, so it is measured off the CAD
+            # like the limb it turns beside; the screw and nut that hold it are
+            # bought. It is separate from the mesh above because it is a separate
+            # print -- it has to be, since nothing standing proud of the thigh's
+            # disc can be got into the bearing once the joint is closed.
+            # THE SLEEVE IS A PRINT AND IS PLACED AS ITS OWN MESH, one of the
+            # four the register says the robot is built from. There is no
+            # mirrored version of it and none is needed: it is a plain tube,
+            # symmetric about its own centre, so the hand it belongs to is a
+            # TRANSLATION of the same mesh rather than a mirror of it. The mesh
+            # arrives centred at +journal_centre in its own frame, so the left
+            # hand's offset is twice that, backwards.
+            Solid(
+                label=f"hip pitch journal sleeve, {side}",
+                grams=0.0,  # measured from the mesh
+                shape="mesh",
+                piece="journal-sleeve",
+                at=((sign - 1) * journal_centre, 0.0, 0.0),
+                source="measured",
+                note="Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal",
+            ),
+            Solid(
+                label=f"hip pitch journal screw and nut, {side}",
+                grams=3.0,
+                shape="point",
+                at=(sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
+                source="bom",
+                note="M5 x 10 button head and an M5 thin nut, docs/BOM.md section C",
+            ),
         ]
         # THE PROXY HAS TO REACH ROUND THE MOTOR NOW. The shin's box below is the
         # plate plus the actuator it lies against, which was every limb until the
@@ -639,6 +673,27 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 at=(0.0, 0.0, -shin_len),
                 source="assumption",
                 note="the budget's 45 g of M3, split evenly over the six joints",
+            ),
+            # And the knee's journal, which turns with the shin exactly as the
+            # hip's turns with the thigh. It sits on the other hand, because the
+            # knee actuator is turned round: the thigh's far cheek and the
+            # bearing in it are inboard where the hip's are outboard.
+            Solid(
+                label=f"knee journal sleeve, {side}",
+                grams=0.0,  # measured from the mesh
+                shape="mesh",
+                piece="journal-sleeve",
+                at=((-sign - 1) * journal_centre, 0.0, 0.0),
+                source="measured",
+                note="Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal",
+            ),
+            Solid(
+                label=f"knee journal screw and nut, {side}",
+                grams=3.0,
+                shape="point",
+                at=(-sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
+                source="bom",
+                note="M5 x 10 button head and an M5 thin nut, docs/BOM.md section C",
             ),
         ]
         shin.collisions.append(

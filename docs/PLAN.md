@@ -260,6 +260,39 @@ Two decisions were added that the plan had not anticipated:
     peak redistributes; a cyclic one might not. The fillet is as large as the
     space allows -- the bearing's inner face is 1 mm off the disc.
 
+    *Amended again 14 September 2026, and this one is not a refinement: **the
+    stub cannot be assembled, and neither could the dowel it replaced.*** The
+    clevis is a single print whose two cheeks stand 45.2 mm apart; an actuator
+    with its limb's disc bolted to it — which it has to be, because the six
+    output screws end up behind the far cheek — measures 49.9 mm from its rear
+    face to the journal's tip. That is 4.7 mm of interference with 1.3 mm of
+    slack to play with, and springing the cheeks apart strains a 3 mm cheek 2 to
+    4 per cent at its root, on the part that holds the bearing in line.
+
+    So **the journal is bought again and fitted last**: a Ø10 x Ø5.3 x 6 steel
+    sleeve pushed in from outside through the boss's Ø17.5 shoulder bore and the
+    bearing, landing on the disc, with an M5 x 10 button head pulling it onto an
+    M5 thin nut captive in a hex pocket in the disc's motor-side face. 22.8 g of
+    steel back on the robot, and every printed part keeps its shape.
+
+    **What it costs is the anchor, and it is less than the stub had.** A stub
+    grown out of the disc spread its bending into the whole Ø36 plate; a sleeve
+    clamped to that plate's face is held by the 4.8 mm of PA12 at its centre, and
+    nothing wider will do, because anything that clamps it has to pass the
+    bearing's Ø10 bore or fit the 1 mm gap behind it. The clamp lets go and the
+    plastic under the sleeve's rim starts to crush somewhere around 300-400 N
+    against the 500-650 N recorded at the 6800 — an estimate from clamped-annulus
+    and embedded-pin arithmetic, not a test, and by the entry of 29 August's own
+    figures that is about where the limb plate itself breaks anyway.
+
+    **What would give it back** is metal behind the disc: a steel hub between the
+    disc and the motor's output flange, held by the same six screws, carrying the
+    thread. Whether there is room turns on how far that flange stands proud — the
+    vendor STEP says 1 mm, inside the 37.9 mm length, which would leave the
+    1.2 mm register pocket free; `cad/parameters.py` assumes the pocket is filled
+    by the register instead. **That needs a caliper on a real actuator**, and it
+    is the same measurement `NOTES.md` already wants for the Ø25-or-Ø30 register.
+
 ---
 
 ## 5. Phase 1 — material and process selection

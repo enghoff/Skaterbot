@@ -128,7 +128,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         bearingSeatBossDiameter,
         bearingSeatDiameter,
         bearingSeatShoulderBore,
-        journalDiameter,
+        journalScrewClearance,
         journalSeatDiameter,
         m2Clearance,
         m3CapCounterbore,
@@ -195,13 +195,16 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             ),
             ("cap counterbores over the output six", m3CapCounterbore / 2, 6),
             ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
-            # THE JOURNAL, not a seat for one. It is a union rather than a cut,
-            # so the failure it can hide is the opposite of this gate's usual
-            # one: a union that quietly did nothing leaves a disc with no stub
-            # and nothing to report it. One cylindrical face at r5 is that
-            # check. The root fillet is a torus and this gate cannot see it;
-            # tools/gate_b.py holds its volume instead.
-            ("Ø10 integral journal", journalDiameter / 2, 1),
+            # WHAT THE JOURNAL SCREWS INTO. There was a Ø10.2 seat here for a
+            # bonded dowel, and then a Ø10 stub printed with the disc, and
+            # neither could be got into the far bearing at all -- the fork is one
+            # print and the motor with this disc bolted on is 4.7 mm too long to
+            # enter it. So the journal is bought and fitted from outside, and
+            # what has to be on this piece is the hole its screw passes through.
+            # The nut's pocket has no arc in it and is asserted as an opening
+            # below, in panel_openings(), for the same reason the tie tunnels
+            # are: a pocket closed back over leaves nothing here to count.
+            ("Ø5.5 clearance for the journal screw", journalScrewClearance / 2, 1),
         ],
         # The payload boards are not printed, and they are here anyway. They are
         # mocks, but they are mocks that a printed standoff is going to be drawn
@@ -388,7 +391,10 @@ def panel_openings() -> dict[str, list[tuple]]:
     """
     from cad.deck import deckChaseDepth, deckChaseWidth, deckChaseX, deckThickness
     from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
+    from cad.hardware import journalInnerX
     from cad.parameters import (
+        journalLength,
+        journalNutPocketDepth,
         limbTieArchTunnel,
         limbTieArchWidth,
         limbTieArchY,
@@ -396,6 +402,7 @@ def panel_openings() -> dict[str, list[tuple]]:
         limbTieArchZClevis,
         limbTieSlotWidth,
         rotorHubInnerX,
+        rotorRegisterDepth,
         shellWall,
         upperLegLength,
     )
@@ -444,13 +451,56 @@ def panel_openings() -> dict[str, list[tuple]]:
             )
         ]
 
+    # THE JOURNAL'S NUT POCKET, which is a hexagon and so has no arc anywhere in
+    # it for cylinder_radii() to find. It is cut from the disc's motor side and
+    # the nut has to be in it before the disc goes onto the actuator, so a pocket
+    # that closed over -- or was never cut, the waist plate reaching into this
+    # disc as it reaches into the register pocket beside it -- would leave the
+    # joint with nothing to screw its journal into and nothing here to say so.
+    # The probe is a 5.5 mm square, which fits inside the hexagon's 8.3 mm across
+    # its flats whichever way round the nut went in.
+    nutProbe = 5.5
+
+    def nutPocket(hand: int) -> list:
+        return [
+            (
+                "the journal nut's pocket, open to the motor side",
+                (
+                    hand
+                    * (rotorHubInnerX + rotorRegisterDepth + journalNutPocketDepth / 2),
+                    0.0,
+                    upperLegLength / 2,
+                ),
+                (journalNutPocketDepth, nutProbe, nutProbe),
+                "X",
+            )
+        ]
+
+    # AND THE ONE BOUGHT PART IN THIS GATE, which is here because it was wrong.
+    # The journal sleeve is a tube the screw passes through, its bore was cut by
+    # a cylinder centred on the wrong station, and it came out capped a
+    # millimetre from the end with the screw modelled straight through the cap.
+    # Nothing had an opinion: a blind bore still leaves one cylindrical face for
+    # the radius count above, gate F measures this hardware against the printed
+    # parts it sits in rather than against itself, and a bought part is in no
+    # other gate at all. Asking the bore to be OPEN is what says it.
+    sleeve = [
+        (
+            "the journal sleeve's bore, open end to end for its screw",
+            (journalInnerX + journalLength / 2, 0.0, 0.0),
+            (journalLength, 3.4, 3.4),
+            "X",
+        )
+    ]
+
     return {
+        "journal-sleeve": sleeve,
         "pelvis-shell": pelvis,
         "electronics-deck": deck,
-        "limb-105-unmirrored": tieTunnels(1, limbTieArchZ),
-        "limb-105-mirrored": tieTunnels(-1, limbTieArchZ),
-        "thigh-105-unmirrored": tieTunnels(1, limbTieArchZClevis),
-        "thigh-105-mirrored": tieTunnels(-1, limbTieArchZClevis),
+        "limb-105-unmirrored": tieTunnels(1, limbTieArchZ) + nutPocket(1),
+        "limb-105-mirrored": tieTunnels(-1, limbTieArchZ) + nutPocket(-1),
+        "thigh-105-unmirrored": tieTunnels(1, limbTieArchZClevis) + nutPocket(1),
+        "thigh-105-mirrored": tieTunnels(-1, limbTieArchZClevis) + nutPocket(-1),
     }
 
 
@@ -485,9 +535,12 @@ def opening_material(
 
 
 def registry() -> dict[str, callable]:
-    from cad import deck, electronics, joint, shin, thigh, torso
+    from cad import deck, electronics, hardware, joint, shin, thigh, torso
 
     return {
+        # Not a printed piece, and the only bought one here. See the note beside
+        # its row in panel_openings().
+        "journal-sleeve": hardware.journalSleeve,
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
         "limb-105-unmirrored": shin.shinLeft,

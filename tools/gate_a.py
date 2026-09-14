@@ -183,12 +183,41 @@ ADDED = {
     "capHeadOuterX": 55.95,
     "screwTipX": 38.95,
     "washerCenterX": 49.95,
-    # cad/joint.py: the fillet where an integral journal meets the disc it grew
-    # out of. It did not exist while the journal was a dowel dropped into a
-    # blind seat -- there was no root to relieve. 0.8 mm on a Ø10 shaft is
-    # r/d = 0.08, which is not generous; it is what the space allows, because the
-    # bearing's inner face is 1 mm off the disc and the fillet stops short of it.
-    "journalRootFillet": 0.8,
+    # ---- THE JOURNAL GOES IN LAST, AND ON ITS OWN SCREW, September 2026 ------
+    #
+    # journalRootFillet was here and is gone with the stub it relieved. What
+    # replaced both is a bought Ø10 sleeve fitted from OUTSIDE once the motor is
+    # in its fork, because nothing that stands proud of the rotor disc before
+    # then can be brought into the far bearing: the fork is a single print whose
+    # cheeks stand 45.2 mm apart and the motor with its disc bolted on measures
+    # 49.9 mm to the journal's tip. cad/parameters.py carries that arithmetic
+    # beside journalDiameter, and says plainly what the new anchor is worth.
+    #
+    # These are the sleeve, the screw that holds it and the nut it pulls against.
+    # The sleeve's own length is journalLength, which the golden already holds and
+    # which has not moved since the stub: it still ends flush with the bearing's
+    # outer face.
+    "journalSleeveBore": 5.3,
+    "journalScrewClearance": 5.5,
+    "journalScrewDiameter": 5.0,
+    "journalScrewLength": 10.0,
+    "journalScrewHeadDiameter": 9.5,
+    "journalScrewHeadHeight": 2.75,
+    "journalNutAcrossFlats": 8.0,
+    "journalNutThickness": 2.7,
+    # 1.3 mm over the nut's flats, not 0.3: cad/finish.py chamfers the floor of
+    # this pocket, being all flat faces, and 0.5 mm round its perimeter left the
+    # nut sitting on the chamfer rather than on the seat.
+    "journalNutPocketFlats": 9.3,
+    "journalNutPocketDepth": 3.3,
+    # cad/hardware.py: the stations those put on the joint axis. The sleeve lands
+    # on the rotor disc's outer face and ends flush with the bearing's outer face
+    # -- the same 5 mm of Ø10 the dowel and the stub both ran in -- and the nut
+    # sits against the outboard end of its pocket, which is the face the sleeve
+    # clamps the disc's 1.5 mm web against.
+    "journalInnerX": 24.95,
+    "journalOuterX": 30.95,
+    "journalNutOuterX": 23.45,
     # cad/poses.py: how far the knee may fold. It was 110 degrees, inherited from
     # the walking robot and never disputed by the geometry because the flat limbs
     # left thigh and shin in disjoint planes. Straddling the knee puts the
@@ -718,24 +747,20 @@ ADDED = {
 # decision without loosening the gate. The reason lives with the dimension in
 # cad/parameters.py; the sentence here is the index entry.
 CHANGED = {
-    # ---- THE JOURNAL IS PRINTED WITH THE LIMB, September 2026 ---------------
+    # ---- THE JOURNAL STANDS 6 mm PROUD, WHATEVER IT IS, September 2026 -------
     #
     # It was a Ø10 x 8 hardened dowel bonded 2.2 mm into a blind seat in the
-    # limb's output disc, so its length was seat plus air plus bearing. It is a
-    # stub grown out of that disc now, so its length is only what stands PROUD:
-    # across the 1 mm of air and through the bearing's 5 mm, ending flush with
-    # its outer face. Same journal in the same place; 2 mm of it has become disc.
-    #
-    # Four bought items, four bonded joints and 29.6 g of steel go with it, and
-    # it is sound only because docs/PLAN.md decision 1 moved the material to SLS
-    # PA12: the root carries the bearing's reaction as bending, which on an FDM
-    # part laid flat crosses every layer line at 30 MPa and is 48 MPa in any
-    # direction once the material is isotropic. cad/parameters.py has the figures
-    # and says plainly what is still unquantified.
+    # limb's output disc, so its length was seat plus air plus bearing. It became
+    # a printed stub, and then -- once it turned out that neither can be got into
+    # the far bearing at all, the fork being one print 4.7 mm too narrow for the
+    # motor and disc that have to enter it -- a bought sleeve fitted from outside
+    # at the end. All three run in the same race in the same place, and this is
+    # what stands PROUD of the disc: across the 1 mm of air and through the
+    # bearing's 5 mm, ending flush with its outer face.
     "journalLength": (
         8.0,
         6.0,
-        "the stub stands 6 mm proud where the dowel was 8 long",
+        "the sleeve stands 6 mm proud of the disc where the dowel was 8 long",
     ),
     # Follows arithmetically. The forked rotor is still DRAWN BUT NOT FITTED and
     # nothing imports it, but it measures its rear journal off the front one's

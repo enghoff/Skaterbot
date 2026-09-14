@@ -270,12 +270,15 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         )
 
     def joint_hardware(sign, z, label, turned, x=None):
-        """The bought steel that closes a straddled joint, which is a bearing.
+        """The bought steel that closes a straddled joint: bearing and journal.
 
-        One per hip and, since the knee was straddled, one per knee. It is not
-        printed -- tools/mass.py counts them from mass_budget.toml at 5.0 g
-        apiece -- so the finish pass never sees it. The journal that used to sit
-        beside it here is part of the limb now and comes in with the print.
+        One set per hip and, since the knee was straddled, one per knee. None of
+        it is printed -- tools/mass.py counts them from mass_budget.toml -- so
+        the finish pass never sees any of it. The journal is bought again and in
+        three pieces: the sleeve the bearing turns on, the screw that holds it
+        and the nut that screw pulls against, all fitted from outside once the
+        motor is in its fork, because nothing that is part of the limb before
+        then can be brought into the bearing at all.
 
         `turned` is passed in rather than derived from `sign`, because the two
         joints disagree about it and the disagreement is real: the knee actuator
@@ -287,8 +290,23 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         bodies = jointHardware()
         if turned:
             bodies = [b.rotate(Axis.Z, 180) for b in bodies]
+        # Named in the order cad/hardware.py returns them, so the viewer's tree
+        # says which piece is which rather than showing four "bearing"s -- and
+        # coloured by WHAT EACH ONE IS MADE OF rather than by the node it hangs
+        # under. The sleeve is a print now, so it is the same orange as the limb
+        # it screws to; painting it the bearing's near-white steel is what made
+        # it look like bought metal in the viewer when it is not.
+        parts = (
+            ("bearing", P.bearingSteel),
+            ("journal sleeve", P.printedOrange),
+            ("journal screw", P.bearingSteel),
+            ("journal nut", P.bearingSteel),
+        )
         return Compound(
-            children=[_piece("bearing", [at * b], P.bearingSteel) for b in bodies],
+            children=[
+                _piece(name, [at * b], colour)
+                for (name, colour), b in zip(parts, bodies)
+            ],
             label=label,
         )
 
@@ -431,11 +449,17 @@ def _describe(raw, finished) -> str:
 
 
 def pieces() -> dict[str, callable]:
-    from cad import deck, joint, shin, thigh, torso, wheel_adapter
+    from cad import deck, hardware, joint, shin, thigh, torso, wheel_adapter
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
+        # The one piece here that lives in cad/hardware.py, because it is the one
+        # print that is not structure: the tube the far bearing turns on. It is
+        # in tools/mass_budget.toml's printed table and in the export set, so it
+        # belongs on this list too -- a print that cannot be looked at on its own
+        # is exactly the blind spot this file's docstring is about.
+        "journal-sleeve": hardware.journalSleeve,
         # Four limb prints since the knee was straddled, where there were two
         # printed twice. `limb-105` is the SHIN, which is the piece that did not
         # change and keeps the name and the golden STEP; the thighs are new.

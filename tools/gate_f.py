@@ -352,13 +352,15 @@ CLEARANCES = (
         1.0,
     ),
     (
-        # The bought metal, seated -- and there is only one piece of it now. The
-        # bearing is bonded into the far cheek and lands on its Ø17.5 shoulder,
-        # so it MEETS the thigh. The journal is no longer bought at all: the shin
-        # grows it, Ø10 into a Ø10 bore, so the second row below is the stub
-        # running in the race rather than a dowel sitting in a seat. Both are
-        # asked to touch and to share no volume, which is the check that a
-        # nominal fit has not become an interference.
+        # The bought metal, seated -- and it is four pieces again. The bearing is
+        # bonded into the far cheek and lands on its Ø17.5 shoulder, so it MEETS
+        # the thigh. The journal is bought again too, and fitted last: a Ø10
+        # sleeve pushed in from outside through that shoulder bore and the
+        # bearing, landing on the shin's disc, with an M5 button head pulling it
+        # onto a nut captive in the disc. So the second row below is three
+        # separate contacts at once -- sleeve on the disc's face, nut on the
+        # floor of its pocket, screw in a Ø5.5 hole it must not touch -- and it
+        # is the check that the anchor is a fit rather than an interference.
         "knee_limit_check",
         "the far bearing in the thigh's cheek",
         ("hardware",),
@@ -368,9 +370,22 @@ CLEARANCES = (
     ),
     (
         "knee_limit_check",
-        "the shin's own journal in the far bearing's bore",
+        "the bought journal on the shin's disc, in the bearing's bore",
         ("hardware",),
         ("shin",),
+        "touch",
+        0.0,
+    ),
+    (
+        # AND THE SAME JOURNAL AT THE HIP, which had no row at all while it was a
+        # printed stub that could not be got wrong on its own part. It is an
+        # anchor cut into the thigh's upper disc now -- a hole, a pocket and a
+        # nut sitting in the pocket -- and the piece it sits in is a different
+        # print from the shin above, so it is measured on its own.
+        "pose_check",
+        "the bought journal on the thigh's hip disc",
+        ("right hip hardware",),
+        ("right thigh",),
         "touch",
         0.0,
     ),

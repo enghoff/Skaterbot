@@ -464,28 +464,48 @@ limbTieSlotWidth = 3.5
 # makes a printed pocket creep. That is an argument and not a measurement, and
 # docs/BOM.md's fit coupon is where it has to be settled. What the flange did,
 # and what nothing does now, is recorded where the seat is cut in cad/joint.py.
-# THE JOURNAL IS PART OF THE LIMB NOW, September 2026. It was a Ø10 hardened
-# dowel bonded into a blind seat in the disc; it is a Ø10 stub grown out of the
-# disc's own outer face, printed with it, and there is no seat, no bond and no
-# bought part left at four of the robot's joints.
+# THE JOURNAL IS A BOUGHT SLEEVE, FITTED LAST, September 2026, AND THE REASON IS
+# THAT NOTHING ELSE CAN BE ASSEMBLED.
 #
-# WHAT MADE IT POSSIBLE IS THE MATERIAL, and it would have been wrong before it.
-# The stub carries the bearing's reaction as bending at its root, and with the
-# limb laid flat on an FDM bed that root is a stack of layer lines in pure
-# tension: 17.8 to 23.2 MPa at the 500-650 N this project records at the 6800,
-# against the 30 MPa PA12-CF gives across the layers. A margin of 1.3 to 1.7 on
-# the joint that takes the actuator's full torque, where the limb's own worst
-# section is held to seven times its load. SLS PA12 has no weak axis -- about
-# 48 MPa in every direction -- so the same stub sits at 2.1 to 2.7 instead, and
-# is no longer the thing that breaks first. docs/PLAN.md decision 1 is where the
-# material moved; this feature is downstream of that and not the other way round.
+# It was a Ø10 hardened dowel bonded into a blind seat in the disc until 13
+# September, then a Ø10 stub grown out of the disc and printed with it. Both are
+# ONE PIECE WITH THE MOVING SIDE BEFORE THE JOINT IS CLOSED, and that is what
+# neither of them survives: the clevis is a single print whose two cheeks stand
+# 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm
+# from its rear face to the journal's tip, so the journal can never be brought
+# into the bearing. It is 4.7 mm of interference and there is no path in -- the
+# six output screws are behind the far cheek once the motor is in, so the disc
+# has to be on the motor before the motor goes into the fork, and the unit then
+# has 1.3 mm of axial slack against a journal that needs 5 mm of travel to reach
+# the bearing bore. Springing the cheeks apart is not a fix: 4.7 mm strains a
+# 3 mm cheek about 2 to 4 per cent at its root, which is at or past what PA12
+# takes elastically, on the part that holds the bearing in line with the output.
 #
-# WHAT IS STILL NOT QUANTIFIED. Fatigue, and the stress concentration at the root
-# -- 0.8 mm on a Ø10 shaft is r/d = 0.08, which is a Kt near 1.9, and 1.9 x 23.2
-# is 44 MPa against 48. Static margin survives that because PA12 is ductile at
-# 18 per cent elongation and peak stress redistributes; a cyclic one might not,
-# and nobody has run it. The fillet is as large as the space allows: the bearing's
-# inner face is 1 mm off the disc and the fillet has to stop short of it.
+# So the journal is the last thing fitted. It goes in from OUTSIDE, through the
+# Ø17.5 shoulder bore in the bearing boss, through the bearing, and lands on the
+# disc's outer face, where an M5 button head pulls it down onto a nut captive in
+# the disc. Everything printed keeps its shape: the clevis is untouched and so is
+# the pelvis that carries two of them.
+#
+# WHAT IT COSTS IS THE ANCHOR, and this is the honest part. A stub grown out of
+# the disc spreads its bending into the whole Ø36 plate; a sleeve landing on the
+# face of that plate is held by 4.8 mm of PA12 at the disc's centre, and nothing
+# wider can be used because anything that clamps it has to pass the bearing's
+# Ø10 bore or fit the 1 mm gap behind it. At the 500-650 N this project records
+# at the 6800 for the handoff's 100 N at 100 mm case, the clamp lets go and the
+# plastic under the sleeve's rim starts to crush somewhere around 300-400 N --
+# an estimate, from the clamped-annulus and embedded-pin arithmetic, not a test.
+# By NOTES.md's own figures that is about where the limb plate itself breaks, so
+# it is not the first thing to go; it is still less than the stub had.
+#
+# WHAT WOULD GIVE IT BACK is metal behind the disc: a steel hub between the disc
+# and the motor's output flange, held by the same six screws, carrying the
+# thread. The vendor STEP puts the flange 1 mm proud inside the 37.9 mm length,
+# which leaves the 1.2 mm register pocket free for one -- but this file assumes
+# that pocket is filled by the register, the two disagree, and the drawing that
+# would settle it is the one vendor file this repository has not mirrored. It
+# needs a caliper on a real actuator, which docs/BOM.md's fit coupon is where the
+# rest of this joint's unmeasured claims go too.
 journalDiameter = 10.0
 # THE BLIND SEAT SURVIVES, and only on the wheel adapter. cad/joint.py's
 # outputDisc is the limb's disc AND the adapter's, and the adapter carries no
@@ -494,14 +514,52 @@ journalDiameter = 10.0
 # nothing. The forked rotor below still measures from it too.
 journalSeatDiameter = 10.2
 journalSeatDepth = 2.2
-# How far the stub stands proud of the disc's outer face: across the 1 mm of air
-# to the bearing, then the bearing's whole 5 mm width, ending flush with its
-# outer face. It was a 8 mm dowel seated 2.2 mm into the disc.
+# How far the journal stands proud of the disc's outer face: across the 1 mm of
+# air to the bearing, then the bearing's whole 5 mm width, ending flush with its
+# outer face. The stub that preceded the sleeve stood exactly this far proud and
+# the dowel before it was 8 long, seated 2.2 mm into the disc, so the sleeve runs
+# in the same race in the same place as both.
 journalLength = 6.0
-# The root fillet, tucked into the 1 mm gap between the disc's face and the
-# bearing's inner face, with 0.2 mm to spare. A sharp root here would be the one
-# unfilleted corner on the robot carrying a bending load.
-journalRootFillet = 0.8
+# The sleeve's bore, and the disc's clearance hole under it. The screw is an M5
+# and this is its close clearance: the sleeve is what the bearing runs on, so the
+# screw must not decide where it sits.
+journalSleeveBore = 5.3
+journalScrewClearance = 5.5
+journalScrewDiameter = 5.0
+# M5 x 10, which is what the stack asks for and not a round number chosen: head
+# face on the sleeve's outer end, 6 mm of sleeve, 1.5 mm of disc web and 2.5 mm
+# into a 2.7 mm nut. It stops 2 mm short of the actuator's output face, which is
+# the clearance tools/gate_f.py measures.
+journalScrewLength = 10.0
+# An ISO 7380 button head rather than a cap head, and the head diameter is why:
+# Ø9.5 lands wholly on the Ø10 sleeve and touches neither the bearing's inner
+# race nor its seal, and 2.75 mm of head stands 1.25 mm proud of the bearing
+# boss, where a cap head would stand 3.5.
+journalScrewHeadDiameter = 9.5
+journalScrewHeadHeight = 2.75
+# The nut is an ISO 4035 thin hex, captive in a pocket in the disc's motor-side
+# face. It has to be a thin one: the disc is 6 mm and the register pocket takes
+# 1.2 of that, so the 4.8 mm that is left has to hold the nut AND leave a web for
+# the sleeve to clamp against. 2.7 of nut and 1.5 of web is the split.
+#
+# THE POCKET IS CUT 1.3 mm OVER THE FLATS, AND THE FINISHING PASS IS WHY.
+# 8.3 was the number this was drawn with -- 0.3 over the nut, meant to be pushed
+# in, since SLS holds about +/-0.2 mm and a nominal fit is a nut that will not go
+# in as often as it is one that rattles. Then the pocket was measured on the
+# FINISHED piece: cad/finish.py breaks every edge whose faces are flat, the floor
+# of a hex pocket is one of those, and a 0.5 mm chamfer round its perimeter took
+# the seat from 35.9 mm2 to 22.3 against a nut face of 31.6. The nut would have
+# landed on the chamfer rather than on the floor, on the one joint in this
+# assembly whose preload is already the weak thing about it.
+#
+# 9.3 leaves 8.3 mm of flat floor across the flats once the chamfer has been cut,
+# which is the fit the pocket was meant to have in the first place. What it costs
+# is 0.65 mm of lateral slop on a nut that the screw centres anyway and that only
+# has to be stopped from turning.
+journalNutAcrossFlats = 8.0
+journalNutThickness = 2.7
+journalNutPocketFlats = 9.3
+journalNutPocketDepth = 3.3
 bearingBore = 10.0
 bearingOuterDiameter = 19.0
 bearingWidth = 5.0

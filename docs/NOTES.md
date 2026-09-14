@@ -1834,3 +1834,196 @@ first, which needs a caliper or a question to DAMIAO.
 Also unresolved from the same drawing: the output register measures as both Ø25
 and Ø30 depending on which circle the leader is read against, and
 `cad/parameters.py` carries Ø30. Worth a caliper before the pelvis is printed.
+
+---
+
+## The joint could not be assembled, so the journal is bought again — September 14, 2026
+
+The four straddled joints could not have been put together. The clevis is one
+print whose two cheeks stand **45.2 mm** apart, and an actuator with its limb's
+output disc bolted to it measures **49.9 mm** from its rear face to the journal's
+tip. That is 4.7 mm of interference on a joint with 1.3 mm of axial slack, and it
+was as true of the Ø10 dowel bonded into a blind seat as it is of the printed
+stub that replaced it on 13 September: both are one piece with the moving side
+before the joint is closed.
+
+**There is no order that works.** The six output screws are counterbored on the
+face the far cheek ends up 1 mm from, so the disc has to be on the motor before
+the motor goes into the fork; the journal then needs 5 mm of axial travel to
+enter the bearing and has 1.3. Springing the cheeks apart is not a way out
+either: 4.7 mm strains a 3 mm cheek roughly 2 to 4 per cent at its root, at or
+past what PA12 takes elastically, on the one part that holds the bearing in line
+with the output.
+
+### What it is now
+
+A bought Ø10 × Ø5.3 × 6 steel sleeve, fitted **last** and from **outside**:
+through the bearing boss's Ø17.5 shoulder bore, through the bearing, onto the
+disc's face, with an M5 × 10 button head pulling it down onto an M5 thin nut
+captive in a hex pocket in the disc's motor-side face. The assembly order is
+bearing bonded in, disc screwed to the motor with the nut already in its pocket,
+motor into the fork, four rear screws, then the journal.
+
+Every printed part keeps its shape but the limb discs, which lose the blind seat
+and gain a Ø5.5 hole and the nut's pocket: **+92.3 mm³ and −195.3 mm³** against
+the golden STEP, both declared in `tools/gate_b.py`.
+
+### The sleeve was drawn capped, and nothing in this repository could see it
+
+Its bore was cut by a cylinder centred on the sleeve's inboard face rather than
+on the sleeve, so it ran out **1 mm short of the outer end**: a tube with a cap on
+it, with the screw modelled straight through that cap — 19.6 mm³ of steel in the
+same place as 19.6 mm³ of steel. Every gate passed. A blind bore still leaves one
+cylindrical face for gate E's radius count; gate F measures this hardware against
+the printed parts it sits in and not against itself; and a bought part is in no
+other gate at all. **The bought half of this robot has had no geometric check on
+it whatsoever**, which is worth knowing beyond this one part.
+
+`tools/gate_e.py` now asks the sleeve's bore to be open end to end, the same
+opening test the cable-tie tunnels and the nut's pocket get. The corrected sleeve
+measures 338.9 mm³, which is exactly a Ø10 × Ø5.3 × 6 tube.
+
+### The sleeve is printed, and the fit is what has to be proved
+
+**Decided 14 September 2026: it goes on the printed table.** `journal-sleeve` is
+in the export set, four off, and what is left bought at each joint is the screw
+and the nut. That is 9.6 g off the robot — **2 084.2 g, 215.8 under the
+ceiling** — and it is the softest figure in this entry, because it rests on the
+fit coming good.
+
+Strength is not the worry. In SLS PA12 the section carries **25 MPa at the 650 N
+case and 14 at 350**, against 48 — margins of 1.9 and 3.5, better than the printed
+stub had. Two other things are, and both are what the coupon settles:
+
+- **Fit.** The 6800's bore is Ø10 held to eight microns and the sleeve has to
+  slide into it and back out again. SLS holds about ±0.2 mm, which is twenty-five
+  times that gap, so a printed sleeve either will not enter or leaves the far
+  support with 0.2 mm of radial play — which is the slop the second bearing
+  exists to remove.
+- **Creep.** The sleeve is inside the clamped stack. An M5 at a modest 1 kN puts
+  about 18 MPa of sustained compression on its section, and PA12 relaxes under
+  that; the preload is already the weak thing about this anchor.
+
+So **print several and dress them** until one slides into a 6800 and back out
+without play; that is a bench operation on a 6 mm tube rather than a machining
+job. Bonding one into the race would take the tolerance up and would also mean
+the sleeve could never be withdrawn, which is the whole reason it is a slip fit.
+
+**The steel sleeve remains the upgrade**, and nothing else about the joint
+changes if it is taken: a Ø10 h6/g6 × Ø5.3 × 6 ground sleeve — a precision
+spacer, a hollow dowel or a drill bush — puts 2.7 g back at each joint and
+settles both objections at once. `docs/BOM.md` carries it that way round.
+
+### The pocket had to be measured on the FINISHED part
+
+It was drawn 0.3 mm over the nut's flats, which is the fit a pushed-in nut wants.
+Then the seat was measured after `cad/finish.py` had run: that module breaks every
+edge whose faces are all flat, the floor of a hex pocket is one of those, and the
+0.5 mm chamfer round its perimeter took the seat from **35.9 mm² to 22.3** against
+a nut face of **31.6**. The nut would have landed on the chamfer rather than on
+the floor, on the one joint here whose preload is already the weak thing about it.
+The pocket is 1.3 mm over the flats now, which leaves 35.8 mm² of flat floor once
+the chamfer has been cut. Nothing in the gates would have caught it: gate B
+compares the unfinished part and gate E only asks whether the pocket is open.
+
+### What it costs
+
+**13.2 g** back on the robot — 12.0 of bought screws and nuts and 1.3 of printed
+sleeve, against 0.2 g of disc material the anchor takes away. That is
+**2 084.2 g all in, 215.8 g under the ceiling**, where it was 2 071.2 and 228.8.
+
+And the anchor is weaker than the stub was, which is the honest part. A stub
+grown out of the disc spread its bending into the whole Ø36 plate; a sleeve
+clamped to that plate's face is held by the 4.8 mm of PA12 at the disc's centre,
+and nothing wider is available, because anything that clamps it has to pass the
+bearing's Ø10 bore or fit the 1 mm gap behind it. The clamp lets go and the
+plastic under the sleeve's rim begins to crush somewhere around **300–400 N**
+against the **500–650 N** this project records at the 6800 for the 100 N at
+100 mm case. That is an estimate from clamped-annulus and embedded-pin
+arithmetic, not a test — and by the 29 August entry's own figures it is about
+where the limb plate itself breaks, so it is not the first thing to go.
+
+### What would give it back, and what it waits on
+
+Metal behind the disc: a steel hub between the disc and the motor's output
+flange, held by the same six screws, carrying the thread, so the journal's
+bending crosses steel instead of 4.8 mm of plastic. Whether there is room turns
+on how far that flange stands proud. **The vendor STEP puts it 1 mm proud inside
+the 37.9 mm overall length**, which would leave the disc's 1.2 mm register pocket
+free for a hub — while `cad/parameters.py` assumes that pocket is filled by the
+register. The two disagree, and the 2D drawing that would settle it is the one
+vendor file this repository has not mirrored. It is the same caliper the Ø25-or-
+Ø30 register question has been waiting for.
+
+Also unmeasured, and the same coupon settles both: the sleeve's fit in the
+bearing bore, and whether the clamp holds its preload in sintered PA12 or creeps
+out of it.
+
+### What is checked
+
+All six gates pass. Gate B holds the two volumes above exactly. Gate E counts the
+Ø5.5 screw hole on every limb and thigh and asks the nut's pocket to be open with
+nothing standing in it — a hexagon has no arc for the radius count to find, so it
+is asserted as an opening like the cable-tie tunnels. Gate F measures the journal
+seated at the knee and, for the first time, at the hip: bearing, sleeve, screw
+and nut meet the printed parts and share no volume in either. The URDF is rebuilt
+from re-exported meshes and `simulation/check_model.py` still agrees with the
+CAD, with 5.7 g of journal now riding on each thigh and shin rather than inside
+the mesh.
+
+## CAN topology, and the pins the third bus costs — September 14, 2026
+
+The six motors now sit **two to a bus on three buses**, paired left and right by
+joint: both hips, both knees, both wheels. It came out of wanting every motor to
+run home to the torso on its own cable, with nothing spliced into a trunk part way
+down a leg. With two motors on a bus, the bus is a straight line from one motor,
+through the carrier, to the other — the transceiver taps the middle of it, there
+is no star point, no stub, and no junction anywhere for a splice to be needed at.
+Termination falls out of the same arrangement for free: both ends of every bus are
+motors, so all six of their own switches stay ON and the carrier carries no
+resistor at all. That is a simpler loom **and** a simpler carrier than the two-bus
+plan it replaces, which is not the usual direction of travel.
+
+The bandwidth argument runs the same way, though it is computed and not measured.
+A command and its reply at 1 Mbit is of the order of a quarter of a millisecond per
+motor, so two motors is about half a millisecond per bus and three would have been
+close to 0.8 — comfortable against a 1 kHz loop in the first case and marginal in
+the second. Giving the wheels a bus to themselves is also what
+`WHEELED_BIPED_IMPLEMENTATION.md` suspected would eventually be wanted.
+
+**The third bus is not free, and what it costs is the BOOT0 button.** On the
+48-pin package the first CAN controller can only come out on PA11/PA12, which are
+USB D−/D+, or on PB8/PB9 — its third option, PD0/PD1, is not bonded out on this
+package. The other two controllers are unaffected and sit on PB12/PB13 and on
+PB3/PA15. Keeping USB therefore means taking PB8, and PB8 is the BOOT0 pin: it
+only becomes an ordinary pin once the boot function is switched off in the option
+bytes, and from then on holding the button at reset no longer reaches the built-in
+USB bootloader. USB itself still works, both as DFU and as a serial port, because
+PA11/PA12 are untouched; it is the way *into* DFU that is gone, so entering it
+needs firmware that flips the option bit and reboots — which is no use if the
+firmware is what is broken. Hence the ST-LINK on the bill. The alternative, kept
+here in case losing the button proves worse than it looks, is to put the first bus
+on PA11/PA12 instead, give up USB entirely, keep the BOOT0 button, and program
+through the bootloader's own CAN interface with the Waveshare adapter this bill
+already buys.
+
+One firmware detail worth writing down before it bites someone: PA15 and PB3 are
+JTAG pins and come up as JTAG after reset, so the third bus only works with
+SWD-only debugging selected, which is what the board's pins offer anyway.
+
+What is still unproven, and one thing that is now plainly a gap. The bought motor
+pigtail on the bill is **300 mm of 30 AWG**, plugged at the motor and bare at the
+other end, and 300 mm serves a hip and a knee but **does not reach from a wheel
+motor**, which sits two 105 mm limbs below the hip. So for two of the six the loom
+is still spliced part way down a shin, which is exactly what the home-run layout
+exists to avoid. Pre-terminated 28 AWG leads up to 800 mm exist abroad and are the
+answer, but nobody has sourced one. Nobody has checked three cables of real diameter through the
+14 × 10 mm floor port either, and the wheel motor's cable now crosses both the hip
+and the knee, so it wants a service loop at each. The V1.1 manual reverses the
+motors' termination default, so read each switch rather than trusting that all six
+arrive ON. And the CAD was already drawn for this: `cad/electronics.py` routes the
+harnesses as two runs of three through the floor ports and carries one WeAct board
+on the carrier, so nothing in `cad/` had to move. Its transceiver bank still
+reserves four socket positions where three are now fitted, which is deliberate —
+the fourth is where the spare goes, and leaving it reserved costs nothing and keeps
+the mass roll-up conservative.

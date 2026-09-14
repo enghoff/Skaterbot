@@ -108,20 +108,26 @@ DEVIATIONS = {
     # one mirror image of the other and agree to 1e-5.
     "limb-105-unmirrored": [
         {
-            "added_mm3": 655.4762,
+            "added_mm3": 92.2586125,
+            "removed_mm3": 195.3062914,
             "why": (
-                "THE JOURNAL IS PART OF THIS PRINT. It was a Ø10 x 8 hardened "
-                "dowel bonded into a Ø10.2 x 2.2 blind seat in the output disc; "
-                "the disc grows its own Ø10 stub 6 mm proud instead, with a "
-                "0.8 mm fillet at its root, and the seat is gone. Two changes of "
-                "the same sign, which is why this is one figure: 471.2 mm3 of "
-                "stub and about 4.5 of fillet added, and 179.8 of seat no longer "
-                "taken away. It deletes a bought item from four joints and 29.6 g "
-                "of steel from the robot. It is sound only because the material "
-                "moved to SLS PA12 -- the root carries the bearing's reaction as "
-                "bending, at 30 MPa across an FDM part's layers and 48 in any "
-                "direction once the material is isotropic. cad/parameters.py "
-                "carries the arithmetic and what is still unquantified."
+                "THE DISC CARRIES THE JOURNAL'S ANCHOR, NOT THE JOURNAL. The "
+                "golden's Ø10.2 x 2.2 blind seat took a bonded dowel; a printed "
+                "Ø10 stub replaced it on 13 September 2026; and NEITHER CAN BE "
+                "ASSEMBLED -- both stand proud of this face before the joint is "
+                "closed, and the fork is one print whose cheeks are 4.7 mm closer "
+                "together than the motor and this disc are long. So the journal "
+                "is a bought sleeve fitted from outside at the end, and what is "
+                "left here is what it screws into: the seat is not cut at all "
+                "(92.3 mm3 of it is material the golden does not have) and a "
+                "Ø5.5 clearance hole and the hex pocket for a captive M5 thin nut "
+                "are cut from the motor side instead (195.3 mm3). The pocket is "
+                "1.3 mm over the nut's flats rather than 0.3 because the "
+                "finishing chamfer takes 0.5 mm off the floor's perimeter, which "
+                "had left the nut seated on the chamfer. Both signs on one "
+                "feature, so both are declared. cad/parameters.py carries the "
+                "interference that forced it and what the anchor is worth against "
+                "the stub -- which is less, and is said plainly there."
             ),
         },
         {

@@ -144,6 +144,30 @@ note = "Right shin -- the mirror, stator plate on -X."
 # the pelvis instead. The walking robot still has one, in KCL, on the `walking`
 # branch, which is where that machine now lives.
 
+# THE JOURNAL SLEEVE IS PRINTED, and it is the only piece on this table that is
+# not structure. It is the Ø10 tube the far bearing turns on at each straddled
+# joint, fitted last and from outside -- cad/hardware.py has why it cannot be
+# part of the limb it screws to. Steel is what a joint like this normally gets
+# and it is what docs/BOM.md still carries as the upgrade; PA12 is strong enough
+# for the duty (25 MPa at the 650 N case against 48) and is beaten on two other
+# things, both of which the fit coupon settles: SLS holds about ±0.2 mm where the
+# bearing's bore is held to eight microns, so a printed sleeve has to be dressed
+# to size before it will enter a 6800 at all; and it sits inside a clamped stack
+# that PA12 creeps out of, which costs preload on the anchor that is already the
+# weak thing about this joint.
+[[printed]]
+file = "cad/hardware.py"
+label = "Journal sleeves, four"
+measure = ["journalSleeve"]
+count = 4
+
+[[printed.piece]]
+name = "journal-sleeve"
+export = "journalSleeve"
+prints = 4
+bodies = 1  # a plain tube
+note = "Ø10 x Ø5.3 x 6. Print spares: it is the one piece here that gets fitted to a bearing bore."
+
 [[printed]]
 file = "cad/wheel_adapter.py"
 label = "Wheel adapters, the pair"
@@ -230,7 +254,13 @@ note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, \
 label = "Support bearings"
 each_g = 5.0
 count = 4
-note = """6800-2RS, from cad/hardware.py. THE JOURNAL IS NOT ON THIS TABLE ANY MORE: it was a Ø10 hardened dowel at 4.9 g, four of them, and the limb grows its own stub out of its output disc now and prints it. That is 29.6 g of steel off the robot, less about 3 g of PA12 that arrives inside the printed figures above, and four bought items and four bonded joints gone with it. It only became sound when the material went isotropic -- cad/parameters.py has the arithmetic. What is left here is the bearing alone. Steel, so neither can be measured from the CAD at PA12 density. docs/BOM.md per-joint tally. Four sets: the two hip pitch joints, and the two knees since each thigh was given a clevis reaching past its knee motor to a far bearing. It was two while the knee was a flat plate hung on the actuator's own output bearing. The set was 16.3 g until the 6.4 g turned aluminium bearing carrier was deleted -- it was the only bespoke machined part on the robot and nobody sells one, so the front cheek is bored Ø19.2 and the bearing is bonded into the print instead. The printed pelvis takes 4.7 g of that back: material returned to the cheek by the smaller bore, plus the boss that carries the bearing's shoulder now that the carrier's flange is not there to be one."""
+note = """6800-2RS, from cad/hardware.py. THE JOURNAL IS ON THE ROW BELOW, not on this one: it was a Ø10 dowel bonded into the limb's output disc, then a stub printed with that disc, and it is a bought sleeve on its own screw again because neither of the others can be ASSEMBLED -- the fork is one print and the motor with its disc bolted on is 4.7 mm too long to enter it. What is left here is the bearing alone. Steel, so it cannot be measured from the CAD at PA12 density. docs/BOM.md per-joint tally. Four sets: the two hip pitch joints, and the two knees since each thigh was given a clevis reaching past its knee motor to a far bearing. It was two while the knee was a flat plate hung on the actuator's own output bearing. The set was 16.3 g until the 6.4 g turned aluminium bearing carrier was deleted -- it was the only bespoke machined part on the robot and nobody sells one, so the front cheek is bored Ø19.2 and the bearing is bonded into the print instead. The printed pelvis takes 4.7 g of that back: material returned to the cheek by the smaller bore, plus the boss that carries the bearing's shoulder now that the carrier's flange is not there to be one."""
+
+[[fixed]]
+label = "Journal screws and nuts"
+each_g = 3.0
+count = 4
+note = """What holds one journal in: an M5 x 10 ISO 7380 button head and an M5 ISO 4035 thin nut, the nut captive in a pocket in the limb's output disc. Catalogue-typical 2.2 g of screw and 0.8 of nut, steel, so neither can be weighed off the CAD at PA12 density. THE SLEEVE THEY HOLD IS PRINTED and is on the printed table above; it was 2.7 g of steel here until it was, and docs/BOM.md carries steel as the upgrade the fit coupon may force. WHY THERE IS A JOURNAL TO HOLD AT ALL. It was 4.9 g of dowel, then nothing at all when the disc grew its own printed stub -- and a journal that is part of the moving side before the joint is closed cannot be got into the far bearing, whichever of those two it is: the clevis is a single print whose cheeks stand 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm to the journal's tip. This is 22.8 g of steel back on the robot to make the four straddled joints assemble at all. cad/parameters.py carries the arithmetic, and says plainly that the anchor in the disc is weaker than the stub was."""
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"
