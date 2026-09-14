@@ -4,10 +4,10 @@
 # ///
 """The controller carrier board, as a netlist that can be checked and drawn.
 
-The carrier is the one piece of electronics on this robot that nobody sells: 76
-x 46 mm of 2.54 mm perfboard on the electronics deck, carrying the WeAct core
-board on sockets, three CAN-FD transceivers in DIP-8 sockets, and the connectors
-everything else in the torso lands on. cad/electronics.py draws its envelope so
+The carrier is the one piece of electronics on this robot that nobody sells: a
+140 x 46 mm two-layer board on the electronics deck, carrying the WeAct core
+board on sockets, three CAN-FD transceivers in DIP-8 sockets, the logic BEC and
+the bus monitor, and the connectors everything else in the torso lands on. cad/electronics.py draws its envelope so
 the torso can be packed around it; this file says what is soldered to what.
 
     uv run electrical/carrier.py            # check, then print the tables
@@ -241,14 +241,57 @@ PARTS = [
     Part(
         "JP1",
         "IMU supply link: bridge 1-2 for 5 V, 2-3 for 3.3 V",
-        "three pads, solder bridge",
+        "three holes on 2.54 mm, wire link",
         {"1": "+5V", "2": "IMU_V", "3": "+3V3"},
     ),
+    # ---- what came up onto the carrier in September 2026 --------------------
+    #
+    # THE BEC AND THE BUS MONITOR ARE ON THIS BOARD NOW. Both were separately
+    # mounted down in the power bay -- the BEC on a bracket over the harness
+    # bank, the monitor on two printed pads off the rear wall -- with cables
+    # running up to this one. Seven wires between the three of them became four,
+    # and the I2C bus stopped leaving the board to reach the monitor at all,
+    # which is the part that matters: an open-drain bus running 150 mm through a
+    # torso is the classic way to lose an IMU to a locked-up monitor.
+    #
+    # WHAT DID NOT COME UP IS THE SHUNT, and it cannot: it stands in the main bus
+    # path and carries the whole pack current. It stays at the distribution
+    # board, and the monitor's IN+ and IN- are its own screw terminals with a
+    # twisted pair run down to it. That pair carries about 75 mV at 25 V of
+    # common mode, so it is twisted, it is not on this board's copper anywhere,
+    # and it is the one measurement this move makes harder rather than easier.
     Part(
         "J1",
-        "logic power in, from the Matek BEC",
+        "battery bus in, from the distribution board",
         "JST-XH 2-pin",
-        {"1": "+5V", "2": "GND"},
+        {"1": "VBAT", "2": "GND"},
+    ),
+    Part(
+        "F1",
+        "branch protection on the bus feed -- the pack's own fuse is 30 A and "
+        "this lead draws under two",
+        "resettable PTC, 1.85 A hold, 72 V, radial -- Littelfuse RXEF185",
+        {"1": "in", "2": "out"},
+    ),
+    Part(
+        "C9",
+        "bus input bulk, for the lead's inductance on a hot plug",
+        "10 uF 50 V electrolytic",
+        {"1": "+", "2": "-"},
+    ),
+    Part(
+        "A2",
+        "the logic BEC, lying flat on the carrier on a thermal pad under two "
+        "cable ties; its four leads land on this header",
+        "Matek BEC12S-PRO, on a 1 x 4 header",
+        {"1": "IN+", "2": "IN-", "3": "OUT+", "4": "OUT-"},
+    ),
+    Part(
+        "A3",
+        "the bus monitor, on two M2 standoffs; its IN+ and IN- are its own screw "
+        "terminals and go to the shunt, not to this board",
+        "INA226 breakout, on a 1 x 5 header",
+        {"1": "VCC", "2": "GND", "3": "SCL", "4": "SDA", "5": "ALERT"},
     ),
     Part(
         "J2",
@@ -268,23 +311,46 @@ PARTS = [
         "JST-XH 4-pin",
         {"1": "H", "2": "L", "3": "H", "4": "L"},
     ),
+    # THE SBC'S POWER TRAVELS WITH ITS SERIAL LINK NOW, because the BEC that
+    # used to feed it directly is on this board. Two pins for the 5 V and two
+    # for its return: a JST-XH contact is rated 3 A and the Banana Pi draws
+    # something under 2, so one pin would carry it, and two is what makes the
+    # pair a pair rather than a single point of failure on the rail that holds
+    # the whole computer up. GND is on pin 1 and again on pin 4, between the
+    # power and the four signals. THE PAIRS ARE ADJACENT rather than interleaved,
+    # which halves the loop the SBC's supply current runs in and is also the only
+    # arrangement the board can wire: a ground pin with a 5 V pin either side of it
+    # is 0.8 mm from each, and nothing reaches it -- not a track, and not the
+    # ground plane either.
     Part(
         "J5",
-        "link to the SBC, and the two lines that let it reflash the MCU",
-        "JST-XH 5-pin",
-        {"1": "GND", "2": "TXD", "3": "RXD", "4": "BOOT0", "5": "NRST"},
+        "the SBC: its 5 V, its serial link, and the two lines that let it "
+        "reflash the MCU",
+        "JST-XH 8-pin",
+        {
+            "1": "GND",
+            "2": "GND",
+            "3": "+5V",
+            "4": "+5V",
+            "5": "TXD",
+            "6": "RXD",
+            "7": "BOOT0",
+            "8": "NRST",
+        },
     ),
+    # THE TWO I2C LINES ARE AT THE ENDS OF THIS CONNECTOR and the rest is in the
+    # middle, which is a layout decision showing through into the netlist and is
+    # worth saying so. A row of six pads on 2.5 mm pitch leaves 0.8 mm between
+    # neighbours, and nothing goes through a 0.8 mm gap at this board's rules --
+    # not a track and not the ground plane -- so an interior pin can only be
+    # reached from in front of the row or behind it, and those two lanes are the
+    # most congested copper on the board. The clock could not be routed at all
+    # with it in the middle of the row.
     Part(
         "J6",
         "IMU",
         "JST-XH 6-pin",
-        {"1": "V", "2": "GND", "3": "SCL", "4": "SDA", "5": "INT", "6": "RST"},
-    ),
-    Part(
-        "J7",
-        "bus monitor",
-        "JST-XH 5-pin",
-        {"1": "3V3", "2": "GND", "3": "SCL", "4": "SDA", "5": "ALERT"},
+        {"1": "SCL", "2": "GND", "3": "V", "4": "INT", "5": "RST", "6": "SDA"},
     ),
 ]
 
@@ -330,12 +396,21 @@ MCU_SIGNALS = [
 # ---- the netlist ------------------------------------------------------------
 
 NETS: dict[str, list[tuple[str, str]]] = {
-    # Power. 5 V arrives from the BEC and feeds the transceivers directly and
+    # THE BUS, from the connector to the BEC's input, and it is the only thing on
+    # this board that is not a logic rail. It arrives at pack voltage -- 25.2 V
+    # on a full 6S string, and higher than that while a leg is regenerating --
+    # so it is fused at the board rather than relying on the 30 A fuse that
+    # protects the pack, and it goes nowhere except through F1 into A2.
+    "VBAT": [("J1", "1"), ("F1", "1")],
+    "VBAT_F": [("F1", "2"), ("C9", "1"), ("A2", "1")],
+    # Power. 5 V comes out of the BEC and feeds the transceivers, the SBC and
     # the core board through its own regulator; the 3.3 V that regulator makes
     # comes back out and is what sets the logic level on every VIO pin. That
     # split is the whole reason the bill buys MCP2562FD rather than MCP2561FD.
     "+5V": [
-        ("J1", "1"),
+        ("A2", "3"),
+        ("J5", "3"),
+        ("J5", "4"),
         ("C1", "1"),
         ("A1", "P1-1"),
         ("A1", "P1-2"),
@@ -360,10 +435,13 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("R1", "1"),
         ("R2", "1"),
         ("JP1", "3"),
-        ("J7", "1"),
+        ("A3", "1"),
     ],
     "GND": [
         ("J1", "2"),
+        ("A2", "2"),
+        ("A2", "4"),
+        ("C9", "2"),
         ("C1", "2"),
         ("C2", "2"),
         ("C3", "2"),
@@ -388,10 +466,11 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("U3", "2"),
         ("U3", "8"),
         ("J5", "1"),
+        ("J5", "2"),
         ("J6", "2"),
-        ("J7", "2"),
+        ("A3", "2"),
     ],
-    "IMU_V": [("JP1", "2"), ("J6", "1")],
+    "IMU_V": [("JP1", "2"), ("J6", "3")],
     # The three buses. Each one is a single line: a motor at one end, the
     # carrier in the middle, that joint's opposite number at the other end. Both
     # ends are motors, both motors' own termination switches stay ON, and that
@@ -409,21 +488,21 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "CANC_H": [("U3", "7"), ("J4", "1"), ("J4", "3")],
     "CANC_L": [("U3", "6"), ("J4", "2"), ("J4", "4")],
     # One I2C bus for both sensors: the IMU in its seat on the shell floor, and
-    # the INA226 watching the battery bus from under the deck.
-    "I2C_SCL": [("A1", "P1-15"), ("R1", "2"), ("J6", "3"), ("J7", "3")],
-    "I2C_SDA": [("A1", "P1-22"), ("R2", "2"), ("J6", "4"), ("J7", "4")],
-    "IMU_INT": [("A1", "P1-20"), ("J6", "5")],
-    "IMU_RST": [("A1", "P1-21"), ("J6", "6")],
-    "INA_ALERT": [("A1", "P1-8"), ("J7", "5")],
+    # the INA226 on this board watching the battery bus through the shunt.
+    "I2C_SCL": [("A1", "P1-15"), ("R1", "2"), ("J6", "1"), ("A3", "3")],
+    "I2C_SDA": [("A1", "P1-22"), ("R2", "2"), ("J6", "6"), ("A3", "4")],
+    "IMU_INT": [("A1", "P1-20"), ("J6", "4")],
+    "IMU_RST": [("A1", "P1-21"), ("J6", "5")],
+    "INA_ALERT": [("A1", "P1-8"), ("A3", "5")],
     # The SBC. A serial link rather than USB, and BOOT0 and reset travel with it
     # so the Banana Pi can drop the MCU into its own bootloader and reflash it
     # over the same wires. That matters on a robot whose controller sits under a
     # screwed-down lid: USART1 is one of the ports the STM32's ROM bootloader
     # listens on, so no other access is needed to change firmware.
-    "SBC_MCU_TXD": [("A1", "P1-11"), ("J5", "2")],
-    "SBC_MCU_RXD": [("A1", "P1-12"), ("J5", "3")],
-    "BOOT0": [("A1", "P1-23"), ("J5", "4")],
-    "NRST": [("A1", "P2-19"), ("J5", "5")],
+    "SBC_MCU_TXD": [("A1", "P1-11"), ("J5", "5")],
+    "SBC_MCU_RXD": [("A1", "P1-12"), ("J5", "6")],
+    "BOOT0": [("A1", "P1-23"), ("J5", "7")],
+    "NRST": [("A1", "P2-19"), ("J5", "8")],
 }
 
 # Pins left unconnected on purpose, and why. check() reports every pin that is

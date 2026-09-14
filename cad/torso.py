@@ -29,12 +29,6 @@ from cad.electronics import (
     bmsGuideY,
     bmsX,
     bmsZ,
-    bus_sense_ledge_xy,
-    busSenseLedgeDepth,
-    busSenseLedgeHeight,
-    busSenseLedgeTopZ,
-    busSenseLedgeWidth,
-    busSensePilot,
     chargeSocketFixings,
     deckLedgeDepth,
     deckLedgeHeight,
@@ -333,43 +327,6 @@ def deckLedges() -> list:
     return ledges
 
 
-def busSenseLedges() -> list:
-    """Two pads on the rear wall, carrying the INA226 bus monitor.
-
-    THE SAME KIND OF FEATURE AS THE FOUR ABOVE, and put here for a reason that is
-    about assembly rather than geometry. The monitor hung under cad/deck.py's
-    plate for one revision; its leads run down to the shunt and the bus, so that
-    tied the deck to the torso by wiring, and the deck is the assembly that has to
-    come straight out.
-
-    WHY THIS WALL AND NOT THE FLANK. Both are flat and free over the span the
-    board needs. The flank is 3 mm off the edge of the bought distribution board,
-    which is not enough material to carry a pilot, so a pad there would overhang
-    that board and trap it on its standoffs. Behind the board there is 8.6 mm of
-    floor nothing stands on, and a pad here overhangs nothing at all.
-
-    They stand clear of the floor rather than rising from it, so the back of the
-    cavity stays a clear run for the actuator harnesses -- which is what the
-    battery rails were laid across the robot to preserve.
-    """
-    ledges = []
-    for atX, atY in bus_sense_ledge_xy():
-        block = Pos(atX, atY, busSenseLedgeTopZ - busSenseLedgeHeight / 2) * Box(
-            busSenseLedgeWidth, busSenseLedgeDepth, busSenseLedgeHeight
-        )
-        ledges.append(
-            _piloted(
-                block,
-                atX,
-                atY,
-                busSenseLedgeTopZ,
-                busSenseLedgeHeight - 3.0,
-                busSensePilot,
-            )
-        )
-    return ledges
-
-
 def pelvisShell() -> list:
     """The shell, its four cover bosses and both hip clevises: one printed part.
 
@@ -472,7 +429,6 @@ def pelvisShell() -> list:
         *batteryRails(),
         *powerEntryPosts(),
         *deckLedges(),
-        *busSenseLedges(),
         *bmsGuides(),
         # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
         # printed feature in this cavity that stands inside its own reserved

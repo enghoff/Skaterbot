@@ -388,8 +388,37 @@ ADDED = {
     "deckDepth": 66.4,
     "deckDropClearance": 0.4,
     "deckCornerNotch": 9.0,
-    "controllerScrewX": 34.0,
+    "controllerScrewX": 66.0,
     "controllerScrewY": 19.0,
+    # ---- THE CONTROLLER BAY TOOK THE BEC AND THE MONITOR, September 2026 -----
+    #
+    # The rear outboard corner the charge socket passes over, cut out of the
+    # reservation and out of the board alike rather than promising 12 mm of
+    # height there that the socket has already taken. cad/electronics.py says
+    # why the bay is 140 mm wide and why this corner is the one that goes.
+    "controllerNotchWidth": 21.45,
+    # ---- WHAT THE CARRIER CARRIES, September 2026 ---------------------------
+    #
+    # Stations on the controller carrier, every one of them read off
+    # electrical/carrier_pcb.py -- which is where the board is laid out and where
+    # each of these is measured against its neighbours in three dimensions --
+    # and turned from the board's frame into the torso's by onCarrier(). They are
+    # here rather than derived because the board's layout is the authority: a
+    # part that moves there moves here to match, and a number that no longer
+    # matches is exactly what this gate is for.
+    "transceiverX": 17.450000000000003,
+    "transceiverY": 0.0,
+    "transceiverPitch": 11.0,
+    "becX": -6.049999999999997,
+    "becY": 0.0,
+    "becOnCarrierHeight": 6.5,
+    "busSenseStandoff": 3.0,
+    "harnessX": 21.450000000000003,
+    "harnessY": -19.5,
+    "harnessWidth": 47.0,
+    "harnessDepth": 5.75,
+    "harnessHeight": 12.8,
+    "controllerNotchDepth": 5.0,
     # Standoffs, and the plane each board therefore sits on. A reserved volume
     # says where a board may be and nothing about what holds it there; these are
     # the other half of that answer, and the KCL had none of them.
@@ -477,22 +506,14 @@ ADDED = {
     # bay, so a deck carrying it is a deck tied to the torso by wiring.
     "busSenseHolePitch": 16.7,
     "busSenseHoleInset": 2.5,
-    "busSensePilot": 1.7,
-    "busSenseLedgeWidth": 6.0,
-    "busSenseLedgeDepth": 6.5,
-    "busSenseLedgeHeight": 8.0,
-    "busSenseDriverClearance": 2.0,
     # The stations, DERIVED AND NOT CHOSEN, pinned here at their computed values
     # the way pdbTopZ and packLeadZ above are. x is the rear deck ledge's own
     # edge, less the room a driver needs beside it, plus half the hole pitch;
     # y and z are the wall and the pads. Move the ledge, the wall or the bought
     # board's standoff and this gate says so rather than letting the monitor
     # follow silently.
-    "busSenseLedgeY": -30.35,
-    "busSenseLedgeTopZ": -21.4,
-    "busSenseX": 52.35,
-    "busSenseY": -21.85,
-    "busSenseZ": -21.4,
+    "busSenseX": 53.45,
+    "busSenseY": -1.0,
     # The looms, reserved as chases rather than drawn as routed wire.
     "busWireDiameter": 3.5,
     "canWireDiameter": 2.6,
@@ -892,11 +913,19 @@ CHANGED = {
         "board, 6.45 to meet the hip clevis -- and the bay went 14 wider, so it "
         "rides out with the wall",
     ),
+    "controllerWidth": (
+        76.0,
+        140.0,
+        "the logic BEC and the bus monitor moved onto the carrier, and the only "
+        "air on this deck deep enough for the monitor is outboard of the SBC's "
+        "right-hand posts, which is 67.45 mm from where this bay starts",
+    ),
     "controllerX": (
         -20.1,
-        -34.55,
+        -2.549999999999997,
         "still 2 mm off the left wall, and it has moved up onto the deck. It "
-        "rides out with that wall for the same reason the power bay does",
+        "rides out with that wall for the same reason the power bay does, and "
+        "its centre moved inboard when the bay went from 76 mm wide to 140",
     ),
     "powerWidth": (
         38.0,

@@ -57,12 +57,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="6.71228476e-05 0.00585082069 -0.023763619" rpy="0 0 0"/>
-      <mass value="1.122418"/>
-      <inertia ixx="3.617790706e-03" ixy="1.258337897e-06" ixz="-6.829767130e-07"
-               iyy="1.693210437e-03" iyz="-9.566740345e-05" izz="2.562731313e-03"/>
+      <origin xyz="8.18035144e-05 0.00516775343 -0.0237635396" rpy="0 0 0"/>
+      <mass value="1.121849"/>
+      <inertia ixx="3.623699936e-03" ixy="2.142994738e-06" ixz="-6.551209428e-07"
+               iyy="1.692668034e-03" iyz="-6.546949537e-05" izz="2.568157063e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 151.3 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 150.7 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -136,9 +136,9 @@
     </visual>
     <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
     <visual name="controller_carrier">
-      <origin xyz="0 0.03455 0.014" rpy="0 0 0"/>
+      <origin xyz="0 0.00255 0.014" rpy="0 0 0"/>
       <geometry>
-        <box size="0.046 0.076 0.012"/>
+        <box size="0.046 0.14 0.012"/>
       </geometry>
       <material name="pcbGreen"/>
     </visual>

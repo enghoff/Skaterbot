@@ -116,9 +116,32 @@ batteryHeight = 36.0
 powerWidth = 52.0
 powerDepth = 54.0
 powerHeight = 36.0
-controllerWidth = 76.0
+# THE CONTROLLER BAY, 140 mm wide since September 2026 where it was 76. It grew
+# to take the logic BEC and the bus monitor, which were two separately mounted
+# boards in the power bay with cables running up to the carrier; both ride on the
+# carrier now and their cables went with them.
+#
+# THE WIDTH IS NOT A PREFERENCE. The bus monitor is a bought 22 mm breakout and
+# it stands about 11 mm over a board once it is on standoffs, where the SBC
+# leaves 9.4 mm of air over this one. The only air on this deck deeper than that
+# is outboard of the SBC's own edges -- electrical/carrier_pcb.py measures the
+# headroom over every square millimetre of it -- and outboard to the LEFT is
+# where the core board already stands. So the monitor goes to the right of the
+# SBC's right-hand posts, which with their clearance allowed for is x +33.8.
+# What has to stand past them is the monitor, the last of the three CAN
+# transceivers and the BEC's own input hardware, and 33.65 mm of board is what
+# holds them, which puts this bay's edge at x +67.45.
+#
+# THE REAR OUTBOARD CORNER IS CUT AWAY. The charge socket's body reaches 17.1 mm
+# in from the rear wall and passes 3.65 mm over this board, so the last 21 mm of
+# the rear edge cannot hold the 12 mm this bay otherwise claims. The notch is in
+# the reservation and in the board alike, which is cheaper than a reservation
+# that promises height it has not got.
+controllerWidth = 140.0
 controllerDepth = 46.0
 controllerHeight = 12.0
+controllerNotchWidth = 21.45
+controllerNotchDepth = 5.0
 sbcWidth = 85.0
 sbcDepth = 58.0
 sbcHeight = 16.0
@@ -340,40 +363,24 @@ busSenseHeight = 8.0
 busSenseHolePitch = 16.7
 busSenseHoleInset = 2.5
 
-# HOW IT IS HELD. Two piloted pads off the pelvis's REAR WALL, with an M2
-# self-tapping screw down through each hole from above -- the same fastener every
-# other board mount on this robot uses, for the reason recorded beside
-# m25InsertBore in cad/parameters.py: no wall a board lands on here is thick
-# enough to sink an insert. Ø1.7 is M2's minor diameter plus the tenth a printed
-# hole comes out under nominal. The pads are cad/torso.py's `busSenseLedges` and
-# are the same kind of feature as the four that carry the deck.
-busSensePilot = 1.7
-busSenseLedgeWidth = 6.0
-busSenseLedgeDepth = 6.5
-busSenseLedgeHeight = 8.0
-
-# WHY THE REAR WALL, AND NOT THE DECK OR THE FLANK.
+# HOW IT IS HELD, AND IT IS NOT HELD BY THIS PELVIS ANY MORE. It was two piloted
+# pads off the rear wall, with an M2 self-tapping screw down through each of the
+# board's two mounting holes; the board is on the controller carrier now, on two
+# standoffs, and the pads went with it in September 2026. tools/gate_b.py records
+# the 705 mm3 of PA12 that came back off the pelvis.
 #
-# It hung under the electronics deck for one revision, and that was wrong for a
-# reason no gate measures: this board's leads run DOWN, to the shunt and to the
-# bus, so a deck that carries it is a deck tied to the torso by wiring -- and the
-# deck is the one assembly in this robot that has to come straight up and out,
-# taking the battery's hold-down and the BMS's top guides with it.
+# WHAT THE REAR WALL WAS FOR is worth keeping, because it is the argument that
+# has to be answered again if the monitor ever comes off the carrier. It hung
+# under cad/deck.py's plate for one revision and that was wrong: its leads run
+# DOWN, to the shunt and the bus, so a deck carrying it is a deck tied to the
+# torso by wiring, and the deck is the one assembly that has to come straight up
+# and out. The rear wall answered that, and so does the carrier -- but only
+# because everything the carrier takes down into the bay goes on a plug.
 #
-# THE OUTBOARD FLANK WAS THE OBVIOUS ALTERNATIVE AND IT FAILS ON THE BOUGHT
-# BOARD. That flank is flat and free over exactly the span this needs -- it was
-# probed -- but the distribution board's edge is 3 mm off it, which is not enough
-# material to carry a Ø1.7 pilot. Any pad big enough to take a screw therefore
-# overhangs the bought board and traps it: it could no longer be lifted straight
-# off its four standoffs. The rear wall has an 8.6 mm strip of floor behind that
-# board which nothing stands on, so a pad there overhangs NOTHING PRINTED OR
-# BOUGHT. The monitor itself overhangs the board, on two screws, and comes off
-# first -- which is a disassembly order and not a trap.
-#
-# AND THE SCREWS GO IN DOWNWARD. The column straight above both pads is clear of
-# the fuse, the cans and the BEC all the way to the deck plane, so a driver comes
-# down into an open bay rather than sideways into the 31 mm slot the flank would
-# have asked for.
+# THE SHUNT DID NOT MOVE AND CANNOT. It stands in the main bus path carrying the
+# whole pack current, so it stays at the distribution board, and what reaches the
+# monitor is a twisted pair into its own screw terminals. electrical/carrier.py
+# says what that costs.
 
 # The looms, as chases rather than as wires. 14 AWG silicone for the bus, a
 # sleeved twisted pair for CAN, and the six actuator harnesses bundled in two
@@ -423,53 +430,7 @@ packLeadZ = pdbTopZ + 17.0
 # thickness and standoff are.
 capacitorZ = pdbTopZ
 
-# ---- and where the bus monitor lands ---------------------------------------
-#
-# DOWN HERE FOR THE SAME REASON capacitorZ IS: the pads stand a fixed height over
-# the bought board's top face, and that face cannot be stated until its thickness
-# and its standoff have been.
-# THE x STATION IS THE DECK LEDGE'S, and that is worth reading because it is not
-# obvious and it was found by measuring rather than by thinking.
-#
-# The rear wall already carries one of the four pads cad/deck.py's plate lands
-# on: 12 mm of it, from x = 46 to 58, standing at z = 0 to 5. THAT PAD IS
-# DIRECTLY OVER THIS STRIP. A screw anywhere under it cannot be reached straight
-# down -- the driver fouls the ledge two thirds of the way up -- and a 16.7 mm
-# pitch is too short to straddle a 12 mm obstacle with a driver either side, so
-# both screws have to fall on the same side of it. Inboard is the only side with
-# room: outboard there are 16.55 mm to the flank and the pair needs 22.7.
-#
-# So the inboard screw sits two millimetres inboard of that ledge's own edge --
-# enough to put a Ø4 driver shaft, which is a small screwdriver, past it without
-# touching -- and everything else follows. It puts the board's outboard edge 4.7 mm clear of the
-# distribution board's rear corner screw, which therefore stays reachable with
-# the monitor in place, and the inboard pad 3 mm under the outboard end of the
-# deck's cable chase -- above the actuator harnesses' floor reservation, not in
-# it, and tools/gate_f.py measures that rather than asserting it.
-#
-# y is the wall, less a millimetre of air. z is the pads, and their top face
-# stands 5 mm over the distribution board, which is what the header's solder
-# tails hang into.
-busSenseDriverClearance = 2.0
-busSenseX = (
-    deckLedgeX
-    - (deckLedgeWidth / 2)
-    - busSenseDriverClearance
-    + (busSenseHolePitch / 2)
-)
-# The pads first, because the board is placed BY them and not beside them: their
-# centre line is the hole line, and everything about the board follows from where
-# that lands. Hard against the wall, and standing so their top face clears the
-# distribution board by 5 mm.
-busSenseLedgeY = -interiorHalfDepth + (busSenseLedgeDepth / 2)
-busSenseLedgeTopZ = pdbTopZ + 5.0
-# And the board on them: its holes are busSenseHoleInset in from its rear edge,
-# so the board's centre is that much forward of the hole line plus half its own
-# depth. It comes out 0.75 mm off the wall, which is clearance for dropping it
-# straight down onto the pads and nothing more -- there is nothing on this wall
-# below the deck for it to foul.
-busSenseY = busSenseLedgeY + (busSenseDepth / 2) - busSenseHoleInset
-busSenseZ = busSenseLedgeTopZ
+
 # ---- what the rear wall carries, and how it is held --------------------------
 #
 # THE CONNECTOR PANEL IS GONE, September 2026, and this section is what took its
@@ -910,15 +871,21 @@ sbcHoleDiameter = 2.75
 # 8 mm inset would.
 boardHoleInset = 4.0
 
-# WHERE THE SBC'S POSTS STAND, AND WHY THE CARRIER IS DRILLED FOR TWO OF THEM.
-# The SBC sits 14 mm above the deck on four posts of cad/deck.py's, and the
-# controller carrier is in the way of the two on the battery side: the carrier
-# spans 76 mm from the left wall and the posts are on a 58 mm pitch about the
-# centre line, so x = -29 lands inside it and x = +29 does not. Two Ø8.6
-# clearance holes in a board we are designing anyway is the cheap answer --
-# the post is Ø8 and this is 0.3 mm of air round it -- while shuffling either
-# board to miss both is not possible, because 76 + 85 is more than the shell is
-# wide however they are arranged.
+# WHERE THE SBC'S POSTS STAND, AND WHY THE CARRIER IS DRILLED FOR ALL FOUR.
+# The SBC sits 14 mm above the deck on four posts of cad/deck.py's, on a 58 by
+# 23 mm pitch about the centre line. It was two of them while the carrier spanned
+# 76 mm from the left wall -- x = -29 landed inside it and x = +29 did not -- and
+# it is four now that the carrier reaches x +67.45 to carry the BEC and the bus
+# monitor. Ø8.6 clearance holes in a board we are designing anyway is the cheap
+# answer: the post is Ø8 and this is 0.3 mm of air round it. Shuffling either
+# board to miss them is not possible, and never was, because 140 + 85 is far more
+# than the shell is wide however they are arranged.
+#
+# WHAT IT COSTS THE LAYOUT is a barrier rather than two holes, and that is the
+# thing to know before moving anything on this deck: a post and its clearance is
+# 9.6 mm across, the pair stands 23 mm apart, so nothing taller than the board
+# and wider than 13 mm can cross the line they stand on. That is what decides
+# which end of the carrier each of the bought modules lives at.
 #
 # THIS COMMENT SAID Ø5.5 until September 2026, which was smaller than the post
 # it is a clearance for and so could never have been built. The geometry was
@@ -938,23 +905,6 @@ def _sbc_post_xy() -> list[tuple[float, float]]:
     ]
 
 
-def bus_sense_ledge_xy() -> list[tuple[float, float]]:
-    """The two stations cad/torso.py puts the bus monitor's pads on.
-
-    A PAIR IN LINE AND NOT A DIAGONAL, which is what the board's own hole pattern
-    is: both holes sit on one edge, so the board is a tab cantilevered off them
-    rather than a plate held at four corners. Two screws in a line still stop it
-    turning, which is the whole of what a 5 g board asks for.
-
-    Read off busSense* rather than written down, so that correcting the pitch
-    once somebody has a caliper on the part moves the pads with it.
-    """
-    return [
-        (busSenseX + dx, busSenseLedgeY)
-        for dx in (-busSenseHolePitch / 2, busSenseHolePitch / 2)
-    ]
-
-
 def sbc_posts_through_carrier() -> list[tuple[float, float]]:
     """The posts that have to pass through the controller carrier, if any.
 
@@ -971,8 +921,10 @@ def sbc_posts_through_carrier() -> list[tuple[float, float]]:
 
 
 # WHERE THE WeAct SITS ON THE CARRIER, and it is derived rather than placed. The
-# SBC's posts cut this board into two unequal pieces and the core board goes in
-# the larger one; this is that piece's centre line. It moves if the shell's width
+# SBC's posts cut this board into strips and the core board goes in the outboard
+# one, west of the leftmost post; this is that strip's centre line. It is also
+# the only strip tall enough for the core board on its sockets, because the SBC
+# itself is over everything between the posts. It moves if the shell's width
 # moves, which it now does on its own -- cad/wheeled_parameters.py builds it from
 # the hip clevises -- so a number typed here would go stale silently and
 # tools/gate_f.py would be the only thing to notice.
@@ -987,6 +939,62 @@ weActX = (
     if _postsThrough
     else controllerX
 )
+
+
+# ---- what the carrier carries, and where ------------------------------------
+#
+# READ OFF electrical/carrier_pcb.py, which is where this board is laid out and
+# where every one of these is checked against its neighbours in three dimensions.
+# They are quoted in ITS frame -- origin at the board's rear outboard corner, x
+# across the robot, y forward -- and turned into this one here, so that a part
+# that moves on the board moves here by changing one number to match.
+
+
+def onCarrier(x: float, y: float) -> tuple[float, float]:
+    """A station on the carrier, in torso coordinates."""
+    return (
+        controllerX - (controllerWidth / 2) + x,
+        y - (controllerDepth / 2),
+    )
+
+
+def carrier_screw_xy() -> list[tuple[float, float]]:
+    """Where the carrier is screwed down to the deck, in torso coordinates.
+
+    SIX, AND NOT AT FOUR CORNERS. A 140 mm board wants more than four screws,
+    and two of the four corners are not available anyway: the rear edge carries
+    connectors from board x 43 to x 118, and the rear outboard corner passes
+    under the charge socket. electrical/carrier_pcb.py places the holes and
+    measures each one clear of what stands near it; cad/deck.py drills its
+    bosses to this list, so the two cannot disagree about where the board bolts.
+    """
+    inset = boardHoleInset
+    board = (
+        (inset, inset),
+        (inset, controllerDepth - inset),
+        (65.5, inset),
+        (100.0, controllerDepth - inset),
+        (controllerWidth - inset, inset),
+        (controllerWidth - inset, controllerDepth - inset),
+    )
+    return [onCarrier(x, y) for x, y in board]
+
+
+# The three CAN transceivers, stacked in a column at board x 90.
+transceiverX, transceiverY = onCarrier(90.0, 23.0)
+transceiverPitch = 11.0
+# The BEC, lying flat on a thermal pad between the two pairs of SBC posts, and
+# the bus monitor on its standoffs outboard of the right-hand pair.
+becX, becY = onCarrier(66.5, 23.0)
+becOnCarrierHeight = 6.5
+busSenseX, busSenseY = onCarrier(126.0, 22.0)
+busSenseStandoff = 3.0
+# Where the three actuator harnesses land: the rear connector row, from board
+# x 70.55 to 117.45, with a mated plug and 3 mm for the wires to leave it.
+harnessX, harnessY = onCarrier(94.0, 3.5)
+harnessWidth = 47.0
+harnessDepth = 5.75
+harnessHeight = 12.8
 
 
 # ---- the boards themselves --------------------------------------------------
@@ -1343,7 +1351,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 busSenseHeight,
                 busSenseX,
                 busSenseY,
-                busSenseZ,
+                controllerBoardZ + pcbThickness + busSenseStandoff,
             )
         ],
         # The logic rail. It was a generic buck module reserved on the deck and it
@@ -1355,10 +1363,10 @@ def torsoElectronicsGroups() -> dict[str, list]:
             slab(
                 becWidth,
                 becDepth,
-                becHeight,
-                powerX,
-                pdbY + 12.0,
-                pdbTopZ + capacitorHeight,
+                becOnCarrierHeight,
+                becX,
+                becY,
+                controllerBoardZ + pcbThickness,
             )
         ],
         # ---- the rear wall's hardware, above the deck ------------------------
@@ -1526,26 +1534,41 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # holes by 0.3 mm, measured corner to corner rather than per axis. At
         # 12.5 mm in they clear those holes by 1.9 mm and still leave 7.4 mm of
         # board outboard of them.
+        #
+        # THE COLUMN IS AT BOARD x 90 NOW, on 11 mm centres rather than 12.7:
+        # the board is a printed one and its pitch is no longer a perfboard
+        # hole. It stands between the BEC and the capacitors that decouple it,
+        # and the reason it is HERE rather than in the gate between the SBC's
+        # left-hand posts -- which is where one of them was -- is that eighteen
+        # nets have to cross that gate and a socket standing in it left two
+        # slots of 2 mm. electrical/carrier_pcb.py has the whole of it.
         "CAN transceivers": [
             slab(
                 10.2,
                 10.4,
                 7.0,
-                controllerX + (controllerWidth / 2) - 12.5,
-                dy,
+                transceiverX,
+                transceiverY + dy,
                 controllerBoardZ + pcbThickness,
             )
-            for dy in (12.7, 0.0, -12.7)
+            for dy in (transceiverPitch, 0.0, -transceiverPitch)
         ],
-        # Where the six actuator harnesses land, facing the rear wall and its
-        # ports.
+        # Where the six actuator harnesses land: three JST-XH 4-pin on the
+        # carrier's rear edge, with a mated plug on each and 3 mm over that for
+        # the wires to leave the housing before they bend.
+        #
+        # IT WAS AT THE OTHER END OF THE BOARD and that was the finding that
+        # started this rebuild. cad/deck.py's cable chase is at x 10 to 44 and
+        # the bank was drawn from x -70 to -30, so the loom came up through the
+        # chase and then crossed the whole torso to reach it. It is over the
+        # chase now, which is most of half a metre of wire that is not made.
         "actuator harness bank": [
             slab(
-                40.0,
-                6.0,
-                8.0,
-                controllerX - 16.0,
-                -19.0,
+                harnessWidth,
+                harnessDepth,
+                harnessHeight,
+                harnessX,
+                harnessY,
                 controllerBoardZ + pcbThickness,
             )
         ],
@@ -1670,7 +1693,13 @@ def torsoReservations() -> list:
             controllerX,
             0.0,
             deckBandZ,
-        ),
+        )
+        - Pos(
+            controllerX + (controllerWidth / 2) - (controllerNotchWidth / 2),
+            -(controllerDepth / 2) + (controllerNotchDepth / 2),
+            deckBandZ + (controllerHeight / 2),
+        )
+        * Box(controllerNotchWidth, controllerNotchDepth, controllerHeight * 3),
         slab(sbcWidth, sbcDepth, sbcHeight, 0.0, 0.0, upperBandZ),
         slab(imuWidth, imuDepth, imuHeight, 0.0, 0.0, floorZ),
         # Appended rather than slotted in beside the other lower-band bays, and

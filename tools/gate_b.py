@@ -599,33 +599,17 @@ DEVIATIONS = {
                 "above again, on the two hips."
             ),
         },
-        {
-            "added_mm3": 368.3737348558,
-            "removed_mm3": -232.9282582224,
-            "why": (
-                "TWO PADS ON THE REAR WALL FOR THE BUS MONITOR, which had been "
-                "held by tape on the bought distribution board's top face until "
-                "the vendor's own photographs turned out to show two mounting "
-                "holes in it. Each pad is 6 x 6.5 x 8 with a Ø1.7 pilot 5 deep "
-                "for an M2: 352.65 mm3 as drawn, 705.30 for the pair, and the "
-                "part gains every one of those cubic millimetres. "
-                "THE FIFTH ODD SIGN IN THIS REGISTER, for the reason the four "
-                "above turn on. The golden's rear wall runs y -34.0 to -31.6 and "
-                "these stand from y -33.6 forward, so 232.93 mm3 of them falls "
-                "inside wall the old box already had and this one does not -- "
-                "material UN-REMOVED rather than material added, which is why "
-                "the two figures here are 368.37 and -232.93 and sum to the "
-                "705.30 the pads actually weigh. "
-                "THEY ARE ON THIS PART AND NOT ON THE DECK, where two posts "
-                "carried the board for one revision: its leads run down into the "
-                "bay, and the deck is the assembly that has to come straight out "
-                "with nothing tethering it. And on the rear wall rather than the "
-                "flank because the distribution board's edge is 3 mm off the "
-                "flank, too little to hold a pilot without overhanging the "
-                "bought board and trapping it on its standoffs; behind it there "
-                "are 8.6 mm of floor nothing stands on."
-            ),
-        },
+        # THE BUS MONITOR'S TWO REAR-WALL PADS ARE GONE, September 2026, and
+        # this is the entry they used to have. They were 6 x 6.5 x 8 apiece with
+        # a Ø1.7 pilot 5 deep for an M2, 705.30 mm3 on the pair, and they split
+        # +368.37 / -232.93 against the golden because 232.93 of them stood in
+        # wall the old, shallower box already had. The board they carried is on
+        # the controller carrier now, on two standoffs, so the pads carry
+        # nothing and this shell is 705.30 mm3 lighter than it was -- which is
+        # the whole of the change, and is why the entry is deleted rather than
+        # rewritten. cad/electronics.py keeps the argument for the rear wall,
+        # because it is the argument that has to be answered again if the
+        # monitor ever comes back off the carrier.
     ],
     # The lid, and this is the cleanest example of what a resize does to this
     # test: the figures below are EXACTLY the new lid's volume and exactly the

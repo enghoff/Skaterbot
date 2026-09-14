@@ -178,7 +178,7 @@ EXPECTED_CHANGE_G = {
         "of runout on an Ø80 wheel is nothing.",
     ),
     "cad/torso.py": (
-        +68.8,
+        +68.2,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -228,16 +228,15 @@ EXPECTED_CHANGE_G = {
         "19.2 x 12.0 and two screw holes where the GX16's 16 mm hole was, the "
         "antenna's hole moved to the far side of the disconnect, and every "
         "screw on the wall down to M2, which is 84 mm3 net. Gate B holds it "
-        "exactly. And it took a last 705 mm3, in two bodies, when the "
-        "INA226 bus monitor stopped being held by tape: two pads on the rear "
-        "wall behind the distribution board, each 6 x 6.5 x 8 and piloted Ø1.7 "
-        "for an M2. They are on THIS part rather than on the deck, where they "
-        "were for one revision, because that board's leads run down into the "
-        "bay and the deck is the assembly that has to come straight out; and on "
-        "the rear wall rather than the flank because the bought board's edge is "
-        "3 mm off the flank, which cannot hold a pilot without overhanging it. "
-        "tools/gate_e.py counts both pilots and tools/gate_f.py measures the "
-        "board onto them",
+        "exactly. It then took 705 mm3 in two bodies when the INA226 bus "
+        "monitor stopped being held by tape -- two piloted pads on the rear "
+        "wall -- and gave every one of them back on 14 September 2026, when "
+        "the controller carrier grew from 76 mm wide to 140 to carry that "
+        "monitor and the logic BEC itself. Both boards are on the carrier now, "
+        "so the pads carried nothing and came off, and this shell is 0.6 g "
+        "lighter for it. THE SHUNT DID NOT MOVE AND CANNOT: it stands in the "
+        "main bus path at the distribution board, and what goes up to the "
+        "monitor is a twisted pair into the monitor's own screw terminals",
     ),
 }
 

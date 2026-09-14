@@ -812,27 +812,6 @@ FITS = [
     # which tied that plate to the torso by the board's own wiring; it is bolted
     # to the pelvis's rear wall instead, and these two are what that mount is.
     (
-        "bus monitor vs its two rear-wall pads",
-        "bus monitor",
-        "bus monitor pads",
-        0.0,
-        "the board BEARS ON the pads, so any gap here means it is hanging on "
-        "two screws and nothing else -- the same test the packs on their rails "
-        "get, and the BMS on its guides",
-    ),
-    (
-        "bus monitor vs the distribution board under it",
-        "bus monitor",
-        "distribution board",
-        5.0,
-        "what the header's solder tails hang into, and the reason the pads are "
-        "8 mm tall rather than the 5 the deck ledges are. It is also the gap "
-        "that says the pads clear the bought board rather than trapping it: "
-        "nothing PRINTED reaches over that board's plan at all, which is why "
-        "this mount is on the rear wall and not on the flank, where a pad big "
-        "enough to hold a pilot would have to",
-    ),
-    (
         "IMU board vs the ribs that aim it",
         "IMU board",
         "IMU seat",
@@ -867,7 +846,6 @@ def check_fits(items: tuple) -> tuple[int, int]:
         # The monitor's two pads on their own, sliced out of the pelvis the same
         # way the ledges and rails are: measuring the board ONTO them has to
         # ignore the wall they stand on.
-        "bus monitor pads": torso.busSenseLedges(),
         **{
             name: electronics.torsoElectronicsGroups()[name]
             for name in (

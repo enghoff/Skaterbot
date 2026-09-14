@@ -120,7 +120,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     """
     from cad.electronics import (
         antennaHoleDiameter,
-        busSensePilot,
         sbcHoleDiameter,
         sbcPostClearance,
     )
@@ -222,14 +221,19 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ],
         "pcb-controller-carrier": [
             ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
-            # The two the SBC's posts pass through. Asserted separately from the
-            # four above and not merely counted with them, because they are a
+            # The posts that pass through. Asserted separately from the four
+            # above and not merely counted with them, because they are a
             # different diameter and a different job: lose these and the board
             # cannot be fitted at all, while the part still looks right.
+            #
+            # FOUR SINCE SEPTEMBER 2026, WHERE IT WAS TWO, and the count is the
+            # whole of what changed: the carrier went from 76 mm wide to 140 to
+            # carry the BEC and the bus monitor, so it now reaches under both
+            # right-hand posts as well as both left-hand ones.
             (
-                "clearances for the two SBC posts that pass through",
+                "clearances for the SBC posts that pass through",
                 sbcPostClearance / 2,
-                2,
+                4,
             ),
         ],
         "pcb-sbc": [
@@ -268,7 +272,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # reads none of them, and one pad drawn twice reads two on one
             # station and none on the other, which this count would catch
             # either way.
-            ("M2 pilots in the bus monitor's two rear-wall pads", busSensePilot / 2, 2),
             ("Ø19.2 bearing seats, one per hip", bearingSeatDiameter / 2, 2),
             (
                 "Ø17.5 shoulders the bearings seat against",
@@ -302,7 +305,14 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         # anything about it and this is the only arithmetic it answers to.
         "electronics-deck": [
             ("M3 clearances onto the four wall ledges", m3Clearance / 2, 4),
-            ("pilots under the controller's four standoffs", bossHoleDiameter / 2, 4),
+            (
+                # Six since September 2026, where it was four: the carrier
+                # went to 140 mm and its screws are a table in
+                # cad/electronics.py rather than a corner pattern.
+                "pilots under the controller's standoffs",
+                bossHoleDiameter / 2,
+                6,
+            ),
             ("M2.5 insert bores in the four SBC posts", m25InsertBore / 2, 4),
         ],
     }

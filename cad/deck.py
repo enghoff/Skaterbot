@@ -60,9 +60,9 @@ from cad.electronics import (
     bmsTopGuideDrop,
     bmsX,
     boardHoleInset,
+    carrier_screw_xy,
     controllerDepth,
     controllerWidth,
-    controllerX,
     deckBandZ,
     deckLedgeX,
     deckLedgeY,
@@ -99,7 +99,13 @@ deckChaseWidth = 34.0
 deckChaseDepth = 6.0
 deckChaseX = 27.0
 
-# The controller's four standoffs land here, on its own corner pattern.
+# The controller's standoffs land here. SIX OF THEM SINCE SEPTEMBER 2026 and
+# not on a corner pattern any more: the board is 140 mm long, its rear edge is
+# full of connectors and its rear outboard corner passes under the charge
+# socket, so the stations are a table in cad/electronics.py that this plate and
+# electrical/carrier_pcb.py both read. The two names below are what the corner
+# pattern was, and they are kept because tools/gate_a.py holds them: they are
+# still the outermost pair's offsets from the board's own centre.
 controllerScrewX = (controllerWidth / 2) - boardHoleInset
 controllerScrewY = (controllerDepth / 2) - boardHoleInset
 
@@ -131,13 +137,10 @@ def _plate():
     # Under the controller's standoffs: piloted at the same Ø2.5 the cover
     # bosses use, because the screw taps into this plate from above. No insert
     # anywhere on this part: it is 3 mm thick and an M3 insert is 5.7 mm long.
-    for sx in (1, -1):
-        for sy in (1, -1):
-            blank -= Pos(
-                controllerX + sx * controllerScrewX,
-                sy * controllerScrewY,
-                deckZ + deckThickness / 2,
-            ) * Cylinder(bossHoleDiameter / 2, deckThickness * 3)
+    for atX, atY in carrier_screw_xy():
+        blank -= Pos(atX, atY, deckZ + deckThickness / 2) * Cylinder(
+            bossHoleDiameter / 2, deckThickness * 3
+        )
 
     # THE CABLE CHASE, and it is a debt being paid rather than a new feature.
     # This plate has spanned the cavity wall to wall with no way through it since
