@@ -34,6 +34,14 @@ the other side, and it happened next: the connector panel was deleted a week
 later and this file was the last thing in the repository still asking cad/ for
 it, which is a crash rather than an absence and is how it was noticed at all.
 
+AND IT HAPPENED A THIRD TIME, to bought metal rather than to a print. The knee
+was straddled on 13 September 2026 and took a bearing and a journal with it, at
+which point cad/main.py placed them, gate F measured them seated, the URDF drew
+them -- and the robot here still showed a bare knee, because the leg node named
+the hip's set and nothing else. The hardware node is a function of the joint now
+rather than of the hip, which is the fix for this one instance and not for the
+blind spot: a tree built by naming things one at a time will go on doing this.
+
 A PAYLOAD NODE CARRIES ITS PART NUMBER, so the tree reads "distribution board
 (SwiftWing PDB-02-XT60)" rather than leaving you to go and look it up. The
 designations are cad/electronics.py's `partNumbers`, which is the CAD's own
@@ -200,7 +208,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     from cad.deck import electronicsDeck
     from cad.electronics import labelled, torsoElectronicsGroups
     from cad.hardware import jointHardware
-    from cad.parameters import hipCenterX
+    from cad.parameters import hipCenterX, kneeOutboardOffset
     from cad.shin import shinLeft, shinRight
     from cad.skate_wheel import skateWheelHub, skateWheelTread
     from cad.thigh import thighLeft, thighRight
@@ -234,16 +242,22 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         ("torso", "electronics deck"): [torso_at * b for b in electronicsDeck()],
         ("torso", "cover"): [torso_at * torsoCover()],
     }
+    # EVERYTHING FROM THE KNEE DOWN STANDS kneeOutboardOffset FURTHER OUT, as it
+    # does in cad/main.py and cad/scenes.py: the thigh draws its fork there, so
+    # the knee actuator, its bearing, the shin and the wheel module have to be
+    # there too or the bearing is drawn out of its seat. This is a third copy of
+    # the assembly, and it was the one that was missed.
     for leg, sign in sides.items():
         x = sign * hipCenterX
+        knee_x = sign * (hipCenterX + kneeOutboardOffset)
         printed[leg, "thigh"] = [
             Pos(x, 0, wheeledThighCenterZ) * b for b in thigh_of[sign]()
         ]
         printed[leg, "shin"] = [
-            Pos(x, 0, wheeledShinCenterZ) * b for b in shin_of[sign]()
+            Pos(knee_x, 0, wheeledShinCenterZ) * b for b in shin_of[sign]()
         ]
         printed[leg, "wheel adapter"] = [
-            Pos(x, 0, prototypeWheelAxisHeight) * b for b in adapter_of[sign]()
+            Pos(knee_x, 0, prototypeWheelAxisHeight) * b for b in adapter_of[sign]()
         ]
 
     if finished:
@@ -255,28 +269,32 @@ def whole_robot(finished: bool = False, size: float = 0.5):
             f"finished: {cut} edges chamfered, {sharp} left sharp (printed parts only)"
         )
 
-    def hip_joint_hardware(sign):
-        """The bought steel that closes the hip: the bearing and its journal.
+    def joint_hardware(sign, z, label, turned, x=None):
+        """The bought steel that closes a straddled joint, which is a bearing.
 
-        The left set is the right one turned round, the same way cad/main.py
-        places it. Neither is printed -- tools/mass.py counts them from
-        mass_budget.toml at 9.9 g a set -- so the finish pass never sees them.
+        One per hip and, since the knee was straddled, one per knee. It is not
+        printed -- tools/mass.py counts them from mass_budget.toml at 5.0 g
+        apiece -- so the finish pass never sees it. The journal that used to sit
+        beside it here is part of the limb now and comes in with the print.
+
+        `turned` is passed in rather than derived from `sign`, because the two
+        joints disagree about it and the disagreement is real: the knee actuator
+        is turned round to let the limbs lie flat, so the right hip's bearing is
+        outboard where the right knee's is inboard. cad/main.py places them the
+        same way round, and the call sites below are the only place this is said.
         """
-        at = Pos(sign * hipCenterX, 0, wheeledHipPitchAxisHeight)
-        ball_bearing, pin = jointHardware()
-        if sign < 0:
-            ball_bearing, pin = (b.rotate(Axis.Z, 180) for b in (ball_bearing, pin))
+        at = Pos(sign * hipCenterX if x is None else x, 0, z)
+        bodies = jointHardware()
+        if turned:
+            bodies = [b.rotate(Axis.Z, 180) for b in bodies]
         return Compound(
-            children=[
-                _piece("bearing", [at * ball_bearing], P.bearingSteel),
-                _piece("journal", [at * pin], P.bearingSteel),
-            ],
-            label="hip joint hardware",
+            children=[_piece("bearing", [at * b], P.bearingSteel) for b in bodies],
+            label=label,
         )
 
     def wheel_module(leg, sign):
         """The printed adapter, the skate wheel it carries, and its clamp."""
-        at = Pos(sign * hipCenterX, 0, prototypeWheelAxisHeight)
+        at = Pos(sign * (hipCenterX + kneeOutboardOffset), 0, prototypeWheelAxisHeight)
         hub, tread = skateWheelHub(), skateWheelTread()
         # Named one by one rather than as a bag of "clamp hardware": these are
         # three bought items and which is which is the thing worth seeing.
@@ -308,6 +326,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     def one_leg(leg, sign):
         """Hip to tyre, in the order the joints are stacked."""
         x = sign * hipCenterX
+        knee_x = sign * (hipCenterX + kneeOutboardOffset)
         return Compound(
             children=[
                 _piece(
@@ -315,17 +334,29 @@ def whole_robot(finished: bool = False, size: float = 0.5):
                     motor(x, wheeledHipPitchAxisHeight, sign * 90),
                     P.motorGrey,
                 ),
-                hip_joint_hardware(sign),
+                joint_hardware(
+                    sign,
+                    wheeledHipPitchAxisHeight,
+                    "hip joint hardware",
+                    turned=sign < 0,
+                ),
                 _piece("thigh", printed[leg, "thigh"], P.printedOrange),
                 _piece(
                     "knee actuator",
-                    motor(x, wheeledKneeAxisHeight, -sign * 90),
+                    motor(knee_x, wheeledKneeAxisHeight, -sign * 90),
                     P.motorGrey,
+                ),
+                joint_hardware(
+                    sign,
+                    wheeledKneeAxisHeight,
+                    "knee joint hardware",
+                    turned=sign > 0,
+                    x=knee_x,
                 ),
                 _piece("shin", printed[leg, "shin"], P.printedOrange),
                 _piece(
                     "wheel actuator",
-                    motor(x, prototypeWheelAxisHeight, sign * 90),
+                    motor(knee_x, prototypeWheelAxisHeight, sign * 90),
                     P.motorGrey,
                 ),
                 wheel_module(leg, sign),
@@ -400,13 +431,18 @@ def _describe(raw, finished) -> str:
 
 
 def pieces() -> dict[str, callable]:
-    from cad import deck, joint, thigh, torso, wheel_adapter
+    from cad import deck, joint, shin, thigh, torso, wheel_adapter
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
-        "limb-105-unmirrored": thigh.thighRight,
-        "limb-105-mirrored": thigh.thighLeft,
+        # Four limb prints since the knee was straddled, where there were two
+        # printed twice. `limb-105` is the SHIN, which is the piece that did not
+        # change and keeps the name and the golden STEP; the thighs are new.
+        "thigh-105-unmirrored": thigh.thighRight,
+        "thigh-105-mirrored": thigh.thighLeft,
+        "limb-105-unmirrored": shin.shinLeft,
+        "limb-105-mirrored": shin.shinRight,
         "wheel-adapter-right": wheel_adapter.wheelAdapterRight,
         "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
         "pelvis-shell": torso.pelvisShell,

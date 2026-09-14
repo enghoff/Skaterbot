@@ -57,12 +57,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="9.06839237e-05 0.00572433143 -0.0232459893" rpy="0 0 0"/>
-      <mass value="1.153451"/>
-      <inertia ixx="3.748390228e-03" ixy="2.510998878e-06" ixz="-6.925614933e-07"
-               iyy="1.762467451e-03" iyz="-9.246323965e-05" izz="2.658450493e-03"/>
+      <origin xyz="6.71228476e-05 0.00585082069 -0.023763619" rpy="0 0 0"/>
+      <mass value="1.122418"/>
+      <inertia ixx="3.617790706e-03" ixy="1.258337897e-06" ixz="-6.829767130e-07"
+               iyy="1.693210437e-03" iyz="-9.566740345e-05" izz="2.562731313e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 171.8 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 151.3 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -70,7 +70,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- torso cover — 53.2 g, measured: cad/torso.py:torsoCover -->
+    <!-- torso cover — 46.6 g, measured: cad/torso.py:torsoCover -->
     <visual name="torso_cover">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -78,7 +78,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 32.5 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 28.5 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -188,16 +188,16 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="7.75800281e-05 -0.00444223018 -0.0947277364" rpy="0 0 0"/>
-      <mass value="0.197238"/>
-      <inertia ixx="2.065159866e-04" ixy="2.890258696e-07" ixz="3.710804631e-07"
-               iyy="1.976194351e-04" iyz="3.599544779e-05" izz="5.815141005e-05"/>
+      <origin xyz="3.35629486e-05 -0.00112509897 -0.0970003205" rpy="0 0 0"/>
+      <mass value="0.201242"/>
+      <inertia ixx="1.656515742e-04" ixy="1.746038129e-07" ixz="2.623442389e-07"
+               iyy="1.508738253e-04" iyz="2.745865398e-05" izz="6.469720292e-05"/>
     </inertial>
-    <!-- thigh limb plate, right — 34.8 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, right — 38.7 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
-        <mesh filename="meshes/limb-105-unmirrored.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="meshes/thigh-105-unmirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="printedOrange"/>
     </visual>
@@ -209,30 +209,30 @@
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- hip pitch journal, right — 4.9 g, bom: 10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh -->
-    <visual name="hip_pitch_journal__right">
-      <origin xyz="0 -0.02295 0" rpy="1.57079633 0 0"/>
+    <!-- knee bearing, right — 5.0 g, bom: 6800-2RS at 5.0 g, bonded into the knee clevis's far cheek -->
+    <visual name="knee_bearing__right">
+      <origin xyz="0 0.02845 -0.105" rpy="1.57079633 0 0"/>
       <geometry>
-        <cylinder radius="0.005000" length="0.008000"/>
+        <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
     <collision>
-      <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
+      <origin xyz="0 0.00375 -0.0525" rpy="0 0 0"/>
       <geometry>
-        <box size="0.04 0.0439 0.105"/>
+        <box size="0.04 0.0574 0.105"/>
       </geometry>
     </collision>
   </link>
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="7.95564557e-05 0.00397072653 -0.0971410187" rpy="0 0 0"/>
-      <mass value="0.192338"/>
-      <inertia ixx="1.596484854e-04" ixy="-2.962406913e-07" ixz="3.341530677e-07"
-               iyy="1.524686057e-04" iyz="-2.718591608e-05" izz="5.637342776e-05"/>
+      <origin xyz="7.11560697e-05 0.0036374541 -0.0976337063" rpy="0 0 0"/>
+      <mass value="0.188671"/>
+      <inertia ixx="1.521737862e-04" ixy="-2.643835023e-07" ixz="2.865576499e-07"
+               iyy="1.455070397e-04" iyz="-2.576605650e-05" izz="5.470082601e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 34.8 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, right — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -258,12 +258,12 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="-6.72005247e-11 -0.0365452759 -4.74623959e-11" rpy="0 0 0"/>
-      <mass value="0.076116"/>
-      <inertia ixx="3.745738474e-05" ixy="4.894961215e-16" ixz="3.317881715e-14"
-               iyy="6.485998237e-05" iyz="3.549586141e-16" izz="3.745738460e-05"/>
+      <origin xyz="-6.02318543e-11 -0.0366637858 -4.25405624e-11" rpy="0 0 0"/>
+      <mass value="0.074508"/>
+      <inertia ixx="3.720689457e-05" ixy="9.613046384e-16" ixz="2.910971691e-14"
+               iyy="6.469625812e-05" iyz="6.870547315e-16" izz="3.720689444e-05"/>
     </inertial>
-    <!-- wheel adapter, right — 13.1 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, right — 11.5 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -297,16 +297,16 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="7.75800281e-05 0.00444223018 -0.0947277364" rpy="0 0 0"/>
-      <mass value="0.197238"/>
-      <inertia ixx="2.065159866e-04" ixy="-2.890258697e-07" ixz="3.710804622e-07"
-               iyy="1.976194351e-04" iyz="-3.599544779e-05" izz="5.815141005e-05"/>
+      <origin xyz="3.35902207e-05 0.00112514777 -0.0970002849" rpy="0 0 0"/>
+      <mass value="0.201243"/>
+      <inertia ixx="1.656518983e-04" ixy="-1.747220410e-07" ixz="2.622580740e-07"
+               iyy="1.508740037e-04" iyz="-2.745880817e-05" izz="6.469748078e-05"/>
     </inertial>
-    <!-- thigh limb plate, left — 34.8 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- thigh limb plate, left — 38.7 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
-        <mesh filename="meshes/limb-105-mirrored.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="meshes/thigh-105-mirrored.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="printedOrange"/>
     </visual>
@@ -318,30 +318,30 @@
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- hip pitch journal, left — 4.9 g, bom: 10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh -->
-    <visual name="hip_pitch_journal__left">
-      <origin xyz="0 0.02295 0" rpy="1.57079633 0 0"/>
+    <!-- knee bearing, left — 5.0 g, bom: 6800-2RS at 5.0 g, bonded into the knee clevis's far cheek -->
+    <visual name="knee_bearing__left">
+      <origin xyz="0 -0.02845 -0.105" rpy="1.57079633 0 0"/>
       <geometry>
-        <cylinder radius="0.005000" length="0.008000"/>
+        <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
     <collision>
-      <origin xyz="0 0 -0.0525" rpy="0 0 0"/>
+      <origin xyz="0 -0.00375 -0.0525" rpy="0 0 0"/>
       <geometry>
-        <box size="0.04 0.0439 0.105"/>
+        <box size="0.04 0.0574 0.105"/>
       </geometry>
     </collision>
   </link>
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="7.95564557e-05 -0.00397072653 -0.0971410187" rpy="0 0 0"/>
-      <mass value="0.192338"/>
-      <inertia ixx="1.596484854e-04" ixy="2.962406912e-07" ixz="3.341530686e-07"
-               iyy="1.524686057e-04" iyz="2.718591608e-05" izz="5.637342776e-05"/>
+      <origin xyz="7.11560696e-05 -0.0036374541 -0.0976337063" rpy="0 0 0"/>
+      <mass value="0.188671"/>
+      <inertia ixx="1.521737862e-04" ixy="2.643835022e-07" ixz="2.865576507e-07"
+               iyy="1.455070397e-04" iyz="2.576605650e-05" izz="5.470082601e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 34.8 g, measured: cad/limb.py, 105 mm, five bodies -->
+    <!-- shin limb plate, left — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -367,12 +367,12 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="-6.72005248e-11 0.0365452759 -4.74623959e-11" rpy="0 0 0"/>
-      <mass value="0.076116"/>
-      <inertia ixx="3.745738474e-05" ixy="-4.894960132e-16" ixz="3.317881714e-14"
-               iyy="6.485998237e-05" iyz="-3.549585719e-16" izz="3.745738460e-05"/>
+      <origin xyz="-6.02318544e-11 0.0366637858 -4.25405624e-11" rpy="0 0 0"/>
+      <mass value="0.074508"/>
+      <inertia ixx="3.720689457e-05" ixy="-9.613045439e-16" ixz="2.910971691e-14"
+               iyy="6.469625812e-05" iyz="-6.870546941e-16" izz="3.720689444e-05"/>
     </inertial>
-    <!-- wheel adapter, left — 13.1 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, left — 11.5 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -404,7 +404,7 @@
     </collision>
   </link>
 
-  <!-- PROVISIONAL TRAVEL. No swept clearance check has ever been run on hip pitch; the knee's 110 deg stop is the only joint limit this project has established. -->
+  <!-- PROVISIONAL TRAVEL. No swept clearance check has ever been run on hip pitch; the knee's stop is the only joint limit this project has established, and that one is measured. -->
   <joint name="hip_pitch_right" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_right"/>
@@ -413,13 +413,13 @@
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
-  <!-- 110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check. -->
+  <!-- The commissioning hard stop, read out of cad/poses.py. It is MEASURED now rather than inherited: the thigh's knee clevis puts a saddle back in the plane the shin sweeps, and the two touch at 103.0 deg. tools/gate_f.py holds the 1 mm. -->
   <joint name="knee_right" type="revolute">
     <parent link="thigh_right"/>
     <child link="shin_right"/>
-    <origin xyz="0 0 -0.105" rpy="0 0 0"/>
+    <origin xyz="0 -0.0027 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="0" upper="1.91986218" effort="3.0" velocity="20.0"/>
+    <limit lower="0" upper="1.74532925" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- Direct drive; no reduction beyond the actuator's own 7:1. -->
@@ -431,7 +431,7 @@
     <limit effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
-  <!-- PROVISIONAL TRAVEL. No swept clearance check has ever been run on hip pitch; the knee's 110 deg stop is the only joint limit this project has established. -->
+  <!-- PROVISIONAL TRAVEL. No swept clearance check has ever been run on hip pitch; the knee's stop is the only joint limit this project has established, and that one is measured. -->
   <joint name="hip_pitch_left" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_left"/>
@@ -440,13 +440,13 @@
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
-  <!-- 110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check. -->
+  <!-- The commissioning hard stop, read out of cad/poses.py. It is MEASURED now rather than inherited: the thigh's knee clevis puts a saddle back in the plane the shin sweeps, and the two touch at 103.0 deg. tools/gate_f.py holds the 1 mm. -->
   <joint name="knee_left" type="revolute">
     <parent link="thigh_left"/>
     <child link="shin_left"/>
-    <origin xyz="0 0 -0.105" rpy="0 0 0"/>
+    <origin xyz="0 0.0027 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="0" upper="1.91986218" effort="3.0" velocity="20.0"/>
+    <limit lower="0" upper="1.74532925" effort="3.0" velocity="20.0"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- Direct drive; no reduction beyond the actuator's own 7:1. -->

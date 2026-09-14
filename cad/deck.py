@@ -29,6 +29,14 @@ plate over it stops it lifting; these take its TOP edge in the same 9 mm slot, s
 a card that was held at one end only is held at both. The deck goes on last and
 comes straight down, so they swallow the top edge as it lands.
 
+THE BUS MONITOR IS NOT ON THIS PLATE, and it was for one revision. Two posts on
+this underside held it, and they were the wrong answer for a reason no gate can
+measure: the board's leads run down into the bay, so hanging it here ties the
+deck to the torso by its wiring, and the deck is the assembly that has to come
+straight out. It is bolted to the pelvis's rear wall instead -- cad/torso.py's
+`busSenseLedges` -- and this plate lifts off with nothing of its own attached
+below it.
+
 Seven bodies: the plate, the four posts and the two BMS guides, left
 interpenetrating like every other printed piece here, because a slicer merges
 coincident shells and cad/finish.py's chamfer cannot be applied to a solid that

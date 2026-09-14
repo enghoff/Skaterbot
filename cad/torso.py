@@ -29,6 +29,12 @@ from cad.electronics import (
     bmsGuideY,
     bmsX,
     bmsZ,
+    bus_sense_ledge_xy,
+    busSenseLedgeDepth,
+    busSenseLedgeHeight,
+    busSenseLedgeTopZ,
+    busSenseLedgeWidth,
+    busSensePilot,
     chargeSocketFixings,
     deckLedgeDepth,
     deckLedgeHeight,
@@ -130,8 +136,9 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # There is no bonded joint anywhere on the robot now.
 #
 # THEY ALL SIT ABOVE THE ELECTRONICS DECK, at z = 22, which is new. Below the
-# deck this wall is full: the bus monitor comes within 12.6 mm of it and the
-# deck's own ledges stand on it. A bare prism could thread between those; the
+# deck this wall is fuller than ever: the deck's own ledges stand on it, and it
+# now CARRIES the bus monitor as well, on the two pads below -- 0.75 mm of air
+# between that board and this wall. A bare prism could thread between those; the
 # GX16 bushing whose nut wanted a clear 22 mm circle could not, and it is what
 # first put the row up here. It has gone, and the row has stayed: every station
 # on it is now solved against the cavity, and cad/electronics.py has the
@@ -205,7 +212,14 @@ bossX = coverBossInset(torsoInnerWidth)
 bossY = coverBossInset(torsoInnerDepth)
 
 
-def _piloted(block, atX: float, atY: float, topZ: float, depth: float):
+def _piloted(
+    block,
+    atX: float,
+    atY: float,
+    topZ: float,
+    depth: float,
+    diameter: float = bossHoleDiameter,
+):
     """A printed pad or post with a pilot hole down its top face.
 
     The bore is taken out of the body it belongs to and NOTHING IS UNIONED ON
@@ -213,10 +227,13 @@ def _piloted(block, atX: float, atY: float, topZ: float, depth: float):
     same reason: this part is a list of interpenetrating bodies, and a body
     unioned over a pilot would fill it back in with nothing to report it but
     tools/gate_e.py's count.
+
+    The diameter is an argument because ONE mount on this part is not an M3. The
+    bus monitor's holes are 2.5 mm in from the board's own edge, which an M3
+    clearance hole would break straight out of, so its two pads are piloted Ø1.7
+    for an M2 -- see cad/electronics.py.
     """
-    bore = Pos(atX, atY, topZ - (depth / 2) + 0.5) * Cylinder(
-        bossHoleDiameter / 2, depth + 1.0
-    )
+    bore = Pos(atX, atY, topZ - (depth / 2) + 0.5) * Cylinder(diameter / 2, depth + 1.0)
     return block - bore
 
 
@@ -313,6 +330,43 @@ def deckLedges() -> list:
                 deckLedgeWidth, deckLedgeDepth, deckLedgeHeight
             )
             ledges.append(_piloted(block, atX, atY, deckZ, deckLedgeHeight - 1.0))
+    return ledges
+
+
+def busSenseLedges() -> list:
+    """Two pads on the rear wall, carrying the INA226 bus monitor.
+
+    THE SAME KIND OF FEATURE AS THE FOUR ABOVE, and put here for a reason that is
+    about assembly rather than geometry. The monitor hung under cad/deck.py's
+    plate for one revision; its leads run down to the shunt and the bus, so that
+    tied the deck to the torso by wiring, and the deck is the assembly that has to
+    come straight out.
+
+    WHY THIS WALL AND NOT THE FLANK. Both are flat and free over the span the
+    board needs. The flank is 3 mm off the edge of the bought distribution board,
+    which is not enough material to carry a pilot, so a pad there would overhang
+    that board and trap it on its standoffs. Behind the board there is 8.6 mm of
+    floor nothing stands on, and a pad here overhangs nothing at all.
+
+    They stand clear of the floor rather than rising from it, so the back of the
+    cavity stays a clear run for the actuator harnesses -- which is what the
+    battery rails were laid across the robot to preserve.
+    """
+    ledges = []
+    for atX, atY in bus_sense_ledge_xy():
+        block = Pos(atX, atY, busSenseLedgeTopZ - busSenseLedgeHeight / 2) * Box(
+            busSenseLedgeWidth, busSenseLedgeDepth, busSenseLedgeHeight
+        )
+        ledges.append(
+            _piloted(
+                block,
+                atX,
+                atY,
+                busSenseLedgeTopZ,
+                busSenseLedgeHeight - 3.0,
+                busSensePilot,
+            )
+        )
     return ledges
 
 
@@ -418,6 +472,7 @@ def pelvisShell() -> list:
         *batteryRails(),
         *powerEntryPosts(),
         *deckLedges(),
+        *busSenseLedges(),
         *bmsGuides(),
         # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
         # printed feature in this cavity that stands inside its own reserved

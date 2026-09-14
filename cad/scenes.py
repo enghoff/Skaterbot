@@ -41,8 +41,7 @@ from cad.actuator import actuatorAssembly
 from cad.deck import electronicsDeck
 from cad.electronics import torsoElectronicsGroups, torsoReservations
 from cad.hardware import jointHardware
-from cad.limb import limbAssembly
-from cad.parameters import hipCenterX, upperLegLength
+from cad.parameters import hipCenterX, kneeOutboardOffset, upperLegLength
 from cad.poses import (
     knee_limit_check,
     knee_prelimit_check,
@@ -85,6 +84,14 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
     """
     side = -1 if hand == "left" else 1
     x = side * hipCenterX
+    # EVERYTHING FROM THE KNEE DOWN IS AT ITS OWN STATION ACROSS THE ROBOT. The
+    # knee is the only joint with a fork, and the fork's cheek is 3 mm where
+    # every other joint lands a 6 mm plate, so the fork ended inside the leg's
+    # own exterior face. The joint moves rather than the fork: knee actuator,
+    # shin, wheel motor and wheel all stand kneeOutboardOffset further out, which
+    # is what cad/limb.py puts the thigh's clevis at. Nothing here changes in Y
+    # or Z, so the pose is the pose.
+    kneeX = side * (hipCenterX + kneeOutboardOffset)
     # Each actuator's axis lies across the robot, and the two hands face opposite
     # ways. The sign flips with the hand, and again between a hip and a knee,
     # because the knee motor is turned round to present its rear cover inboard.
@@ -106,15 +113,28 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
     return {
         f"{hand} hip motor": _turned(actuatorAssembly(), Axis.Y, -spin, x=x, z=hipZ),
         f"{hand} knee motor": _turned(
-            actuatorAssembly(), Axis.Y, spin, x=x, y=kneeY, z=kneeZ
+            actuatorAssembly(), Axis.Y, spin, x=kneeX, y=kneeY, z=kneeZ
         ),
         f"{hand} wheel motor": _turned(
-            actuatorAssembly(), Axis.Y, -spin, x=x, y=wheelY, z=wheelZ
+            actuatorAssembly(), Axis.Y, -spin, x=kneeX, y=wheelY, z=wheelZ
         ),
-        # The bearing, journal and carrier set that closes each hip pitch joint.
-        # It hangs off the stationary side, so it does not move with the thigh.
+        # The bearing and journal that close each hip pitch joint. They hang off
+        # the stationary side, so they do not move with the thigh.
         f"{hand} hip hardware": _turned(
             jointHardware(), Axis.Z, 180 if hand == "left" else 0, x=x, z=hipZ
+        ),
+        # And the same at the knee, which the thigh's clevis now straddles. The
+        # hand is REVERSED against the hip's because the knee motor is turned
+        # round: the set that needs no turn at the right hip needs one at the
+        # right knee. This one hangs off the thigh, which moves, so it is placed
+        # at the knee station the pose computes rather than at a fixed height.
+        f"{hand} knee hardware": _turned(
+            jointHardware(),
+            Axis.Z,
+            0 if hand == "left" else 180,
+            x=kneeX,
+            y=kneeY,
+            z=kneeZ,
         ),
         f"{hand} thigh": _turned(
             thigh(),
@@ -128,14 +148,14 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
             shin(),
             Axis.X,
             shinAngle,
-            x=x,
+            x=kneeX,
             y=named("shinCenterY"),
             z=named("shinCenterZ"),
         ),
         # The wheel is a solid of revolution bolted to its motor's output, so how
         # far it has turned changes nothing anyone can measure off a scene: it is
         # placed, not rotated.
-        f"{hand} wheel": _at(wheel(), x=x, y=wheelY, z=wheelZ),
+        f"{hand} wheel": _at(wheel(), x=kneeX, y=wheelY, z=wheelZ),
     }
 
 
@@ -198,14 +218,24 @@ def _knee_review_groups(pose: dict, kneeAngle: float) -> dict[str, list]:
 
     Not a stance -- the robot is not standing on anything here. It is the joint by
     itself, with the knee axis at the origin.
+
+    THE THIGH IS THE PIECE AT x = 0 AND EVERYTHING ELSE IS OFFSET, which is the
+    same relation the full assembly has the other way round. The knee joint
+    stands kneeOutboardOffset outboard of the hip's, so with the thigh drawn in
+    its own frame the motor, the far bearing and the shin all sit at that
+    offset.
     """
     return {
-        "motor": _turned(actuatorAssembly(), Axis.Y, -90),
+        "motor": _turned(actuatorAssembly(), Axis.Y, -90, x=kneeOutboardOffset),
+        # The far bearing and its journal, on the knee axis. This is the right
+        # knee, so the set is turned like the right knee's in the full assembly.
+        "hardware": _turned(jointHardware(), Axis.Z, 180, x=kneeOutboardOffset),
         "thigh": _at(thighRight(), z=pose["upperLinkCenterZ"]),
         "shin": _turned(
             shinRight(),
             Axis.X,
             -kneeAngle,
+            x=kneeOutboardOffset,
             y=pose["lowerLinkCenterY"],
             z=pose["lowerLinkCenterZ"],
         ),
@@ -230,11 +260,17 @@ def kneePreLimitGroups() -> dict[str, list]:
 
 
 def limbCheckGroups() -> dict[str, list]:
-    """One flat limb with the actuator at each end of it.
+    """One thigh with the actuator at each end of it, and the knee's bearing.
 
-    There is no hardware left to show at either joint -- the plate lands straight
-    on the actuator's rear cover below, the disc on the output face above, and
-    the far bearing that used to close the joint went with the clevis.
+    THIS IS THE THIGH NOW, not the generic limb it used to be. The scene exists
+    to look at one change narrowly, and the change is at this piece's lower end:
+    a clevis straddling the knee motor with a 6800 bonded into its far cheek,
+    where every limb on this robot had a flat plate. The shin still has that
+    plate, and what holds it is a row in tools/gate_f.py against the wheel motor
+    in the squat rather than a scene of its own.
+
+    The hardware is back. It went when the clevises did, and the note that stood
+    here said so; the knee has it again because the knee is straddled again.
 
     THE UPPER ACTUATOR IS HERE BECAUSE OF THE CABLE-TIE ARCHES. This scene held
     only the lower one while the limb was a plate and nothing stood off its
@@ -244,9 +280,21 @@ def limbCheckGroups() -> dict[str, list]:
     to miss and tools/gate_f.py now measures both.
     """
     return {
-        "limb": limbAssembly(upperLegLength),
-        "motor": _turned(actuatorAssembly(), Axis.Y, -90, z=-upperLegLength / 2),
+        "limb": thighRight(),
+        # The knee motor and its far bearing stand kneeOutboardOffset out along
+        # the joint axis, because the fork does; the hip's actuator above does
+        # not, because that end of the limb is a plate.
+        "motor": _turned(
+            actuatorAssembly(),
+            Axis.Y,
+            -90,
+            x=kneeOutboardOffset,
+            z=-upperLegLength / 2,
+        ),
         "motor above": _turned(actuatorAssembly(), Axis.Y, 90, z=upperLegLength / 2),
+        "hardware": _turned(
+            jointHardware(), Axis.Z, 180, x=kneeOutboardOffset, z=-upperLegLength / 2
+        ),
     }
 
 

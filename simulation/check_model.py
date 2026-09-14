@@ -281,7 +281,13 @@ def describe_plant(links, joints, dimensions, rolled) -> None:
     com = weighted / total
 
     axle = dimensions["prototypeWheelAxisHeight"]
-    track = 2.0 * (dimensions["hipCenterX"] + dimensions["skateWheelCenterX"])
+    # The wheels hang off the knee, and the knee stands kneeOutboardOffset outboard
+    # of the hip, so the track is measured from there and not from the hips.
+    track = 2.0 * (
+        dimensions["hipCenterX"]
+        + dimensions["kneeOutboardOffset"]
+        + dimensions["skateWheelCenterX"]
+    )
     radius = dimensions["skateWheelDiameter"] / 2.0
     pendulum = com[2] - axle
 

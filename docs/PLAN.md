@@ -106,14 +106,46 @@ Retire:
 
 All four were settled on 28 August 2026 and the CAD is built on them.
 
-1. **Material: PA12-CF**, with PA6-CF an acceptable substitute if supply is
-   difficult, and PETG kept only for fit mock-ups. PA12 was chosen over PA6 for
-   moisture stability -- PA6 takes up several times as much water, and this robot
-   will not live in a dry box. SLS PA12 stays open for a final cosmetic set, and
-   nothing in the geometry prevents it. Wall thickness is 2.4 mm because that is
-   four perimeters of a 0.6 mm nozzle, which is how carbon-filled nylon is
-   actually printed. Densities used: PA12-CF 1.06 g/cm3, which is *lighter* than
-   the PETG it replaces.
+1. **Material: SLS PA12**, laser-sintered, sent out. *Amended 13 September 2026;
+   it was PA12-CF on an FDM machine, and the reasoning for that is kept below
+   because it was right for what it was deciding.* PETG stays only for fit
+   mock-ups.
+
+   **What decided it was the layer axis, not the material.** Every strength
+   figure this project has argued with comes in two: PA12-CF gives about 75 MPa
+   in the print plane and about 30 across the layers, and the whole of the limb
+   analysis has been arithmetic against that pair -- which way to lay a part on
+   the bed is worth 2.5x on it, the thigh could not be laid flat at all once its
+   knee clevis existed, and an integral journal was ruled out at 1.3 to 1.7 times
+   its load because its root would have been a stack of layer lines in tension.
+   SLS has no weak axis: about **48 MPa in every direction**. That is worse than
+   75 and far better than 30, and it is the second number that has been deciding
+   things.
+
+   **What it bought, all of it measured.** The journal stopped being a bought
+   part -- see decision 10 -- which deletes four dowels, four bonded joints and
+   29.6 g of steel. Print orientation stops being a design input, which retires
+   the open question the thigh's clevis had just created. And the parts got
+   lighter for no change of shape: **0.93 g/cm3** against PA12-CF's 1.06, which
+   is 57 g off the printed structure on its own. Together the robot went from
+   2 149.7 g to **2 073.8 g**, and headroom under the 2 300 ceiling from 150 to
+   **226**.
+
+   **What it costs.** Parts are sent out, so there is a per-part cost and a
+   turnaround where there was a spool and an afternoon. Sections designed against
+   75 MPa in the print plane are now designed against 48, which no one has been
+   back through -- the limb's worst section was held at seven times its load with
+   ample room, but that sweep is open work. The 2.4 mm wall came from four
+   perimeters of a 0.6 mm nozzle and now means nothing; it is a thickness SLS can
+   hold comfortably, but it is no longer *derived*. And **0.93 g/cm3 is the
+   bureau's number, not ours** -- sintered PA12 runs 0.90 to 0.95 depending on
+   powder packing and refresh rate, which is about 5 g across the printed
+   structure.
+
+   The retired reasoning, kept because it is still the case: PA12 was chosen over
+   PA6 for moisture stability -- PA6 takes up several times as much water, and
+   this robot will not live in a dry box. PA6-CF was the acceptable FDM
+   substitute if supply was difficult.
 2. **No clamshell split.** The earlier recommendation was wrong and has been
    dropped. A sagittal split puts the seam down the middle of the most-loaded
    faces, and a frontal split cuts every bearing bore in half. The limb is
@@ -150,9 +182,12 @@ Two decisions were added that the plan had not anticipated:
    pattern; the unprovenanced front-housing pattern is not used. A limb is
    **32.1 g** against 48.3 g before this month's joint work. The knee fold limit
    stops being structural as well, since thigh and shin now lie in different
-   planes and cannot touch.
+   planes and cannot touch. *That last sentence stopped being true with decision
+   10: the knee's clevis puts them back in one plane, and the fold now runs out
+   at 103.0°.*
 8. **No joint is straddled, and the knee and ankle have no far bearing at
-   all.** A forked rotor was drawn, fitted, and removed on the evidence that the
+   all.** *Half reversed by decision 10: the knee is straddled again, with the
+   hip's own clevis.* A forked rotor was drawn, fitted, and removed on the evidence that the
    printed part fails long before the bearing does: the plate breaks at 21-53 N
    of sideways load at the foot depending on print orientation, and at that load
    the 6800 is under a third of its static rating. The flat limb then removed
@@ -173,6 +208,57 @@ Two decisions were added that the plan had not anticipated:
    the right thigh and the left shin are the same print and there are still only
    two distinct limb parts. The foot and the hip carrier do become a left and a
    right, which is two extra prints on the robot.
+
+   *Amended by decision 10: the two leg segments are no longer the same print.*
+10. **The knee is straddled again, and the knee alone.** This reverses half of
+    decision 8, on the same unanswered question that decision recorded. The knee
+    carries the shin, the wheel motor, the adapter and the wheel on a plate
+    22 mm off its axis — 0.45 Nm standing on one leg and about 1.35 Nm landing
+    at three times body weight — and it is the largest overhung moment on the
+    robot by some way. The wheel joint carries the wheel alone on a 12 mm arm, a
+    third of that; the hip was never unstraddled. So the thigh's lower end is
+    `statorClevis` again, the hip's own part used exactly as drawn, with a 6800
+    bonded into its far cheek and a Ø10 dowel journal out of the shin's rotor
+    disc. Four bearing-and-journal sets rather than two.
+
+    **What it costs, all of it measured.** 9.6 g of PA12 a thigh and 19.8 g of
+    steel, so 38.9 g on a robot that had 191 g of headroom and now has 152. The
+    two leg segments stop being the same print: four distinct limb pieces, one
+    of each, where there were two printed twice. The thigh loses the flat print
+    orientation — its far cheek stands 48 mm across the joint from its plate, so
+    laid on that plate it has a disc floating in the air — and **which way it
+    should be printed instead has not been decided.** And the knee's fold limit
+    becomes structural again, which is unavoidable rather than an oversight: a
+    far bearing means reaching round the actuator, and what reaches is a saddle
+    standing in the plane the shin sweeps. They touch at 103.0°, so the
+    commissioning stop is 100° rather than the inherited 110°, and the deepest
+    squat is 14.5 mm shallower.
+
+    **What it does not do is answer decision 8's question.** DAMIAO still have
+    not said what the DM-J3507's output bearing will take. This takes the knee
+    off the list of joints that depend on the answer; the wheel joint is still
+    on it, at a third of the load.
+
+    *Amended 13 September 2026: the journal is not a bought part any more.* The
+    limb's output disc grows its own Ø10 stub into the far bearing and is printed
+    with it, at the hip and at the knee, with a 0.8 mm fillet at the root. Four
+    dowels, four bonded joints and 29.6 g of steel gone, and the seat they went
+    into with them.
+
+    **It was the wrong thing to do on FDM and the right thing on SLS**, which is
+    the whole of why decision 1 moved first. The stub carries the bearing's
+    reaction as bending at its root: 17.8 to 23.2 MPa at the 500-650 N recorded
+    at the 6800, against 30 MPa across an FDM part's layers -- a margin of 1.3 to
+    1.7 on the joint that takes the actuator's full torque, where the limb's own
+    worst section is held to seven times its load. Isotropic at 48 MPa it is 2.1
+    to 2.7, and no longer the thing that breaks first.
+
+    **What is still unquantified, and it is worth naming.** Fatigue, which nobody
+    has run. And the stress concentration at the root: 0.8 mm on a Ø10 shaft is
+    r/d = 0.08, a Kt near 1.9, and 1.9 x 23.2 is 44 MPa against 48. The static
+    case survives that because PA12 is ductile at 18 per cent elongation and the
+    peak redistributes; a cyclic one might not. The fillet is as large as the
+    space allows -- the bearing's inner face is 1 mm off the disc.
 
 ---
 
@@ -720,7 +806,7 @@ shared hub. `torso.kcl` gained a stator clevis and mount box at each hip.
 
 ### Mass, measured from the CAD
 
-`tools/mass.py`, PA12-CF at 1.06 g/cm3. The four leg files each build both hands
+`tools/mass.py`, SLS PA12 at 0.93 g/cm3. The four leg files each build both hands
 now, so their figure is the pair.
 
 | Part | Each | Count | Total |

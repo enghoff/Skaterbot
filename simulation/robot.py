@@ -270,9 +270,9 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             )
         )
         # The bearing is bonded straight into the pelvis cheek, so its mass is
-        # the pelvis's; only the journal turns with the thigh. The turned
-        # carrier that used to be bonded in with it is gone -- see
-        # cad/parameters.py -- which takes 6.4 g a side off this body.
+        # the pelvis's. Nothing else at this joint is bought any more: the
+        # journal that used to turn with the thigh is part of the thigh's own
+        # print, so its mass arrives with the mesh rather than as a line here.
         base.solids.append(
             Solid(
                 label=f"hip pitch bearing, {side}",
@@ -511,13 +511,17 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # So a limb link whose origin is its proximal joint carries its mesh half a
     # limb-length down.
     #
-    # The hands are crosswise. limbAssembly builds the plate on +X, which is
-    # the RIGHT thigh and the LEFT shin; the mirror is the other two. That is
-    # the same crosswise pairing tools/mass_budget.toml describes, and it is why
-    # two prints cover four limbs.
+    # The hands are crosswise, and they used to make two prints cover four limbs:
+    # limbAssembly builds on +X, which was the RIGHT thigh and the LEFT shin, and
+    # the mirror was the other two. STRADDLING THE KNEE ENDED THAT. A thigh
+    # finishes in a clevis reaching past its knee motor to a far bearing and a
+    # shin still finishes in a flat plate, so there are four distinct pieces --
+    # the same crosswise pairing of hands, two families rather than one. The shin
+    # is the piece that did not change, which is why it keeps the `limb-105` name
+    # here, in tools/mass_budget.toml and in reference/golden/step.
     limb_mesh = {
-        ("thigh", "right"): "limb-105-unmirrored",
-        ("thigh", "left"): "limb-105-mirrored",
+        ("thigh", "right"): "thigh-105-unmirrored",
+        ("thigh", "left"): "thigh-105-mirrored",
         ("shin", "left"): "limb-105-unmirrored",
         ("shin", "right"): "limb-105-mirrored",
     }
@@ -535,7 +539,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("thigh", side)],
                 at=(0.0, 0.0, -thigh_len / 2),
                 source="measured",
-                note="cad/limb.py, 105 mm, five bodies",
+                note="cad/thigh.py, 105 mm, seven bodies, clevis at the knee",
             ),
             Solid(
                 label=f"knee actuator, {side}",
@@ -548,14 +552,14 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 note="held by the thigh's stator plate; drives the shin",
             ),
             Solid(
-                label=f"hip pitch journal, {side}",
-                grams=4.9,
+                label=f"knee bearing, {side}",
+                grams=5.0,
                 shape="cylinder_x",
-                dims=(d["journalDiameter"], d["journalLength"]),
-                at=(sign * (d["rotorHubInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
+                dims=(d["bearingOuterDiameter"], d["bearingWidth"]),
+                at=(-sign * d["bearingCenterX"], 0.0, -thigh_len),
                 source="bom",
                 material="bearingSteel",
-                note="10 dia x 8 ground steel, seated in the rotor hub and turning with the thigh",
+                note="6800-2RS at 5.0 g, bonded into the knee clevis's far cheek",
             ),
             Solid(
                 label=f"knee fastener set, {side}",
@@ -566,11 +570,22 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 note="the budget's 45 g of M3, split evenly over the six joints",
             ),
         ]
+        # THE PROXY HAS TO REACH ROUND THE MOTOR NOW. The shin's box below is the
+        # plate plus the actuator it lies against, which was every limb until the
+        # knee was straddled; a thigh also carries a cheek and its bearing boss on
+        # the FAR side of that actuator, so the box runs from the boss's outer
+        # face to the plate's and is not centred on the limb any more.
+        thigh_outer = d["clevisOuterX"] + d["bearingSeatBossThickness"]
+        thigh_box_width = thigh_outer + d["rotorHubOuterX"]
         thigh.collisions.append(
             (
                 "box",
-                (d["limbPlateThickness"] + motor_l, d["limbWaistDepth"], thigh_len),
-                (0.0, 0.0, -thigh_len / 2),
+                (thigh_box_width, d["limbWaistDepth"], thigh_len),
+                (
+                    sign * (d["rotorHubOuterX"] - thigh_box_width / 2),
+                    0.0,
+                    -thigh_len / 2,
+                ),
             )
         )
         links[thigh.name] = thigh
@@ -589,8 +604,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 upper=60.0,
                 note=(
                     "PROVISIONAL TRAVEL. No swept clearance check has ever been run on "
-                    "hip pitch; the knee's 110 deg stop is the only joint limit this "
-                    "project has established."
+                    "hip pitch; the knee's stop is the only joint limit this "
+                    "project has established, and that one is measured."
                 ),
             )
         )
@@ -605,7 +620,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece=limb_mesh[("shin", side)],
                 at=(0.0, 0.0, -shin_len / 2),
                 source="measured",
-                note="cad/limb.py, 105 mm, five bodies",
+                note="cad/shin.py, 105 mm, seven bodies, plate at the wheel",
             ),
             Solid(
                 label=f"wheel actuator, {side}",
@@ -640,15 +655,29 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 name=f"knee_{side}",
                 parent=thigh.name,
                 child=shin.name,
-                origin=(0.0, 0.0, -thigh_len),
-                # Positive is FLEXION, matching cad/poses.py's squat_check and the 110 deg
+                # THE KNEE IS THE ONE JOINT THAT IS NOT ON ITS LEG'S CENTRE
+                # LINE. It is the only one with a fork, and a 3 mm cheek held
+                # 0.3 mm off the actuator's rear cover ends 2.7 mm inside the
+                # 6 mm plate every other joint lands, which put a step in the
+                # side of the leg. cad/parameters.py moves the joint rather than
+                # reshaping the fork, so the axis itself stands that much
+                # further out and the shin and the wheel go with it. Nothing in
+                # the sagittal plane moves, so no angle or link length here
+                # changes with it.
+                origin=(sign * d["kneeOutboardOffset"], 0.0, -thigh_len),
+                # Positive is FLEXION, matching cad/poses.py's squat_check and the
                 # commissioning stop. In the sagittal plane knee flexion is the
                 # opposite sense to hip flexion, hence the opposite sign here.
                 axis=(-1.0, 0.0, 0.0),
                 kind="revolute",
                 lower=0.0,
-                upper=110.0,
-                note="110 deg is the commissioning hard stop, cad/poses.py's knee_limit_check.",
+                upper=d["kneeCommissioningStop"],
+                note=(
+                    "The commissioning hard stop, read out of cad/poses.py. It is "
+                    "MEASURED now rather than inherited: the thigh's knee clevis "
+                    "puts a saddle back in the plane the shin sweeps, and the two "
+                    "touch at 103.0 deg. tools/gate_f.py holds the 1 mm."
+                ),
             )
         )
 

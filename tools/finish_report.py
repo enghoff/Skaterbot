@@ -34,15 +34,38 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-DENSITY = 1060.0  # PA12-CF, kg/m3, as mass_budget.toml has it
+
+def _density() -> float:
+    """The print material's density, READ rather than retyped.
+
+    It was a constant here saying 1060 "as mass_budget.toml has it", which was
+    true until the material moved to SLS PA12 and this file went on weighing
+    everything 14 per cent heavy -- two tools disagreeing about what the same
+    part weighs, with nothing to report it. Reading the one source is the fix.
+    """
+    import tomllib
+
+    budget = ROOT / "tools" / "mass_budget.toml"
+    with budget.open("rb") as handle:
+        return tomllib.load(handle)["material"]["density"]
+
+
+DENSITY = _density()
 
 
 def pieces() -> dict:
     from cad import joint, shin, thigh, torso, wheel_adapter
 
     return {
-        "limb-105-unmirrored": thigh.thighRight,
-        "limb-105-mirrored": thigh.thighLeft,
+        # A thigh and a shin are two pieces since the knee was straddled, and
+        # this is the report where the difference shows plainest: the thigh
+        # carries 34 arrises the chamfer refuses and the shin carries none, and
+        # the count is the clevis's own, unchanged, which is what says the
+        # refusals came in with the hip's part rather than with the fitting.
+        "thigh-105-unmirrored": thigh.thighRight,
+        "thigh-105-mirrored": thigh.thighLeft,
+        "limb-105-unmirrored": shin.shinLeft,
+        "limb-105-mirrored": shin.shinRight,
         "wheel-adapter-right": wheel_adapter.wheelAdapterRight,
         "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
         "pelvis-shell": torso.pelvisShell,
@@ -53,7 +76,6 @@ def pieces() -> dict:
         "joint-rotor-hub": joint.rotorHub,
         "joint-stator-plate": joint.statorPlate,
         "joint-output-disc": joint.outputDisc,
-        "shin-unmirrored": shin.shinLeft,
     }
 
 
@@ -99,7 +121,7 @@ def main() -> int:
             f"{name:<22} {count:>6} {cut:>5} {sharp:>6} "
             f"{before:>9.3f} {after:>9.3f} {after - before:>+9.3f} {time.time() - start:>6.1f}"
         )
-        if name.startswith(("limb-", "wheel-adapter-", "pelvis-", "torso-")):
+        if name.startswith(("thigh-", "limb-", "wheel-adapter-", "pelvis-", "torso-")):
             total_before += before
             total_after += after
             total_cut += cut
@@ -107,13 +129,14 @@ def main() -> int:
 
     print("-" * len(head))
     print(
-        f"{'the six printed pieces':<22} {'':>6} {total_cut:>5} {total_sharp:>6} "
+        f"{'the eight printed pieces':<24} {'':>4} {total_cut:>5} {total_sharp:>6} "
         f"{total_before:>9.3f} {total_after:>9.3f} {total_after - total_before:>+9.3f}"
     )
     print()
     print(
-        "That total counts one of each piece. The robot carries two of each limb "
-        "and one of everything else, so see tools/gate_c.py for the roll-up."
+        "That total counts one of each piece. The robot carries one of each of "
+        "them now -- a thigh stopped being the same print as a shin when the "
+        "knee was straddled -- so see tools/gate_c.py for the roll-up."
     )
     return 0
 

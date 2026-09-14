@@ -250,6 +250,31 @@ statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
 # statorPlateFlatOffset -- the connector relief -- is below, with the waist
 # width it is now cut flush with.
 
+# HOW FAR THE KNEE JOINT STANDS OUTBOARD OF EVERY OTHER, September 2026.
+#
+# A flat limb lands a 6 mm plate on its lower actuator's rear cover, and that
+# plate's outer face is the leg's exterior surface. The straddled knee lands a
+# 3 mm cheek there instead, held the actuator's own 0.3 mm off the cover, so the
+# fork's outer face sat 2.7 mm inside the thigh plate's exterior face: a step in
+# the side of the leg at the one joint that has a fork. Those three dimensions
+# ARE the offset.
+#
+# THE JOINT MOVES, NOT THE FORK. Sliding the fork on its own motor is not
+# available -- the cheek bolts to the rear cover through that 0.3 mm, and the far
+# cheek has exactly 1.0 mm of air against the shin's rotor disc -- and reshaping
+# the fork's saddle to reach the plate is worse: it is cad/joint.py's part, the
+# one gate B holds against its golden STEP and the pelvis carries at both hips,
+# and OCCT's chamfer will not finish a clevis whose saddle has been moved off
+# the cheek faces. So the knee actuator, the fork, the shin, the wheel motor and
+# the wheel all stand this much further out, and every printed part keeps the
+# shape it had.
+#
+# WHAT IT COSTS IS TRACK: each wheel moves 2.7 mm outboard, so the robot is
+# 5.4 mm wider across the wheels. Nothing moves in the sagittal plane, so every
+# pose, joint angle and fold clearance the check scenes measure is untouched.
+kneeOutboardOffset = limbPlateThickness - cheekThickness - actuatorClearance
+
+
 # The waist between the two discs. It carried two stiffening flanges on its
 # outboard face until 30 August 2026; the retirement note below says why they
 # came off and what they were actually worth.
@@ -410,6 +435,16 @@ limbTieArchLap = 1.0
 # under the rotor hub where the peak stress is.
 limbTieArchY = -10.0
 limbTieArchZ = 30.5
+# AND WHERE THE CLEVIS END'S ARCH SITS INSTEAD, September 2026, once the knee
+# was straddled. 30.5 mm is a station chosen against a Ø52 plate and nothing
+# else; the clevis puts a closed saddle box there, reaching from jointKeepOut
+# out to 36 mm from the joint axis, and an arch at 30.5 is inside its cavity --
+# buried, with no way to pass a tie through the tunnel at all. 42 mm stands the
+# whole 10 mm block clear of the saddle's top face, with the tunnel's lower edge
+# 4.25 mm above it, and it is still a plate the arch lands on: the waist runs
+# the full length of the limb. Only the limb's clevis end uses this; the plate
+# end is unchanged, which is why the shins are the print they always were.
+limbTieArchZClevis = 42.0
 # The strap's own width, which is what the tunnel is cut to: a 2.5 mm tie.
 limbTieSlotWidth = 3.5
 
@@ -429,10 +464,44 @@ limbTieSlotWidth = 3.5
 # makes a printed pocket creep. That is an argument and not a measurement, and
 # docs/BOM.md's fit coupon is where it has to be settled. What the flange did,
 # and what nothing does now, is recorded where the seat is cut in cad/joint.py.
+# THE JOURNAL IS PART OF THE LIMB NOW, September 2026. It was a Ø10 hardened
+# dowel bonded into a blind seat in the disc; it is a Ø10 stub grown out of the
+# disc's own outer face, printed with it, and there is no seat, no bond and no
+# bought part left at four of the robot's joints.
+#
+# WHAT MADE IT POSSIBLE IS THE MATERIAL, and it would have been wrong before it.
+# The stub carries the bearing's reaction as bending at its root, and with the
+# limb laid flat on an FDM bed that root is a stack of layer lines in pure
+# tension: 17.8 to 23.2 MPa at the 500-650 N this project records at the 6800,
+# against the 30 MPa PA12-CF gives across the layers. A margin of 1.3 to 1.7 on
+# the joint that takes the actuator's full torque, where the limb's own worst
+# section is held to seven times its load. SLS PA12 has no weak axis -- about
+# 48 MPa in every direction -- so the same stub sits at 2.1 to 2.7 instead, and
+# is no longer the thing that breaks first. docs/PLAN.md decision 1 is where the
+# material moved; this feature is downstream of that and not the other way round.
+#
+# WHAT IS STILL NOT QUANTIFIED. Fatigue, and the stress concentration at the root
+# -- 0.8 mm on a Ø10 shaft is r/d = 0.08, which is a Kt near 1.9, and 1.9 x 23.2
+# is 44 MPa against 48. Static margin survives that because PA12 is ductile at
+# 18 per cent elongation and peak stress redistributes; a cyclic one might not,
+# and nobody has run it. The fillet is as large as the space allows: the bearing's
+# inner face is 1 mm off the disc and the fillet has to stop short of it.
 journalDiameter = 10.0
+# THE BLIND SEAT SURVIVES, and only on the wheel adapter. cad/joint.py's
+# outputDisc is the limb's disc AND the adapter's, and the adapter carries no
+# journal at all -- it never did. Leaving its seat where it was is what keeps
+# that piece identical to the STEP the engine built, and it costs a gram of
+# nothing. The forked rotor below still measures from it too.
 journalSeatDiameter = 10.2
 journalSeatDepth = 2.2
-journalLength = 8.0
+# How far the stub stands proud of the disc's outer face: across the 1 mm of air
+# to the bearing, then the bearing's whole 5 mm width, ending flush with its
+# outer face. It was a 8 mm dowel seated 2.2 mm into the disc.
+journalLength = 6.0
+# The root fillet, tucked into the 1 mm gap between the disc's face and the
+# bearing's inner face, with 0.2 mm to spare. A sharp root here would be the one
+# unfilleted corner on the robot carrying a bending load.
+journalRootFillet = 0.8
 bearingBore = 10.0
 bearingOuterDiameter = 19.0
 bearingWidth = 5.0

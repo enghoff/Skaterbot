@@ -104,11 +104,19 @@ def measure(first: list, second: list) -> tuple[float, float]:
 # still a failure and a second change cannot hide inside the first. A pose is not
 # loosened here, it is re-frozen at a stated number with a stated cause.
 #
-# Nothing in these two scenes is a different POSE. The joints are at the angles
-# they always were and the wheels land where they always did -- which is the
-# check immediately below this one, and it still passes untouched. What moved is
-# where the torso's own centre sits, because the torso got taller, and these two
-# constants are the height of that centre above the floor.
+WHY_KNEE_STOP = "THE KNEE'S STOP IS MEASURED NOW, NOT INHERITED. 110 degrees came from the walking robot and survived a year only because the flat limbs put thigh and shin in disjoint planes, so the fold had no structural limit to disagree with it. Straddling the knee puts the clevis's saddle back in the plane the shin sweeps -- unavoidably, because a second bearing means reaching round the actuator -- and the shin's waist corners touch that saddle at 103.0 degrees, sharing 62 mm3 at 110. 100 is where the gap is 1.0 mm, the same air the shin's rotor disc has against the far cheek, so one margin covers both."
+WHY_FOLLOWS = "the squat is the deepest the knee stop allows, so it follows the stop"
+WHY_REVIEW = "the knee review scenes are aimed at the stop and ten degrees under it"
+
+# Nothing in the pose check is a different POSE. Its joints are at the angles
+# they always were and its wheels land where they always did -- which is the
+# check immediately below this one, and it still passes untouched. What moved
+# there is where the torso's own centre sits, because the torso got taller.
+#
+# THE SQUAT AND THE TWO KNEE REVIEWS ARE DIFFERENT POSES, and that is the one
+# thing straddling the knee cost that cannot be bought back with material. See
+# the reason on squatKneeAngle below; cad/poses.py derives all of it from a
+# single constant so these cannot drift apart.
 MOVED = {
     "pose_check": {
         "poseTorsoCenterZ": (
@@ -119,11 +127,46 @@ MOVED = {
         ),
     },
     "squat_check": {
+        "squatKneeAngle": (110.0, 100.0, WHY_KNEE_STOP),
+        "squatHipAngle": (55.0, 50.0, WHY_FOLLOWS),
+        "squatShinAngle": (-55.0, -50.0, WHY_FOLLOWS),
+        "legVerticalReach": (120.45105163371967, 134.98539803417327, WHY_FOLLOWS),
+        "squatDrop": (89.54894836628033, 75.01460196582673, WHY_FOLLOWS),
+        "squatHipPitchZ": (160.45105163371966, 174.98539803417327, WHY_FOLLOWS),
         "squatTorsoCenterZ": (
             216.95105163371966,
-            227.45105163371966,
-            "the same 10.5 mm, in the deepest squat",
+            241.98539803417327,
+            "10.5 mm of it is the taller torso, on a floor that has not moved; "
+            "the other 14.5 is the shallower squat the knee stop now allows",
         ),
+        "kneeY": (86.01096465034414, 80.4346665274927, WHY_FOLLOWS),
+        "kneeZ": (100.22552581685983, 107.49269901708664, WHY_FOLLOWS),
+        "thighCenterY": (43.00548232517207, 40.21733326374635, WHY_FOLLOWS),
+        "thighCenterZ": (130.33828872528974, 141.23904852562995, WHY_FOLLOWS),
+        "shinCenterY": (43.00548232517207, 40.21733326374635, WHY_FOLLOWS),
+        "shinCenterZ": (70.11276290842991, 73.74634950854332, WHY_FOLLOWS),
+        # Not a move at all: both wheels are still on the floor, which is the
+        # constraint the whole pose is solved against, and the check below
+        # measures the tread rather than trusting this. Two different pairs of
+        # cosines reach 40 mm and one of them lands a bit short in binary.
+        "wheelZ": (
+            39.99999999999999,
+            40.0,
+            "the same 40 mm axle height, reached through a 50 degree shin "
+            "instead of a 55 degree one",
+        ),
+    },
+    "knee_limit_check": {
+        "kneeLimitAngle": (110.0, 100.0, WHY_KNEE_STOP),
+        "shinLimitAngle": (-110.0, -100.0, WHY_KNEE_STOP),
+        "lowerLinkCenterY": (-49.33386259126019, -51.70240703314092, WHY_REVIEW),
+        "lowerLinkCenterZ": (17.956057524597608, 9.116529327513842, WHY_REVIEW),
+    },
+    "knee_prelimit_check": {
+        "kneePreLimitAngle": (100.0, 90.0, WHY_REVIEW),
+        "shinPreLimitAngle": (-100.0, -90.0, WHY_REVIEW),
+        "lowerLinkCenterY": (-51.70240703314092, -52.5, WHY_REVIEW),
+        "lowerLinkCenterZ": (9.116529327513842, -3.214697847761802e-15, WHY_REVIEW),
     },
 }
 
@@ -232,7 +275,7 @@ CLEARANCES = (
     ),
     (
         "squat_check",
-        "torso floor vs the thigh at 55deg of hip",
+        "torso floor vs the thigh at 50deg of hip",
         ("pelvis", "cover"),
         ("right thigh",),
         "clear",
@@ -240,11 +283,38 @@ CLEARANCES = (
     ),
     (
         "squat_check",
-        "torso vs the knee actuator, 86 mm forward",
+        "torso vs the knee actuator, 80 mm forward",
         ("pelvis", "cover"),
         ("right knee motor",),
         "clear",
         5.0,
+    ),
+    (
+        # THE FOLD, IN THE POSE THE ROBOT ACTUALLY HOLDS. The two knee review
+        # scenes look at the joint on its own; this is the same contact in the
+        # deepest squat, where the leg is loaded and the pose is solved against
+        # the floor rather than posed. It was never checked before because it
+        # could not fail: the flat limbs put thigh and shin in different planes.
+        # The thigh's clevis puts them back in one, so the squat's depth is now
+        # a clearance and this row is what holds it.
+        "squat_check",
+        "the shin against the thigh's knee saddle, folded",
+        ("right shin",),
+        ("right thigh",),
+        "clear",
+        1.0,
+    ),
+    (
+        # THE SHIN'S PLATE IS NOT IN limb_check ANY MORE, because that scene now
+        # shows a thigh, whose lower end is a clevis. This is where the plate
+        # landing flat on the wheel motor's rear cover is held instead: a mating
+        # face, so the two meet and share nothing.
+        "squat_check",
+        "the shin's plate on the wheel motor's rear cover",
+        ("right shin",),
+        ("right wheel motor",),
+        "touch",
+        0.0,
     ),
     (
         # Measured, not assumed: these two never come near each other. The shin
@@ -259,8 +329,15 @@ CLEARANCES = (
         5.0,
     ),
     (
+        # AND THIS ROW IS WHAT SET THE STOP. It used to be a formality -- the
+        # note beside the scene said the two lie in different planes and cannot
+        # touch -- and straddling the knee made it the binding constraint on how
+        # far the leg folds. The margin is 1.0 mm because that is the air the
+        # shin's rotor disc has against the far cheek: at 100 degrees the fold is
+        # no tighter than the joint's own assembly clearance, and both are this
+        # one number. They share 62 mm3 at the 110 degrees the stop used to be.
         "knee_limit_check",
-        "shin plate vs thigh plate at the 110deg stop",
+        "the shin against the thigh's knee saddle, at the stop",
         ("shin",),
         ("thigh",),
         "clear",
@@ -268,9 +345,40 @@ CLEARANCES = (
     ),
     (
         "knee_prelimit_check",
-        "shin plate vs thigh plate at 100deg",
+        "the same pair ten degrees short of the stop",
         ("shin",),
         ("thigh",),
+        "clear",
+        1.0,
+    ),
+    (
+        # The bought metal, seated -- and there is only one piece of it now. The
+        # bearing is bonded into the far cheek and lands on its Ø17.5 shoulder,
+        # so it MEETS the thigh. The journal is no longer bought at all: the shin
+        # grows it, Ø10 into a Ø10 bore, so the second row below is the stub
+        # running in the race rather than a dowel sitting in a seat. Both are
+        # asked to touch and to share no volume, which is the check that a
+        # nominal fit has not become an interference.
+        "knee_limit_check",
+        "the far bearing in the thigh's cheek",
+        ("hardware",),
+        ("thigh",),
+        "touch",
+        0.0,
+    ),
+    (
+        "knee_limit_check",
+        "the shin's own journal in the far bearing's bore",
+        ("hardware",),
+        ("shin",),
+        "touch",
+        0.0,
+    ),
+    (
+        "knee_limit_check",
+        "the hardware against the knee actuator it straddles",
+        ("hardware",),
+        ("motor",),
         "clear",
         1.0,
     ),
@@ -283,12 +391,18 @@ CLEARANCES = (
         0.0,
     ),
     (
+        # THE THIGH'S CLEVIS DOES NOT LAND ON THE REAR COVER, and that is the one
+        # place the hip's part behaves differently from the plate it replaces.
+        # The plate is a mating face and sits flat on the cover; the clevis's
+        # rear cheek has always stood actuatorClearance -- 0.3 mm -- off it, and
+        # is pulled down onto it by the four rear bolts. So this asks for a gap
+        # rather than for contact, and the number is that clearance.
         "limb_check",
-        "the limb plate on the actuator's rear cover",
+        "the thigh's clevis on the knee actuator's rear cover",
         ("motor",),
         ("limb",),
-        "touch",
-        0.0,
+        "clear",
+        0.25,
     ),
     # THE CABLE-TIE ARCHES, at both ends, and this row is why the scene carries
     # the upper actuator at all. The arches stand 4 mm off the same face the
@@ -665,6 +779,31 @@ FITS = [
         "its bottom edge SITS ON the slot floor, so any gap here means the board "
         "is hanging on nothing -- the same test the packs on their rails get",
     ),
+    # THE BUS MONITOR, WHICH IS SCREWED DOWN NOW RATHER THAN TAPED, and both of
+    # these arrived with that change. It hung under the deck for one revision,
+    # which tied that plate to the torso by the board's own wiring; it is bolted
+    # to the pelvis's rear wall instead, and these two are what that mount is.
+    (
+        "bus monitor vs its two rear-wall pads",
+        "bus monitor",
+        "bus monitor pads",
+        0.0,
+        "the board BEARS ON the pads, so any gap here means it is hanging on "
+        "two screws and nothing else -- the same test the packs on their rails "
+        "get, and the BMS on its guides",
+    ),
+    (
+        "bus monitor vs the distribution board under it",
+        "bus monitor",
+        "distribution board",
+        5.0,
+        "what the header's solder tails hang into, and the reason the pads are "
+        "8 mm tall rather than the 5 the deck ledges are. It is also the gap "
+        "that says the pads clear the bought board rather than trapping it: "
+        "nothing PRINTED reaches over that board's plan at all, which is why "
+        "this mount is on the rear wall and not on the flank, where a pad big "
+        "enough to hold a pilot would have to",
+    ),
     (
         "IMU board vs the ribs that aim it",
         "IMU board",
@@ -697,6 +836,10 @@ def check_fits(items: tuple) -> tuple[int, int]:
         "deck plate": [deck.electronicsDeck()[0]],
         "IMU seat": torso.imuSeat(),
         "BMS guides": torso.bmsGuides(),
+        # The monitor's two pads on their own, sliced out of the pelvis the same
+        # way the ledges and rails are: measuring the board ONTO them has to
+        # ignore the wall they stand on.
+        "bus monitor pads": torso.busSenseLedges(),
         **{
             name: electronics.torsoElectronicsGroups()[name]
             for name in (
@@ -706,6 +849,8 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "antenna bulkhead",
                 "SBC board",
                 "BMS board",
+                "bus monitor",
+                "distribution board",
             )
         },
         **{

@@ -1,12 +1,28 @@
-"""Flat-plate limb.
+"""Flat-plate limb, with a straddled lower joint where the load asks for one.
 
 Ported from lib/limb.kcl, comments and all.
 
 One parametric limb, used for the thigh and the shin. It is a plate lying in a
-single plane: a Ø52 disc bolted flat to one actuator's rear cover, a Ø36 disc
-bolted to the next actuator's output, and a channel waist between them. There is
-no clevis, no saddle and no closed shell, and nothing reaches around an actuator
-any more.
+single plane: a Ø36 disc bolted to the joint above's output, a channel waist,
+and at the bottom either a Ø52 disc lying flat on the next actuator's rear cover
+or -- at the knee, and only there -- the two-cheek clevis that reaches past that
+actuator to a second bearing on the far side.
+
+WHY ONLY THE KNEE, September 2026. Every joint on this robot was a plate for a
+year, on the assumption that the actuator's own output bearing would take the
+overhung moment of a limb hung 22 mm off the axis, which DAMIAO have never
+confirmed. The knee is the worst of the three by some way: the shin, the wheel
+motor, the adapter and the wheel all hang off it, where the wheel joint below
+carries the wheel alone on a 12 mm arm and the hip above was never unstraddled.
+So the knee gets the second support and the other two do not, which is the
+"double-support only the joints that see landing loads" that NOTES.md has
+recommended since the load cases were first run.
+
+The clevis is not a new part. It is cad/joint.py's `statorClevis`, the hip's
+own, with one thing asked of it that a torso does not: the saddle is slid 2.7 mm
+outboard so that it ends on the limb plate's exterior face, which costs it all
+but 0.3 mm of its landing on the far cheek's neck. The hip's form is unchanged
+and is still what gate B holds against its golden STEP.
 
 Local frame: the limb axis is Z, both joint axes are X, and the two joint centres
 sit at z = +/- limbLength/2. The plate lies on the +X side with both actuators
@@ -15,9 +31,11 @@ note in parameters.py -- so the upper joint presents its output face and the
 lower joint presents its rear cover on the same side.
 
 A limb for the other hand is this one mirrored across YZ. cad/thigh.py and
-cad/shin.py each export both hands; and because the two leg segments are the
-same 105 mm, the right thigh and the left shin are the same print, as are the
-right shin and the left thigh. Two distinct limb parts.
+cad/shin.py each export both hands. THE TWO SEGMENTS ARE NO LONGER THE SAME
+PRINT: they are still both 105 mm, but a thigh ends in a clevis and a shin in a
+plate, so the four limbs on the robot are four distinct pieces where they were
+two printed twice each. The shins are the part that did not change, so they keep
+the `limb-105` name and the golden STEP that goes with it.
 
 The waist is a plain plate. It carried two stiffening flanges on its outboard
 face for a while; they came off on 30 August 2026 once the numbers were run,
@@ -25,9 +43,16 @@ because they bought stiffness and almost no strength, and none at all at the
 section that decides whether a limb breaks. The reasoning is kept in
 cad/parameters.py beside the waist dimensions, and in NOTES.md.
 
-What is left is a single flat profile, 6 mm thick from one end to the other,
-which is both the cheapest thing to print and the strongest way to print it:
-laid flat, every fibre runs along the limb and no load crosses a layer line.
+What is left, on a shin, is a single flat profile 6 mm thick from one end to the
+other, which is both the cheapest thing to print and the strongest way to print
+it: laid flat, every fibre runs along the limb and no load crosses a layer line.
+
+A THIGH CANNOT BE PRINTED THAT WAY AND THAT IS THE REAL COST OF THE CLEVIS. The
+far cheek stands 48 mm across the joint from the plate, joined only by the
+saddle, so a thigh laid on its plate face has a disc floating 48 mm in the air.
+It has to stand on end instead, or on its flank, and either puts layer lines
+across a section that had none. NOTES.md carries what the orientation is worth
+and it has not been re-decided for this shape.
 
 Two cable-tie arches stand on the INBOARD face, one at each end of the waist,
 and they are the only thing on the robot outside the pelvis that a harness can
@@ -59,9 +84,17 @@ from build123d import (
 )
 
 from cad.geometry import mirrored
-from cad.joint import outputDisc, outputRegisterCutter, statorPlate
+from cad.joint import (
+    outputDisc,
+    outputRegisterCutter,
+    statorClevis,
+    statorPlate,
+)
 from cad.parameters import (
     actuatorRearBoltOffset,
+    jointKeepOut,
+    journalLength,
+    kneeOutboardOffset,
     limbPlateThickness,
     limbTieArchHeight,
     limbTieArchLap,
@@ -70,6 +103,7 @@ from cad.parameters import (
     limbTieArchWidth,
     limbTieArchY,
     limbTieArchZ,
+    limbTieArchZClevis,
     limbTieSlotWidth,
     limbWaistDepth,
     limbWaistUpperZ,
@@ -80,8 +114,18 @@ from cad.parameters import (
 )
 
 
-def limbAssembly(limbLength: float) -> list:
-    """One limb, as five interpenetrating bodies.
+def limbAssembly(limbLength: float, lowerEnd: str = "plate") -> list:
+    """One limb, as seven interpenetrating bodies.
+
+    `lowerEnd` is what the limb presents to the actuator below it:
+
+    * "plate" -- the Ø52 disc lying flat on that actuator's rear cover, which is
+      every limb this robot had until the knee was straddled and is still what
+      the shin gives the wheel motor;
+    * "clevis" -- cad/joint.py's `statorClevis`, the hip's own part, reaching
+      past the actuator to a bonded 6800 on the far side. Only the thigh uses
+      it, and only because the knee is the joint that carries the whole of the
+      leg below it on an overhung 22 mm arm.
 
     Returns a LIST, not a single solid, because that is what the KCL returned
     and what the golden STEP contains: the waist plate occupies exactly the same
@@ -90,6 +134,8 @@ def limbAssembly(limbLength: float) -> list:
     shells prints this as the single plate it is -- verify that before printing.
     Unioning them for real is a phase 3 change; see docs/BUILD123D_MIGRATION.md.
     """
+    if lowerEnd not in ("plate", "clevis"):
+        raise ValueError(f"lowerEnd must be 'plate' or 'clevis', not {lowerEnd!r}")
     jointZ = limbLength / 2
 
     # The waist reaches into both discs so the three bodies merge, but it cannot
@@ -101,8 +147,22 @@ def limbAssembly(limbLength: float) -> list:
     # 1.2 mm crescent no screw could pass. It now stops a cap head short of them,
     # which costs nothing structurally -- the plate is still 38 mm wide there, so
     # the section never narrows -- and leaves 8 mm of engagement into the disc.
+    #
+    # AT A CLEVIS END NEITHER OF THOSE IS THE CONSTRAINT. The bolts are in a 3 mm
+    # cheek 48 mm across the joint from each other and the waist never goes near
+    # them; what the waist has to meet is the saddle, which is the only path the
+    # far cheek's load has into the limb. So it runs straight down through the
+    # saddle to its floor, one joint keep-out from the axis, and the saddle wraps
+    # the plate's full 6 mm for its own 12 mm of height -- it is slid out to the
+    # plate's exterior face, so the two end together -- while the rear cheek's
+    # neck merges into the rest. That is 6.1 mm less plate than the
+    # stator end takes, and it stops 9.5 mm above the nearest rear bolt, so a cap
+    # head and a driver still reach all four along the axis.
     waistUpperZ = limbWaistUpperZ
-    waistLowerZ = -(jointZ - actuatorRearBoltOffset - m3CapHeadStandoff)
+    if lowerEnd == "clevis":
+        waistLowerZ = -(jointZ - jointKeepOut)
+    else:
+        waistLowerZ = -(jointZ - actuatorRearBoltOffset - m3CapHeadStandoff)
 
     waistBlank = Pos(rotorHubInnerX, -(limbWaistDepth / 2), waistLowerZ) * Box(
         limbPlateThickness,
@@ -134,20 +194,29 @@ def limbAssembly(limbLength: float) -> list:
     # put it, and this reaches no further inboard than y = 17.90, which leaves
     # the nearest bolt centre 4.00 mm -- more than the 3.40 the whole end is
     # already held to.
-    cornerHalfWidth = limbWaistDepth / 2
-    cornerDepth = cornerHalfWidth - (actuatorRearBoltOffset + m3CapHeadStandoff)
-    cornerFlushZ = -jointZ + sqrt((statorPlateDiameter / 2) ** 2 - cornerHalfWidth**2)
-    for side in (1, -1):
-        waistBlank += Pos(
-            rotorHubInnerX,
-            side * (cornerHalfWidth - cornerDepth / 2),
-            cornerFlushZ,
-        ) * Box(
-            limbPlateThickness,
-            cornerDepth,
-            waistLowerZ - cornerFlushZ,
-            align=(Align.MIN, Align.CENTER, Align.MIN),
+    #
+    # A CLEVIS END HAS NO SUCH NOTCH AND GETS NO SUCH CORNERS. The step was the
+    # waist standing proud of a Ø52 disc's rim; a clevis puts a 30 mm saddle
+    # there instead, the waist is 40 mm wide and passes it on both flanks by
+    # 5 mm for the saddle's whole height, and there is no rim for an outline to
+    # follow. Carrying the corners down would only bury more plate in the saddle.
+    if lowerEnd == "plate":
+        cornerHalfWidth = limbWaistDepth / 2
+        cornerDepth = cornerHalfWidth - (actuatorRearBoltOffset + m3CapHeadStandoff)
+        cornerFlushZ = -jointZ + sqrt(
+            (statorPlateDiameter / 2) ** 2 - cornerHalfWidth**2
         )
+        for side in (1, -1):
+            waistBlank += Pos(
+                rotorHubInnerX,
+                side * (cornerHalfWidth - cornerDepth / 2),
+                cornerFlushZ,
+            ) * Box(
+                limbPlateThickness,
+                cornerDepth,
+                waistLowerZ - cornerFlushZ,
+                align=(Align.MIN, Align.CENTER, Align.MIN),
+            )
 
     # The waist has to cut itself clear of the rotor disc's register pocket,
     # because it reaches far enough into the disc to fill part of it in.
@@ -232,7 +301,12 @@ def limbAssembly(limbLength: float) -> list:
     # that gate C keeps exercising the fix.
     gussetRear = mirrored(gussetFront, Plane.XZ)
 
-    upperDisc = Pos(0, 0, jointZ) * outputDisc()
+    # THE JOURNAL IS PART OF THIS DISC, not a dowel bonded into it. The rotor end
+    # of a limb is the hip on a thigh and the knee on a shin, and both are
+    # straddled joints, so both grow their own Ø10 stub into the far bearing.
+    # cad/parameters.py carries why that only became sound once the material
+    # went isotropic, and what about it is still unquantified.
+    upperDisc = Pos(0, 0, jointZ) * outputDisc(journalStub=journalLength)
     # The stator plate is drawn behind an actuator whose output faces +X. This
     # limb's lower actuator is turned round, so the plate has to come to the near
     # side to land on the rear cover that now faces +X with everything else.
@@ -249,7 +323,30 @@ def limbAssembly(limbLength: float) -> list:
     # where it is, which is the same thing as installing that actuator the other
     # way up. Every feature on this plate is symmetric fore and aft except the
     # relief, so nothing else moves; gate B holds the pair of segments it swaps.
-    lowerPlate = Pos(0, 0, -jointZ) * mirrored(statorPlate(), Plane.YZ)
+    #
+    # A CLEVIS GOES ON THE SAME TRANSFORM BUT NOT AT THE SAME STATION. It is
+    # cad/joint.py's part untouched -- the one gate B holds against its own
+    # golden STEP -- and it stands kneeOutboardOffset further out along the joint
+    # axis than a plate does, because a 3 mm cheek held 0.3 mm off the rear cover
+    # ends 2.7 mm inside the 6 mm plate's exterior face and the leg had a step
+    # there. The whole knee joint moves with it: cad/main.py and cad/scenes.py
+    # put the knee actuator, the shin and the wheel at the same offset, so the
+    # cheek still lands on the cover and the far cheek keeps its 1.0 mm against
+    # the shin's rotor disc. See cad/parameters.py beside the dimension. It is
+    # drawn
+    # for an actuator whose output faces +X, so its rear cheek is on -X; the knee
+    # motor is turned round like every lower joint on a limb, so the same mirror
+    # that brings the plate across brings the clevis, putting the rear cheek on
+    # the rear cover at +X and reaching the far cheek out past the shin's rotor
+    # disc on -X. The cheek's own connector relief is a cut in Y and the mirror
+    # leaves it where it is, aft, beside the harness, exactly as it does for the
+    # plate.
+    if lowerEnd == "clevis":
+        lowerJoint = Pos(kneeOutboardOffset, 0, -jointZ) * mirrored(
+            statorClevis(), Plane.YZ
+        )
+    else:
+        lowerJoint = Pos(0, 0, -jointZ) * mirrored(statorPlate(), Plane.YZ)
 
     # The two cable-tie arches, standing on the INBOARD face at each end of the
     # waist -- the face the actuators are on, where a lead is inside the leg
@@ -264,10 +361,16 @@ def limbAssembly(limbLength: float) -> list:
     # measured on its own. The tunnel is cut through the lap as well: that part
     # of it is buried in the plate, which fills it back in, and the plate's own
     # face is what the strap runs on.
+    #
+    # The clevis end's arch is the one thing on this piece the saddle moves. A
+    # closed box reaching 36 mm from the joint axis swallows an arch at 30.5 and
+    # leaves its tunnel inside the cavity, so that end uses limbTieArchZClevis
+    # instead; cad/parameters.py carries the reason beside both numbers.
     arches = []
     archOuterX = rotorHubInnerX - limbTieArchHeight
-    archZ = jointZ - limbTieArchZ
-    for side in (1, -1):
+    lowerArchZ = limbTieArchZClevis if lowerEnd == "clevis" else limbTieArchZ
+    for side, station in ((1, limbTieArchZ), (-1, lowerArchZ)):
+        archZ = jointZ - station
         archBlank = Pos(archOuterX, limbTieArchY, side * archZ) * Box(
             limbTieArchHeight + limbTieArchLap,
             limbTieArchWidth,
@@ -286,4 +389,4 @@ def limbAssembly(limbLength: float) -> list:
         )
         arches.append(archBlank - tunnel)
 
-    return [waistPlate, gussetFront, gussetRear, upperDisc, lowerPlate, *arches]
+    return [waistPlate, gussetFront, gussetRear, upperDisc, lowerJoint, *arches]

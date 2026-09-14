@@ -309,12 +309,71 @@ xt60Height = 7.5
 # put something like 50 V onto drivers rated for 30. Both mistakes are physically
 # impossible rather than merely labelled -- which two identical male panel mounts
 # would not have been, and that was asked.
-# INA226 bus monitor and its shunt, on the power-entry board. New hardware: the
-# controller has had no way to read pack state, which matters on a battery in a
-# way it never did on a bench supply.
-busSenseWidth = 24.0
-busSenseDepth = 18.0
+# INA226 bus monitor and its shunt. New hardware: the controller has had no way
+# to read pack state, which matters on a battery in a way it never did on a bench
+# supply.
+#
+# THE BOARD IS DRAWN FROM THE VENDOR'S OWN PHOTOGRAPHS NOW rather than as a
+# guessed block, and both plan figures moved: it is square at about 22 mm a side
+# and not 24 x 18. PROVENANCE, AND IT IS THE WEAKEST ON THIS PAGE. The module's
+# front and back views were scaled against the one hard dimension a photograph of
+# it carries, the 2.54 mm pitch of its eight-way header, and cross-checked
+# against the 2010-size shunt lying beside it. NOBODY HAS PUT A CALIPER ON THIS
+# PART. Every number in this block and the two below it is a photograph's answer
+# and wants replacing with a measured one -- which is cheap, because the only
+# things derived from them are the two posts cad/deck.py hangs the board on.
+busSenseWidth = 22.0
+busSenseDepth = 22.0
 busSenseHeight = 8.0
+
+# WHAT THE PHOTOGRAPHS SETTLED, and it is why this board is screwed down now
+# rather than taped. It carries FOUR large plated holes in one column near its
+# right-hand edge, and they are two different things: the inner pair, boxed in
+# silkscreen on the front and labelled IN+ and IN- on the back, are the shunt
+# terminals and no use to a mount. The outer pair carry no label or copper on
+# either face, and those are the mounting holes.
+#
+# THE INSET IS WHAT RULES THE SCREW SIZE, not the hole. Each sits about 2.5 mm in
+# from its own edge, and an M3 clearance hole at 3.4 mm breaks out of a board
+# edge that close with nothing left round it. M2 fits and M2 is what the
+# disconnect's ears already buy, so nothing new goes on the bill.
+busSenseHolePitch = 16.7
+busSenseHoleInset = 2.5
+
+# HOW IT IS HELD. Two piloted pads off the pelvis's REAR WALL, with an M2
+# self-tapping screw down through each hole from above -- the same fastener every
+# other board mount on this robot uses, for the reason recorded beside
+# m25InsertBore in cad/parameters.py: no wall a board lands on here is thick
+# enough to sink an insert. Ø1.7 is M2's minor diameter plus the tenth a printed
+# hole comes out under nominal. The pads are cad/torso.py's `busSenseLedges` and
+# are the same kind of feature as the four that carry the deck.
+busSensePilot = 1.7
+busSenseLedgeWidth = 6.0
+busSenseLedgeDepth = 6.5
+busSenseLedgeHeight = 8.0
+
+# WHY THE REAR WALL, AND NOT THE DECK OR THE FLANK.
+#
+# It hung under the electronics deck for one revision, and that was wrong for a
+# reason no gate measures: this board's leads run DOWN, to the shunt and to the
+# bus, so a deck that carries it is a deck tied to the torso by wiring -- and the
+# deck is the one assembly in this robot that has to come straight up and out,
+# taking the battery's hold-down and the BMS's top guides with it.
+#
+# THE OUTBOARD FLANK WAS THE OBVIOUS ALTERNATIVE AND IT FAILS ON THE BOUGHT
+# BOARD. That flank is flat and free over exactly the span this needs -- it was
+# probed -- but the distribution board's edge is 3 mm off it, which is not enough
+# material to carry a Ø1.7 pilot. Any pad big enough to take a screw therefore
+# overhangs the bought board and traps it: it could no longer be lifted straight
+# off its four standoffs. The rear wall has an 8.6 mm strip of floor behind that
+# board which nothing stands on, so a pad there overhangs NOTHING PRINTED OR
+# BOUGHT. The monitor itself overhangs the board, on two screws, and comes off
+# first -- which is a disassembly order and not a trap.
+#
+# AND THE SCREWS GO IN DOWNWARD. The column straight above both pads is clear of
+# the fuse, the cans and the BEC all the way to the deck plane, so a driver comes
+# down into an open bay rather than sideways into the 31 mm slot the flank would
+# have asked for.
 
 # The looms, as chases rather than as wires. 14 AWG silicone for the bus, a
 # sleeved twisted pair for CAN, and the six actuator harnesses bundled in two
@@ -363,6 +422,54 @@ packLeadZ = pdbTopZ + 17.0
 # this station has moved down here: it cannot be stated until that board's own
 # thickness and standoff are.
 capacitorZ = pdbTopZ
+
+# ---- and where the bus monitor lands ---------------------------------------
+#
+# DOWN HERE FOR THE SAME REASON capacitorZ IS: the pads stand a fixed height over
+# the bought board's top face, and that face cannot be stated until its thickness
+# and its standoff have been.
+# THE x STATION IS THE DECK LEDGE'S, and that is worth reading because it is not
+# obvious and it was found by measuring rather than by thinking.
+#
+# The rear wall already carries one of the four pads cad/deck.py's plate lands
+# on: 12 mm of it, from x = 46 to 58, standing at z = 0 to 5. THAT PAD IS
+# DIRECTLY OVER THIS STRIP. A screw anywhere under it cannot be reached straight
+# down -- the driver fouls the ledge two thirds of the way up -- and a 16.7 mm
+# pitch is too short to straddle a 12 mm obstacle with a driver either side, so
+# both screws have to fall on the same side of it. Inboard is the only side with
+# room: outboard there are 16.55 mm to the flank and the pair needs 22.7.
+#
+# So the inboard screw sits two millimetres inboard of that ledge's own edge --
+# enough to put a Ø4 driver shaft, which is a small screwdriver, past it without
+# touching -- and everything else follows. It puts the board's outboard edge 4.7 mm clear of the
+# distribution board's rear corner screw, which therefore stays reachable with
+# the monitor in place, and the inboard pad 3 mm under the outboard end of the
+# deck's cable chase -- above the actuator harnesses' floor reservation, not in
+# it, and tools/gate_f.py measures that rather than asserting it.
+#
+# y is the wall, less a millimetre of air. z is the pads, and their top face
+# stands 5 mm over the distribution board, which is what the header's solder
+# tails hang into.
+busSenseDriverClearance = 2.0
+busSenseX = (
+    deckLedgeX
+    - (deckLedgeWidth / 2)
+    - busSenseDriverClearance
+    + (busSenseHolePitch / 2)
+)
+# The pads first, because the board is placed BY them and not beside them: their
+# centre line is the hole line, and everything about the board follows from where
+# that lands. Hard against the wall, and standing so their top face clears the
+# distribution board by 5 mm.
+busSenseLedgeY = -interiorHalfDepth + (busSenseLedgeDepth / 2)
+busSenseLedgeTopZ = pdbTopZ + 5.0
+# And the board on them: its holes are busSenseHoleInset in from its rear edge,
+# so the board's centre is that much forward of the hole line plus half its own
+# depth. It comes out 0.75 mm off the wall, which is clearance for dropping it
+# straight down onto the pads and nothing more -- there is nothing on this wall
+# below the deck for it to foul.
+busSenseY = busSenseLedgeY + (busSenseDepth / 2) - busSenseHoleInset
+busSenseZ = busSenseLedgeTopZ
 # ---- what the rear wall carries, and how it is held --------------------------
 #
 # THE CONNECTOR PANEL IS GONE, September 2026, and this section is what took its
@@ -831,6 +938,23 @@ def _sbc_post_xy() -> list[tuple[float, float]]:
     ]
 
 
+def bus_sense_ledge_xy() -> list[tuple[float, float]]:
+    """The two stations cad/torso.py puts the bus monitor's pads on.
+
+    A PAIR IN LINE AND NOT A DIAGONAL, which is what the board's own hole pattern
+    is: both holes sit on one edge, so the board is a tab cantilevered off them
+    rather than a plate held at four corners. Two screws in a line still stop it
+    turning, which is the whole of what a 5 g board asks for.
+
+    Read off busSense* rather than written down, so that correcting the pitch
+    once somebody has a caliper on the part moves the pads with it.
+    """
+    return [
+        (busSenseX + dx, busSenseLedgeY)
+        for dx in (-busSenseHolePitch / 2, busSenseHolePitch / 2)
+    ]
+
+
 def sbc_posts_through_carrier() -> list[tuple[float, float]]:
     """The posts that have to pass through the controller carrier, if any.
 
@@ -1206,14 +1330,20 @@ def torsoElectronicsGroups() -> dict[str, list]:
             for dx in (-17.0, -5.7, 5.7, 17.0)
         ],
         "fuse holder": [slab(20.0, 10.0, 14.0, powerX + 12.0, pdbY + 2.0, pdbTopZ)],
+        # OFF THE DISTRIBUTION BOARD AND UNDER THE DECK, September 2026. It lay
+        # on the bought board's top face held by tape, which was an answer but a
+        # poor one for a part that carries the only reading of pack state this
+        # robot gets. The board turned out to have two mounting holes; the
+        # dimension block says what the photographs showed and cad/deck.py has
+        # the posts.
         "bus monitor": [
             slab(
                 busSenseWidth,
                 busSenseDepth,
                 busSenseHeight,
-                powerX + 8.0,
-                pdbY - 12.0,
-                pdbTopZ,
+                busSenseX,
+                busSenseY,
+                busSenseZ,
             )
         ],
         # The logic rail. It was a generic buck module reserved on the deck and it

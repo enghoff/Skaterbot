@@ -183,6 +183,39 @@ ADDED = {
     "capHeadOuterX": 55.95,
     "screwTipX": 38.95,
     "washerCenterX": 49.95,
+    # cad/joint.py: the fillet where an integral journal meets the disc it grew
+    # out of. It did not exist while the journal was a dowel dropped into a
+    # blind seat -- there was no root to relieve. 0.8 mm on a Ø10 shaft is
+    # r/d = 0.08, which is not generous; it is what the space allows, because the
+    # bearing's inner face is 1 mm off the disc and the fillet stops short of it.
+    "journalRootFillet": 0.8,
+    # cad/poses.py: how far the knee may fold. It was 110 degrees, inherited from
+    # the walking robot and never disputed by the geometry because the flat limbs
+    # left thigh and shin in disjoint planes. Straddling the knee puts the
+    # clevis's saddle back in the plane the shin sweeps -- unavoidably: a far
+    # bearing means reaching round the actuator -- and the two touch at 103.0
+    # degrees. 100 is where the gap is 1.0 mm, which is also the air the shin's
+    # rotor disc has against the far cheek, so one margin covers both. The squat
+    # and both knee review scenes are derived from it, and so is the URDF's knee
+    # limit; tools/gate_f.py carries the poses that moved with it.
+    "kneeCommissioningStop": 100.0,
+    # cad/limb.py: where the cable-tie arch sits at a limb's CLEVIS end. The
+    # 30.5 mm station the plate end uses was chosen against a Ø52 disc and
+    # nothing else; a clevis puts a closed saddle box out to 36 mm from the joint
+    # axis, which swallows an arch at 30.5 and leaves its tunnel inside the
+    # cavity with no way to pass a tie. 42 stands the whole 10 mm block clear of
+    # the saddle's top face. Only the thigh uses it -- the shins are unchanged,
+    # which is why their golden STEP still holds.
+    "limbTieArchZClevis": 42.0,
+    # cad/parameters.py: how far the knee joint stands outboard of every other.
+    # A flat limb lands a 6 mm plate on its lower actuator's rear cover and that
+    # plate is the leg's exterior face; the straddled knee lands a 3 mm cheek
+    # held the actuator's 0.3 mm off it, so the fork ended 2.7 mm inside the
+    # leg's own surface. The whole joint moves rather than the fork -- actuator,
+    # fork, shin, wheel motor and wheel together -- so every printed part keeps
+    # its shape and the fork stays the part gate B holds. limbPlateThickness less
+    # cheekThickness less actuatorClearance, all three already held here.
+    "kneeOutboardOffset": 2.7,
     # cad/joint.py: the front cheek's bore, now cut to the bearing rather than to
     # the deleted carrier. Ø19 outside diameter plus the same 0.2 mm bond
     # allowance the Ø10.2 journal seat carries. The four carrier dimensions it
@@ -357,9 +390,47 @@ ADDED = {
     "dcdcWidth": 26.0,
     "dcdcDepth": 42.0,
     "dcdcHeight": 14.0,
-    "busSenseWidth": 24.0,
-    "busSenseDepth": 18.0,
+    # THE BUS MONITOR'S TWO PLAN FIGURES MOVED, September 2026, and the reason is
+    # that the board was finally looked at. It had been a guessed 24 x 18 block
+    # since the day it went on the bill; the vendor's own front and back views
+    # show a square board of about 22 a side, scaled against the 2.54 mm header
+    # pitch that is the only hard dimension a photograph of it carries. A
+    # PHOTOGRAPH IS NOT A CALIPER and cad/electronics.py says so at length -- but
+    # a measured 22 is a better input than an invented 24, and correcting it later
+    # moves the two posts with it because they are derived rather than typed.
+    "busSenseWidth": 22.0,
+    "busSenseDepth": 22.0,
     "busSenseHeight": 8.0,
+    # WHERE THAT BOARD SITS AND WHAT HOLDS IT, all new with the same change. The
+    # same two views show it carries two mounting holes -- the outer pair of the
+    # column of four, the inner pair being the shunt terminals -- so it is
+    # screwed to two pads on the pelvis's rear wall instead of taped to the
+    # distribution board. The pitch and the inset are the photograph's; the
+    # pilot, the pad and the setback are ours, and cad/electronics.py gives each
+    # a reason.
+    #
+    # IT HUNG UNDER THE ELECTRONICS DECK FOR ONE REVISION and those names are
+    # gone with it -- busSensePostDiameter and busSenseStandoff. The deck was
+    # wrong for a reason no gate measures: the board's leads run down into the
+    # bay, so a deck carrying it is a deck tied to the torso by wiring.
+    "busSenseHolePitch": 16.7,
+    "busSenseHoleInset": 2.5,
+    "busSensePilot": 1.7,
+    "busSenseLedgeWidth": 6.0,
+    "busSenseLedgeDepth": 6.5,
+    "busSenseLedgeHeight": 8.0,
+    "busSenseDriverClearance": 2.0,
+    # The stations, DERIVED AND NOT CHOSEN, pinned here at their computed values
+    # the way pdbTopZ and packLeadZ above are. x is the rear deck ledge's own
+    # edge, less the room a driver needs beside it, plus half the hole pitch;
+    # y and z are the wall and the pads. Move the ledge, the wall or the bought
+    # board's standoff and this gate says so rather than letting the monitor
+    # follow silently.
+    "busSenseLedgeY": -30.35,
+    "busSenseLedgeTopZ": -21.4,
+    "busSenseX": 52.35,
+    "busSenseY": -21.85,
+    "busSenseZ": -21.4,
     # The looms, reserved as chases rather than drawn as routed wire.
     "busWireDiameter": 3.5,
     "canWireDiameter": 2.6,
@@ -647,6 +718,33 @@ ADDED = {
 # decision without loosening the gate. The reason lives with the dimension in
 # cad/parameters.py; the sentence here is the index entry.
 CHANGED = {
+    # ---- THE JOURNAL IS PRINTED WITH THE LIMB, September 2026 ---------------
+    #
+    # It was a Ø10 x 8 hardened dowel bonded 2.2 mm into a blind seat in the
+    # limb's output disc, so its length was seat plus air plus bearing. It is a
+    # stub grown out of that disc now, so its length is only what stands PROUD:
+    # across the 1 mm of air and through the bearing's 5 mm, ending flush with
+    # its outer face. Same journal in the same place; 2 mm of it has become disc.
+    #
+    # Four bought items, four bonded joints and 29.6 g of steel go with it, and
+    # it is sound only because docs/PLAN.md decision 1 moved the material to SLS
+    # PA12: the root carries the bearing's reaction as bending, which on an FDM
+    # part laid flat crosses every layer line at 30 MPa and is 48 MPa in any
+    # direction once the material is isotropic. cad/parameters.py has the figures
+    # and says plainly what is still unquantified.
+    "journalLength": (
+        8.0,
+        6.0,
+        "the stub stands 6 mm proud where the dowel was 8 long",
+    ),
+    # Follows arithmetically. The forked rotor is still DRAWN BUT NOT FITTED and
+    # nothing imports it, but it measures its rear journal off the front one's
+    # length, so it moves with it rather than being left saying 8.
+    "rearJournalCenterX": (
+        -23.45,
+        -24.45,
+        "the forked rotor's rear journal follows the front one's length",
+    ),
     # ---- THE TORSO GREW TO CARRY A BATTERY, September 2026 ------------------
     #
     # Twenty-three names and ONE decision. They are listed one by one rather than

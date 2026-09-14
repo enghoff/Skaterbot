@@ -108,6 +108,23 @@ DEVIATIONS = {
     # one mirror image of the other and agree to 1e-5.
     "limb-105-unmirrored": [
         {
+            "added_mm3": 655.4762,
+            "why": (
+                "THE JOURNAL IS PART OF THIS PRINT. It was a Ø10 x 8 hardened "
+                "dowel bonded into a Ø10.2 x 2.2 blind seat in the output disc; "
+                "the disc grows its own Ø10 stub 6 mm proud instead, with a "
+                "0.8 mm fillet at its root, and the seat is gone. Two changes of "
+                "the same sign, which is why this is one figure: 471.2 mm3 of "
+                "stub and about 4.5 of fillet added, and 179.8 of seat no longer "
+                "taken away. It deletes a bought item from four joints and 29.6 g "
+                "of steel from the robot. It is sound only because the material "
+                "moved to SLS PA12 -- the root carries the bearing's reaction as "
+                "bending, at 30 MPa across an FDM part's layers and 48 in any "
+                "direction once the material is isotropic. cad/parameters.py "
+                "carries the arithmetic and what is still unquantified."
+            ),
+        },
+        {
             "added_mm3": 206.3020897,
             "why": (
                 "the stator plate's connector relief is cut flush with the "
@@ -479,6 +496,33 @@ DEVIATIONS = {
                 "above again, on the two hips."
             ),
         },
+        {
+            "added_mm3": 368.3737348558,
+            "removed_mm3": -232.9282582224,
+            "why": (
+                "TWO PADS ON THE REAR WALL FOR THE BUS MONITOR, which had been "
+                "held by tape on the bought distribution board's top face until "
+                "the vendor's own photographs turned out to show two mounting "
+                "holes in it. Each pad is 6 x 6.5 x 8 with a Ø1.7 pilot 5 deep "
+                "for an M2: 352.65 mm3 as drawn, 705.30 for the pair, and the "
+                "part gains every one of those cubic millimetres. "
+                "THE FIFTH ODD SIGN IN THIS REGISTER, for the reason the four "
+                "above turn on. The golden's rear wall runs y -34.0 to -31.6 and "
+                "these stand from y -33.6 forward, so 232.93 mm3 of them falls "
+                "inside wall the old box already had and this one does not -- "
+                "material UN-REMOVED rather than material added, which is why "
+                "the two figures here are 368.37 and -232.93 and sum to the "
+                "705.30 the pads actually weigh. "
+                "THEY ARE ON THIS PART AND NOT ON THE DECK, where two posts "
+                "carried the board for one revision: its leads run down into the "
+                "bay, and the deck is the assembly that has to come straight out "
+                "with nothing tethering it. And on the rear wall rather than the "
+                "flank because the distribution board's edge is 3 mm off the "
+                "flank, too little to hold a pilot without overhanging the "
+                "bought board and trapping it on its standoffs; behind it there "
+                "are 8.6 mm of floor nothing stands on."
+            ),
+        },
     ],
     # The lid, and this is the cleanest example of what a resize does to this
     # test: the figures below are EXACTLY the new lid's volume and exactly the
@@ -525,13 +569,23 @@ def registry() -> dict[str, callable]:
     which is what the printed pieces are while phase 1 lasts. Either is unioned
     before the comparison, the same way the golden shells are.
     """
-    from cad import joint, thigh, torso, wheel_adapter
+    from cad import joint, shin, torso, wheel_adapter
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
-        "limb-105-unmirrored": thigh.thighRight,
-        "limb-105-mirrored": thigh.thighLeft,
+        # THE SHIN IS THE PIECE THESE TWO NAMES NOW MEAN, and it is the same
+        # solid they always meant. `limb-105-unmirrored` was the right thigh and
+        # the left shin, one print serving both, because both leg segments are
+        # 105 mm and both ended in a plate. Straddling the knee ends that: a
+        # thigh finishes in a clevis and a shin still finishes in a plate, so
+        # they are two pieces. The SHIN is the one that did not change -- it is
+        # `limbAssembly(105)` exactly as it was -- so it keeps the name and the
+        # golden STEP, and this gate goes on holding the geometry it always held.
+        # The thighs are new pieces with no golden to be held against, like the
+        # electronics deck, and gate E is what counts their features instead.
+        "limb-105-unmirrored": shin.shinLeft,
+        "limb-105-mirrored": shin.shinRight,
         "wheel-adapter-right": wheel_adapter.wheelAdapterRight,
         "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
         "pelvis-shell": torso.pelvisShell,

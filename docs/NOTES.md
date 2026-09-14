@@ -1608,3 +1608,229 @@ this line already carried, 1.1 is the arches. The robot totals 2 108.6 g against
 its 2 300 ceiling, 191.4 g under. All six gates pass, the URDF is rebuilt from
 the re-exported meshes, and `simulation/check_model.py` still agrees with the
 CAD.
+
+---
+
+## The knee gets its bearing back, and the leg gets shorter legs — September 13, 2026
+
+The thigh no longer ends in a flat plate. Its lower end is `cad/joint.py`'s
+`statorClevis` — the part the hip has always used, unaltered — two cheeks
+straddling the knee actuator with a 6800 bonded into the far one, and a Ø10
+dowel journal reaching into it out of the shin's rotor disc. The shin is
+untouched. Four bearing-and-journal sets on the robot now rather than two.
+
+### Why the knee and not the wheel joint
+
+The flat limbs left every lower joint hanging on the actuator's own output
+bearing, and the entry above from 29 August records the two numbers that rest on
+it and the fact that DAMIAO have never confirmed either: **0.45 Nm standing on
+one leg, about 1.35 Nm landing at three times body weight**, because the plate
+sits 22 mm off the axis.
+
+Those are the knee's numbers, and the knee's alone. Everything below it hangs off
+it — the shin, the wheel motor, the adapter and the wheel. The wheel joint below
+carries the wheel and nothing else, on a 12 mm arm rather than a 22 mm one, which
+`cad/wheeled_parameters.py` already put at 0.12 and 0.36 Nm and called "not the
+governing case". A sideways scuff widens the gap further: the knee stands 145 mm
+from the contact patch where the wheel bearing stands 40.
+
+And the wheel joint has nowhere to put a second bearing that does not mean a fork
+reaching round a Ø80 wheel, turning at road speed all day. The knee's second
+support is a part that already exists.
+
+### What it cost
+
+| | Before | After |
+|---|---:|---:|
+| Thigh, each | 37.1 g | **46.7 g** |
+| Bearing and journal sets | 2 | **4** |
+| Printed structure | 444.1 g | **465.9 g** |
+| Whole robot | 2 108.6 g | **2 147.5 g** |
+| Headroom under 2 300 g | 191.4 g | **152.5 g** |
+| Distinct limb prints | 2, printed twice each | **4, one each** |
+| Knee commissioning stop | 110° | **100°** |
+| Deepest squat | 89.5 mm of drop | **75.0 mm** |
+
+38.9 g all in, of which half is steel.
+
+### The fold limit comes back, and it had to
+
+The flat limbs' best trick was that thigh and shin lay in disjoint slabs of X on
+either side of the knee motor and could not touch at any angle, so the 110°
+commissioning stop was a control decision and nothing more. **A straddle cannot
+keep that.** Reaching a bearing round to the far side of an actuator means a
+saddle spanning the joint, and the saddle stands 24 to 36 mm above the axis —
+squarely in the plane the shin sweeps.
+
+Measured rather than argued: the shin's waist is a 40 mm plate whose top corners
+sit 24.4 mm from the knee axis, they touch the saddle's floor at **103.0°**, and
+at 110° the two share 62 mm³. The stop is 100° now, which is where the gap
+between them is exactly 1.0 mm — the same air the shin's rotor disc has against
+the far cheek, so one margin in `tools/gate_f.py` covers both. `cad/poses.py`
+derives the squat and both knee review scenes from that one constant, and the
+URDF's knee limit reads it out of the CAD.
+
+Three ways of buying the 110° back were looked at and all three are worse than
+the 14.5 mm of squat they would return. Trimming the shin's waist corners cuts
+exactly the material the gussets were added to provide, at the peak-stress
+section. Notching the saddle's floor puts a hole through it 0.5 mm from the far
+cheek's root, which is the load path the whole change exists to make. Narrowing
+the saddle in Y guts the cheek necks.
+
+### Two prints become four, and one of them cannot be printed flat
+
+The right thigh and the left shin used to be the same solid, so two prints
+covered four limbs. Not any more: a thigh ends in a clevis and a shin in a plate.
+Same part count on the robot, twice as many things to slice.
+
+**The shin is the piece that did not change**, so it keeps the `limb-105` name,
+and with it the golden STEP `tools/gate_b.py` holds it against — `gate_b.py`'s
+registry simply points those two names at `cad/shin.py` now and both still match
+the engine's geometry exactly. The thighs are new pieces with no golden behind
+them, like the electronics deck, and `tools/gate_e.py` counts their thirteen
+features instead: the ten M3 holes they always had, plus the bearing seat, its
+shoulder and the boss that carries it, which are asserted together because the
+seat is 5 mm deep in a 3 mm cheek and only exists if the boss was unioned on
+first.
+
+**What is genuinely unresolved is how a thigh should be printed.** A flat limb
+lies on the bed with every fibre running along it. A thigh's far cheek stands
+48 mm across the joint from its plate, joined only by the saddle, so laid the
+same way it has a Ø52 disc floating in the air. On end or on its flank, either
+puts layer lines across a section that had none, and the entry from 30 August
+puts that at 21 N sideways at the wheel against 53. Nothing in the gates can
+settle it.
+
+### What is checked
+
+All six gates pass. Gate B holds both shins byte-for-byte against the engine's
+STEPs and the clevis against its own. Gate E counts thirteen features on each
+thigh and both cable-tie tunnels open — the clevis-end arch had to move from
+30.5 mm to 42 to stand clear of the saddle, and an arch inside a saddle is
+exactly the closed tunnel that test exists for. Gate F measures the fold at the
+stop, ten degrees under it and in the squat, the bearing seated in the thigh's
+cheek, the journal in the shin's disc, and the clevis's 0.3 mm off the rear
+cover. Gate D drives the tree to 50°/100° and lands both wheels on the floor.
+
+### What is not
+
+The thigh's print orientation, above. The torque envelope, which the entry from
+29 August left open and which this does not close — it takes the knee off the
+list of joints waiting on DAMIAO and leaves the wheel joint on it, at a third of
+the load. And the value of the second bearing itself is still an argument rather
+than a measurement: nobody has loaded a printed cheek with a bonded 6800 in it.
+`docs/BOM.md`'s fit coupon is where that gets settled.
+
+---
+
+## The parts get sintered, and the journal stops being a part — September 13, 2026
+
+Two changes, and the order matters: the material moved first and the journal
+followed, because on the old material the journal would have been the thing that
+broke.
+
+### SLS PA12, and the reason is the layer axis
+
+Every strength argument this project has ever had came in two numbers. PA12-CF
+gives about **75 MPa in the print plane and about 30 across the layers**, and
+almost everything above is arithmetic against that pair: which way a limb lies on
+the bed is worth 2.5x on it, the thigh could not be laid flat at all once its
+knee clevis existed, and the one thing that decides whether a part survives is
+usually the 30.
+
+Laser-sintered PA12 has no weak axis — about **48 MPa in every direction**. That
+is worse than 75 and much better than 30, and it is the second figure that has
+been governing.
+
+### What it bought
+
+| | Before | After |
+|---|---:|---:|
+| Density | 1.06 g/cm³ | **0.93 g/cm³** |
+| Printed structure | 465.9 g | **411.8 g** |
+| Bought steel at the joints | 49.4 g | **20.0 g** |
+| Whole robot | 2 149.7 g | **2 073.8 g** |
+| Headroom under 2 300 g | 150.3 g | **226.2 g** |
+
+Fifty-four grams of that is the density alone, on parts whose shape did not
+change by a thousandth of a millimetre. The rest is the journal, below.
+
+**Print orientation stops being a design input**, which quietly retires the open
+question the thigh's clevis had created a few hours earlier: a thigh cannot be
+laid flat, and it no longer matters which way it is built.
+
+### What it costs, and one of these is unfinished
+
+Parts are sent out now — a per-part cost and a turnaround where there was a spool
+and an afternoon. The 2.4 mm wall was four perimeters of a 0.6 mm nozzle and now
+means nothing; it is a thickness SLS holds comfortably, but it is no longer
+*derived* from anything. And **every section designed against 75 MPa in the print
+plane is now designed against 48**, which nobody has been back through. The
+limb's worst section had seven times its load and has room to spare; that sweep
+is open work rather than a finding.
+
+**0.93 g/cm³ is the bureau's number, not ours.** Sintered PA12 runs 0.90 to 0.95
+depending on how powder is packed and refreshed, which is about 5 g across the
+robot. It is the softest figure in the printed half of the table.
+
+### The journal is printed with the limb
+
+It was a Ø10 × 8 hardened dowel bonded into a Ø10.2 × 2.2 blind seat in the
+limb's output disc. The disc grows its own Ø10 stub instead, 6 mm proud with a
+0.8 mm fillet at the root, at the hip on a thigh and at the knee on a shin — the
+two straddled joints on each leg. **Four bought items, four bonded joints, 29.6 g
+of steel and the seat itself, all gone.**
+
+It was the wrong thing to do a day earlier. The stub carries the bearing's
+reaction as bending at its root: **17.8 to 23.2 MPa** at the 500–650 N this
+project records at the 6800. Against PA12-CF's 30 MPa across the layers — which
+is exactly what a root standing off a flat-laid plate is made of — that is a
+margin of 1.3 to 1.7, on the joint that takes the actuator's full torque, where
+the limb's own worst section is held to seven times its load. Against 48 MPa
+isotropic it is 2.1 to 2.7, and the stub is no longer the thing that goes first.
+
+### What is still not known about it
+
+**Fatigue.** Nobody has run it, and a printed shaft turning under a reversing
+bending load is exactly where it would matter.
+
+**The root.** 0.8 mm on a Ø10 shaft is r/d = 0.08, a stress concentration near
+1.9, and 1.9 × 23.2 is 44 MPa against 48. The static case survives that because
+PA12 is ductile at about 18 per cent elongation and the peak redistributes; a
+cyclic one might not. The fillet is as large as the space allows — the bearing's
+inner face sits 1 mm off the disc and the fillet has to stop short of it.
+
+**The bearing fit.** The stub is Ø10 nominal in a Ø10 bore, printed rather than
+ground, and SLS holds about ±0.2 mm. The inner race will want bonding onto it
+with the same retaining compound that holds the outer race in the cheek, exactly
+as the bond takes up the gap everywhere else here. That is an argument, not a
+measurement, and `docs/BOM.md`'s fit coupon is still where it gets settled.
+
+### What is checked
+
+All six gates pass. Gate B holds the limbs to a declared **+655.48 mm³** each —
+471.2 of stub, about 4.5 of fillet, and 179.8 of seat no longer taken away —
+and nothing else moved. Gate E counts the Ø10 journal as a cylindrical face on
+the finished solid, which is the check that the union actually happened: a union
+that quietly does nothing leaves a disc with no stub and nothing else to report
+it. Gate C needed a change of its own to stay meaningful, and it is worth
+knowing: the mass baseline is a record of **geometry**, so comparing today's
+parts against it at today's density would have reported every part on the robot
+as having drifted the moment the material changed. It compares at the baseline's
+own density now, and the roll-up reports at the real one.
+
+### One thing found along the way and not acted on
+
+The actuator's output face carries a **Ø9 +0.02/+0.04 bore on its axis**, with a
+Ø3 +0.03/+0.05 ↧4 dowel hole beside it — manual V1.0, page 5. Neither is used by
+anything in this CAD. **No depth is given for the Ø9**, and the 2D print that
+would say is the one vendor file this repository has not mirrored. A Ø9 journal
+piloting in the motor's own bore, with a 689 (9 × 17 × 5) in place of the 6800,
+would locate the joint in steel at both ends and retire the printed seat's
+coaxiality argument altogether — at the cost of 27 per cent of the journal's
+bending strength, since section goes as the cube of diameter. It needs the depth
+first, which needs a caliper or a question to DAMIAO.
+
+Also unresolved from the same drawing: the output register measures as both Ø25
+and Ø30 depending on which circle the leader is read against, and
+`cad/parameters.py` carries Ø30. Worth a caliper before the pelvis is printed.

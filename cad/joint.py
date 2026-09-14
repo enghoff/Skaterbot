@@ -50,6 +50,7 @@ from build123d import (
     Plane,
     Pos,
     Rot,
+    Torus,
     extrude,
     make_face,
 )
@@ -67,6 +68,8 @@ from cad.parameters import (
     cheekThickness,
     frontCheekX,
     jointKeepOut,
+    journalDiameter,
+    journalRootFillet,
     journalSeatDepth,
     journalSeatDiameter,
     limbPlateThickness,
@@ -273,21 +276,61 @@ def outputRegisterCutter():
     )
 
 
-def outputDisc():
+def _journalRoot():
+    """The fillet where an integral journal meets the disc it grew out of.
+
+    A quarter-round, tangent to the disc's outer face and to the journal's own
+    surface, built as a ring with a torus taken out of it rather than asked of
+    OCCT's filleter. cad/finish.py records why a filleted body is something to
+    keep away from a boolean, and this one has bolt holes still to be cut.
+
+    Ø10 with a 0.8 mm root is r/d = 0.08, which is not a generous fillet. It is
+    the one the space allows: the bearing's inner face is 1 mm off the disc, and
+    the fillet stops 0.2 mm short of it.
+    """
+    radius = journalRootFillet
+    ring = _disc(journalDiameter + 2 * radius, radius, rotorHubOuterX + radius / 2)
+    relief = (
+        Pos(rotorHubOuterX + radius, 0, 0)
+        * Rot(0, 90, 0)
+        * Torus(journalDiameter / 2 + radius, radius)
+    )
+    return ring - relief
+
+
+def outputDisc(journalStub: float = 0.0):
     """The plate that bolts to the actuator's output.
 
     Kept on its own so that the two rotor ends -- the offset hub the hip carrier
     and the foot use, and the in-plane plate the limbs use -- are the same disc
-    with different structure hung off it. Ø30 register, Ø10 journal seat, six M3
-    counterbored into the Ø24 output circle.
+    with different structure hung off it. Ø30 register, six M3 counterbored into
+    the Ø24 output circle, and at the centre either a seat for a journal or a
+    journal.
+
+    `journalStub` grows the Ø10 journal OUT of this disc, printed with it, and
+    takes the blind seat away -- there is nothing to seat any more. Zero leaves
+    the seat, which is what the wheel adapter wants: it shares this disc and has
+    never carried a journal, and leaving it alone is what keeps that piece
+    identical to its golden STEP. cad/parameters.py carries why the stub only
+    became structurally honest when the material went isotropic.
     """
     hubRaw = _disc(rotorHubDiameter, rotorHubThickness, rotorHubCenterX)
-    registerPocket = outputRegisterCutter()
-    journalSeatCutter = _disc(
-        journalSeatDiameter, journalSeatDepth, rotorHubOuterX - (journalSeatDepth / 2)
-    )
+    part = hubRaw - outputRegisterCutter()
 
-    part = hubRaw - registerPocket - journalSeatCutter
+    if journalStub:
+        # The stub, then the fillet at its root, BOTH before the bolt holes are
+        # drilled. Neither reaches r5.8 and the counterbores start at r12, so
+        # they cannot meet -- but the ordering is the one CLAUDE.md insists on,
+        # because a union over a hole is the failure this project has shipped.
+        part += _disc(journalDiameter, journalStub, rotorHubOuterX + journalStub / 2)
+        part += _journalRoot()
+    else:
+        part -= _disc(
+            journalSeatDiameter,
+            journalSeatDepth,
+            rotorHubOuterX - (journalSeatDepth / 2),
+        )
+
     for cutter in _outputBoltCutters():
         part -= cutter
     for cutter in _outputCounterboreCutters():

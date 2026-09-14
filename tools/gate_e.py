@@ -120,6 +120,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     """
     from cad.electronics import (
         antennaHoleDiameter,
+        busSensePilot,
         sbcHoleDiameter,
         sbcPostClearance,
     )
@@ -127,6 +128,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         bearingSeatBossDiameter,
         bearingSeatDiameter,
         bearingSeatShoulderBore,
+        journalDiameter,
         journalSeatDiameter,
         m2Clearance,
         m3CapCounterbore,
@@ -179,6 +181,12 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         # because the register pocket defect below bit it as well as the hub. Its
         # ten M3 holes are the six on the Ø24 output circle plus the four on the
         # Ø41 rear pattern, which are the same clearance and so the same radius.
+        #
+        # `limb-105` MEANS THE SHIN NOW. Both leg segments are still 105 mm, but
+        # the thigh ends in a clevis and the shin in a plate, so they are two
+        # pieces; the shin is the one that did not change and it keeps the name.
+        # The thigh's own row is below, and its whole reason for being there is
+        # that it carries three features this one does not.
         "limb-105-unmirrored": [
             (
                 "M3 clearance holes, six on the output circle and four on the rear",
@@ -187,7 +195,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             ),
             ("cap counterbores over the output six", m3CapCounterbore / 2, 6),
             ("Ø30.4 register pocket", rotorRegisterDiameter / 2, 1),
-            ("Ø10.2 journal seat", journalSeatDiameter / 2, 1),
+            # THE JOURNAL, not a seat for one. It is a union rather than a cut,
+            # so the failure it can hide is the opposite of this gate's usual
+            # one: a union that quietly did nothing leaves a disc with no stub
+            # and nothing to report it. One cylindrical face at r5 is that
+            # check. The root fillet is a torus and this gate cannot see it;
+            # tools/gate_b.py holds its volume instead.
+            ("Ø10 integral journal", journalDiameter / 2, 1),
         ],
         # The payload boards are not printed, and they are here anyway. They are
         # mocks, but they are mocks that a printed standoff is going to be drawn
@@ -245,6 +259,15 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 bossHoleDiameter / 2,
                 12,
             ),
+            # AND TWO THAT ARE NOT M3, which is the whole reason _piloted took a
+            # diameter. The bus monitor's holes are 2.5 mm in from the board's
+            # own edge and an M3 clearance hole breaks straight out of an edge
+            # that close, so its two pads are piloted Ø1.7 for an M2. They are
+            # the smallest holes on this part; a pad drawn as a plain block
+            # reads none of them, and one pad drawn twice reads two on one
+            # station and none on the other, which this count would catch
+            # either way.
+            ("M2 pilots in the bus monitor's two rear-wall pads", busSensePilot / 2, 2),
             ("Ø19.2 bearing seats, one per hip", bearingSeatDiameter / 2, 2),
             (
                 "Ø17.5 shoulders the bearings seat against",
@@ -283,6 +306,38 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ],
     }
     rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
+
+    # THE THIGH, WHICH IS THE SHIN'S TEN HOLES PLUS THE STRADDLE'S THREE. The
+    # four rear bolts are in a 3 mm cheek now rather than through a 6 mm plate,
+    # which changes nothing this gate can see; what is new is the far cheek's
+    # bearing seat, the shoulder it lands on and the boss that carries it, and
+    # those are here for exactly the reason they are on joint-stator-clevis. The
+    # seat is 5 mm deep in a 3 mm cheek, so it only exists because the boss is
+    # unioned on BEFORE it is cut. Union it after -- which is the one ordering
+    # this project has actually shipped wrong -- and the seat fills back in,
+    # leaving the shoulder bore as the only cylinder of the three. Asserting all
+    # three together is what makes that visible.
+    #
+    # There is no golden STEP for a thigh, so unlike the shin this piece has
+    # nothing in gate B to fall back on. This count is the whole of its
+    # arithmetic.
+    from cad.parameters import (
+        bearingSeatBossDiameter,
+        bearingSeatDiameter,
+        bearingSeatShoulderBore,
+    )
+
+    rows["thigh-105-unmirrored"] = [
+        *rows["limb-105-unmirrored"],
+        (
+            "Ø19.2 bearing seat in the knee clevis's front cheek",
+            bearingSeatDiameter / 2,
+            1,
+        ),
+        ("Ø17.5 shoulder the bearing seats against", bearingSeatShoulderBore / 2, 1),
+        ("Ø26 boss carrying that shoulder", bearingSeatBossDiameter / 2, 1),
+    ]
+    rows["thigh-105-mirrored"] = rows["thigh-105-unmirrored"]
     return rows
 
 
@@ -299,6 +354,8 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
         "joint-rotor-hub": [register],
         "limb-105-unmirrored": [register],
         "limb-105-mirrored": [register],
+        "thigh-105-unmirrored": [register],
+        "thigh-105-mirrored": [register],
     }
 
 
@@ -336,6 +393,7 @@ def panel_openings() -> dict[str, list[tuple]]:
         limbTieArchWidth,
         limbTieArchY,
         limbTieArchZ,
+        limbTieArchZClevis,
         limbTieSlotWidth,
         rotorHubInnerX,
         shellWall,
@@ -364,27 +422,35 @@ def panel_openings() -> dict[str, list[tuple]]:
         )
     ]
 
-    def tieTunnels(hand: int) -> list:
-        archZ = upperLegLength / 2 - limbTieArchZ
+    # The two ends do not use the same station on a thigh. A clevis puts a closed
+    # saddle box where the plate end's 30.5 mm arch would stand, so that arch
+    # moves out to limbTieArchZClevis -- and an arch inside a saddle is exactly
+    # the failure this test exists for, a tunnel with the piece closed over it.
+    def tieTunnels(hand: int, lowerStation: float) -> list:
         return [
             (
                 f"cable-tie tunnel, {end} arch",
                 (
                     hand * (rotorHubInnerX - limbTieArchTunnel / 2),
                     limbTieArchY,
-                    side * archZ,
+                    side * (upperLegLength / 2 - station),
                 ),
                 (limbTieArchTunnel, limbTieArchWidth, limbTieSlotWidth),
                 "Y",
             )
-            for end, side in (("rotor-end", 1), ("stator-end", -1))
+            for end, side, station in (
+                ("rotor-end", 1, limbTieArchZ),
+                ("stator-end", -1, lowerStation),
+            )
         ]
 
     return {
         "pelvis-shell": pelvis,
         "electronics-deck": deck,
-        "limb-105-unmirrored": tieTunnels(1),
-        "limb-105-mirrored": tieTunnels(-1),
+        "limb-105-unmirrored": tieTunnels(1, limbTieArchZ),
+        "limb-105-mirrored": tieTunnels(-1, limbTieArchZ),
+        "thigh-105-unmirrored": tieTunnels(1, limbTieArchZClevis),
+        "thigh-105-mirrored": tieTunnels(-1, limbTieArchZClevis),
     }
 
 
@@ -419,13 +485,15 @@ def opening_material(
 
 
 def registry() -> dict[str, callable]:
-    from cad import deck, electronics, joint, thigh, torso
+    from cad import deck, electronics, joint, shin, thigh, torso
 
     return {
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
-        "limb-105-unmirrored": thigh.thighRight,
-        "limb-105-mirrored": thigh.thighLeft,
+        "limb-105-unmirrored": shin.shinLeft,
+        "limb-105-mirrored": shin.shinRight,
+        "thigh-105-unmirrored": thigh.thighRight,
+        "thigh-105-mirrored": thigh.thighLeft,
         "pelvis-shell": torso.pelvisShell,
         "electronics-deck": deck.electronicsDeck,
         "pcb-distribution": electronics.distributionBoard,

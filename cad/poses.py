@@ -40,6 +40,31 @@ from cad.wheeled_parameters import (
     wheeledTorsoCenterHeight,
 )
 
+# HOW FAR THE KNEE MAY FOLD, and it is geometry again rather than a number
+# inherited from the walking robot.
+#
+# 110 degrees was a commissioning recommendation carried over from the machine
+# this one descends from, and for a year nothing on the leg argued with it: the
+# flat limbs put thigh and shin in disjoint planes on either side of the knee
+# actuator, so the fold had no structural limit at all and 110 was simply where
+# the number had always been.
+#
+# Straddling the knee ends that, necessarily and not by oversight. A second
+# bearing on the far side of an actuator means reaching around it, and the thing
+# that reaches is the clevis's saddle -- a closed box spanning the joint 24 to
+# 36 mm above the axis, which is squarely in the plane the shin sweeps. The shin
+# is a 40 mm plate whose top corners stand 24.4 mm from the knee axis, so as the
+# leg folds they rise into the saddle's floor: measured, they touch at 103.0
+# degrees and share 62 mm3 at 110.
+#
+# 100 is where the gap between them is exactly 1.0 mm, which is also the air
+# between the shin's rotor disc and the far cheek -- so at this angle the fold
+# is no tighter than the joint's own assembly clearance, and tools/gate_f.py
+# holds both with one margin. Three degrees of the fold are given away to reach
+# it and the squat is 14.5 mm shallower for it; docs/NOTES.md carries what that
+# was weighed against.
+kneeCommissioningStop = 100.0
+
 
 def _leg(hipPitchZ: float, hipAngle: float, shinAngle: float) -> dict[str, float]:
     """Where one leg's knee, axle and two link centres land, from two angles.
@@ -117,17 +142,17 @@ def squat_check() -> dict[str, float]:
     """The deepest squat the knee stop allows, both wheels still on the ground.
 
     Two things set the pose and between them they leave no freedom: the knee
-    cannot pass its 110 degree commissioning stop, and both axles have to stay at
-    40 mm or the wheels are not on the floor. Making the squat symmetric, so each
-    axle sits under its own hip rather than thrown fore or aft, then fixes the hip
-    at half the knee angle.
+    cannot pass its commissioning stop, and both axles have to stay at 40 mm or
+    the wheels are not on the floor. Making the squat symmetric, so each axle sits
+    under its own hip rather than thrown fore or aft, then fixes the hip at half
+    the knee angle.
 
-    It costs 89.6 mm of height -- the robot stands 249 mm instead of 339 -- and
-    brings the knees 86 mm forward of the hip axis, which is the number to watch,
+    It costs 75.0 mm of height -- the robot stands 264 mm instead of 339 -- and
+    brings the knees 80 mm forward of the hip axis, which is the number to watch,
     because that is where the payload envelope and the knee actuators have to miss
     each other.
     """
-    squatKneeAngle = 110.0
+    squatKneeAngle = kneeCommissioningStop
     squatHipAngle = squatKneeAngle / 2
     squatShinAngle = squatHipAngle - squatKneeAngle
 
@@ -168,8 +193,8 @@ def _knee_review(kneeAngle: float) -> dict[str, float]:
 
 
 def knee_limit_check() -> dict[str, float]:
-    """The knee at its 110 degree commissioning hard stop."""
-    kneeLimitAngle = 110.0
+    """The knee at its commissioning hard stop, which is a measured angle now."""
+    kneeLimitAngle = kneeCommissioningStop
     review = _knee_review(kneeLimitAngle)
     return {
         "kneeLimitAngle": kneeLimitAngle,
@@ -181,8 +206,8 @@ def knee_limit_check() -> dict[str, float]:
 
 
 def knee_prelimit_check() -> dict[str, float]:
-    """The same knee at 100 degrees, just short of contact."""
-    kneePreLimitAngle = 100.0
+    """The same knee ten degrees short of the stop, for a look before contact."""
+    kneePreLimitAngle = kneeCommissioningStop - 10.0
     review = _knee_review(kneePreLimitAngle)
     return {
         "kneePreLimitAngle": kneePreLimitAngle,

@@ -5,7 +5,8 @@
 """Measure the printed parts and roll the whole robot's mass up against its ceiling.
 
 Every geometry change is supposed to be reported with its mass delta. This
-integrates each printed part's volume at PA12-CF density, multiplies by the count
+integrates each printed part's volume at the print material's density,
+multiplies by the count
 the robot carries, adds the bought and estimated items, and compares the total to
 the ceiling. Parts, counts, allowances and the functions that build them all live
 in mass_budget.toml beside this file; nothing is hard-coded here.
@@ -76,7 +77,27 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +1.5,
+        +22.0,
+        "THE JOURNAL IS PART OF THIS PRINT, which is 1.4 g of the figure: the "
+        "Ø10 stub the limb's output disc now grows into the far bearing, less "
+        "the blind seat it used to be bonded into. It deletes a bought dowel "
+        "from four joints and 29.6 g of steel from the robot, and it is only "
+        "sound because the material went isotropic -- cad/parameters.py has "
+        "that arithmetic and what about it is still unquantified. "
+        "THE KNEE IS STRADDLED, which is 19.2 g of the figure and 9.6 g a "
+        "thigh: the flat plate on the knee motor's rear cover is cad/joint.py's "
+        "statorClevis instead, two cheeks reaching round the motor to a 6800 "
+        "bonded into the far one. It buys the joint that carries the whole leg "
+        "below it a second bearing, where it had only the actuator's own output "
+        "bearing on a 22 mm overhang -- the question DAMIAO have never answered. "
+        "The waist gives 6.1 mm of its length back at that end, because what it "
+        "lands on is the saddle rather than a disc, and the clevis-end cable-tie "
+        "arch moves out to 42 mm to stand clear of that saddle. Neither shows "
+        "separately here; gate E counts the three features the clevis brings and "
+        "gate F measures what the saddle costs the knee's fold. There is no "
+        "golden STEP for a thigh any more, so this line and gate E are the whole "
+        "of its arithmetic. The remaining 1.5 g is the shin's figure below, "
+        "which is the limb geometry the two still share: "
         "the connector relief cut flush with the waist adds 206 mm3 to each of "
         "the two plates, the register pocket cut clear of the waist takes "
         "11 mm3 off and the waist's two bottom corners carried down to the "
@@ -91,11 +112,18 @@ EXPECTED_CHANGE_G = {
         "identical segment off the other",
     ),
     "cad/shin.py": (
-        +1.5,
-        "the same changes on the same shared limb geometry",
+        +2.8,
+        "the same changes on the same shared limb geometry, which now includes "
+        "the integral journal: a shin grows one at its knee end exactly as a "
+        "thigh does at its hip. THE SHIN DID NOT "
+        "TAKE THE CLEVIS: the wheel joint carries the wheel alone on a 12 mm "
+        "arm, which is a third of the knee's overhang and inside what the flat "
+        "limbs already ask of the same bearing, so it stays a plate. That is "
+        "also why this piece keeps the golden STEP gate B holds it against, and "
+        "the thigh has none",
     ),
     "cad/torso.py": (
-        +68.2,
+        +68.8,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -145,7 +173,16 @@ EXPECTED_CHANGE_G = {
         "19.2 x 12.0 and two screw holes where the GX16's 16 mm hole was, the "
         "antenna's hole moved to the far side of the disconnect, and every "
         "screw on the wall down to M2, which is 84 mm3 net. Gate B holds it "
-        "exactly",
+        "exactly. And it took a last 705 mm3, in two bodies, when the "
+        "INA226 bus monitor stopped being held by tape: two pads on the rear "
+        "wall behind the distribution board, each 6 x 6.5 x 8 and piloted Ø1.7 "
+        "for an M2. They are on THIS part rather than on the deck, where they "
+        "were for one revision, because that board's leads run down into the "
+        "bay and the deck is the assembly that has to come straight out; and on "
+        "the rear wall rather than the flank because the bought board's edge is "
+        "3 mm off the flank, which cannot hold a pilot without overhanging it. "
+        "tools/gate_e.py counts both pilots and tools/gate_f.py measures the "
+        "board onto them",
     ),
 }
 
@@ -232,9 +269,16 @@ def main(argv: list[str] | None = None) -> int:
     failures = 0
     measured: dict[str, float] = {}
     printed_total = union_total = 0.0
+    # The baseline is a record of GEOMETRY, weighed at whatever the material was
+    # when it was taken. Comparing today's parts against it at today's density
+    # would report every one of them as moved the day the material changed, which
+    # is exactly the drift this gate exists NOT to report. So the comparison is
+    # made at the baseline's own density and the roll-up at the real one.
+    baseline_density = budget["material"].get("baseline_density", density)
     for part in budget["printed"]:
         summed, merged = weigh(bodies_of(part), density)
-        measured[part["file"]] = round(summed, 1)
+        against_base, _ = weigh(bodies_of(part), baseline_density)
+        measured[part["file"]] = round(against_base, 1)
         printed_total += summed * part["count"]
         union_total += merged * part["count"]
 
@@ -242,12 +286,12 @@ def main(argv: list[str] | None = None) -> int:
         expected, _ = EXPECTED_CHANGE_G.get(part["file"], (0.0, ""))
         if base is None:
             verdict = "no base"
-        elif abs(round(summed, 1) - (base + expected)) <= TOLERANCE_G:
+        elif abs(round(against_base, 1) - (base + expected)) <= TOLERANCE_G:
             # A declared change reads as the change rather than as "ok", so the
             # table says which parts are not on their original figure.
             verdict = "ok" if not expected else f"{expected:+.1f}!"
         else:
-            verdict = f"{summed - base:+.1f}"
+            verdict = f"{against_base - base:+.1f}"
             failures += 1
 
         row = f"{part['label']:<{width}}  {summed:8.1f}"
