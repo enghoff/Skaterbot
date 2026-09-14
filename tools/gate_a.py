@@ -140,6 +140,20 @@ RETIRED = {
     "tieSlotWidth",
     "tieSlotHeight",
     "tieSlotX",
+    # THE Ø30.4 REGISTER POCKET, retired 14 September 2026 -- and the only pair
+    # here that has nothing to do with the walking robot. The rotor plate used
+    # to pilot on the actuator's Ø30 output register through a pocket in its own
+    # face, and it has no pilot at all now: it lands flat on the register and is
+    # located by the six M3 on Ø24. The pocket was drawn on the reading that the
+    # register stood 1.2 mm INTO the plate while the plate landed on the
+    # housing; the register stands 1.0 mm PROUD of the housing instead, so the
+    # plate seats on it. Cutting the pocket on the other side of the seating
+    # face works on paper and not in a printed part -- the pilot's depth and the
+    # plate's clearance over the housing are the same millimetre shared out, and
+    # 0.3 mm of clearance is inside what SLS holds on the feature that sets it.
+    # cad/parameters.py carries the whole of it where these two were declared.
+    "rotorRegisterDiameter",
+    "rotorRegisterDepth",
 }
 
 
@@ -214,10 +228,19 @@ ADDED = {
     # on the rotor disc's outer face and ends flush with the bearing's outer face
     # -- the same 5 mm of Ø10 the dowel and the stub both ran in -- and the nut
     # sits against the outboard end of its pocket, which is the face the sleeve
-    # clamps the disc's 1.5 mm web against.
+    # clamps the disc's web against.
+    #
+    # THE NUT MOVED 1.2 mm INBOARD on 14 September 2026 and the web went from
+    # 1.5 mm to 2.7. Neither is a decision about the nut: its pocket opens into
+    # the register pocket's floor, and that floor came back to the plate's own
+    # seating face when the register turned out to stand 1.0 mm proud of the
+    # housing rather than 1.2 mm into the plate. See actuatorOutputProjection in
+    # cad/parameters.py. The mouth is closed by the actuator's own output face
+    # either way -- that is what makes the nut captive -- but it is closed
+    # against the nut now instead of across 1.2 mm of air.
     "journalInnerX": 24.95,
     "journalOuterX": 30.95,
-    "journalNutOuterX": 23.45,
+    "journalNutOuterX": 22.25,
     # cad/poses.py: how far the knee may fold. It was 110 degrees, inherited from
     # the walking robot and never disputed by the geometry because the flat limbs
     # left thigh and shin in disjoint planes. Straddling the knee puts the
@@ -227,6 +250,16 @@ ADDED = {
     # rotor disc has against the far cheek, so one margin covers both. The squat
     # and both knee review scenes are derived from it, and so is the URDF's knee
     # limit; tools/gate_f.py carries the poses that moved with it.
+    # ---- THE MOTOR'S OUTPUT REGISTER STANDS PROUD, 14 September 2026 --------
+    #
+    # The actuator is 37.9 mm long and its Ø46 body is 36.9: the Ø30 output
+    # register fills the last millimetre alone. Both figures are on the vendor
+    # 2D print and the vendor STEP agrees, and the KCL had neither -- it carried
+    # the overall length and nothing else, so the proxy put solid motor where the
+    # step is and the rotor plate was drawn landing on a face that is not there.
+    # cad/parameters.py carries the finding beside actuatorOutputProjection.
+    "actuatorHousingDepth": 36.9,
+    "actuatorOutputProjection": 1.0,
     "kneeCommissioningStop": 100.0,
     # cad/limb.py: where the cable-tie arch sits at a limb's CLEVIS end. The
     # 30.5 mm station the plate end uses was chosen against a Ø52 disc and

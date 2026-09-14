@@ -390,12 +390,25 @@ CLEARANCES = (
         0.0,
     ),
     (
+        # THE 1.0 mm THIS ASKED FOR WAS AN ARTEFACT OF THE PROXY, and correcting
+        # the proxy is what exposed it. The nearest bought thing to the motor is
+        # the M5 nut captive in the rotor plate, and what it is near is the
+        # actuator's Ø30 output register -- which the proxy did not draw until
+        # 14 September 2026, so this row was measuring against a motor that
+        # stopped 1.0 mm short of its own output face. The real figure is
+        # journalNutPocketDepth less journalNutThickness: the nut is pulled up
+        # against the outboard end of a 3.3 mm pocket and is 2.7 mm thick, so
+        # 0.6 mm of that pocket is empty and the register closes the mouth of it
+        # 0.6 mm from the nut's face. That is not a clearance anybody chose and
+        # it is not free air either -- it is what makes the nut captive, and the
+        # nut has never been anywhere else. Asked a shade under the nominal
+        # 0.6, as the clevis row below is asked a shade under its 0.3.
         "knee_limit_check",
         "the hardware against the knee actuator it straddles",
         ("hardware",),
         ("motor",),
         "clear",
-        1.0,
+        0.55,
     ),
     (
         "wheel_module_check",

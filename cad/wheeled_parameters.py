@@ -59,10 +59,11 @@ skateWheelCrownCenterRadius = skateWheelDiameter / 2 - skateWheelCrownRadius
 # and diameters have nothing to do with it. The wheel is coaxial with the
 # motor, so any plane the motor body occupies is a plane the hub cannot be in
 # at all -- a Ø45 hub sharing x with the Ø46 body would be buried inside it,
-# not clearing it by half a millimetre of radius. The motor's front face is at
-# actuatorDepth / 2 and the output disc fills the next 6 mm, so the first free
-# plane is the disc's outer face. The hub lands flat on it and the wheel's
-# centre plane ends up 12 mm outboard.
+# not clearing it by half a millimetre of radius. The Ø46 body ends at
+# actuatorDepth / 2 less the millimetre its output register stands proud by,
+# the register fills that millimetre, and the output disc fills the 6 mm beyond
+# it -- so the first free plane is the disc's outer face. The hub lands flat on
+# it and the wheel's centre plane ends up 12 mm outboard.
 #
 # That 12 mm is the whole of the overhang this design adds. Standing, each
 # wheel carries about 10 N, so the extra moment on the actuator's output

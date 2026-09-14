@@ -86,8 +86,6 @@ from cad.parameters import (
     rotorHubInnerX,
     rotorHubOuterX,
     rotorHubThickness,
-    rotorRegisterDepth,
-    rotorRegisterDiameter,
     shellDepth,
     shellWall,
     shellWidth,
@@ -262,38 +260,39 @@ def _outputCounterboreCutters():
     return [first.rotate(Axis.X, i * 60) for i in range(6)]
 
 
-# The Ø30.4 x 1.2 clearance pocket over the actuator's Ø30 output register, as a
-# free-standing cutter, and out here for the same reason the bolt pattern is:
-# anything built in this plane can refill it, and then has to cut itself clear.
+# THE Ø30.4 REGISTER POCKET WAS HERE, and outputRegisterCutter() with it. The
+# plate has no pilot on the actuator any more: it lands flat on the Ø30 register
+# and is located by the six M3 on Ø24. cad/parameters.py carries the reasoning
+# where the two names used to be declared, and the short version is that the
+# pilot and the plate's clearance over the housing were the same millimetre
+# shared out, and a printed part cannot be trusted with 0.3 mm of it.
 #
-# The register is the second feature on this joint to have been quietly filled
-# back in, and it hid for longer than the bolt holes did because it leaves no
-# hole to count. A union that eats a segment out of a Ø30.4 pocket still leaves
-# ONE cylindrical face of radius 15.2 behind, so gate E counted one and passed --
-# the pocket was 314 degrees open instead of 360 and nothing said so. What says
-# so now is the angular span, measured on the assembled piece by gate E.
-def outputRegisterCutter():
-    return _disc(
-        rotorRegisterDiameter,
-        rotorRegisterDepth,
-        rotorHubInnerX + rotorRegisterDepth / 2,
-    )
+# The history is worth keeping here because two of this project's failures are
+# in it. The register was the second feature on this joint to have been quietly
+# filled back in by a body unioned across it, and it hid for longer than the six
+# bolt holes did because it left no hole to count: a union that eats a segment
+# out of a Ø30.4 pocket still leaves ONE cylindrical face of radius 15.2 behind,
+# so gate E counted one and passed while the pocket was 314 degrees open instead
+# of 360. What caught it in the end was measuring the angular span. Nothing lies
+# in this plane now for anything to fill, but the rule that produced both
+# failures stands: NOTHING MAY BE BUILT ACROSS THE Ø24 OUTPUT CIRCLE in the
+# disc's own plane, and the note above _outputBoltCutters is where it lives.
 
 
 def _nutPocket():
-    """The hex pocket the journal's nut sits in, cut from the register pocket floor.
+    """The hex pocket the journal's nut sits in, cut from the plate's seating face.
 
     The nut is what the journal screws into, and it has to be captive before the
     disc goes onto the motor, because the motor's own output face is what closes
     this pocket. So it is cut from the INBOARD face -- the one the actuator is
-    on -- and opens into the Ø30.4 register pocket.
+    on -- and the Ø30 register lands across its mouth.
 
     The cutter starts a millimetre inboard of that floor rather than on it, which
     is the same rule the bearing seat is cut to in the clevis above: a cut that
     ends coplanar with a face it does not mean to touch is a cut waiting to leave
     a zero-thickness sliver.
     """
-    mouth = rotorHubInnerX + rotorRegisterDepth
+    mouth = rotorHubInnerX
     overshoot = 1.0
     with BuildSketch(Plane.YZ) as hexProfile:
         RegularPolygon(journalNutPocketFlats / 2, 6, major_radius=False)
@@ -322,8 +321,7 @@ def outputDisc(journalAnchor: bool = False):
     disc and has never carried a journal, and leaving it alone is what keeps that
     piece identical to its golden STEP.
     """
-    hubRaw = _disc(rotorHubDiameter, rotorHubThickness, rotorHubCenterX)
-    part = hubRaw - outputRegisterCutter()
+    part = _disc(rotorHubDiameter, rotorHubThickness, rotorHubCenterX)
 
     if journalAnchor:
         # Both cuts before the bolt holes, like everything else on this disc.
@@ -465,16 +463,16 @@ def rotorHub():
     # and the pair below the axis buried outright, leaving two usable bolts on a
     # 12 mm chord to carry the actuator's whole output torque.
     #
-    # The REGISTER POCKET is re-cut here for exactly the same reason, and it was
-    # missed when the bolt holes were caught. The arm's top face sits 14.18 mm
-    # below the axis, which is inside the Ø30.4 pocket's own 15.2 mm radius, so
-    # the union filled a 42 degree segment of it back in -- 11 mm wide, the full
-    # 1.2 mm deep -- and the actuator's Ø30 register would have landed on it
-    # instead of in the pocket. The 52 degree seat that fixes the arm's width was
-    # chosen against the counterbores, which it clears by 0.8 mm, and the
-    # register was never in that arithmetic.
-    assembled = outputDisc() + rotorArmRaw + bridgeLightened
-    return assembled - outputRegisterCutter()
+    # The REGISTER POCKET used to be re-cut here for exactly the same reason, and
+    # it was missed when the bolt holes were caught: the arm's top face sits
+    # 14.18 mm below the axis, inside the Ø30.4 pocket's own 15.2 mm radius, so
+    # the union filled a 42 degree segment of it back in and the actuator's Ø30
+    # register would have landed on that instead of in the pocket. The 52 degree
+    # seat that fixes the arm's width was chosen against the counterbores, which
+    # it clears by 0.8 mm, and the register was never in that arithmetic. There
+    # is no pocket to re-cut now -- see the note where the cutter used to be --
+    # so what is left of that correction is the arm's width, which stays as it is.
+    return outputDisc() + rotorArmRaw + bridgeLightened
 
 
 def statorPlate():

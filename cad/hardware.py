@@ -53,7 +53,6 @@ from cad.parameters import (
     journalSleeveBore,
     rotorHubInnerX,
     rotorHubOuterX,
-    rotorRegisterDepth,
 )
 
 # The bearing sits with its inboard face flush with the cheek's, which is where
@@ -74,8 +73,12 @@ def _disc(diameter: float, thickness: float, x: float = 0.0):
 journalInnerX = rotorHubOuterX
 journalOuterX = rotorHubOuterX + journalLength
 # Where the nut sits: pulled up against the outboard end of its pocket, which is
-# the face the sleeve clamps the disc's web against.
-journalNutOuterX = rotorHubInnerX + rotorRegisterDepth + journalNutPocketDepth
+# the face the sleeve clamps the disc's web against. The pocket's mouth is the
+# register pocket's floor, and that floor is the plate's own seating face now
+# rather than rotorRegisterDepth outboard of it -- so the nut sits 1.2 mm
+# further in than it did, with the actuator's output register closing the mouth
+# against it instead of leaving it open across a gap.
+journalNutOuterX = rotorHubInnerX + journalNutPocketDepth
 
 
 def bearing():

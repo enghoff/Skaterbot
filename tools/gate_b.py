@@ -81,6 +81,37 @@ DEVIATION_TOLERANCE_MM3 = 1e-3
 DEVIATIONS = {
     "joint-rotor-hub": [
         {
+            "added_mm3": 1001.1190456,
+            "why": (
+                "THE REGISTER POCKET IS A RIM NOW, not a counterbore. The actuator's "
+                "Ø30 output register stands 1.0 mm proud of its housing rather than "
+                "1.2 mm into the plate it bolts to -- 36.90 and 37.90 are both on the "
+                "vendor 2D print, and the vendor STEP settles which is which -- so "
+                "the plate seats on the REGISTER and has to clear the housing, where "
+                "the golden had it landing on the housing with the register filling a "
+                "pocket in it. The pocket is cut inboard of the seating face instead "
+                "and the plate carries a Ø36 x 0.7 rim, bored Ø30.4, to pilot on. "
+                "That is 1010.06 mm3 of plate on a plate with nothing else in the "
+                "way: 712.5 mm3 of rim, plus the 363.0 mm3 the old 1.2 mm pocket used "
+                "to take out of the full 6 mm and no longer does, less 65.4 mm3 the "
+                "six output holes now take because they cross 1.2 mm more plate. "
+                "Nothing on the robot moves -- not the seating face, the plate's "
+                "outer face, the journal, the bearing, the wheel, or the pelvis width "
+                "derived from them. cad/parameters.py carries the finding beside "
+                "actuatorOutputProjection. It is 8.94 mm3 less than that here, and "
+                "the reason is a defect this register used to carry a line of its own "
+                "for. The golden's pocket was 42 degrees FILLED IN by the arm unioned "
+                "across it -- the arm's top face sits 14.18 mm below the axis, inside "
+                "the pocket's 15.2 mm radius -- and this piece used to re-cut the "
+                "pocket afterwards to open it, which is where the 8.9407 mm3 second "
+                "entry came from. There is nothing left to re-cut: the pocket is no "
+                "longer in the arm's plane at all, so that 42 degree segment is "
+                "material this plate and the golden now have in common rather than a "
+                "difference between them. The re-cut is still in cad/joint.py and "
+                "still measures zero, which is the way round to leave it."
+            ),
+        },
+        {
             "removed_mm3": 4.2979372781,
             "why": (
                 "the arm-root blend is now a true 1 mm fillet tangent to both "
@@ -89,27 +120,47 @@ DEVIATIONS = {
                 "material and relieves more."
             ),
         },
-        {
-            "removed_mm3": 8.9406906219,
-            "why": (
-                "the Ø30.4 register pocket is re-cut after the arm is unioned "
-                "on. The arm's top face sits 14.18 mm below the joint axis, "
-                "inside the pocket's own 15.2 mm radius, so the union had filled "
-                "a 42 degree segment of it back in -- 11 mm wide and the pocket's "
-                "full 1.2 mm deep -- and the actuator's Ø30 output register would "
-                "have landed on that instead of in the pocket. Same class of "
-                "failure as the six bolt holes, missed when those were caught, "
-                "and it hid longer because a part-filled pocket still leaves one "
-                "cylindrical face for gate E to count."
-            ),
-        },
     ],
     # Both hands of the limb, and the same two changes on each: the numbers are
     # one mirror image of the other and agree to 1e-5.
     "limb-105-unmirrored": [
         {
+            "added_mm3": 943.9598013,
+            "why": (
+                "THE REGISTER POCKET IS A RIM NOW, not a counterbore. The actuator's "
+                "Ø30 output register stands 1.0 mm proud of its housing rather than "
+                "1.2 mm into the plate it bolts to -- 36.90 and 37.90 are both on the "
+                "vendor 2D print, and the vendor STEP settles which is which -- so "
+                "the plate seats on the REGISTER and has to clear the housing, where "
+                "the golden had it landing on the housing with the register filling a "
+                "pocket in it. The pocket is cut inboard of the seating face instead "
+                "and the plate carries a Ø36 x 0.7 rim, bored Ø30.4, to pilot on. "
+                "That is 1010.06 mm3 of plate on a plate with nothing else in the "
+                "way: 712.5 mm3 of rim, plus the 363.0 mm3 the old 1.2 mm pocket used "
+                "to take out of the full 6 mm and no longer does, less 65.4 mm3 the "
+                "six output holes now take because they cross 1.2 mm more plate. "
+                "Nothing on the robot moves -- not the seating face, the plate's "
+                "outer face, the journal, the bearing, the wheel, or the pelvis width "
+                "derived from them. cad/parameters.py carries the finding beside "
+                "actuatorOutputProjection. It is declared as 943.96 here because this "
+                "plate carries the journal's anchor and the two changes overlap in "
+                "the same material. Three figures and they check each other: 28.51 "
+                "mm3 of the 1010.06 is plate the Ø5.5 screw hole crosses now that it "
+                "is there to cross, so the piece gains 981.55 against yesterday's; of "
+                "that, 26.13 mm3 shows up as LESS REMOVED on the anchor's own entry "
+                "below, because the hex pocket's mouth has moved into the plane the "
+                "golden's own register pocket occupied and cuts nothing there; and "
+                "11.46 mm3 was the entry that used to say the waist plate is cut "
+                "clear of the register pocket, which is gone -- the pocket is not in "
+                "the waist's plane any more, so the segment the waist used to fill is "
+                "material this piece and the golden now have in common. Both of the "
+                "project's refilled-feature failures were in that plane, and neither "
+                "can happen there again."
+            ),
+        },
+        {
             "added_mm3": 92.2586125,
-            "removed_mm3": 195.3062914,
+            "removed_mm3": 169.1744699,
             "why": (
                 "THE DISC CARRIES THE JOURNAL'S ANCHOR, NOT THE JOURNAL. The "
                 "golden's Ø10.2 x 2.2 blind seat took a bonded dowel; a printed "
@@ -128,6 +179,14 @@ DEVIATIONS = {
                 "feature, so both are declared. cad/parameters.py carries the "
                 "interference that forced it and what the anchor is worth against "
                 "the stub -- which is less, and is said plainly there."
+                "THE FIGURE MOVED FROM 195.31 TO 169.17 on 14 September 2026 and no "
+                "cut changed shape: the nut's pocket opens onto the register pocket's "
+                "floor, and that floor came back to the plate's own seating face when "
+                "the register turned out to stand proud of the housing. So the "
+                "pocket's inboard 1.2 mm now lies where the golden's register pocket "
+                "already was -- void in both -- and cuts 26.13 mm3 less of the "
+                "golden's plate away. The nut sits 1.2 mm further in for it, on a web "
+                "that goes from 1.5 mm to 2.7."
             ),
         },
         {
@@ -143,15 +202,6 @@ DEVIATIONS = {
                 "is the 1 mm step in the silhouette above the lower joint. See "
                 "statorPlateFlatOffset in cad/parameters.py for why the "
                 "millimetre is given to the plate rather than taken off the limb."
-            ),
-        },
-        {
-            "removed_mm3": 11.4582296,
-            "why": (
-                "the waist plate is cut clear of the Ø30.4 register pocket, "
-                "which it filled a 45.8 degree segment of -- 11.8 mm across and "
-                "the pocket's full depth. Same defect as the rotor hub's above, "
-                "on the piece the wheeled robot actually prints."
             ),
         },
         {
@@ -200,6 +250,35 @@ DEVIATIONS = {
                 "as a ledge in the floor of it. Same class of accident as the "
                 "1 mm silhouette step above, one corner away on the same joint, "
                 "and found the same way -- by looking at the finished part."
+            ),
+        },
+    ],
+    "wheel-adapter-right": [
+        {
+            "added_mm3": 1010.0597372,
+            "why": (
+                "THE REGISTER POCKET IS A RIM NOW, not a counterbore. The actuator's "
+                "Ø30 output register stands 1.0 mm proud of its housing rather than "
+                "1.2 mm into the plate it bolts to -- 36.90 and 37.90 are both on the "
+                "vendor 2D print, and the vendor STEP settles which is which -- so "
+                "the plate seats on the REGISTER and has to clear the housing, where "
+                "the golden had it landing on the housing with the register filling a "
+                "pocket in it. The pocket is cut inboard of the seating face instead "
+                "and the plate carries a Ø36 x 0.7 rim, bored Ø30.4, to pilot on. "
+                "That is 1010.06 mm3 of plate on a plate with nothing else in the "
+                "way: 712.5 mm3 of rim, plus the 363.0 mm3 the old 1.2 mm pocket used "
+                "to take out of the full 6 mm and no longer does, less 65.4 mm3 the "
+                "six output holes now take because they cross 1.2 mm more plate. "
+                "Nothing on the robot moves -- not the seating face, the plate's "
+                "outer face, the journal, the bearing, the wheel, or the pelvis width "
+                "derived from them. cad/parameters.py carries the finding beside "
+                "actuatorOutputProjection. IT IS THE WHOLE 1010.06 HERE, and this is "
+                "the first entry this piece has ever carried: both hands came off the "
+                "engine identical to their golden STEPs and stayed that way through "
+                "every change since. The adapter shares cad/joint.py's output disc "
+                "with the limbs, so it takes the correction with them -- and it "
+                "wanted it: the wheel hub this plate clamps is piloted by the plate "
+                "and by nothing else. Nothing on the wheel module moves."
             ),
         },
     ],
@@ -566,6 +645,7 @@ DEVIATIONS = {
     ],
 }
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
+DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 
 
 def registry() -> dict[str, callable]:

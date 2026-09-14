@@ -402,7 +402,6 @@ def panel_openings() -> dict[str, list[tuple]]:
         limbTieArchZClevis,
         limbTieSlotWidth,
         rotorHubInnerX,
-        rotorRegisterDepth,
         shellWall,
         upperLegLength,
     )
@@ -459,6 +458,12 @@ def panel_openings() -> dict[str, list[tuple]]:
     # joint with nothing to screw its journal into and nothing here to say so.
     # The probe is a 5.5 mm square, which fits inside the hexagon's 8.3 mm across
     # its flats whichever way round the nut went in.
+    #
+    # It starts at rotorHubInnerX and not rotorRegisterDepth outboard of it,
+    # because the pocket's mouth IS that face now: the register pocket is cut on
+    # the inboard side of it, so the nut pocket opens straight onto the plane the
+    # actuator's output register lands on. See cad/parameters.py beside
+    # actuatorOutputProjection.
     nutProbe = 5.5
 
     def nutPocket(hand: int) -> list:
@@ -466,8 +471,7 @@ def panel_openings() -> dict[str, list[tuple]]:
             (
                 "the journal nut's pocket, open to the motor side",
                 (
-                    hand
-                    * (rotorHubInnerX + rotorRegisterDepth + journalNutPocketDepth / 2),
+                    hand * (rotorHubInnerX + journalNutPocketDepth / 2),
                     0.0,
                     upperLegLength / 2,
                 ),

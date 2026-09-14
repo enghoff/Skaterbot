@@ -31,6 +31,33 @@ actuatorDiameter = 46.0
 actuatorDepth = 37.9
 actuatorClearance = 0.3
 
+# THE OUTPUT REGISTER STANDS PROUD OF THE HOUSING, and actuatorDepth above is
+# the OVERALL length rather than the length of the body. The vendor 2D print
+# calls out both figures -- 36.90 to the housing's front face and 37.90 to the
+# output face -- and the vendor STEP is unambiguous about which is which: a Ø46
+# cylinder runs from the rear face to 1.00 mm short of the output end, and a Ø30
+# register fills that last millimetre on its own. Nothing else is in that plane.
+#
+# WHY IT MATTERS, AND WHAT IT COST. A plate bolted to the Ø24 output circle
+# seats on the REGISTER and has to CLEAR the housing, which is not what this
+# model assumed until 14 September 2026: the register was taken to fill a 1.2 mm
+# pocket in the plate while the plate itself landed on the housing's front face,
+# and that face was believed to be at actuatorDepth / 2. With the housing
+# 1.00 mm shorter than that, the plate's seating annulus was 1.0 mm out in free
+# air, the register's face sat under an empty pocket, and the six M3 that carry
+# the joint's whole output torque were clamping across the gap. The nut captive
+# in that pocket was floating in it too.
+#
+# Nothing on the robot moves because of it. The correction is local to the
+# plate: rotorRegisterDepth below turns the pocket inside out, so the plate
+# seats where it always sat and grows a rim on its inboard face to pilot on.
+# Had the plate been moved out to meet the register instead, its two ends would
+# have ended up 0.7 mm apart along the joint axis -- the limb lands a plate on a
+# rear cover at one end and on this register at the other -- and the flat limb's
+# whole point is that its exterior is one plane.
+actuatorHousingDepth = 36.9
+actuatorOutputProjection = 1.0
+
 # DM-J3507-2EC mounting interface, measured from the vendor STEP
 # (gitee.com/kit-miao/DM-J3507-2EC, dm_3507_3d-241021.STEP) and cross-checked
 # against the 2D print and manual V1.0. Axial stations are measured from the
@@ -213,10 +240,53 @@ rearCheekX = -(actuatorDepth / 2 + actuatorClearance + cheekThickness / 2)
 
 rotorHubThickness = 6.0
 rotorHubDiameter = 36.0
+# The plate's inboard face, and the face that lands on the register: the
+# register's own face is one overall length from the rear cover, so this plane
+# and it are the same plane. The plate lands on it FLAT, across the whole Ø30
+# the register presents, and everything else on this face of the limb -- the
+# rest of the disc out to Ø36, the waist, the gussets -- stands one
+# actuatorOutputProjection clear of the housing behind it. Nothing is in that
+# millimetre.
 rotorHubInnerX = actuatorDepth / 2
 rotorHubOuterX = rotorHubInnerX + rotorHubThickness
-rotorRegisterDiameter = actuatorOutputRegister + 0.4
-rotorRegisterDepth = 1.2
+
+# ---------------------------------------------------------------------------
+# THE Ø30.4 REGISTER POCKET -- RETIRED, 14 September 2026
+#
+# rotorRegisterDiameter and rotorRegisterDepth are gone and so is the feature.
+# The plate has no pilot on the actuator at all now; it is located by the six
+# M3 on Ø24 and by nothing else.
+#
+# WHAT IT WAS. A Ø30.4 x 1.2 pocket cut OUTBOARD of the seating face, on the
+# reading that the plate landed on the housing and the register stood up into
+# it. The housing ends 1.0 mm short of the output face -- see
+# actuatorOutputProjection -- so that reading had the plate seating on nothing
+# at all, with the six screws that carry the joint's whole output torque
+# clamping across the gap.
+#
+# WHY IT WAS NOT SIMPLY TURNED ROUND. It was, for one revision: cut INBOARD of
+# the seating face instead, in a Ø36 x 0.7 rim the plate carried, bored Ø30.4.
+# The arithmetic is sound and the part is not. The rim's height and the air
+# over the housing are the same millimetre shared out -- they always add to
+# actuatorOutputProjection -- so a 0.7 mm rim leaves 0.3 mm of clearance, and
+# 0.3 mm is inside what SLS holds on a 0.7 mm feature before the plate's own
+# flatness over Ø36 is counted at all. A rim that prints long does not merely
+# rub: it lands on the housing and stops the plate seating on the register,
+# which is the exact defect it was drawn to cure, on a face that turns.
+#
+# AND THE PILOT WAS WORTH LESS THAN IT LOOKED. At a straddled joint the plate is
+# already located twice -- by the six M3 and by its own journal in the far
+# bearing -- and that bearing sits in a printed clevis bolted to the rear cover
+# through Ø3.4 clearance holes, so the coaxiality a 0.2 mm pilot would protect
+# is not available at the other end of the joint anyway. A third radial
+# location on one rigid plate is over-constraint, and in a printed assembly
+# over-constraint is something binding. On the wheel adapter there is no far
+# bearing, and +/-0.2 mm of runout on an Ø80 wheel is half a per cent.
+#
+# So the plate is flat, and lands flat. actuatorOutputRegister stays above as
+# the vendor dimension it is -- the Ø30 the plate seats on is still the reason
+# the disc is Ø36 and the bolt circle Ø24 -- but nothing is derived from it any
+# more. tools/gate_a.py carries both retired names.
 frontCheekX = rotorHubOuterX + 1.0 + cheekThickness / 2
 
 # ---------------------------------------------------------------------------
@@ -407,8 +477,9 @@ limbWaistUpperZ = 38.5
 #
 # WHAT IT COSTS IS A PRINT ORIENTATION. The arch is 4 mm proud of one face, so
 # that face has to be uppermost on the bed or it needs support. That is the
-# face the Ø30.4 register pocket is in, which wants to be uppermost anyway
-# rather than bridged, and which way up a flat plate lies costs nothing
+# face the Ø30.4 register pocket is in -- in a rim 0.7 mm proud of it, which
+# wants the same way up for the same reason -- so it wants to be uppermost
+# anyway rather than bridged, and which way up a flat plate lies costs nothing
 # structurally -- the layers run along the limb either way.
 #
 # AND THE HARNESS NOW RUNS ON THE FACE, inside the flank line, which the
@@ -499,13 +570,19 @@ limbTieSlotWidth = 3.5
 # it is not the first thing to go; it is still less than the stub had.
 #
 # WHAT WOULD GIVE IT BACK is metal behind the disc: a steel hub between the disc
-# and the motor's output flange, held by the same six screws, carrying the
-# thread. The vendor STEP puts the flange 1 mm proud inside the 37.9 mm length,
-# which leaves the 1.2 mm register pocket free for one -- but this file assumes
-# that pocket is filled by the register, the two disagree, and the drawing that
-# would settle it is the one vendor file this repository has not mirrored. It
-# needs a caliper on a real actuator, which docs/BOM.md's fit coupon is where the
-# rest of this joint's unmeasured claims go too.
+# and the motor's output register, held by the same six screws, carrying the
+# thread.
+#
+# THAT DISAGREEMENT IS SETTLED, AGAINST THE HUB. This note used to say the
+# vendor STEP put the flange 1 mm proud inside the 37.9 mm length while this
+# file assumed the register filled a 1.2 mm pocket, that the two disagreed, and
+# that a caliper would have to decide. The STEP was right and this file was
+# wrong: the Ø46 body is 36.90 long and the Ø30 register fills the last 1.00,
+# both figures on the vendor 2D print. So the plate seats ON the register --
+# see actuatorOutputProjection above -- and there is no gap behind it for a
+# steel hub to live in. A hub would have to be a spacer the six screws pass
+# through, lengthening the joint and moving everything outboard of it, which is
+# a different change from this one and a dearer one.
 journalDiameter = 10.0
 # THE BLIND SEAT SURVIVES, and only on the wheel adapter. cad/joint.py's
 # outputDisc is the limb's disc AND the adapter's, and the adapter carries no
@@ -538,9 +615,13 @@ journalScrewLength = 10.0
 journalScrewHeadDiameter = 9.5
 journalScrewHeadHeight = 2.75
 # The nut is an ISO 4035 thin hex, captive in a pocket in the disc's motor-side
-# face. It has to be a thin one: the disc is 6 mm and the register pocket takes
-# 1.2 of that, so the 4.8 mm that is left has to hold the nut AND leave a web for
-# the sleeve to clamp against. 2.7 of nut and 1.5 of web is the split.
+# face. It had to be a thin one when the register pocket took 1.2 mm of the
+# disc's 6: the 4.8 that was left had to hold the nut AND leave a web for the
+# sleeve to clamp against, which was 2.7 of nut and 1.5 of web. The pocket is a
+# rim outboard of nothing now -- it is cut inboard of the seating face -- so the
+# full 6 mm is available and the split is 2.7 of nut, 0.6 of empty pocket and
+# 2.7 of web. The thin nut stays: the web is what the sleeve clamps against and
+# 2.7 mm of it is worth more than a standard nut's extra thread.
 #
 # THE POCKET IS CUT 1.3 mm OVER THE FLATS, AND THE FINISHING PASS IS WHY.
 # 8.3 was the number this was drawn with -- 0.3 over the nut, meant to be pushed

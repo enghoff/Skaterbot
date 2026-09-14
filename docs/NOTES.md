@@ -234,8 +234,8 @@ KCL edits cannot be executed, regenerated or visually inspected outside Zoo Desi
 
 ### Interface and hardware
 
-- **Output hub:** Ø36 mm PETG hub, Ø30.4 mm x 1.2 mm blind register pocket for the Ø30 boss, and 6 x Ø3.4 mm clearance holes on the authoritative Ø24 mm output circle. Six Ø6.0 mm x 3.2 mm cap-head counterbores retain the heads. The 12.6 mm bolt-circle chord spacing leaves about 7.1 mm between Ø5.5 mm M3 cap heads.
-- **Output fasteners:** 6 x M3 x 6 socket-head cap screws. From the modeled counterbore floor to the raised output-boss face is 1.8 mm, giving approximately 4.2 mm engagement in the specified 5 mm-deep output threads. At 6 Nm, equal sharing gives about 83 N tangential demand per output screw.
+- **Output hub:** Ø36 mm PETG hub, Ø30.4 mm x 0.7 mm register pocket for the Ø30 boss — cut in a rim standing 0.7 mm proud of the hub's inboard face, not as a counterbore in it, so the hub seats on the boss and clears the housing by 0.3 mm (corrected 14 September 2026; see the entry at the end of this file) — and 6 x Ø3.4 mm clearance holes on the authoritative Ø24 mm output circle. Six Ø6.0 mm x 3.2 mm cap-head counterbores retain the heads. The 12.6 mm bolt-circle chord spacing leaves about 7.1 mm between Ø5.5 mm M3 cap heads.
+- **Output fasteners:** 6 x M3 x 6 socket-head cap screws. From the counterbore floor to the raised output-boss face is 2.8 mm, leaving 3.2 mm of the screw in thread. **This figure was 4.2 mm here until 14 September 2026 and the screws never had it**: the hub was modelled seating on the housing with the boss inside a 1.2 mm pocket, which put the thread's mouth 1.2 mm further out than it is. 3.2 mm is about 1.1 x D, and the vendor STEP models the output holes 4.0 mm deep, so M3 x 6 remains the right screw — an M3 x 8 would bottom before it clamped. At 6 Nm, equal sharing gives about 83 N tangential demand per output screw.
 - **Rear bracket:** four Ø3.4 mm clearance holes on the authoritative Ø41 mm rear circle at 45°, 135°, 225°, and 315°. Use 4 x M3 x 12 fully threaded socket-head cap screws with 1 mm washers: 4.0 mm bracket + 1.0 mm washer + 3.2 mm rear cover leaves about 3.8 mm engagement in the 4 mm rear thread. At 6 Nm, equal sharing gives about 73 N tangential demand per rear screw.
 - **Connector keep-out:** the bracket leaves the measured 69° rear connector sector open between the upper two rear holes. The mated-plug projection is still unknown; a conservative 25 mm rearward service envelope is assumed for routing and no cross-bracket material is placed in that sector.
 - **Second support:** NTN/Koyo-equivalent **6800-2RS**, 10 x 19 x 5 mm, on a Ø10 x 8 mm hardened-steel journal. The nominal 6800 dimensions, 5 g mass, 1.83 kN dynamic rating, and 0.925 kN static rating are reported by KG Bearing India; source: `https://kgbearing.com/pdd/deep-groove-ball-bearing/single-row-deep-groove-ball-bearing/6800`.
@@ -2027,3 +2027,53 @@ on the carrier, so nothing in `cad/` had to move. Its transceiver bank still
 reserves four socket positions where three are now fitted, which is deliberate —
 the fourth is where the spare goes, and leaving it reserved costs nothing and keeps
 the mass roll-up conservative.
+
+
+## The output register stands proud, and the plate was seating on nothing — September 14, 2026
+
+This file has said since 24 August that the actuator's output is **a Ø30 boss
+standing 1 mm proud of the body**, that the vendor drawing dimensions 36.90 to
+the body and 37.90 over the boss, and that the mating hub therefore has to
+register **onto** it. The CAD never did that. It drew the motor as a plain
+Ø46 × 37.9 cylinder, landed the rotor plate flat on the end of it, and cut a
+Ø30.4 × 1.2 pocket in the plate for a boss it assumed stood 1.2 mm into it.
+
+With the housing 1.0 mm shorter than the cylinder, the plate was seating on
+nothing at all. Its annulus hung 1.0 mm off the housing's front face, the boss's
+face sat under an empty pocket, and the six M3 that carry the joint's whole
+output torque were clamping across the gap. The M5 nut captive in that pocket
+was floating in it too. Six joints on this robot, and both the wheel adapters.
+
+**What fixed it is one number.** The pocket is cut on the *inboard* side of the
+plate's seating face instead of the outboard side, in a Ø36 × 0.7 rim the plate
+now carries: 0.7 mm of the boss pilots in the rim and the remaining 0.3 mm is
+the air the plate needs over the housing, which is `actuatorClearance`, the same
+clearance the rear cheek stands off the rear cover in. The two always add to
+1.0, so if a printed plate's flatness eats the 0.3 the lever is that split.
+
+**Nothing on the robot moved.** The seating face is where it always was, so the
+plate's outer face, the journal, the bearing, the wheel and the pelvis width
+derived from the hip clevis are all untouched, and the URDF's kinematics are
+unchanged. Taking the plate *out* to meet the register would have moved all of
+them, and worse: a limb lands on a rear cover at one end and on this register at
+the other, so its two ends would have finished 0.7 mm apart along the joint
+axis, putting a step in the exterior of the leg — the one thing
+`kneeOutboardOffset` exists to keep out of it.
+
+**What it costs is 6.3 g**, about 1 g a plate, and it is material in the place
+that wanted it: the plate is 0.7 mm thicker where its output screws clamp, and
+the nut's web goes from 1.5 mm to 2.7. Gate B holds every cubic millimetre —
+1010 mm³ on a plain plate, 944 on one carrying the journal's anchor.
+
+**And it closed two open notes.** The paragraph beside `journalDiameter` used to
+say the STEP and the CAD disagreed about this millimetre and that a caliper
+would have to settle it; the vendor's own drawing settles it, and against the
+CAD. The second is the thread engagement in the entry above: the six output
+screws engage 3.2 mm, not the 4.2 this file claimed, and they always did.
+
+**Two things it also ended.** Both of this project's refilled-feature failures —
+the rotor arm burying four of six bolt holes, and the limb waist filling 46° of
+the register pocket — happened in the plane the pocket used to occupy. The
+pocket is inboard of that plane now and neither body can reach it. The two
+re-cuts stay in `cad/joint.py` and `cad/limb.py` and both measure zero, which is
+the way round to leave them.
