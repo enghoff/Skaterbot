@@ -1511,17 +1511,31 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # MCP2562FD-E/P, an 8-pin PDIP, because the carrier is hand-built
         # perfboard. A DIP-8 is 7.62 mm across its rows and four pins long, which
         # is 10.2 x 10.4 over the lead flanges, and a socket lifts the body about
-        # 3.3 mm for 7.0 overall. 13 mm on centres because 8 mm overlapped them.
+        # 3.3 mm for 7.0 overall.
+        #
+        # THREE OF THEM, ONE PER BUS. There were two here until 14 September
+        # 2026, at 13 mm centres and 10 mm in from the outboard edge, because
+        # the robot ran six motors on two buses. It runs them two to a bus now --
+        # both hips, both knees, both wheels -- which is three buses, three
+        # transceivers and a fourth left as the spare in an empty socket.
+        #
+        # 12.7 mm on centres is five perfboard holes, which is the closest a
+        # hand-built 2.54 mm board can put them, and three of them span 35.8 mm
+        # of the 46 available. THE COLUMN MOVED 2.5 mm INBOARD to make room: at
+        # the old 10 mm inset the outer two overlap the carrier's own M3 corner
+        # holes by 0.3 mm, measured corner to corner rather than per axis. At
+        # 12.5 mm in they clear those holes by 1.9 mm and still leave 7.4 mm of
+        # board outboard of them.
         "CAN transceivers": [
             slab(
                 10.2,
                 10.4,
                 7.0,
-                controllerX + (controllerWidth / 2) - 10.0,
+                controllerX + (controllerWidth / 2) - 12.5,
                 dy,
                 controllerBoardZ + pcbThickness,
             )
-            for dy in (6.5, -6.5)
+            for dy in (12.7, 0.0, -12.7)
         ],
         # Where the six actuator harnesses land, facing the rear wall and its
         # ports.

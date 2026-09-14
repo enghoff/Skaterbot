@@ -83,6 +83,23 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
+def _tree_safe(label: str) -> str:
+    """A label the viewer's tree can carry, which means one with no slash in it.
+
+    Every node's identity there is its path joined with "/" --
+    "/List/robot/torso/payload/<name>" -- so a name with a slash of its own is
+    split into a level that does not exist, and the row that should have carried
+    the name renders empty. Three payload designations did it: the two standoff
+    groups are "6 mm A/F x 3 mm" and the transceivers are an MCP2562FD-E/P, and
+    all three came out as blank rows under the payload.
+
+    The swap is to U+2215 DIVISION SLASH, which reads as a slash and is not one,
+    so cad/electronics.py's `partNumbers` keeps the designations as the vendor
+    writes them and a part number added later cannot reintroduce this.
+    """
+    return label.replace("/", "∕")
+
+
 def _piece(label: str, bodies, colour):
     """One piece of the machine, as one node of the viewer's tree.
 
@@ -95,6 +112,7 @@ def _piece(label: str, bodies, colour):
     from build123d import Color, Compound
 
     bodies = list(bodies)
+    label = _tree_safe(label)
     for i, body in enumerate(bodies):
         body.color = Color(colour)
         body.label = label if len(bodies) == 1 else f"{label} {i + 1}"

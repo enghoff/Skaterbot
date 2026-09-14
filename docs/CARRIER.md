@@ -162,20 +162,23 @@ will start at all. Putting bus A on PA11/PA12 costs the core board's USB
 instead, which nothing here uses: the SBC link is serial and the programmer is
 SWD. If USB is wanted back later it is two wires and an option byte.
 
-**The CAD still draws two transceivers.** The bill went to three buses on
-2026-09-14 and `cad/electronics.py` was not part of that change, so the packing
-still shows a pair. Three do fit — see below — but the drawing has to catch up
-before gate F means anything about this corner of the torso.
+**The CAD draws three transceivers as of 2026-09-14.** It drew two for most of
+that day: the bill went to three buses in the morning and `cad/electronics.py`
+was not part of that change, so the packing showed a pair until the viewer's
+tree was read carefully enough to notice. The drawing has caught up, and the
+paragraph below is what it was made to.
 
 ## Fitting three of them
 
-The transceivers are drawn as a pair at 13 mm centres, 10 mm in from the
-carrier's outboard edge, in the piece of board to the right of the SBC's posts.
-That piece is 28.85 mm wide and 46 mm deep. Three socketed DIP-8s at 12.7 mm
-centres — five perfboard holes — span 35.8 mm of that 46, which fits, but in the
-column where two sit today the outer two foul the M3 corner holes by 0.3 mm.
-Moving the column 2.5 mm inboard gives 1.9 mm of clearance all round and still
-leaves 7.4 mm to the board edge.
+The transceivers used to be a pair at 13 mm centres, 10 mm in from the carrier's
+outboard edge, in the piece of board to the right of the SBC's posts. That piece
+is 28.85 mm wide and 46 mm deep. Three socketed DIP-8s at 12.7 mm centres —
+five perfboard holes — span 35.8 mm of that 46, which fits, but in the column
+where the two sat the outer two foul the M3 corner holes by 0.3 mm. The column
+moved 2.5 mm inboard, which measures 1.87 mm of clearance to the nearest of
+those holes and leaves 7.4 mm of board outboard of the DIPs. Both numbers are
+off the built solids, and the tightest thing near the column is now the 1.7 mm
+to a corner standoff and the 2.4 mm of air under the SBC.
 
 One layout note that is not about fitting. The connector bank
 `cad/electronics.py` draws for the actuator harnesses is 40 mm long and sits at

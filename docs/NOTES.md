@@ -2023,10 +2023,14 @@ and the knee, so it wants a service loop at each. The V1.1 manual reverses the
 motors' termination default, so read each switch rather than trusting that all six
 arrive ON. And the CAD was already drawn for this: `cad/electronics.py` routes the
 harnesses as two runs of three through the floor ports and carries one WeAct board
-on the carrier, so nothing in `cad/` had to move. Its transceiver bank still
-reserves four socket positions where three are now fitted, which is deliberate —
-the fourth is where the spare goes, and leaving it reserved costs nothing and keeps
-the mass roll-up conservative.
+on the carrier, so nothing in `cad/` had to move for the routing. **That was wrong
+about the transceivers**, and it stood for most of a day: the CAD drew a pair of
+DIP-8s rather than a bank of four positions, so going to three buses left the
+packing a transceiver short and this paragraph said otherwise. It draws three now,
+at 12.7 mm centres — five perfboard holes — with the column moved 2.5 mm inboard,
+because at the old inset the outer two overlapped the carrier's own M3 corner holes
+by 0.3 mm. The fourth position is a socket on the bill and nothing in the CAD,
+which is where the spare goes.
 
 
 ## The output register stands proud, and the plate was seating on nothing — September 14, 2026
