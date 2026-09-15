@@ -124,6 +124,13 @@ class Solid:
     `draw` is for the one solid that has mass and a bounding volume but is not
     a body: the wiring, which is spread through the whole cavity and would be
     drawn as a slab filling the pelvis.
+
+    `half_turn` places a mesh turned 180 degrees about the CAD's Z axis. It is
+    for a piece that is the same part on both sides of the robot rather than a
+    handed pair -- the wheel adapter, which has a mirror plane through its own
+    axis, so the left wheel carries the right wheel's print turned round. One
+    STL then serves both wheels, and both the drawing and the inertia are turned
+    with it. It is not a mirror: a mirrored mesh would be a different part.
     """
 
     label: str
@@ -136,6 +143,7 @@ class Solid:
     piece: str = ""
     material: str = "printedOrange"
     draw: bool = True
+    half_turn: bool = False
 
 
 # What each `source` is worth. check_model.py reports the mass total split this
@@ -749,7 +757,13 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 label=f"wheel adapter, {side}",
                 grams=0.0,
                 shape="mesh",
-                piece=f"wheel-adapter-{side}",
+                # ONE PIECE ON BOTH WHEELS. The adapter has a mirror plane
+                # through its own axis, so the left one is the right one turned
+                # round rather than a handed part, and it is printed and
+                # simulated from a single file. tools/mass_budget.toml carries
+                # the measurement that says so.
+                piece="wheel-adapter",
+                half_turn=sign < 0,
                 at=(0.0, 0.0, 0.0),
                 source="measured",
                 note="cad/wheel_adapter.py, three bodies, joint centre at its own origin",

@@ -66,8 +66,12 @@ def pieces() -> dict:
         "thigh-105-mirrored": thigh.thighLeft,
         "limb-105-unmirrored": shin.shinLeft,
         "limb-105-mirrored": shin.shinRight,
-        "wheel-adapter-right": wheel_adapter.wheelAdapterRight,
-        "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
+        # ONE ADAPTER, NOT A PAIR. The part has a mirror plane through its own
+        # axis, so the left wheel takes the same print turned round and there is
+        # only one piece here to break the arrises of. tools/gate_b.py still
+        # holds both hands against their golden STEPs, which is a check on the
+        # mirror rather than on a second print.
+        "wheel-adapter": wheel_adapter.wheelAdapterRight,
         "pelvis-shell": torso.pelvisShell,
         "torso-cover": torso.torsoCover,
         # not printed pieces in their own right, but they are what the pieces
@@ -121,7 +125,7 @@ def main() -> int:
             f"{name:<22} {count:>6} {cut:>5} {sharp:>6} "
             f"{before:>9.3f} {after:>9.3f} {after - before:>+9.3f} {time.time() - start:>6.1f}"
         )
-        if name.startswith(("thigh-", "limb-", "wheel-adapter-", "pelvis-", "torso-")):
+        if name.startswith(("thigh-", "limb-", "wheel-adapter", "pelvis-", "torso-")):
             total_before += before
             total_after += after
             total_cut += cut
@@ -129,14 +133,16 @@ def main() -> int:
 
     print("-" * len(head))
     print(
-        f"{'the eight printed pieces':<24} {'':>4} {total_cut:>5} {total_sharp:>6} "
+        f"{'the seven printed pieces':<24} {'':>4} {total_cut:>5} {total_sharp:>6} "
         f"{total_before:>9.3f} {total_after:>9.3f} {total_after - total_before:>+9.3f}"
     )
     print()
     print(
         "That total counts one of each piece. The robot carries one of each of "
-        "them now -- a thigh stopped being the same print as a shin when the "
-        "knee was straddled -- so see tools/gate_c.py for the roll-up."
+        "them except the wheel adapter, which is the one piece printed twice -- "
+        "a thigh stopped being the same print as a shin when the knee was "
+        "straddled, and the adapter never was a handed pair -- so see "
+        "tools/gate_c.py for the roll-up."
     )
     return 0
 

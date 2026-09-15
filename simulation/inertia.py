@@ -56,6 +56,22 @@ def ros_tensor(cad: np.ndarray) -> np.ndarray:
     return CAD_TO_ROS @ cad @ CAD_TO_ROS.T
 
 
+# A half turn about Z, in the CAD frame, for a mesh placed as the other side of
+# the robot. The wheel adapter is the one piece this applies to: it has a mirror
+# plane through its own axis, so the left wheel carries the right wheel's print
+# turned round and one STL serves both. Turning the mesh means turning what was
+# integrated from it, which is this matrix on the centre of mass and on the
+# tensor -- a solid placed one way round and reported the other would put the
+# adapter's mass on the wrong side of the wheel joint.
+HALF_TURN_Z = np.array(
+    [
+        [-1.0, 0.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
+)
+
+
 # --------------------------------------------------------------------------
 # Primitives
 #
@@ -216,7 +232,11 @@ def solid_properties(
 
     if solid.shape == "mesh":
         facts = meshes.properties(solid.piece)
-        return facts.grams, at + facts.centre_mm, facts.tensor_g_mm2
+        centre, tensor = facts.centre_mm, facts.tensor_g_mm2
+        if solid.half_turn:
+            centre = HALF_TURN_Z @ centre
+            tensor = HALF_TURN_Z @ tensor @ HALF_TURN_Z.T
+        return facts.grams, at + centre, tensor
     if solid.shape == "cylinder_x":
         return solid.grams, at, cylinder_x(solid.grams, *solid.dims)
     if solid.shape == "tube_x":
@@ -291,3 +311,19 @@ def rpy_from_axis_x() -> tuple[float, float, float]:
     primitive is rolled a quarter turn about X.
     """
     return (math.pi / 2.0, 0.0, 0.0)
+
+
+def rpy_for_mesh(half_turn: bool = False) -> tuple[float, float, float]:
+    """Roll-pitch-yaw that lays a mesh exported in the CAD frame into ROS.
+
+    The exported meshes are still in the CAD's frame, so each is turned where it
+    is drawn rather than re-exported: the same quarter turn about Z that
+    CAD_TO_ROS is. A piece placed as the robot's other side -- the wheel
+    adapter, which is one part on both wheels -- takes the further half turn
+    HALF_TURN_Z is, and both rotations are about Z, so the two are one addition
+    and the left wheel's adapter is simply drawn at +90 degrees instead of -90.
+    """
+    yaw = -math.pi / 2.0
+    if half_turn:
+        yaw += math.pi
+    return (0.0, 0.0, yaw)

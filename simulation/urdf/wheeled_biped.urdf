@@ -283,7 +283,7 @@
     <visual name="wheel_adapter__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
-        <mesh filename="meshes/wheel-adapter-right.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="meshes/wheel-adapter.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="printedOrange"/>
     </visual>
@@ -399,16 +399,16 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="-5.96324497e-11 0.0364934759 -4.21172149e-11" rpy="0 0 0"/>
+      <origin xyz="5.96324498e-11 0.0364934759 -4.21172149e-11" rpy="0 0 0"/>
       <mass value="0.075257"/>
-      <inertia ixx="3.746647718e-05" ixy="-1.969991680e-16" ixz="2.910971689e-14"
-               iyy="6.478091667e-05" iyz="-1.472409983e-16" izz="3.746647705e-05"/>
+      <inertia ixx="3.746647718e-05" ixy="1.969993658e-16" ixz="-2.910971690e-14"
+               iyy="6.478091667e-05" iyz="-1.472410972e-16" izz="3.746647705e-05"/>
     </inertial>
     <!-- wheel adapter, left — 12.3 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">
-      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
+      <origin xyz="0 0 0" rpy="0 0 1.57079633"/>
       <geometry>
-        <mesh filename="meshes/wheel-adapter-left.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="meshes/wheel-adapter.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="printedOrange"/>
     </visual>

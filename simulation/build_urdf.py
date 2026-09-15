@@ -57,6 +57,7 @@ from inertia import (  # noqa: E402
     is_plausible,
     link_properties,
     ros_point,
+    rpy_for_mesh,
     rpy_from_axis_x,
     to_si,
 )
@@ -229,8 +230,10 @@ def visual_block(solid, grams: float) -> str:
             f'<mesh filename="meshes/{solid.piece}.stl" scale="0.001 0.001 0.001"/>'
         )
         # The mesh files are still in the CAD's frame, so each one is turned
-        # here rather than re-exported.
-        rpy = (0.0, 0.0, -1.5707963268)
+        # here rather than re-exported -- and a piece placed as the robot's
+        # other side is turned a half turn further, which is how both wheels are
+        # drawn from the one adapter file.
+        rpy = rpy_for_mesh(solid.half_turn)
     else:
         geometry, rpy = primitive(solid.shape, solid.dims)
 

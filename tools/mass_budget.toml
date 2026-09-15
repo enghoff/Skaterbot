@@ -20,7 +20,9 @@
 # A `[[printed]]` entry is one FILE, measured whole; the `[[printed.piece]]`
 # entries under it are the individual PRINTS inside that file, one STEP each.
 # The two views differ on purpose: a file that builds a handed pair weighs the
-# pair but prints as two parts, and two files can build the same part.
+# pair but prints as two parts, two files can build the same part, and a pair
+# that turns out not to be handed at all -- the wheel adapter -- weighs two and
+# prints as one piece with `prints = 2`.
 #
 # Each piece carries `bodies`, the number of separate solids that piece is built
 # from. It is not decoration: exporting one piece out of a file that holds
@@ -174,17 +176,24 @@ label = "Wheel adapters, the pair"
 measure = ["wheelAdapterRight", "wheelAdapterLeft"]
 count = 1
 
+# ONE PIECE, PRINTED TWICE, though cad/wheel_adapter.py builds both hands. The
+# adapter is not a handed part: every feature on it is either a cylinder on the
+# wheel axis or one of six spaced 60 degrees apart from +Y, so it has a mirror
+# plane through its own axis and the left hand is the right hand turned round.
+# That is measured and not asserted -- both hands come out at 13222.79 mm3, and
+# the right given a half turn about Z differs from the left by 0.000000 mm3 of
+# symmetric difference -- and it is why there is no left-hand STEP to slice.
+#
+# The left hand stays in the CAD, because the scenes and tools/gate_b.py both
+# place a body at each wheel and gate B holds each hand against its own golden
+# STEP. What it no longer does is come out as a second file: simulation/robot.py
+# turns this one mesh a half turn for the left wheel instead.
 [[printed.piece]]
-name = "wheel-adapter-right"
+name = "wheel-adapter"
 export = "wheelAdapterRight"
-prints = 1
+prints = 2
 bodies = 3  # output disc, spigot, plug
-
-[[printed.piece]]
-name = "wheel-adapter-left"
-export = "wheelAdapterLeft"
-prints = 1
-bodies = 3  # output disc, spigot, plug
+note = "Slice it once and print two. The second one goes on the left wheel turned round; there is no handed version of this part."
 
 # Measured through cad/torso.py, which is the six-motor pelvis: 125 x 68 x 65,
 # where the walking robot's is 118 x 68 x 106. The lid and the cover bosses are
