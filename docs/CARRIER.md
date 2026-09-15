@@ -243,8 +243,8 @@ CAD's own frame rather than asserted. A track that stops a tenth of a millimetre
 short of its pad fails it.
 
 **140 × 46 mm, two layers, 1.6 mm FR-4.** 0.25 mm signal tracks, 0.6 mm for the
-5 V run and 0.5 mm for the other rails, 0.2 mm clearance, 241 holes in six sizes
-and 94 vias at Ø0.4, and the largest hole on the board is a Ø3.4 mounting hole —
+5 V run and 0.5 mm for the other rails, 0.2 mm clearance, 249 holes in eight sizes
+and 92 vias at Ø0.4, and the largest hole on the board is a Ø3.4 mounting hole —
 every figure well inside what any hobby board house builds as standard, because
 the margin is what makes hand soldering forgiving.
 
@@ -336,6 +336,18 @@ the hot parts stand in the air under the SBC rather than facing the board.
 whatever is tallest in its lane, which on the outboard lane is the inductor's
 steel can. Keep them snug rather than tight.
 
+**And the straps were strangling the module's own pins.** Their four Ø3 holes
+stood ±12 mm from the module's centre, where its pin column stands at 15 mm —
+which leaves 0.65 mm of laminate between a tie hole and the nearest pad's copper,
+less than one 0.25 mm track and its clearance. So the only two live pins on the
+part could not leave westward at all, and the router paid for that all the way
+across the board. Nothing said so: no rule was broken, because there is no rule
+that a pin must have somewhere to go. The straps now cross at ±10 mm, which puts
+2.65 mm there — two tracks — and takes **13 mm of copper and seven vias** off the
+board. Matek publish no hole pattern, so where the straps cross was always ours
+to choose; 20 mm apart and 7.5 mm in from each end holds a 35 mm module as well
+as 24 and 5.5 did.
+
 **Its four pads face up, and that is what makes the pins work.** Four pins stand
 out of the carrier — IN, G, G, OUT, at the module's own 3.81 mm — the module drops
 over them past the sheet's cut edge, and they are soldered at the module's own
@@ -390,10 +402,17 @@ from the core board to the rest of the board, and a socket standing in the gate
 left two slots of 2 mm. The gate is a corridor.
 
 **What comes up through the deck comes up at the rear**, through the deck's 34 mm
-cable chase. The three bus connectors sit over it. That is the whole reason this
-layout was redone rather than extended: on the 76 mm board the connectors were at
-the far outboard end and the loom came up the chase and then crossed the entire
-torso to reach them, which is most of half a metre of wire that is not made now.
+cable chase — **and not all of it comes up under its own plug.** That claim used
+to be made here and was never measured; `carrier_pcb.py` measures it on every run
+now, by asking the deck solid itself rather than the notch's dimensions, so a
+second opening cut later counts without this being rewritten. What it finds is
+that bus A's and bus B's connectors sit squarely over the chase, bus C's is
+2 mm short of its western end, and the IMU's is 24 mm short of it. Those two
+looms come up the chase and are dressed westward along the 3 mm under the carrier
+before they reach their plugs. It is still far better than what it replaced: on
+the 76 mm board every connector was at the far outboard end and the loom came up
+the chase and then crossed the entire torso, which is most of half a metre of
+wire that is not made now.
 
 The front edge carries what goes up rather than down — the SBC's own cable, and
 the bus feed.
@@ -407,10 +426,24 @@ dares change. So the tracks are found by a maze router on a 0.2 mm grid, in
 exactly the checks the hand-routed ones were held to. **A router that cheats
 still fails the check**, which is the only reason it is allowed to do the work.
 
+**The order the nets go down in decides how much copper the board ends up with,
+and the router used to take the first order that worked.** It lays the wide rails
+first and then the rest shortest-first, and if a net cannot be routed it pushes
+that net to the front and tries again with the queue shuffled. That is a sound
+way to find *an* answer and no way at all to find a good one. It now lays all
+eight of its orders down and keeps the cheapest board that routes everything,
+counting a via as 5 mm of track. On the placement as it stands two of the eight
+succeed — 1968 mm on 92 vias against 2003 on 93 — so today it keeps the one the
+early exit would have stopped at anyway. **That is luck rather than design**:
+run the same eight seeds against a slightly different set of stations and a
+different three of them succeed, spanning five per cent of copper. The search
+costs a couple of minutes a run instead of twenty seconds, which is a fair price
+on a board that gets fabricated.
+
 **Ground is poured on both layers and not routed**, except where the pour comes
 out in pieces: a bundle of signals crossing both layers in the same place cuts
 both planes there, and a pad on the far side of that is on an island. Those are
-found after the pour is built and joined by a few short hops. 94 vias stitch the
+found after the pour is built and joined by a few short hops. 92 vias stitch the
 two planes together.
 
 **A stitch that joins nothing is taken out again.** The vias go down on a grid
@@ -429,12 +462,16 @@ tightest, in millimetres:
 | gap | between |
 |---|---|
 | 0.85 | the IMU plug and the antenna's bulkhead |
-| 1.20 | the BEC's cable tie and the SBC's microSD socket |
+| 0.95 | bus B's `VIO` capacitor and the nearest SBC standoff |
 | 1.25 | the bus-A connector and the charge socket |
+| 1.50 | the shunt plug, the BEC's cable tie and the IMU header, each against what stands over it |
 | 1.60 | three plugs on the rear and front rows, and the edge of the SBC |
 | 1.76 | the core board and the edge of the SBC |
 | 1.90 | the BEC and the SBC's microSD socket |
-| 2.60 | the bus-B header and the nearest SBC standoff |
+
+**The BEC's outboard cable tie used to head this table at 1.20 mm**, against the
+SBC's microSD socket hanging over it. The straps came in from ±12 to ±10 mm for
+an unrelated reason — see below — and it stands 3.20 mm off now.
 
 ### Taking it to KiCad
 
@@ -445,6 +482,18 @@ runs [`electrical/carrier_sch.py`](../electrical/carrier_sch.py), which writes
 `carrier.kicad_sch` and the symbol library beside it, so a project opened from
 that folder has both. KiCad opens all of it directly, and the Gerbers, the drill
 files and the 3D view come from there.
+
+**Close the project and open it again after regenerating.** KiCad reads a
+project's symbol library table once, when the project opens, and the schematic's
+symbols live in `carrier.kicad_sym` beside it. Write a new schematic under an
+editor that already has the project open and it keeps using the configuration it
+loaded, which surfaces as *"the current configuration does not include the symbol
+library"* pointing at a file that is sitting right there. The exporter looks for
+KiCad's lock files now and says so when it finds them. For the same reason
+`carrier.kicad_pro` and `sym-lib-table` are **seeded once and then left alone** —
+KiCad migrates the first and rewrites the second, and a generator that
+overwrote them on every run was simply taking turns with the editor. Delete
+either to have it laid down again.
 
 **It is a translation and not a second design.** Everything in it is read from
 the layout, so the two cannot disagree about where a pad is. What KiCad adds is
@@ -461,6 +510,19 @@ the copper: a via and a pad on the same net have no clearance to violate, so the
 question had never been asked. `carrier_pcb.py` asks it now, before and after
 routing, and the board is routed to keep 0.25 mm of laminate between any two
 holes. That cost eight stitching vias and no routes.
+
+**And it complained a second time, about the export rather than the board.** When
+bus B's decoupling pair was brought in beside its chip, one of the two had to
+stand on end, and it was the first part on this board ever placed at a quarter
+turn — every other part stands at 0° or 180°, where a rotation and its negative
+are the same thing. The exporter was negating the angle on top of the y flip it
+had already applied to the pad offsets, so that capacitor came out of the
+translation reflected about its own origin, 5.08 mm from where the layout puts
+it, with its ground pad on top of an I²C track. **KiCad called it a short between
+two nets.** `carrier_pcb.py` could not have seen it: the geometry it checks was
+right, and only what was written out was wrong. The angle goes out as it stands
+now, and every part at 0° or 180° is unaffected, which is why this sat in the
+file unnoticed.
 
 What is left after that is **three starved thermal reliefs** and nothing else:
 0 errors, 0 unconnected pads, 0 footprint errors, 0 silkscreen violations. The
@@ -535,12 +597,20 @@ beeping with a meter before ordering.**
 - **There is no spare transceiver socket.** 140 × 46 mm with the SBC standing on
   it and the modules on it has no room for a fourth DIP-8. The spare stays in its
   bag.
-- **Bus B's two decoupling capacitors are 16 mm from their chip**, in the channel
-  beside the right-hand standoffs, because the two 1.78 mm slots between the three
-  sockets are the only way across that column for anything heading for the
-  monitor and a capacitor standing in one costs three nets their route. The
-  ground plane under the pair is what makes that tolerable rather than the lead
-  length. The other two pairs are 5 to 9 mm away.
+- **Three of the six decoupling capacitors are 9 to 12 mm from their pin**, where
+  a decoupler wants to be within about 5. Every one of the six was placed by
+  searching the board for the nearest legal station and keeping the move only if
+  the board still routed, which brought bus B's pair in from 19 mm to 2.9 and 3.0
+  and bus C's `VIO` cap in from 7.1 mm to 2.5. What holds the other three out is
+  the BEC: it lies across the whole flank west of the socket column, from y 11 to
+  y 35, and `VDD` is on the sockets' west side. Only bus B's `VDD` pin escapes it,
+  because that socket is the southernmost and there are 2 mm of board south of the
+  BEC's corner. Bus A's pair does have a legal station 4.6 and 2.5 mm from its
+  pins in the channel between the BEC's cable tie and the socket — **and both were
+  tried there**: each costs three nets their route, because that channel and the
+  strip east of the column are the only two ways past this block of parts, and
+  the I²C bus, the SBC's serial link and bus A all need them. Standing off and
+  letting the plane carry the return is the lesser evil, not a good answer.
 - **Seven ground pads reach the plane on one spoke of four**, where the pour
   gives every pad four: the two spokes between pads on a 2.5 mm pitch never
   existed, and a track was laid over one of the other two. One 0.5 mm spoke
@@ -549,24 +619,30 @@ beeping with a meter before ordering.**
   across the pair, so that is the one to widen if any of them is. Reserving the
   spoke lanes before routing was tried twice and cost more routes than it saved
   pads.
-- **The bus feed and the shunt pair come up from the power bay, and the deck
-  under them is solid.** `cad/deck.py` cuts one opening, the 34 mm chase in its
-  rear edge, and both of those connectors are on the front edge — where the
-  layout's own comment claims a second opening over the distribution board that
-  the plate does not have. Either the deck gains an opening or those two leads
-  come up the chase and run forward under the board, in the 3 mm the carrier's
-  standoffs leave. **Neither has been decided**, and it is the one thing in this
-  document that is a contradiction rather than a gap.
+- **Four of the six plugs fed from below have no opening under them, and it is
+  worse than this document used to say.** `cad/deck.py` cuts one hole, the 34 mm
+  chase in its rear edge. The board is now measured against the plate itself on
+  every run, and what that finds is: bus A and bus B sit over the chase; **bus C
+  has an opening under a fifth of its pin row, the IMU has none at all, and the
+  bus feed and the shunt pair are both on the front edge where there is no
+  opening anywhere.** For the front pair the layout's own comment used to claim a
+  second opening over the distribution board that the plate does not have. Every
+  one of those leads can be dressed sideways in the 3 mm the carrier's standoffs
+  leave until it reaches the chase — 24 mm of that for the IMU — or the deck can
+  gain the openings. **Neither has been decided.** It is the one thing here that
+  was a contradiction rather than a gap, and it is now at least measured.
 - **The carrier's own standoffs are drawn at 3 mm and nobody stocks that.** The
   shortest brass pillar on an Indian shelf is 5 or 6 mm, and every millimetre
   under the carrier lifts the SBC with it — the reserved volume over the SBC has
   2 mm of air under the lid, so a 6 mm pillar spends all of it. Cut spacers, or
   move the whole stack down, but do not buy 6 mm pillars and hope.
-- **1.2 mm is the tightest thing on this board**, between the BEC's outboard
-  cable tie and the SBC's microSD socket hanging over it. It is a real clearance
-  rather than a computed one, but it is 1.2 mm between a bought module whose
-  outline nobody has measured and a socket on a board whose hole pattern is
-  inherited rather than published. Measure both before ordering.
+- **0.85 mm is the tightest thing on this board**, between the IMU's plug and the
+  antenna bulkhead in the shell wall. It is a real clearance rather than a
+  computed one, but both ends of it are bought parts nobody has measured — a
+  bulkhead jack's body and a mated JST-XH plug with its wires still to leave.
+  Measure both before ordering. It took that place from the BEC's outboard cable
+  tie, which stood 1.2 mm off the SBC's microSD socket and stands 3.2 mm off it
+  now.
 - **Where the BEC's four pins are is scaled off a photograph**, and it is the
   softest number on the board. Matek publish no drawing of the part: the 3.81 mm
   pitch is dimensioned on their product photograph, and the row's 2.5 mm inset
@@ -578,9 +654,11 @@ beeping with a meter before ordering.**
   under two 2.5 mm cable ties through four Ø3 holes drilled to the catalogue
   35 × 24. Measure the part when it arrives: a module 2 mm wider than the
   catalogue says will not sit between the ties. **Where the straps land on its
-  parts has been reasoned from a photograph and not checked** — the outboard one
-  crosses the inductor's can, which will take it, and the inboard one crosses
-  smaller parts on the input side.
+  parts has been reasoned from a photograph and not checked** — and they moved
+  in from ±12 mm to ±10 mm to clear the pin column's copper, so what each one
+  crosses has moved 2 mm inboard with it. The outboard one was over the
+  inductor's can and should still be; the inboard one crosses smaller parts on
+  the input side.
 
 ## What is not settled
 

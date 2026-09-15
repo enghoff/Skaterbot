@@ -36,8 +36,10 @@ THE Y AXIS TURNS OVER. This project measures the board with y forward and up the
 page; KiCad measures it with y down the page. Both look at the board from above,
 so the same physical board has y negated between them, and every coordinate here
 is written as BOARD_D - y for that reason. It is a change of convention and not a
-mirror: a footprint's rotation turns over with it, which is why the angles below
-come out negative.
+mirror. A FOOTPRINT'S ANGLE IS NOT NEGATED WITH IT: the pad offsets inside a
+footprint are already written y-flipped, and KiCad turns them with the same
+handedness this project does, so the angle goes out as it stands. footprint()
+carries what happened when it did not.
 """
 
 from __future__ import annotations
@@ -325,7 +327,18 @@ def footprint(part: pcb.Placed, index: dict[str, int], net_of, silk: Silk) -> st
     KiCad rather than a scatter of pads at absolute coordinates.
     """
     x, y = place(part.x, part.y)
-    angle = (-part.rotation) % 360
+    # THE ANGLE IS NOT NEGATED, and the header above used to say it was. KiCad
+    # turns a footprint's own geometry about its origin with x' = x cos + y sin,
+    # y' = -x sin + y cos, which is the SAME handedness as this project's once
+    # the pad offsets go in as (x, -y) -- the y flip is already in the offsets,
+    # so negating the angle as well flips it back. EVERY PART ON THIS BOARD STOOD
+    # AT 0 OR 180 UNTIL SEPTEMBER 2026, where the two signs agree, so nothing
+    # showed it. The first capacitor placed at 270 came out reflected about its
+    # own origin, 5.08 mm from where this file's own checks put it, with its
+    # ground pad sitting on an I2C track -- which KiCad reported as a short
+    # between two nets and carrier_pcb.py could not see, because the geometry it
+    # checks was right and only what was written out was wrong.
+    angle = part.rotation % 360
     box = _outline_box(part)
     item = next((p for p in pcb.carrier.PARTS if p.refdes == part.refdes), None)
     # THE REFDES IS AN fp_text AND NOT A PROPERTY. In the board format this file
@@ -658,7 +671,16 @@ def main() -> int:
         return 1
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "carrier.kicad_pcb").write_text(text, encoding="utf-8")
-    (OUT / "carrier.kicad_pro").write_text(PROJECT, encoding="utf-8")
+    # THE PROJECT FILE IS SEEDED ONCE AND THEN LEFT ALONE. It carries the design
+    # rules this board is poured to, which is why it is written at all -- but it
+    # is also where KiCad keeps its own migrated settings, its pinned libraries
+    # and its window state, and KiCad rewrites it whenever the project is open.
+    # Writing it on every run meant the two took turns overwriting each other.
+    # Delete it to have the rules laid down again.
+    project = OUT / "carrier.kicad_pro"
+    seeded = not project.exists()
+    if seeded:
+        project.write_text(PROJECT, encoding="utf-8")
     # The schematic comes from the netlist rather than from the board, so it is
     # written by its own file -- but it is written here too, because a project
     # whose sheet and whose board were generated from different runs is exactly
@@ -670,6 +692,21 @@ def main() -> int:
         f"  {counts['parts']} parts, {counts['pads']} pads, {counts['nets']} nets, "
         f"{counts['tracks']} track segments, {counts['vias']} vias"
     )
+    print()
+    if not seeded:
+        print("  kept the existing carrier.kicad_pro -- delete it to re-seed the rules")
+    # KICAD READS A PROJECT'S LIBRARY TABLES ONCE, WHEN THE PROJECT OPENS. Write
+    # a new schematic and a new symbol library under an editor that is already
+    # holding the project and it goes on using the configuration it loaded, which
+    # surfaces as "the current configuration does not include the symbol library"
+    # on a library that is sitting right there. The lock files say whether that
+    # has just happened, so say so rather than leaving it to be discovered.
+    held = sorted(f.name for f in OUT.glob("~*.lck"))
+    if held:
+        print()
+        print("  KICAD HAS THIS PROJECT OPEN: " + ", ".join(held))
+        print("  Close the project and open it again before reading anything here.")
+        print("  It is still using the library table it loaded when it started.")
     print()
     print("IN KICAD, IN THIS ORDER:")
     print("  0. open electrical/kicad/carrier.kicad_sch to read the netlist drawn")

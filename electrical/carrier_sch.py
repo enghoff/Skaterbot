@@ -342,7 +342,20 @@ def main() -> int:
     path = OUT / "carrier.kicad_sch"
     path.write_text(build(), encoding="utf-8")
     (OUT / "carrier.kicad_sym").write_text(library(), encoding="utf-8")
-    (OUT / "sym-lib-table").write_text(SYM_LIB_TABLE, encoding="utf-8")
+    # THE LIBRARY TABLE IS KICAD'S FILE, NOT OURS, AND IT IS ONLY SEEDED HERE.
+    # KiCad reads a project's sym-lib-table once, when the project opens, and
+    # writes its own back when you touch Manage Symbol Libraries. Rewriting it
+    # on every run meant the generator and the editor took turns clobbering each
+    # other, and an editor that had the project open before this file first
+    # existed never saw it at all -- which shows up as "the current
+    # configuration does not include the symbol library", with the schematic's
+    # symbols unresolvable. So it is written when it is absent or when it has
+    # lost the carrier entry, and otherwise left exactly as KiCad left it.
+    table = OUT / "sym-lib-table"
+    if not table.exists() or '(name "carrier")' not in table.read_text(
+        encoding="utf-8"
+    ):
+        table.write_text(SYM_LIB_TABLE, encoding="utf-8")
     pins = sum(len(p.pins) for p in carrier.PARTS)
     print(f"wrote {path}")
     print(f"  {len(carrier.PARTS)} symbols, {pins} pins, {len(carrier.NETS)} nets")

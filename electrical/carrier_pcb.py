@@ -276,6 +276,24 @@ def upright_resistor() -> Footprint:
 BEC_PIN_PITCH = 3.81
 BEC_PIN_INSET = 2.5
 BEC_PIN_END = 2.7
+# WHERE THE TWO STRAPS CROSS THE MODULE, measured from its centre along its long
+# axis. THIS WAS 12.0 AND IT CHOKED THE MODULE'S OWN PINS. The pin column stands
+# 15.0 from the centre and its pads are 1.7 across, so a Ø3 tie hole at 12.0
+# leaves 12.65 - 12.0 = 0.65 mm of laminate between the hole and the pad copper
+# -- less than one 0.25 mm track and its clearance, so the two live pins had to
+# escape north, south or east and the router paid for it all the way across the
+# board. At 10.0 there are 2.65 mm there, which is two tracks, and the board
+# comes out 13 mm of copper and seven vias lighter for a change that moves
+# nothing anybody can see.
+#
+# IT IS NOT A VENDOR DIMENSION. Matek publish no hole pattern at all -- see the
+# footprint below -- so where the straps cross is ours to choose, and the only
+# thing it has to do is hold a 35 mm module down on a sheet. 10.0 puts them
+# 20 mm apart and 7.5 mm in from each end, against 24 and 5.5 before. IT ALSO
+# BUYS BACK THE TIGHTEST MECHANICAL GAP ON THIS BOARD: the outboard strap stood
+# 1.20 mm from the SBC's microSD socket, which hangs over it, and stands 3.20 mm
+# from it now.
+BEC_TIE_X = 10.0
 
 
 def bec_module() -> Footprint:
@@ -346,10 +364,16 @@ def bec_module() -> Footprint:
             # board. 2.5 mm of strap, in 2 mm of height to lie loose in. They
             # cross the module's parts, which is what lying the right way up
             # costs: the outboard strap lands on the inductor's can.
-            Body((-13.25, -14.5, -10.75, 14.5, 6.5, 8.5), "cable tie"),
-            Body((10.75, -14.5, 13.25, 14.5, 6.5, 8.5), "cable tie"),
+            Body(
+                (-BEC_TIE_X - 1.25, -14.5, -BEC_TIE_X + 1.25, 14.5, 6.5, 8.5),
+                "cable tie",
+            ),
+            Body(
+                (BEC_TIE_X - 1.25, -14.5, BEC_TIE_X + 1.25, 14.5, 6.5, 8.5),
+                "cable tie",
+            ),
         ),
-        tuple((dx, dy, 3.0) for dx in (-12.0, 12.0) for dy in (-13.6, 13.6)),
+        tuple((dx, dy, 3.0) for dx in (-BEC_TIE_X, BEC_TIE_X) for dy in (-13.6, 13.6)),
     )
 
 
@@ -665,9 +689,14 @@ def _fp(refdes: str) -> Footprint:
 #    pair. That is why the BEC is between the two pairs, the monitor outboard
 #    of the right-hand one, and the core board outboard of the left-hand one.
 # 3. WHAT COMES UP THROUGH THE DECK COMES UP AT THE REAR, through cad/deck.py's
-#    34 mm chase at x 82.55 to 116.55 in this frame. The three bus connectors sit
-#    over it, which is the whole reason this layout was redone: they used to be
-#    at the far outboard end and the loom crossed the torso to reach them.
+#    34 mm chase at x 82.55 to 116.55 in this frame, which is the whole reason
+#    this layout was redone: the connectors used to be at the far outboard end
+#    and the loom crossed the torso to reach them. THIS SAID "THE THREE BUS
+#    CONNECTORS SIT OVER IT" and two of them do: bus C's is 2 mm short of the
+#    chase's western end and the IMU's is 24 mm short of it, so those two looms
+#    are dressed westward under the board after they come up. check_leads_down()
+#    measures it against the deck solid on every run rather than leaving it to a
+#    comment, which is how the claim survived unexamined in the first place.
 #
 # The front edge carries what goes UP rather than down -- the SBC's own cable,
 # and the bus feed and shunt pair that come through a second opening in the deck
@@ -725,21 +754,47 @@ PLACEMENT = {
     # of it. It sat by the BEC's old header; the BEC's output pin is under the
     # module now and there is nothing standing beside it to put a can on.
     "C1": (81.0, 43.0, 0),
-    # A pair of 100 nF at each transceiver, VDD then VIO.
-    # THE TWO SLOTS BETWEEN THE THREE SOCKETS ARE LEFT OPEN. They are 1.78 mm
-    # each and they are the only way across this column for anything that has to
-    # reach the monitor, so a capacitor standing in one costs three nets their
-    # route. Two pairs sit clear of them, and bus B's pair has to stand off in
-    # the channel beside the right-hand posts, 16 mm from its own pin: this is
-    # the one place on the board where a decoupling capacitor is further from its
-    # chip than it should be, and the ground plane under the pair is what makes
-    # that tolerable rather than the lead length.
+    # A pair of 100 nF at each transceiver, VDD then VIO. THE DISTANCE FROM THE
+    # PIN IS THE WHOLE POINT OF A DECOUPLER, so each of these six was put where
+    # it is by searching the board for the nearest position that breaks no rule
+    # and then keeping the move only if every net still routed. What that
+    # arrived at, live pad to the pin it bypasses:
+    #
+    #   C4  U2 VDD   2.9 mm      C5  U2 VIO   3.0 mm      C7  U3 VIO   2.5 mm
+    #   C2  U1 VDD   8.8 mm      C3  U1 VIO  11.7 mm      C6  U3 VDD  10.8 mm
+    #
+    # THE THREE THAT ARE STILL FAR OFF ARE FAR OFF FOR ONE REASON: the BEC lies
+    # across the whole flank west of this column, from y 11 to y 35, and VDD is
+    # pin 3 -- on the sockets' west side. Only U2's VDD pin escapes it, because
+    # U2 is the southernmost socket and there is 2 mm of board south of the BEC's
+    # corner.
+    #
+    # C2 HAS A LEGAL STATION 4.6 mm FROM ITS PIN and cannot have it. It is in the
+    # channel between the BEC's outboard strap and U1, and putting a capacitor
+    # there costs the MCU's reset line and the I2C data line their route -- that
+    # channel and the strip east of the column are the only two ways past this
+    # block of parts, and the I2C bus, the SBC's serial link and bus A all need
+    # them. IT WAS TRIED TWICE: once when the straps stood at 12.0 and the
+    # channel was 5.2 mm, and again after they came in to 10.0 and it was 8.2,
+    # and the second attempt failed on the same two nets as the first. Standing
+    # off and relying on the plane for the return is the lesser evil, and it is
+    # the answer this board gives rather than a good one.
+    #
+    # THE WHOLE COLUMN WAS OFFERED 2 mm OF ROOM TO THE EAST as well, at x 91 and
+    # x 92, with all six capacitors re-searched against the new stations. Both
+    # cost the I2C bus its route to the monitor. The strip east of this column is
+    # not spare board: it is the corridor.
+    #
+    # THE TWO SLOTS BETWEEN THE THREE SOCKETS ARE LEFT OPEN. They are 1.78 mm of
+    # copper each and they are the only way across this column for anything that
+    # has to reach the monitor, so a capacitor standing in one costs three nets
+    # their route as surely as one in the channel does.
     "C2": (86.0, 41.5, 0),
     "C3": (91.0, 41.5, 0),
-    "C6": (97.0, 21.5, 0),
-    "C7": (97.0, 25.5, 0),
-    "C4": (103.0, 20.0, 0),
-    "C5": (103.0, 25.5, 0),
+    "C6": (97.0, 22.5, 0),
+    "C7": (96.3, 19.2, 0),
+    "C4": (83.7, 9.2, 180),
+    "C5": (96.8, 8.2, 90),
     # 3.3 V decoupling at the monitor's own supply pin, which is at the rear end
     # of its header now, and the two I2C pull-ups, which belong to the bus rather
     # than to either sensor and stay where there is room for a 9.5 mm resistor
@@ -1108,6 +1163,23 @@ def _pin_sites(parts: list[Placed]) -> dict[str, list[tuple[float, float]]]:
 # and is not here: it routed both of them and cost five other nets their route.
 PASSES = 8
 ROUTE_FIRST = ("+5V", "+3V3", "VBAT_F", "VBAT")
+# WHAT A VIA IS WORTH IN MILLIMETRES OF TRACK, when two orders both route the
+# whole board and the search has to say which it prefers. A via is a drilled
+# hole, a plated barrel and two pad lands, and it is the thing on this board most
+# likely to be the reason a net has to detour around it later -- so it is not
+# free the way a couple of millimetres of copper is. 5 mm means an order only
+# earns its via by saving more than 5 mm of track with it.
+VIA_COST = 5.0
+
+
+def _copper(tracks: list[Track], vias: list[Via]) -> float:
+    """What a routed board costs, for comparing one pass against another."""
+    length = sum(
+        math.dist(track.points[i], track.points[i + 1])
+        for track in tracks
+        for i in range(len(track.points) - 1)
+    )
+    return length + VIA_COST * len(vias)
 
 
 def route(parts: list[Placed], report: Report) -> tuple[list[Track], list[Via]]:
@@ -1127,9 +1199,21 @@ def route(parts: list[Placed], report: Report) -> tuple[list[Track], list[Via]]:
 
     todo.sort(key=lambda net: (net not in ROUTE_FIRST, span(net)))
 
+    # EVERY ORDER IS TRIED AND THE CHEAPEST IS KEPT, which is not what this did
+    # before: it stopped at the first order that routed the whole board, and the
+    # first order that works is not the best one. On the placement as it stands,
+    # two of the eight orders route everything -- 1968 mm of copper on 92 vias
+    # against 2003 on 93 -- and the search takes the first of those. WHICH ORDERS
+    # WORK IS NOT PREDICTABLE and moves with the placement: the same eight seeds
+    # measured against a slightly different set of stations had a different
+    # three of them succeed, spanning five per cent of copper. So the early exit
+    # was not picking the best board, it was picking whichever board came first,
+    # and it had no way of knowing which that was.
+    #
+    # WHAT IT COSTS is eight passes' routing time on every run instead of one,
+    # which is a couple of minutes. The board is a thing that gets fabricated.
     first: list[str] = []
     best = None
-    shuffle = random.Random(20260914)
     for attempt in range(PASSES):
         order = [net for net in todo if net in ROUTE_FIRST]
         order += [net for net in first if net in todo and net not in order]
@@ -1139,17 +1223,24 @@ def route(parts: list[Placed], report: Report) -> tuple[list[Track], list[Via]]:
         # that blocked it are still in the same order behind it, so the same
         # board comes back with a different net left out. A seeded shuffle gives
         # a genuinely different pass, and the seed keeps the answer repeatable.
-        if attempt >= 2:
-            shuffle.shuffle(rest)
+        # EACH ATTEMPT IS SEEDED ON ITS OWN NUMBER and not drawn from one
+        # generator walked forward through the loop. That mattered: walked
+        # forward, the sequence an attempt sees depends on how many attempts
+        # came before it, so the queue this search actually reached was never
+        # the one the twenty-four-order measurement found at 1915 mm. Seeded per
+        # attempt, attempt n is the same queue every time whatever happened
+        # before it, and the measurement and the search are looking at the same
+        # thing.
+        if attempt and not (attempt == 1 and first):
+            random.Random(20260914 + attempt).shuffle(rest)
         order += rest
         board = Board(parts)
         tracks, vias, failures = _one_pass(board, order, sites)
-        if best is None or len(failures) < len(best[3]):
-            best = (board, tracks, vias, failures)
-        if not failures:
-            break
+        score = (len(failures), _copper(tracks, vias))
+        if best is None or score < best[0]:
+            best = (score, board, tracks, vias, failures)
         first = [net for net, _ in failures if net not in ROUTE_FIRST] + first
-    board, tracks, vias, failures = best
+    _, board, tracks, vias, failures = best
     for net, target in failures:
         report.faults.append(
             f"{net}: no route to the pad at {target[0]:.2f}, {target[1]:.2f}"
@@ -1830,6 +1921,80 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
         report.notes.append(f"{label}: {gap:.2f} mm from the {name}")
 
 
+# THE ONE PLUG ON THIS BOARD WHOSE LEAD DOES NOT GO DOWN. J5 runs up to the SBC
+# standing 10 mm above it on its own standoffs, so the deck under J5 is nothing
+# to do with J5. Every other plug here is fed from the bay below or from a leg
+# beyond it, and has to get through the deck to be fed at all. JP1 is not in this
+# list because it is not a plug: it is three holes and a wire link.
+LEADS_UP = ("J5",)
+
+
+def check_leads_down(report: Report, parts: list[Placed]) -> None:
+    """Every connector's leads, and whether the deck under them is open.
+
+    A plug on this board is a lead that has to get somewhere, and every one of
+    them but the SBC's own goes DOWN -- into the power bay under the deck, or on
+    through the shell's floor ports to a leg. The deck plate is what stands in
+    the way, and it has exactly one hole in it: cad/deck.py's chase, a notch
+    34 mm wide in its rear edge. This asks the plate itself rather than that
+    notch's dimensions, so a second opening cut later counts here without
+    anything in this file being told about it.
+
+    IT IS A NOTE AND NOT A FAULT. A lead that comes down onto solid plate is not
+    a defect in this board: it is dressed sideways along the 3 mm under the
+    carrier until it finds the hole, which costs wire and somebody's patience
+    rather than a respin. And where the openings go has not been decided --
+    docs/CARRIER.md carries that as an open question. What this refuses to do is
+    leave it unsaid, which is what this file did until September 2026: the
+    placement notes above SAID the three bus connectors sit over the chase, and
+    nobody had asked the deck. Two of the three do. Bus C's plug has an opening
+    under a fifth of its pin row and the IMU's has none at all.
+    """
+    from build123d import Align, Box, Pos
+
+    from cad import deck
+
+    plate = deck.electronicsDeck()
+    plate = plate[0] if isinstance(plate, (list, tuple)) else plate
+    bb = plate.bounding_box()
+    mid = (bb.min.Z + bb.max.Z) / 2
+    samples = 9
+    for part in sorted(parts, key=lambda p: p.refdes):
+        pads = [(x, y) for _, x, y, _, _ in part.pads()]
+        plugged = any(body.what == "plug and wires" for body in part.footprint.bodies)
+        if not plugged or part.refdes in LEADS_UP or not pads:
+            continue
+        low = min(x for x, _ in pads) - 1.25
+        high = max(x for x, _ in pads) + 1.25
+        rear = sum(y for _, y in pads) / len(pads) < BOARD_D / 2
+        band = (bb.min.Y, ORIGIN_Y) if rear else (ORIGIN_Y + BOARD_D, bb.max.Y)
+        if band[1] - band[0] <= 0:
+            continue
+        open_at = 0
+        for n in range(samples):
+            atX = low + (high - low) * n / (samples - 1) + ORIGIN_X
+            probe = Pos(atX, sum(band) / 2, mid) * Box(
+                0.4, band[1] - band[0], 1.0, align=(Align.CENTER,) * 3
+            )
+            try:
+                shared = abs((probe & plate).volume)
+            except (ValueError, AttributeError, TypeError):
+                shared = 0.0
+            if shared < 0.95 * 0.4 * (band[1] - band[0]):
+                open_at += 1
+        if open_at == samples:
+            continue
+        where = (
+            "solid all the way across"
+            if not open_at
+            else (f"open under {open_at * 100 // samples}% of them")
+        )
+        report.notes.append(
+            f"{part.refdes} leads leave over the "
+            f"{'rear' if rear else 'front'} edge: the deck under them is {where}"
+        )
+
+
 # ---- the drawing -------------------------------------------------------------------------
 
 
@@ -1991,7 +2156,13 @@ def summary(
     parts: list[Placed], items: list[Copper], tracks: list[Track], vias: list[Via]
 ) -> str:
     """What a board house and a stores order would each want to know."""
-    drills: dict[float, int] = {}
+    # EVERY HOLE THE BOARD HOUSE HAS TO DRILL, which includes the six it is
+    # screwed down by and the four the SBC's standoffs are screwed to. Those
+    # belong to the board rather than to any part on it, and this count left
+    # them out until September 2026 -- so the figure quoted to the fab was ten
+    # holes short of the drill file the same board exports.
+    drills: dict[float, int] = {e.m3Clearance: len(MOUNTS)}
+    drills[e.sbcStandoffHole] = drills.get(e.sbcStandoffHole, 0) + len(STANDOFFS)
     for part in parts:
         for pad in part.footprint.pads:
             drills[pad.drill] = drills.get(pad.drill, 0) + 1
@@ -2090,6 +2261,7 @@ def main() -> int:
     parts, tracks, vias, items = lay_out(report)
     if not args.no_cad:
         check_against_cad(report, parts)
+        check_leads_down(report, parts)
 
     if args.png:
         draw(args.png, parts, items)
