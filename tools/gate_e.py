@@ -399,7 +399,7 @@ def panel_openings() -> dict[str, list[tuple]]:
     piece afterwards, and an arch drawn a millimetre lower would close one
     without leaving an arc for cylinder_radii() to find.
     """
-    from cad.deck import deckChaseDepth, deckChaseWidth, deckChaseX, deckThickness
+    from cad.deck import cable_notches, deckChaseDepth, deckThickness
     from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
     from cad.hardware import journalInnerX
     from cad.parameters import (
@@ -430,14 +430,15 @@ def panel_openings() -> dict[str, list[tuple]]:
 
     deck = [
         (
-            "cable chase through the electronics deck",
+            f"{name} cable chase through the electronics deck",
             (
-                deckChaseX,
-                -(interiorHalfDepth) + (deckChaseDepth / 2),
+                at_x,
+                side * (interiorHalfDepth - deckChaseDepth / 2),
                 deckZ + (deckThickness / 2),
             ),
-            (deckChaseWidth, deckChaseDepth, deckThickness),
+            (width, deckChaseDepth, deckThickness),
         )
+        for name, at_x, width, side in cable_notches()
     ]
 
     # The two ends do not use the same station on a thigh. A clevis puts a closed

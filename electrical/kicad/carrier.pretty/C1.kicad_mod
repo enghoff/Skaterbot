@@ -1,0 +1,23 @@
+(footprint "C1"
+    (version 20221018)
+    (generator "carrier_kicad.py")
+    (layer "F.Cu")
+    (descr "CP radial D5 P2.0")
+    (attr through_hole)
+    (fp_text reference "C1"
+      (at 1.0000 3.7000 0)
+      (layer "F.SilkS")
+      (effects (font (size 0.9 0.9) (thickness 0.14)))
+    )
+    (fp_text value "10 uF low-ESR electrolytic"
+      (at 1.0000 -3.7000 0)
+      (layer "F.Fab")
+      (effects (font (size 1 1) (thickness 0.15)))
+    )
+    (fp_line (start -1.5000 2.5000) (end 3.5000 2.5000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (fp_line (start 3.5000 2.3000) (end 3.5000 -2.5000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (fp_line (start 3.3000 -2.5000) (end -1.5000 -2.5000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (fp_line (start -1.5000 -2.3000) (end -1.5000 2.3000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (pad "1" thru_hole rect (at 0.0000 -0.0000 0) (size 1.6000 1.6000) (drill 0.8000) (layers "*.Cu" "*.Mask"))
+    (pad "2" thru_hole circle (at 2.0000 -0.0000 0) (size 1.6000 1.6000) (drill 0.8000) (layers "*.Cu" "*.Mask"))
+  )

@@ -117,6 +117,9 @@ HOLE_TO_HOLE = 0.25
 POUR_CLEARANCE = 0.3
 THERMAL_GAP = 0.3
 THERMAL_SPOKE = 0.5
+# These connector returns need solid copper, rather than a single surviving
+# thermal spoke. Shared with the KiCad exporter; solder with board preheat.
+SOLID_GROUND_PADS = frozenset({"J5-2", "J6-2"})
 
 # WHAT MAY STAND NEAR A MOUNTING HOLE. On top, an M3 washer is 7 mm across and a
 # driver comes down onto it; underneath, the 6 mm A/F brass standoff is 6.9 mm
@@ -1463,9 +1466,10 @@ def build_copper(
         ).buffer(POUR_CLEARANCE, quad_segs=6)
         base = board.difference(holes).difference(others)
         ground_pads = [c for c in items if c.net == POUR_NET and c.kind == "pad"]
-        gaps = unary_union([c.geom.buffer(THERMAL_GAP) for c in ground_pads])
+        thermal_pads = [c for c in ground_pads if c.label not in SOLID_GROUND_PADS]
+        gaps = unary_union([c.geom.buffer(THERMAL_GAP) for c in thermal_pads])
         spokes = []
-        for pad in ground_pads:
+        for pad in thermal_pads:
             cx, cy = pad.geom.centroid.x, pad.geom.centroid.y
             minx, miny, maxx, maxy = pad.geom.bounds
             reach = max(maxx - minx, maxy - miny) / 2 + THERMAL_GAP + THERMAL_SPOKE
@@ -1605,7 +1609,7 @@ class Report:
 
 # The core board's SWD header is a right-angle header on the core board itself,
 # and nothing on the carrier meets it -- carrier.py excuses it for that reason.
-OFF_BOARD_PINS = {("A1", f"P3-{n}") for n in carrier.WEACT_P3}
+OFF_BOARD_PINS = carrier.OFF_BOARD_PINS
 
 
 def check_footprints(report: Report) -> None:
@@ -1802,6 +1806,8 @@ def check_thermals(report: Report, parts: list[Placed], items: list[Copper]) -> 
         for pad, x, y, w, h in part.pads():
             if nets[(part.refdes, pad.name)] != POUR_NET:
                 continue
+            if f"{part.refdes}-{pad.name}" in SOLID_GROUND_PADS:
+                continue  # Solid connection; connectivity is checked separately.
             for layer, pieces in pours.items():
                 reach = max(w, h) / 2 + THERMAL_GAP + THERMAL_SPOKE / 2
                 alive = sum(
@@ -1930,69 +1936,40 @@ LEADS_UP = ("J5",)
 
 
 def check_leads_down(report: Report, parts: list[Placed]) -> None:
-    """Every connector's leads, and whether the deck under them is open.
+    """Require a continuous edge opening for every downward connector lead.
 
-    A plug on this board is a lead that has to get somewhere, and every one of
-    them but the SBC's own goes DOWN -- into the power bay under the deck, or on
-    through the shell's floor ports to a leg. The deck plate is what stands in
-    the way, and it has exactly one hole in it: cad/deck.py's chase, a notch
-    34 mm wide in its rear edge. This asks the plate itself rather than that
-    notch's dimensions, so a second opening cut later counts here without
-    anything in this file being told about it.
-
-    IT IS A NOTE AND NOT A FAULT. A lead that comes down onto solid plate is not
-    a defect in this board: it is dressed sideways along the 3 mm under the
-    carrier until it finds the hole, which costs wire and somebody's patience
-    rather than a respin. And where the openings go has not been decided --
-    docs/CARRIER.md carries that as an open question. What this refuses to do is
-    leave it unsaid, which is what this file did until September 2026: the
-    placement notes above SAID the three bus connectors sit over the chase, and
-    nobody had asked the deck. Two of the three do. Bus C's plug has an opening
-    under a fifth of its pin row and the IMU's has none at all.
+    The lead turns above the deck, outside the carrier outline, then drops
+    through the notch. It never needs dressing amongst underside solder tails.
+    Probe the full pin-row width plus 1.25 mm each end, through 5.5 mm of
+    deck depth at its edge. Partial openings are failures, not advisory notes.
+    The original rear notch was only under two buses; this check catches that.
     """
-    from build123d import Align, Box, Pos
+    from build123d import Box, Pos
 
     from cad import deck
 
-    plate = deck.electronicsDeck()
-    plate = plate[0] if isinstance(plate, (list, tuple)) else plate
+    plate = deck.electronicsDeck()[0]
     bb = plate.bounding_box()
     mid = (bb.min.Z + bb.max.Z) / 2
-    samples = 9
     for part in sorted(parts, key=lambda p: p.refdes):
         pads = [(x, y) for _, x, y, _, _ in part.pads()]
         plugged = any(body.what == "plug and wires" for body in part.footprint.bodies)
         if not plugged or part.refdes in LEADS_UP or not pads:
             continue
-        low = min(x for x, _ in pads) - 1.25
-        high = max(x for x, _ in pads) + 1.25
+        low = min(x for x, _ in pads) - 1.25 + ORIGIN_X
+        high = max(x for x, _ in pads) + 1.25 + ORIGIN_X
         rear = sum(y for _, y in pads) / len(pads) < BOARD_D / 2
-        band = (bb.min.Y, ORIGIN_Y) if rear else (ORIGIN_Y + BOARD_D, bb.max.Y)
-        if band[1] - band[0] <= 0:
-            continue
-        open_at = 0
-        for n in range(samples):
-            atX = low + (high - low) * n / (samples - 1) + ORIGIN_X
-            probe = Pos(atX, sum(band) / 2, mid) * Box(
-                0.4, band[1] - band[0], 1.0, align=(Align.CENTER,) * 3
+        centre_y = bb.min.Y + 2.75 if rear else bb.max.Y - 2.75
+        probe = Pos((low + high) / 2, centre_y, mid) * Box(
+            high - low, 5.5, bb.max.Z - bb.min.Z + 2.0
+        )
+        shared = abs((probe & plate).volume)
+        if shared > 1e-6:
+            report.faults.append(
+                f"{part.refdes} downward cable exit blocked by {shared:.2f} mm3 of deck"
             )
-            try:
-                shared = abs((probe & plate).volume)
-            except (ValueError, AttributeError, TypeError):
-                shared = 0.0
-            if shared < 0.95 * 0.4 * (band[1] - band[0]):
-                open_at += 1
-        if open_at == samples:
-            continue
-        where = (
-            "solid all the way across"
-            if not open_at
-            else (f"open under {open_at * 100 // samples}% of them")
-        )
-        report.notes.append(
-            f"{part.refdes} leads leave over the "
-            f"{'rear' if rear else 'front'} edge: the deck under them is {where}"
-        )
+        else:
+            report.notes.append(f"{part.refdes} downward cable exit: full width open")
 
 
 # ---- the drawing -------------------------------------------------------------------------

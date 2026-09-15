@@ -51,6 +51,9 @@ from cad.parameters import (
     journalScrewHeadHeight,
     journalScrewLength,
     journalSleeveBore,
+    journalWasherBore,
+    journalWasherDiameter,
+    journalWasherThickness,
     rotorHubInnerX,
     rotorHubOuterX,
 )
@@ -113,7 +116,7 @@ def journalSleeve():
 
 
 def journalScrew():
-    """The M5 x 10 button head that holds the sleeve down, and its shank.
+    """The M5 x 12 button head, seated on a small-series 1 mm washer.
 
     The head is drawn as a plain cylinder rather than as the dome it is, which
     overstates it -- so what tools/gate_f.py measures off it is the pessimistic
@@ -122,14 +125,22 @@ def journalScrew():
     head = _disc(
         journalScrewHeadDiameter,
         journalScrewHeadHeight,
-        journalOuterX + journalScrewHeadHeight / 2,
+        journalOuterX + journalWasherThickness + journalScrewHeadHeight / 2,
     )
     shank = _disc(
         journalScrewDiameter,
         journalScrewLength,
-        journalOuterX - journalScrewLength / 2,
+        journalOuterX + journalWasherThickness - journalScrewLength / 2,
     )
     return head + shank
+
+
+def journalWasher():
+    """DIN 433 M5 washer: stays inside the bearing's 10 mm bore."""
+    centre = journalOuterX + journalWasherThickness / 2
+    return _disc(journalWasherDiameter, journalWasherThickness, centre) - _disc(
+        journalWasherBore, journalWasherThickness + 2.0, centre
+    )
 
 
 def journalNut():
@@ -154,7 +165,7 @@ def journalNut():
 def jointHardware() -> list:
     """One straddled joint's worth of bought metal.
 
-    Four pieces now: the bearing in the stationary cheek, and the journal that
-    closes the joint -- sleeve, screw and nut -- which turns with the limb.
+    Five pieces: the bearing in the stationary cheek, and the journal that
+    closes the joint -- sleeve, screw, nut and washer -- which turns with the limb.
     """
-    return [bearing(), journalSleeve(), journalScrew(), journalNut()]
+    return [bearing(), journalSleeve(), journalScrew(), journalNut(), journalWasher()]

@@ -214,7 +214,11 @@ ADDED = {
     "journalSleeveBore": 5.3,
     "journalScrewClearance": 5.5,
     "journalScrewDiameter": 5.0,
-    "journalScrewLength": 10.0,
+    "journalScrewLength": 12.0,
+    # M5 DIN 433 washer restores thread reach without bottoming the screw.
+    "journalWasherBore": 5.3,
+    "journalWasherDiameter": 9.0,
+    "journalWasherThickness": 1.0,
     "journalScrewHeadDiameter": 9.5,
     "journalScrewHeadHeight": 2.75,
     "journalNutAcrossFlats": 8.0,
@@ -646,9 +650,14 @@ ADDED = {
     # two 14 AWG leads; 6 mm deep stops short of the battery's squeeze, because
     # the packs end at y = -26 and this reaches -27.2; and x = 27 is the only
     # stretch of the rear edge that is neither a fixing nor over the packs.
-    "deckChaseWidth": 34.0,
+    "deckChaseWidth": 44.0,
     "deckChaseDepth": 6.0,
-    "deckChaseX": 27.0,
+    "deckChaseX": 22.0,
+    # Dedicated exits for the IMU and front power/sense leads.
+    "deckImuChaseX": -20.8,
+    "deckImuChaseWidth": 18.0,
+    "deckPowerChaseX": 38.0,
+    "deckPowerChaseWidth": 12.0,
     # How far the screw taps into the plate, and what the plate is notched by
     # where the deck's rear ledge comes down through its top edge. The second was
     # a real collision before it was measured -- 148 mm3 of printed ledge

@@ -228,7 +228,7 @@ count = 1
 name = "electronics-deck"
 export = "electronicsDeck"
 prints = 1
-bodies = 3  # the plate and two BMS card guides
+  bodies = 5  # one plate; each slotted BMS guide is two separate ribs
 note = "Carries the controller carrier and the SBC over the battery, and holds the packs down. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in. It printed the SBC's four posts until September 2026; the SBC stands on bought standoffs on the controller carrier now, so the deck carries it only at one remove."
 
 # THE SECOND PIECE WITH NO GOLDEN STEP, and it exists for a plain finding rather
@@ -258,9 +258,9 @@ note = """6800-2RS, from cad/hardware.py. THE JOURNAL IS ON THE ROW BELOW, not o
 
 [[fixed]]
 label = "Journal screws and nuts"
-each_g = 3.0
+each_g = 3.6
 count = 4
-note = """What holds one journal in: an M5 x 10 ISO 7380 button head and an M5 ISO 4035 thin nut, the nut captive in a pocket in the limb's output disc. Catalogue-typical 2.2 g of screw and 0.8 of nut, steel, so neither can be weighed off the CAD at PA12 density. THE SLEEVE THEY HOLD IS PRINTED and is on the printed table above; it was 2.7 g of steel here until it was, and docs/BOM.md carries steel as the upgrade the fit coupon may force. WHY THERE IS A JOURNAL TO HOLD AT ALL. It was 4.9 g of dowel, then nothing at all when the disc grew its own printed stub -- and a journal that is part of the moving side before the joint is closed cannot be got into the far bearing, whichever of those two it is: the clevis is a single print whose cheeks stand 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm to the journal's tip. This is 22.8 g of steel back on the robot to make the four straddled joints assemble at all. cad/parameters.py carries the arithmetic, and says plainly that the anchor in the disc is weaker than the stub was."""
+note = """What holds one journal in: an M5 x 12 ISO 7380 button head, a 5.3 x 9 x 1 DIN 433 washer and an M5 ISO 4035 thin nut, the nut captive in a pocket in the limb's output disc. Estimated 2.5 g of screw, 0.3 of washer and 0.8 of nut, steel, so neither can be weighed off the CAD at PA12 density. THE SLEEVE THEY HOLD IS PRINTED and is on the printed table above; it was 2.7 g of steel here until it was, and docs/BOM.md carries steel as the upgrade the fit coupon may force. WHY THERE IS A JOURNAL TO HOLD AT ALL. It was 4.9 g of dowel, then nothing at all when the disc grew its own printed stub -- and a journal that is part of the moving side before the joint is closed cannot be got into the far bearing, whichever of those two it is: the clevis is a single print whose cheeks stand 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm to the journal's tip. This is 22.8 g of steel back on the robot to make the four straddled joints assemble at all. cad/parameters.py carries the arithmetic, and says plainly that the anchor in the disc is weaker than the stub was."""
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"

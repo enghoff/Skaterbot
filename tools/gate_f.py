@@ -946,6 +946,40 @@ def check_no_clashes() -> tuple[int, int]:
     return checked, failed
 
 
+def check_journal_fastening() -> tuple[int, int]:
+    """Check thread reach and the real washer, which collision tests miss."""
+    from cad import hardware as h
+    from cad.parameters import rotorHubInnerX
+
+    screw = h.journalScrew()
+    nut = h.journalNut()
+    washer = h.journalWasher()
+    tip = screw.bounding_box().min.X
+    nut_box = nut.bounding_box()
+    engaged = nut_box.max.X - max(nut_box.min.X, tip)
+    tip_air = tip - rotorHubInnerX
+    radial_air, clash = measure([washer], [h.bearing()])
+    checks = [
+        ("nut engagement >= 2 mm", engaged >= 2.0 - 1e-6, engaged),
+        ("screw tip air >= 0.8 mm", tip_air >= 0.8 - 1e-6, tip_air),
+        (
+            "washer clears bearing by 0.5 mm",
+            radial_air >= 0.5 - 1e-6 and clash < 1e-6,
+            radial_air,
+        ),
+    ]
+    for label, neighbour in (
+        ("washer on sleeve", h.journalSleeve()),
+        ("screw on washer", screw),
+    ):
+        gap, shared = measure([washer], [neighbour])
+        checks.append((label, gap < 1e-6 and shared < 1e-6, gap))
+    print("\nJOURNAL FASTENING")
+    for label, passed, value in checks:
+        print(f"  {'ok' if passed else 'FAIL'}  {label}: {value:.3f} mm")
+    return len(checks), sum(not passed for _, passed, _ in checks)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -957,7 +991,12 @@ def main() -> int:
 
     checked, failed = check_poses()
     if not args.poses:
-        for stage in (check_clearances, check_packing, check_no_clashes):
+        for stage in (
+            check_clearances,
+            check_packing,
+            check_no_clashes,
+            check_journal_fastening,
+        ):
             more, wrong = stage()
             checked += more
             failed += wrong

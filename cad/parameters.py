@@ -604,11 +604,19 @@ journalLength = 6.0
 journalSleeveBore = 5.3
 journalScrewClearance = 5.5
 journalScrewDiameter = 5.0
-# M5 x 10, which is what the stack asks for and not a round number chosen: head
-# face on the sleeve's outer end, 6 mm of sleeve, 1.5 mm of disc web and 2.5 mm
-# into a 2.7 mm nut. It stops 2 mm short of the actuator's output face, which is
-# the clearance tools/gate_f.py measures.
-journalScrewLength = 10.0
+# Revised 2026-09-15: the retired register pocket left a 2.7 mm web, not
+# 1.5 mm, so M5 x 10 reached only 1.3 mm into the nut. M5 x 12 with a
+# DIN 433 / ISO 7092 M5 washer (5.3 x 9 x 1) reaches 2.3 mm and stops
+# 1 mm short of the motor. A normal 10 mm OD washer can touch the bearing;
+# the small-series washer stays inside its bore. Manufacturer drawing:
+# https://belmetric.com/content/A-PDF_Drawings/WF5X9SS.pdf
+# Allow +/-0.2 mm each on the printed sleeve and web, +/-0.3 on screw length,
+# and +/-0.1 on the washer: at least 1.5 mm engagement and 0.2 mm tip air.
+# This is a prototype clamp, not a full-strength M5 bolted connection.
+journalScrewLength = 12.0
+journalWasherBore = 5.3
+journalWasherDiameter = 9.0
+journalWasherThickness = 1.0
 # An ISO 7380 button head rather than a cap head, and the head diameter is why:
 # Ø9.5 lands wholly on the Ø10 sleeve and touches neither the bearing's inner
 # race nor its seal, and 2.75 mm of head stands 1.25 mm proud of the bearing

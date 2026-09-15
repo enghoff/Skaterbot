@@ -2101,3 +2101,47 @@ the rotor arm burying four of six bolt holes, and the limb waist filling 46° of
 the register pocket — happened in the plane the pocket occupied. There is
 nothing in that plane to fill now. The rule that produced them stands: nothing
 may be built across the Ø24 output circle in the plate's own plane.
+
+## Review findings 1-4 corrected ? 2026-09-15
+
+The journal screw was still sized for the retired 1.5 mm web. The current web
+is 2.7 mm, leaving M5 x 10 only 1.3 mm of nut engagement. The replacement is
+M5 x 12 with a small-series DIN 433 M5 washer, 5.3 x 9 x 1 mm. It reaches
+2.3 mm into the thin nut and ends 1.0 mm before the actuator. Gate F now checks
+thread reach, tip air, washer clearance from the bearing and its seating.
+The washer must be fitted. The printed anchor's strength/creep remain open.
+
+Three deck notches now serve the six downward connectors. The motor-bus notch
+widens from 34 to 44 mm and moves 5 mm left; the IMU gets an 18 mm notch and
+power/sense get a 12 mm front notch. All remain outside the packs' hold-down
+area and clear the four ledges. Gate E checks all openings. The carrier check
+now rejects a partially blocked exit instead of reporting an advisory note.
+
+J5-2 and J6-2 have solid ground connections on both PCB layers, shared by the
+custom pour and KiCad exporter. Their old one-spoke thermal reliefs failed
+KiCad. Solder these two pads with preheat; the copper connection is deliberate.
+The schematic and PCB now share proper footprint identities, local-label net
+names and explicit no-connect identities. The four SWD pins live only on the
+core board; they are not phantom carrier pads in the schematic. Board-only
+mounting holes have unique references. No DRC or parity rule was relaxed.
+
+The old Gerbers were from before the hole-clearance and silkscreen fixes.
+`electrical/fabricate.py` now rebuilds, checks, exports and packages the board,
+with source/output hashes and a freshness check. The regenerated top silk is
+required to be nonempty. The exported drill set and copper come from the same
+filled board, after DRC and ERC; neither is taken from the old Gerber folder.
+
+Mass: 2087.4 g, +1.8 g from the review baseline (2.4 g added fastener allowance
+less 0.6 g removed deck). The journal fastener allowance is read from the BOM
+budget by the simulation rather than repeated as a hard-coded 3 g.
+
+Validation: CAD build/lint and gates A-F passed (771 clearance/fastening checks).
+The old screw length and old deck openings were deliberately restored in memory;
+the new checks rejected both. Finished deck STEP round-trips with five solids:
+one plate plus four BMS guide ribs; the old export register incorrectly said
+three, counting groups instead of solids. The register now records five.
+The simulation was rebuilt and agrees with the CAD. KiCad reports zero DRC,
+ERC, unconnected-pad and schematic-parity issues. The release contains 249
+drilled holes (233 plated, 16 unplated); its silkscreen was rendered from the
+actual Gerber and visually inspected. The ZIP and source hashes verify.
+No hardware has been fabricated or tested.

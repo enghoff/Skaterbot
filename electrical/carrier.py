@@ -117,6 +117,8 @@ WEACT_P2 = {
 }
 
 WEACT_P3 = {1: "3V3", 2: "SWDIO", 3: "SWCLK", 4: "GND"}
+# P3 is accessed on the removable core board, not soldered to the carrier.
+OFF_BOARD_PINS = frozenset(("A1", f"P3-{n}") for n in WEACT_P3)
 
 # VCC is the core board's pre-regulator rail. Its ME6239A33M3G takes 3.3-20 V in
 # and makes the 3.3 V that comes back out on P2-1/2, so feeding the carrier's

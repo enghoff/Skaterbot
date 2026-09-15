@@ -43,7 +43,7 @@ September 2026 it rides on the controller carrier, with every lead it takes down
 into the bay on a plug. This plate still lifts off with nothing of its own
 attached below it.
 
-Three bodies: the plate and the two BMS guides, left interpenetrating like
+Three groups containing five solids: the plate and two ribs per BMS guide, left interpenetrating like
 every other printed piece here, because a slicer merges
 coincident shells and cad/finish.py's chamfer cannot be applied to a solid that
 is then booleaned again.
@@ -97,9 +97,26 @@ deckCornerNotch = bossSize + 1.0
 # millimetre of it is plate taken out of the span that holds the battery down.
 # It sits between the bay gap and the right-hand wall ledge, which is the only
 # stretch of the rear edge that is neither a fixing nor over the packs' hold-down.
-deckChaseWidth = 34.0
+deckChaseWidth = 44.0
 deckChaseDepth = 6.0
-deckChaseX = 27.0
+deckChaseX = 22.0
+# 2026-09-15: full pin-row width plus dressing clearance at the actual
+# carrier connectors. The notches stop at y +/-27.2, outside the packs'
+# +/-26 mm hold-down area, and clear the wall ledges beginning at x +/-46.
+deckImuChaseX = -20.8
+deckImuChaseWidth = 18.0
+deckPowerChaseX = 38.0
+deckPowerChaseWidth = 12.0
+
+
+def cable_notches():
+    """(name, x, width, side): -1 rear, +1 front; open to the shell wall."""
+    return (
+        ("motor buses", deckChaseX, deckChaseWidth, -1),
+        ("IMU", deckImuChaseX, deckImuChaseWidth, -1),
+        ("bus feed and shunt", deckPowerChaseX, deckPowerChaseWidth, 1),
+    )
+
 
 # The controller's standoffs land here. SIX OF THEM SINCE SEPTEMBER 2026 and
 # not on a corner pattern any more: the board is 140 mm long, its rear edge is
@@ -157,11 +174,12 @@ def _plate():
     # threaded before anything is terminated. It stops short of the battery's
     # squeeze -- the packs end at y = -26 and this reaches y = -27.2 -- so the
     # plate still bears on the cells across their whole width.
-    blank -= Pos(
-        deckChaseX,
-        -(deckDepth / 2) + (deckChaseDepth / 2) - 1.0,
-        deckZ + deckThickness / 2,
-    ) * Box(deckChaseWidth, deckChaseDepth + 2.0, deckThickness * 3)
+    for _, at_x, width, side in cable_notches():
+        blank -= Pos(
+            at_x,
+            side * (deckDepth / 2 - deckChaseDepth / 2 + 1.0),
+            deckZ + deckThickness / 2,
+        ) * Box(width, deckChaseDepth + 2.0, deckThickness * 3)
     return blank
 
 

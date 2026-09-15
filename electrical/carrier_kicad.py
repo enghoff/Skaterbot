@@ -140,13 +140,29 @@ def setup() -> str:
   (net 0 "")"""
 
 
+def export_net_of(parts):
+    """Match Eeschema's local-label and explicit no-connect net names."""
+    connected = carrier_sch.net_of_pin()
+    components = {p.refdes: p for p in pcb.carrier.PARTS}
+    return {
+        (part.refdes, pad.name): connected.get(
+            (part.refdes, pad.name),
+            f"unconnected-({part.refdes}-{components[part.refdes].pins[pad.name]}-Pad{pad.name})",
+        )
+        for part in parts
+        for pad in part.footprint.pads
+    }
+
+
+def net_name(net: str) -> str:
+    return net if net.startswith("unconnected-(") else "/" + net
+
+
 def nets(parts) -> tuple[dict[str, int], str]:
     """Every net in the netlist, numbered the way the board file wants them."""
-    named = sorted(
-        {net for net in pcb.net_of_pads(parts).values() if not net.startswith("~")}
-    )
+    named = sorted(set(export_net_of(parts).values()))
     index = {net: n + 1 for n, net in enumerate(named)}
-    lines = "\n".join(f'  (net {n} "{net}")' for net, n in index.items())
+    lines = "\n".join(f'  (net {n} "{net_name(net)}")' for net, n in index.items())
     return index, lines
 
 
@@ -351,7 +367,7 @@ def footprint(part: pcb.Placed, index: dict[str, int], net_of, silk: Silk) -> st
     rx, ry = silk.reference(part)
     vx, vy = (box[0] + box[2]) / 2 if box else 0.0, (box[3] + 1.2) if box else 3.0
     out = [
-        f'  (footprint "{part.refdes}"',
+        f'  (footprint "carrier:{part.refdes}"',
         '    (layer "F.Cu")',
         f"    (at {x:.4f} {y:.4f}{'' if angle == 0 else f' {angle}'})",
         f'    (descr "{part.footprint.name}")',
@@ -371,13 +387,19 @@ def footprint(part: pcb.Placed, index: dict[str, int], net_of, silk: Silk) -> st
     for pad in part.footprint.pads:
         net = net_of.get((part.refdes, pad.name))
         number = index.get(net, 0)
-        name = net if number else ""
+        name = net_name(net) if number else ""
+        # Solid connection on the two returns whose thermals were starved.
+        connection = (
+            " (zone_connect 2)"
+            if f"{part.refdes}-{pad.name}" in pcb.SOLID_GROUND_PADS
+            else ""
+        )
         out.append(
             f'    (pad "{pad.name}" thru_hole {pad_shape(pad)}'
             f" (at {pad.x:.4f} {-pad.y:.4f}{'' if angle == 0 else f' {angle}'})"
             f" (size {pad.w:.4f} {pad.h:.4f}) (drill {pad.drill:.4f})"
             f' (layers "*.Cu" "*.Mask")'
-            f' (net {number} "{name}"))'
+            f' (net {number} "{name}"){connection})'
         )
     for hx, hy, diameter in part.footprint.holes:
         out.append(
@@ -397,7 +419,9 @@ def bare_hole(x: float, y: float, diameter: float, name: str) -> str:
             f'  (footprint "{name}"',
             '    (layer "F.Cu")',
             f"    (at {px:.4f} {py:.4f})",
-            "    (attr through_hole exclude_from_pos_files exclude_from_bom)",
+            "    (attr through_hole board_only exclude_from_pos_files exclude_from_bom)",
+            f'    (fp_text reference "H_{name}" (at 0 0) (layer "F.Fab") hide'
+            " (effects (font (size 1 1) (thickness 0.15))))",
             '    (pad "" np_thru_hole circle (at 0 0)'
             f" (size {diameter:.4f} {diameter:.4f}) (drill {diameter:.4f})"
             ' (layers "F&B.Cu" "*.Mask"))',
@@ -560,7 +584,7 @@ def zones(index) -> str:
         out.append(
             "\n".join(
                 [
-                    f'  (zone (net {number}) (net_name "{pcb.POUR_NET}")'
+                    f'  (zone (net {number}) (net_name "{net_name(pcb.POUR_NET)}")'
                     f' (layer "{layer}")',
                     "    (hatch edge 0.5)",
                     f"    (connect_pads (clearance {pcb.POUR_CLEARANCE:.4f}))",
@@ -622,15 +646,14 @@ PROJECT = """{
 def build() -> tuple[str, dict]:
     report = pcb.Report()
     parts, routed, placedVias, items = pcb.lay_out(report)
+    pcb.check_against_cad(report, parts)
+    pcb.check_leads_down(report, parts)
     if report.faults:
         return "", {"faults": report.faults}
+    pcb.draw(pcb.SVG, parts, items)
 
     index, netLines = nets(parts)
-    net_of = {
-        endpoint: net
-        for net, endpoints in pcb.carrier.NETS.items()
-        for endpoint in endpoints
-    }
+    net_of = export_net_of(parts)
     body = [
         '(kicad_pcb (version 20221018) (generator "carrier_kicad.py")',
         f"  (general (thickness {pcb.e.pcbThickness}))",
@@ -662,6 +685,43 @@ def build() -> tuple[str, dict]:
     return "\n".join(body) + "\n", counts
 
 
+def write_footprint_library(board_text: str) -> None:
+    """Export the same footprints as a local library for ERC and board updates."""
+    import re
+
+    library = OUT / "carrier.pretty"
+    library.mkdir(exist_ok=True)
+    for refdes in (p.refdes for p in pcb.carrier.PARTS):
+        start = board_text.index(f'  (footprint "carrier:{refdes}"')
+        # Generated footprints end at this indentation; nested items are deeper.
+        end = board_text.index("\n  )", start) + len("\n  )")
+        text = board_text[start:end].strip()
+        text = text.replace(f'"carrier:{refdes}"', f'"{refdes}"', 1)
+        text = text.replace(
+            "\n    (layer",
+            '\n    (version 20221018)\n    (generator "carrier_kicad.py")\n    (layer',
+            1,
+        )
+        text = re.sub(r"\n    \(at [^\n]+\)", "", text, count=1)
+        # Board pad/text angles include placement rotation; library parts sit
+        # at zero. Keep coordinates local and remove only that angle.
+        rotation = pcb.PLACEMENT[refdes][2]
+
+        def local_angle(match):
+            x, y, *angle = match.group(1).split()
+            value = (float(angle[0]) if angle else 0.0) - rotation
+            return f"(at {x} {y} {value % 360:g})"
+
+        text = re.sub(r"\(at ([^)]*)\)", local_angle, text)
+        text = re.sub(r' \(net \d+ "[^"]*"\)', "", text)
+        (library / f"{refdes}.kicad_mod").write_text(text + "\n", encoding="utf-8")
+    (OUT / "fp-lib-table").write_text(
+        '(fp_lib_table\n  (lib (name "carrier")(type "KiCad")'
+        '(uri "${KIPRJMOD}/carrier.pretty")(options "")(descr "Generated carrier footprints"))\n)\n',
+        encoding="utf-8",
+    )
+
+
 def main() -> int:
     text, counts = build()
     if not text:
@@ -671,6 +731,7 @@ def main() -> int:
         return 1
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "carrier.kicad_pcb").write_text(text, encoding="utf-8")
+    write_footprint_library(text)
     # THE PROJECT FILE IS SEEDED ONCE AND THEN LEFT ALONE. It carries the design
     # rules this board is poured to, which is why it is written at all -- but it
     # is also where KiCad keeps its own migrated settings, its pinned libraries

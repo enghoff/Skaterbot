@@ -1,0 +1,22 @@
+(footprint "C4"
+    (version 20221018)
+    (generator "carrier_kicad.py")
+    (layer "F.Cu")
+    (descr "C radial 2.54")
+    (attr through_hole)
+    (fp_text reference "C4"
+      (at 1.2700 -2.5000 0)
+      (layer "F.SilkS")
+      (effects (font (size 0.9 0.9) (thickness 0.14)))
+    )
+    (fp_text value "100 nF X7R"
+      (at 1.2700 -2.5000 0)
+      (layer "F.Fab")
+      (effects (font (size 1 1) (thickness 0.15)))
+    )
+    (fp_line (start -0.7300 1.3000) (end 3.2700 1.3000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (fp_line (start 3.2700 -0.6792) (end 3.2700 -1.3000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (fp_line (start 3.0700 -1.3000) (end -0.7300 -1.3000) (stroke (width 0.15) (type solid)) (layer "F.SilkS"))
+    (pad "1" thru_hole circle (at 0.0000 -0.0000 0) (size 1.6000 1.6000) (drill 0.8000) (layers "*.Cu" "*.Mask"))
+    (pad "2" thru_hole circle (at 2.5400 -0.0000 0) (size 1.6000 1.6000) (drill 0.8000) (layers "*.Cu" "*.Mask"))
+  )

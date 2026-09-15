@@ -187,6 +187,11 @@ class Joint:
 def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     """The whole robot: links with their masses, joints, and the dimensions."""
     d = load_dimensions()
+    journal_fastener_g = next(
+        row["each_g"]
+        for row in budget()["fixed"]
+        if row["label"] == "Journal screws and nuts"
+    )
 
     # ---- the stations, all of them derived in the KCL ---------------------
     hip_x = d["hipCenterX"]
@@ -597,11 +602,11 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             ),
             Solid(
                 label=f"hip pitch journal screw and nut, {side}",
-                grams=3.0,
+                grams=journal_fastener_g,
                 shape="point",
                 at=(sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
                 source="bom",
-                note="M5 x 10 button head and an M5 thin nut, docs/BOM.md section C",
+                note="M5 x 12 button head, DIN 433 washer and an M5 thin nut, docs/BOM.md section C",
             ),
         ]
         # THE PROXY HAS TO REACH ROUND THE MOTOR NOW. The shin's box below is the
@@ -689,11 +694,11 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             ),
             Solid(
                 label=f"knee journal screw and nut, {side}",
-                grams=3.0,
+                grams=journal_fastener_g,
                 shape="point",
                 at=(-sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
                 source="bom",
-                note="M5 x 10 button head and an M5 thin nut, docs/BOM.md section C",
+                note="M5 x 12 button head, DIN 433 washer and an M5 thin nut, docs/BOM.md section C",
             ),
         ]
         shin.collisions.append(

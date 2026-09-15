@@ -49,6 +49,7 @@ simulation/urdf/meshes/manifest.json
 # electrical/kicad/carrier.kicad_pcb, so they are a render of a tracked input
 # and go stale against it. Regenerate them rather than committing them.
 electrical/kicad/gerber/
+electrical/kicad/carrier-fabrication.zip
 
 # KiCad's own per-user state, written beside the project whenever the GUI opens
 # it. carrier.kicad_prl is which layer you were last looking at, .history/ is

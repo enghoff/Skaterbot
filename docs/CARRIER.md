@@ -524,7 +524,7 @@ right, and only what was written out was wrong. The angle goes out as it stands
 now, and every part at 0° or 180° is unaffected, which is why this sat in the
 file unnoticed.
 
-What is left after that is **three starved thermal reliefs** and nothing else:
+That revision left three starved thermal reliefs. The 2026-09-15 review corrections below remove them:
 0 errors, 0 unconnected pads, 0 footprint errors, 0 silkscreen violations. The
 schematic passes ERC with 0 violations.
 
@@ -611,26 +611,16 @@ beeping with a meter before ordering.**
   strip east of the column are the only two ways past this block of parts, and
   the I²C bus, the SBC's serial link and bus A all need them. Standing off and
   letting the plane carry the return is the lesser evil, not a good answer.
-- **Seven ground pads reach the plane on one spoke of four**, where the pour
-  gives every pad four: the two spokes between pads on a 2.5 mm pitch never
-  existed, and a track was laid over one of the other two. One 0.5 mm spoke
-  carries about 2 A and solders warm rather than cold, so this is a note and not
-  a fault — but J5-2 is one of the SBC's two returns and the SBC draws up to 2 A
-  across the pair, so that is the one to widen if any of them is. Reserving the
-  spoke lanes before routing was tried twice and cost more routes than it saved
-  pads.
-- **Four of the six plugs fed from below have no opening under them, and it is
-  worse than this document used to say.** `cad/deck.py` cuts one hole, the 34 mm
-  chase in its rear edge. The board is now measured against the plate itself on
-  every run, and what that finds is: bus A and bus B sit over the chase; **bus C
-  has an opening under a fifth of its pin row, the IMU has none at all, and the
-  bus feed and the shunt pair are both on the front edge where there is no
-  opening anywhere.** For the front pair the layout's own comment used to claim a
-  second opening over the distribution board that the plate does not have. Every
-  one of those leads can be dressed sideways in the 3 mm the carrier's standoffs
-  leave until it reaches the chase — 24 mm of that for the IMU — or the deck can
-  gain the openings. **Neither has been decided.** It is the one thing here that
-  was a contradiction rather than a gap, and it is now at least measured.
+- **J5-2 and J6-2 now connect solidly to ground on both layers.** Their
+  starved thermal reliefs are gone. Use board preheat and an appropriately
+  sized iron when soldering these pins; the extra copper draws heat away.
+  Other ground pads keep thermal reliefs. KiCad checks the actual filled
+  board, not the custom pour's approximate spoke count.
+- **Every downward plug now has a full-width deck opening (2026-09-15).** The
+  motor-bus notch is 44 mm wide, with an 18 mm IMU notch and a 12 mm front
+  power/sense notch. The complete pin-row width plus dressing allowance is
+  probed through the plate, and any remaining material is a failure. Dress
+  the wires over the plate, outside the carrier outline, then down the notch.
 - **The carrier's own standoffs are drawn at 3 mm and nobody stocks that.** The
   shortest brass pillar on an Indian shelf is 5 or 6 mm, and every millimetre
   under the carrier lifts the SBC with it — the reserved volume over the SBC has
@@ -673,3 +663,24 @@ beeping with a meter before ordering.**
   because a threshold has been chosen.
 - **Nothing here has been built.** Every number in this document came off a
   vendor document or off the CAD. No part of this board exists.
+
+## Checked fabrication release (2026-09-15)
+
+Run `uv run electrical/fabricate.py` to regenerate the carrier and its local
+symbol/footprint libraries, refill the zones, require zero DRC/ERC violations
+and zero schematic parity issues, then export Gerbers and separate PTH/NPTH
+drills. The command packages `electrical/kicad/carrier-fabrication.zip` and
+puts individual files, reports and SHA-256 hashes in `electrical/kicad/gerber/`.
+`uv run electrical/fabricate.py --verify` rejects changed sources, changed
+outputs or an archive that disagrees. Old files are not a fabrication release.
+The top silkscreen must contain drawing apertures; an empty layer fails.
+
+The schematic uses local labels, so the PCB now preserves their `/` prefix.
+Deliberately unused pins retain Eeschema's no-connect names. P3 is accessed on
+the removable WeAct core board and is not a carrier pad; only the 48 pins
+actually landed on this PCB appear on its schematic symbol. Mounting holes
+have unique references and are marked board-only. These changes make parity
+checking useful without suppressing its warnings.
+
+Reload the project in an already-open KiCad editor after regeneration; its
+in-memory board and libraries can otherwise predate the checked files.

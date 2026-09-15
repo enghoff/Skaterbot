@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import sys
 import uuid as uuidlib
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -71,6 +72,21 @@ DATASHEETS = {
     "F1": "https://www.littelfuse.com/assetdocs/pptc-through-hole-rxef-dat"
     "asheet?assetguid=53c5fbc6-c9d5-4b4b-b2a9-0d6b2b17e9d5",
 }
+
+
+def board_parts():
+    """Only the pins landed on this PCB; SWD P3 stays on the core board."""
+    return [
+        replace(
+            part,
+            pins={
+                pin: name
+                for pin, name in part.pins.items()
+                if (part.refdes, pin) not in carrier.OFF_BOARD_PINS
+            },
+        )
+        for part in carrier.PARTS
+    ]
 
 
 def _uuid(seed: str) -> str:
@@ -153,7 +169,7 @@ def lib_symbol(
         f" (at 0 {half_h + 2.54:.2f} 0) {FONT})",
         f'{inner}(property "Value" "{part.partNumber}"'
         f" (at 0 {-half_h - 2.54:.2f} 0) {FONT})",
-        f'{inner}(property "Footprint" "" (at 0 0 0)'
+        f'{inner}(property "Footprint" "carrier:{part.refdes}" (at 0 0 0)'
         " (effects (font (size 1.27 1.27)) hide))",
         f'{inner}(property "Datasheet" "{DATASHEETS.get(part.refdes, "")}"'
         " (at 0 0 0) (effects (font (size 1.27 1.27)) hide))",
@@ -198,6 +214,8 @@ def placed_symbol(part: carrier.Part, at: tuple[float, float]) -> list[str]:
         f" (at {x:.2f} {y - half_h - 2.54:.2f} 0) {FONT})",
         f'    (property "Value" "{part.partNumber}"'
         f" (at {x:.2f} {y + half_h + 2.54:.2f} 0) {FONT})",
+        f'    (property "Footprint" "carrier:{part.refdes}" (at {x:.2f} {y:.2f} 0)'
+        " (effects (font (size 1.27 1.27)) hide))",
     ]
     for pin in part.pins:
         out.append(f'    (pin "{pin}" (uuid "{_uuid(f"pin/{part.refdes}/{pin}")}"))')
@@ -261,7 +279,7 @@ def layout() -> list[tuple[carrier.Part, tuple[float, float]]]:
     taken: set[str] = set()
     for (_, belongs), x in zip(COLUMNS, COLUMN_X):
         y = TOP_Y
-        for part in carrier.PARTS:
+        for part in board_parts():
             if part.refdes in taken or not belongs(part.refdes):
                 continue
             taken.add(part.refdes)
@@ -269,7 +287,7 @@ def layout() -> list[tuple[carrier.Part, tuple[float, float]]]:
             height = PITCH * (max(len(left), len(right)) + 1)
             placed.append((part, (snap(x), snap(y + height / 2))))
             y += height + GAP
-    missing = [p.refdes for p in carrier.PARTS if p.refdes not in taken]
+    missing = [p.refdes for p in board_parts() if p.refdes not in taken]
     if missing:
         raise SystemExit(f"no column for {missing}")
     return placed
@@ -318,7 +336,7 @@ def library() -> str:
         "  (version 20231120)",
         '  (generator "carrier_sch.py")',
     ]
-    for part in carrier.PARTS:
+    for part in board_parts():
         out.append(lib_symbol(part, indent="  ", prefix=""))
     out.append(")")
     return "\n".join(out) + "\n"
@@ -356,9 +374,9 @@ def main() -> int:
         encoding="utf-8"
     ):
         table.write_text(SYM_LIB_TABLE, encoding="utf-8")
-    pins = sum(len(p.pins) for p in carrier.PARTS)
+    pins = sum(len(p.pins) for p in board_parts())
     print(f"wrote {path}")
-    print(f"  {len(carrier.PARTS)} symbols, {pins} pins, {len(carrier.NETS)} nets")
+    print(f"  {len(board_parts())} symbols, {pins} pins, {len(carrier.NETS)} nets")
     return 0
 
 
