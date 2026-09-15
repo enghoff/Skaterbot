@@ -202,8 +202,8 @@ count = 1
 name = "pelvis-shell"
 export = "pelvisShell"
 prints = 1
-bodies = 22  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges, two bus monitor pads, two BMS guides, IMU seat
-note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are. Two more bodies in September 2026: the pads that carry the INA226 bus monitor on the rear wall, behind the distribution board, where nothing printed overhangs the bought board and a driver reaches both screws straight down."""
+bodies = 20  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges, two BMS guides, IMU seat
+note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are. Two more bodies for a week of September 2026, the pads that carried the INA226 bus monitor on the rear wall; they went when the monitor moved onto the controller carrier."""
 
 [[printed.piece]]
 name = "torso-cover"
@@ -228,8 +228,8 @@ count = 1
 name = "electronics-deck"
 export = "electronicsDeck"
 prints = 1
-bodies = 7  # the plate, four SBC posts and two BMS card guides
-note = "Carries the controller carrier and the SBC over the battery, and holds the packs down. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in. AND IT CARRIES THE BUS MONITOR as of September 2026, on two more posts on that same underside: the INA226 was taped to the bought distribution board below until its own photographs showed two mounting holes, and the deck is the only surface within reach of it that a screw can get at."
+bodies = 3  # the plate and two BMS card guides
+note = "Carries the controller carrier and the SBC over the battery, and holds the packs down. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in. It printed the SBC's four posts until September 2026; the SBC stands on bought standoffs on the controller carrier now, so the deck carries it only at one remove."
 
 # THE SECOND PIECE WITH NO GOLDEN STEP, and it exists for a plain finding rather
 # than a refinement: the rear wall was cut to pass three connectors and nothing

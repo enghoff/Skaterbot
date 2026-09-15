@@ -121,7 +121,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     from cad.electronics import (
         antennaHoleDiameter,
         sbcHoleDiameter,
-        sbcPostClearance,
+        sbcStandoffHole,
     )
     from cad.parameters import (
         bearingSeatBossDiameter,
@@ -132,7 +132,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         m2Clearance,
         m3CapCounterbore,
         m3Clearance,
-        m25InsertBore,
         rotorFilletRadius,
     )
     from cad.torso_shell import bossHoleDiameter
@@ -220,19 +219,20 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             ("M3 clearance holes on the datasheet's 45 mm square", m3Clearance / 2, 4),
         ],
         "pcb-controller-carrier": [
-            ("M3 clearance holes, one at each corner", m3Clearance / 2, 4),
-            # The posts that pass through. Asserted separately from the four
-            # above and not merely counted with them, because they are a
-            # different diameter and a different job: lose these and the board
-            # cannot be fitted at all, while the part still looks right.
+            # SIX, where this row said four corners until September 2026: the
+            # board is screwed down at six stations, and the drawn board was
+            # only drilled at the four corners until this count asked.
+            ("M3 clearance holes, the six it is screwed down by", m3Clearance / 2, 6),
+            # The SBC's four standoffs. Asserted separately from the six above
+            # and not merely counted with them, because they are a different
+            # diameter and a different job: lose these and the SBC has nothing
+            # to stand on, while the board still looks right.
             #
-            # FOUR SINCE SEPTEMBER 2026, WHERE IT WAS TWO, and the count is the
-            # whole of what changed: the carrier went from 76 mm wide to 140 to
-            # carry the BEC and the bus monitor, so it now reaches under both
-            # right-hand posts as well as both left-hand ones.
+            # THEY WERE Ø8.6 CLEARANCES FOR THE DECK'S POSTS until the SBC moved
+            # onto standoffs on this board, and before that there were two.
             (
-                "clearances for the SBC posts that pass through",
-                sbcPostClearance / 2,
+                "Ø2.7 holes for the SBC's four standoff screws",
+                sbcStandoffHole / 2,
                 4,
             ),
         ],
@@ -264,14 +264,9 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 bossHoleDiameter / 2,
                 12,
             ),
-            # AND TWO THAT ARE NOT M3, which is the whole reason _piloted took a
-            # diameter. The bus monitor's holes are 2.5 mm in from the board's
-            # own edge and an M3 clearance hole breaks straight out of an edge
-            # that close, so its two pads are piloted Ø1.7 for an M2. They are
-            # the smallest holes on this part; a pad drawn as a plain block
-            # reads none of them, and one pad drawn twice reads two on one
-            # station and none on the other, which this count would catch
-            # either way.
+            # There were two more pilots here, Ø1.7 in two pads for the bus
+            # monitor's M2 screws. The monitor went onto the controller carrier
+            # in September 2026 and the pads came off this part with it.
             ("Ø19.2 bearing seats, one per hip", bearingSeatDiameter / 2, 2),
             (
                 "Ø17.5 shoulders the bearings seat against",
@@ -313,7 +308,9 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 bossHoleDiameter / 2,
                 6,
             ),
-            ("M2.5 insert bores in the four SBC posts", m25InsertBore / 2, 4),
+            # The four SBC posts and the M2.5 insert bores in their tops were
+            # counted here until September 2026. The SBC stands on standoffs on
+            # the controller carrier now, and the posts are not printed.
         ],
     }
     rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]

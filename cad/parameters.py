@@ -783,26 +783,29 @@ m2Clearance = 2.4
 m2NutAcrossFlats = 4.0
 m2NutThickness = 1.6
 
-# HEAT-SET INSERTS, for the board mounts and the electronics deck.
+# HEAT-SET INSERTS, for the board mounts and the electronics deck -- AND THERE ARE
+# NONE LEFT IN THIS FILE. The only one on the robot is the wheel clamp's M5, in
+# cad/wheeled_parameters.py, which is a different job: it is what a printed
+# spigot is threaded with.
 #
-# PROVENANCE: catalogue dimensions for the brass knurled inserts docs/BOM.md
-# already stocks for "covers/light-duty interfaces", which is what every mount
-# that uses these is. The M3 is the common Ø4.0 x 5.7 short-body part and the
-# M2.5 the Ø3.2 x 4.0 -- both are the same table at every maker, which is why
-# neither is in reference/. The BORE is the insert's outside diameter, not its
-# thread: the brass melts its own knurl into the wall.
+# The M3 pair went first. Every board is held by a self-tapping M3 into a Ø2.5
+# pilot instead -- the same fastener the cover bosses have always used -- because
+# none of the walls a board mount lands on is thick enough to sink a 5.7 mm
+# insert: the deck plate is 3 mm and its wall ledges are 5.
 #
-# The depths are the bore, not the insert: an insert wants a little room under
-# it for displaced material, so each is a millimetre or so deeper than the part
-# it takes. The same allowance the wheel spigot's M5 bore already carries.
-# The M3 pair that used to be here is gone. Every board on this robot is held by
-# a self-tapping M3 into a Ø2.5 pilot instead -- the same fastener the cover
-# bosses have always used -- because none of the walls a board mount lands on is
-# thick enough to sink a 5.7 mm insert: the deck plate is 3 mm and its wall
-# ledges are 5. The M2.5 pair below survives because the deck's SBC posts are
-# 14 mm tall and have the depth for one.
-m25InsertBore = 3.2
-m25InsertDepth = 5.0
+# The M2.5 pair went in September 2026, and this is the only place its figures
+# survive: m25InsertBore 3.2 and m25InsertDepth 5.0, a Ø3.2 x 4.0 brass insert in
+# a bore a millimetre deeper than the part. They were in the tops of the deck's
+# four 14 mm SBC posts, which were the only printed feature on this robot tall
+# enough to take one. The SBC stands on bought standoffs on the controller
+# carrier now, the posts are gone, and so is the only reason to melt brass into
+# PA12 anywhere.
+#
+# THE M2.5 SOCKET HEAD that replaced them, which is drawn because it hangs under
+# the controller carrier in the 3 mm between that board and the deck. ISO 4762
+# M2.5: a Ø4.5 head, 2.5 tall. Catalogue, and the same table at every maker.
+m25CapHeadDiameter = 4.5
+m25CapHeadHeight = 2.5
 # What a printed feature has to leave round a bolt centre for the cap head to
 # seat and a driver to reach it: the Ø6 head's own radius plus a 0.4 mm wall.
 m3CapHeadStandoff = m3CapCounterbore / 2 + 0.4

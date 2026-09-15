@@ -327,11 +327,13 @@ ADDED = {
     # across where one 6S is 108 to 125 long. cad/electronics.py carries the
     # reasoning, cad/wheeled_parameters.py the height it costs, and docs/NOTES.md
     # the decision. The CHANGED register below holds what the same change moved.
-    # cad/parameters.py: heat-set inserts, for the board mounts and the deck's
-    # SBC posts. Catalogue dimensions for the brass parts docs/BOM.md already
-    # stocks; each bore is the insert's outside diameter, not its thread.
-    "m25InsertBore": 3.2,
-    "m25InsertDepth": 5.0,
+    # cad/parameters.py: the M2.5 heat-set insert that was here -- m25InsertBore
+    # 3.2, m25InsertDepth 5.0 -- went with the deck's SBC posts in September 2026.
+    # What replaced it is the socket head of the M2.5 that holds each SBC
+    # standoff down, drawn because it hangs in the 3 mm under the carrier. ISO
+    # 4762 catalogue figures.
+    "m25CapHeadDiameter": 4.5,
+    "m25CapHeadHeight": 2.5,
     # cad/electronics.py: the pack, in TORSO axes rather than catalogue axes,
     # because the packs are stood on edge and the two frames do not agree. A
     # Gens Ace class 3S 2200 mAh brick is 76 x 33 x 25 and 144 g.
@@ -424,23 +426,28 @@ ADDED = {
     # the other half of that answer, and the KCL had none of them.
     "standoffHeight": 3.0,
     "standoffDiameter": 6.0,
-    "sbcStandoffHeight": 2.0,
+    # The SBC's standoffs, which since September 2026 are bought M2.5 x 10 hex
+    # pillars standing on the controller carrier. This name held 2.0 while the
+    # deck's posts stood there instead; 10 is a stocked length, and the next one
+    # down puts the SBC's microSD socket onto the BEC's cable ties.
+    "sbcStandoffHeight": 10.0,
     "sbcStandoffDiameter": 5.0,
+    # The carrier's hole for the screw under each one, drilled in laminate.
+    "sbcStandoffHole": 2.7,
     "powerBoardZ": -28.0,
     "controllerBoardZ": 11.0,
-    # The SBC's four posts, part of the deck print. Two pass THROUGH the
-    # controller carrier, because 76 + 85 is more than the shell is wide however
-    # the two boards are arranged.
-    "sbcPostDiameter": 8.0,
-    "sbcPostHeight": 14.0,
-    "sbcPostClearance": 8.6,
-    # Where the WeAct core board sits on the carrier, derived from the post that
-    # crosses it rather than from the board it sits on. The posts cut the carrier
-    # into two unequal pieces; this is the centre of the larger one. It is a
-    # derived name rather than a placement because the shell's width now moves on
-    # its own -- cad/wheeled_parameters.py builds it from the hip clevises -- and
-    # a number typed into the drawing function would go stale in silence.
-    "weActX": -52.775,
+    # THE SBC'S FOUR POSTS WERE HERE -- sbcPostDiameter 8.0, sbcPostHeight 14.0,
+    # sbcPostClearance 8.6 -- printed with the deck and passing THROUGH the
+    # controller carrier. They went in September 2026, when the SBC moved onto
+    # standoffs on the carrier itself.
+    #
+    # Where the WeAct core board sits on the carrier: the centre of the strip
+    # between the carrier's outboard edge and the SBC's own edge, because the
+    # core board stands taller than the SBC's underside. It was derived from the
+    # post, whose face was half a millimetre further out, and moved 0.25 mm
+    # inboard when the posts went. A derived name rather than a placement because
+    # the shell's width now moves on its own and a typed number would go stale.
+    "weActX": -52.525,
     # Bought electrical hardware at catalogue size, none of it in reference/:
     # connector shells and converter modules are commodity parts and every maker
     # builds them to the same table. The panel cutouts are cut to these, so they
@@ -895,9 +902,11 @@ CHANGED = {
     ),
     "upperBandZ": (
         11.5,
-        22.0,
+        22.6,
         "the SBC now stands above a battery, a deck and the controller rather "
-        "than above the controller alone",
+        "than above the controller alone, and since September 2026 it stands on "
+        "M2.5 x 10 standoffs on the controller carrier, which put it 0.6 mm higher "
+        "than the deck's 14 mm posts did",
     ),
     "capacitorZ": (
         -18.9,

@@ -26,9 +26,10 @@ electronics deck is a separate print beside the pelvis, so it is not inside
 cad/torso.py's `torsoAssembly` -- and the robot tree here is built by naming
 pieces one at a time rather than by walking mass_budget.toml, so a new print
 joins the mass roll-up, the gates, the export and the URDF and still does not
-appear on screen. The four posts the SBC is bolted to are part of the deck,
+appear on screen. The four posts the SBC was bolted to were part of the deck,
 which is how "the posts are not in the CAD" happened to a part that builds,
-weighs 33.1 g and is counted by gate E. It is in the torso node below, and it
+weighs 26.1 g and is counted by gate E. (The posts went in September 2026, when
+the SBC moved onto standoffs on the controller carrier.) It is in the torso node below, and it
 can be shown on its own. A PRINT LEAVING the model is the same blind spot from
 the other side, and it happened next: the connector panel was deleted a week
 later and this file was the last thing in the repository still asking cad/ for
@@ -420,9 +421,10 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     torso = Compound(
         children=[
             _piece("pelvis shell", printed["torso", "pelvis shell"], P.printedOrange),
-            # The plate and the four Ø8 posts the SBC is bolted to. It is under
-            # the payload in the tree because it is under it in the machine:
-            # hiding the deck leaves the boards hanging where it held them.
+            # The plate the controller carrier stands on, and with it the
+            # SBC above that. It is under the payload in the tree because it is
+            # under it in the machine: hiding the deck leaves the boards
+            # hanging where it held them.
             _piece(
                 "electronics deck",
                 printed["torso", "electronics deck"],

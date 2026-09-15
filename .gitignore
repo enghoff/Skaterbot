@@ -44,3 +44,16 @@ simulation/isaacsim/usd/
 exports/
 simulation/meshes/
 simulation/urdf/meshes/manifest.json
+
+# Fabrication output. KiCad plots the gerbers and drill files from
+# electrical/kicad/carrier.kicad_pcb, so they are a render of a tracked input
+# and go stale against it. Regenerate them rather than committing them.
+electrical/kicad/gerber/
+
+# KiCad's own per-user state, written beside the project whenever the GUI opens
+# it. carrier.kicad_prl is which layer you were last looking at, .history/ is
+# the editor's automatic snapshots, and the ~*.lck files say the project is open
+# on this machine right now. None of it is the design.
+electrical/kicad/*.kicad_prl
+electrical/kicad/.history/
+electrical/kicad/~*.lck

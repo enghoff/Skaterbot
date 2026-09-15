@@ -57,10 +57,10 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="8.18035144e-05 0.00516775343 -0.0237635396" rpy="0 0 0"/>
-      <mass value="1.121849"/>
-      <inertia ixx="3.623699936e-03" ixy="2.142994738e-06" ixz="-6.551209428e-07"
-               iyy="1.692668034e-03" iyz="-6.546949537e-05" izz="2.568157063e-03"/>
+      <origin xyz="8.19810763e-05 0.00517897051 -0.0237982797" rpy="0 0 0"/>
+      <mass value="1.119420"/>
+      <inertia ixx="3.622849356e-03" ixy="2.144024143e-06" ixz="-6.583090799e-07"
+               iyy="1.693604590e-03" iyz="-6.567089878e-05" izz="2.565706827e-03"/>
     </inertial>
     <!-- pelvis shell, clevises and cover bosses — 150.7 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
@@ -78,7 +78,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 28.5 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 26.1 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -128,7 +128,7 @@
     </visual>
     <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
     <visual name="sbc">
-      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <origin xyz="0 0 0.0306" rpy="0 0 0"/>
       <geometry>
         <box size="0.058 0.085 0.016"/>
       </geometry>

@@ -16,12 +16,17 @@ which is not free either. The ledges clear the packs by 1.6 mm and the power
 block by 1 mm, and that pair of numbers is what set the shell's depth --
 cad/torso_shell.py records it.
 
-WHAT IT CARRIES. The controller carrier on four standoffs, the SBC on four posts
-that are part of this print, and the battery: the plate's underside lands on the
-2 mm of squeeze the battery's reservation leaves over the packs, so lifting the
-deck is what releases them and nothing else holds them down. Two of the four SBC
-posts pass THROUGH the controller carrier, which is drilled for them --
-cad/electronics.py says why that is unavoidable rather than untidy.
+WHAT IT CARRIES. The controller carrier on six standoffs, and the battery: the
+plate's underside lands on the 2 mm of squeeze the battery's reservation leaves
+over the packs, so lifting the deck is what releases them and nothing else holds
+them down. The SBC is carried too, but at one remove -- it stands on four bought
+standoffs on the controller carrier.
+
+IT PRINTED THE SBC'S FOUR POSTS UNTIL SEPTEMBER 2026, 14 mm Ø8 pillars with an
+M2.5 heat-set insert in each, and they came up THROUGH the carrier in Ø8.6 holes.
+They cost the carrier two walls of bare laminate its tracks had to be routed
+round, and a drill bigger than the board house owns; cad/electronics.py says what
+replaced them. 2.5 g of PA12 came off this part with them.
 
 AND IT IS THE TOP HALF OF THE BMS's MOUNT, which is what the two guides on its
 underside are. The board stands on edge in a slot in the cavity floor and the
@@ -33,12 +38,13 @@ THE BUS MONITOR IS NOT ON THIS PLATE, and it was for one revision. Two posts on
 this underside held it, and they were the wrong answer for a reason no gate can
 measure: the board's leads run down into the bay, so hanging it here ties the
 deck to the torso by its wiring, and the deck is the assembly that has to come
-straight out. It is bolted to the pelvis's rear wall instead -- cad/torso.py's
-`busSenseLedges` -- and this plate lifts off with nothing of its own attached
-below it.
+straight out. It went to two pads on the pelvis's rear wall, and since
+September 2026 it rides on the controller carrier, with every lead it takes down
+into the bay on a plug. This plate still lifts off with nothing of its own
+attached below it.
 
-Seven bodies: the plate, the four posts and the two BMS guides, left
-interpenetrating like every other printed piece here, because a slicer merges
+Three bodies: the plate and the two BMS guides, left interpenetrating like
+every other printed piece here, because a slicer merges
 coincident shells and cad/finish.py's chamfer cannot be applied to a solid that
 is then booleaned again.
 
@@ -52,7 +58,6 @@ from __future__ import annotations
 from build123d import Align, Box, Cylinder, Pos
 
 from cad.electronics import (
-    _sbc_post_xy,
     bmsGuideDepth,
     bmsGuideSlot,
     bmsGuideWidth,
@@ -63,17 +68,14 @@ from cad.electronics import (
     carrier_screw_xy,
     controllerDepth,
     controllerWidth,
-    deckBandZ,
     deckLedgeX,
     deckLedgeY,
     deckThickness,
     deckZ,
     interiorHalfDepth,
     interiorHalfWidth,
-    sbcPostDiameter,
-    sbcPostHeight,
 )
-from cad.parameters import m3Clearance, m25InsertBore, m25InsertDepth
+from cad.parameters import m3Clearance
 from cad.torso_shell import bossHoleDiameter, bossSize
 
 # How much smaller than the cavity the plate is, all round, so it drops in. The
@@ -163,19 +165,6 @@ def _plate():
     return blank
 
 
-def _post(atX: float, atY: float):
-    """One SBC post: a pillar off the plate with a heat-set insert in its top."""
-    pillar = Pos(atX, atY, deckBandZ) * Cylinder(
-        sbcPostDiameter / 2,
-        sbcPostHeight,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    bore = Pos(atX, atY, deckBandZ + sbcPostHeight - m25InsertDepth / 2) * Cylinder(
-        m25InsertBore / 2, m25InsertDepth + 1.0
-    )
-    return pillar - bore
-
-
 def _bmsGuide(atY: float):
     """One pair of ribs off the plate's underside, straddling the board's top.
 
@@ -198,9 +187,8 @@ def _bmsGuide(atY: float):
 
 
 def electronicsDeck() -> list:
-    """The deck as printed: one plate, four posts and the two BMS guides."""
+    """The deck as printed: one plate and the two BMS guides."""
     return [
         _plate(),
-        *(_post(dx, dy) for dx, dy in _sbc_post_xy()),
         *(_bmsGuide(atY) for atY in bmsGuideY),
     ]

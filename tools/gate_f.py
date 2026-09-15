@@ -807,10 +807,31 @@ FITS = [
         "its bottom edge SITS ON the slot floor, so any gap here means the board "
         "is hanging on nothing -- the same test the packs on their rails get",
     ),
-    # THE BUS MONITOR, WHICH IS SCREWED DOWN NOW RATHER THAN TAPED, and both of
-    # these arrived with that change. It hung under the deck for one revision,
-    # which tied that plate to the torso by the board's own wiring; it is bolted
-    # to the pelvis's rear wall instead, and these two are what that mount is.
+    # THE BUS MONITOR HAD TWO ROWS HERE while it stood on two pads off the
+    # pelvis's rear wall. It rides on the controller carrier now, and
+    # electrical/carrier_pcb.py measures it there against everything in this
+    # torso, so the rows went with the pads.
+    #
+    # THE SBC ON ITS STANDOFFS, September 2026, when it came off the deck's
+    # printed posts and onto bought M2.5 x 10 pillars on the controller carrier.
+    (
+        "SBC board on its four standoffs",
+        "SBC board",
+        "SBC standoffs",
+        0.0,
+        "the SBC SITS ON its standoffs, so any gap here means it is hanging on "
+        "its screws -- and the height of every drawn thing on this board follows "
+        "from that one face",
+    ),
+    (
+        "SBC standoff screw heads vs the deck plate",
+        "SBC standoffs",
+        "deck plate",
+        0.5,
+        "the four M2.5 heads hang under the controller carrier in the 3 mm its "
+        "own standoffs leave over the deck. A longer head, or a carrier standoff "
+        "bought 2 mm short, and they land on the plate and tilt the board",
+    ),
     (
         "IMU board vs the ribs that aim it",
         "IMU board",
@@ -843,9 +864,6 @@ def check_fits(items: tuple) -> tuple[int, int]:
         "deck plate": [deck.electronicsDeck()[0]],
         "IMU seat": torso.imuSeat(),
         "BMS guides": torso.bmsGuides(),
-        # The monitor's two pads on their own, sliced out of the pelvis the same
-        # way the ledges and rails are: measuring the board ONTO them has to
-        # ignore the wall they stand on.
         **{
             name: electronics.torsoElectronicsGroups()[name]
             for name in (
@@ -854,6 +872,7 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "charge socket",
                 "antenna bulkhead",
                 "SBC board",
+                "SBC standoffs",
                 "BMS board",
                 "bus monitor",
                 "distribution board",

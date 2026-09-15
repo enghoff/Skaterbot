@@ -18,18 +18,20 @@ geometry rather than on an intention -- but a board house wants Gerbers, and the
 right way to get them is to transcribe this into KiCad and let its own DRC agree
 with this one. What this file adds that KiCad does not is the part of the answer
 that lives outside the board: whether a mated plug fouls the SBC, whether a
-socket stands in a post, whether the antenna's bulkhead is over a header.
+socket stands where a standoff has to, whether the antenna's bulkhead is over
+a header.
 
 WHAT THE CHECKS PROVE, in the order they run:
 
   1. every footprint has exactly the pins carrier.py gives its part;
-  2. every body is on the board, clear of the mounting holes and the SBC posts,
+  2. every body is on the board, clear of the mounting holes and the SBC's
+     standoffs,
      and clear of every other body in three dimensions -- which is what lets a
      capacitor stand under the socketed core board without being called a clash;
   3. every body, and every plug with its wires leaving it, clears every drawn
      thing in the torso, measured in the CAD's own frame (skipped by --no-cad);
   4. the copper of any two nets is at least CLEARANCE apart on each layer, and
-     no copper is near the board edge, a mounting hole or a post;
+     no copper is near the board edge, a mounting hole or a standoff;
   5. each net's copper is ONE connected piece that reaches every pin the netlist
      puts on that net, and reaches nothing else. That is the check that matters:
      it is a short and open test on the drawn copper, pour included, and a track
@@ -88,7 +90,10 @@ TOP_Z = e.controllerBoardZ + e.pcbThickness
 # cad/deck.py drills its bosses to the same list, and a station typed twice is a
 # station that will disagree once.
 MOUNTS = [(x - ORIGIN_X, y - ORIGIN_Y) for x, y in e.carrier_screw_xy()]
-POSTS = [(px - ORIGIN_X, py - ORIGIN_Y) for px, py in e.sbc_posts_through_carrier()]
+# AND WHAT IS SCREWED DOWN TO IT: the SBC, on four M2.5 x 10 standoffs on its own
+# 58 x 23 hole pattern. These were Ø8.6 clearance holes for the posts the deck
+# used to print, and the SBC hung over this board rather than standing on it.
+STANDOFFS = [(px - ORIGIN_X, py - ORIGIN_Y) for px, py in e.sbc_standoff_xy()]
 
 
 # ---- design rules --------------------------------------------------------------
@@ -103,6 +108,12 @@ CLEARANCE = 0.2
 EDGE_CLEARANCE = 0.3
 VIA_PAD = 0.8
 VIA_DRILL = 0.4
+# HOW CLOSE TWO DRILLED HOLES MAY COME, edge to edge. Nothing about copper: two
+# holes 0.2 mm apart in the laminate are one hole with a wall that breaks out
+# under the drill, and the board house will either refuse the file or ship it
+# broken. It is the rule a via on the same net as the pad beside it slips past,
+# because there is no clearance to violate when both are ground.
+HOLE_TO_HOLE = 0.25
 POUR_CLEARANCE = 0.3
 THERMAL_GAP = 0.3
 THERMAL_SPOKE = 0.5
@@ -115,9 +126,14 @@ THERMAL_SPOKE = 0.5
 # through a printed deck.
 MOUNT_BODY_KEEPOUT = 3.5 + 0.5
 MOUNT_COPPER_KEEPOUT = 6.0 / math.sqrt(3) + 0.35
-# The SBC's posts come up through Ø8.6 holes with 0.3 mm of air round a Ø8
-# pillar. Bodies and copper both stay half a millimetre outside the hole.
-POST_KEEPOUT = e.sbcPostClearance / 2 + 0.5
+# THE SBC'S STANDOFFS, which stand ON this board rather than passing through it:
+# a 5 mm A/F hex pillar is 5.8 mm across its corners, and its foot has to seat
+# flat, so no copper and no body comes inside that circle plus the same margins
+# the mounting holes get. It is a smaller barrier than the posts were -- 6.8 mm
+# across against 9.6 -- which is 2.8 mm more of every route that has to cross
+# the line each pair stands on.
+STANDOFF_BODY_KEEPOUT = e.sbcStandoffDiameter / math.sqrt(3) + 0.5
+STANDOFF_COPPER_KEEPOUT = e.sbcStandoffDiameter / math.sqrt(3) + 0.35
 
 
 # ---- footprints ------------------------------------------------------------------
@@ -249,26 +265,64 @@ def upright_resistor() -> Footprint:
     )
 
 
-def bec_module() -> Footprint:
-    """The Matek BEC12S-PRO lying flat, tied down, its four leads on a header.
+# WHERE THE BEC'S FOUR PINS ARE, AND HOW WELL THAT IS KNOWN. The module carries
+# four plated holes on one 24 mm edge -- IN, G, G, OUT, reading down its
+# photograph -- and Matek publish no drawing of them. The 3.81 mm pitch is
+# dimensioned on that photograph; the row's 2.5 mm inset from that edge and OUT's
+# 2.7 mm from the long edge are scaled off the same picture and are the softest
+# numbers on this board. MEASURE ONE BEFORE THE BOARD IS ORDERED: a row 1 mm out
+# is a module that will not go onto its pins, and unlike the tie holes there is
+# no slack anywhere to take it up.
+BEC_PIN_PITCH = 3.81
+BEC_PIN_INSET = 2.5
+BEC_PIN_END = 2.7
 
-    NO VENDOR HOLE PATTERN EXISTS to screw it by -- the part is a moulded brick
-    with flying leads -- so it is not screwed at all. Four Ø3 holes take two
-    cable ties across its short axis, and the leads land on the 1 x 4 header
-    beside it. It lies on a 1 mm silicone pad, which is the one thing here that
-    does anything about its heat: about 3 W at full output, and the pad puts that
-    into this board's ground pour instead of into the still air under the SBC.
+
+def bec_module() -> Footprint:
+    """The Matek BEC12S-PRO flat on a thermal sheet, COMPONENT SIDE UP, on pins.
+
+    WHICH WAY UP IT LIES IS DECIDED HERE, and it was not decided before: this was
+    drawn as a featureless brick, and a brick has no sides. It is a bare 35 x 24
+    PCB with a shielded inductor, a diode and a switching FET standing most of its
+    5.5 mm on one face and nothing but laminate on the other. THE LAMINATE FACE
+    GOES DOWN, on the sheet. Turning it over was tried and taken off again: the
+    only thing it buys is a flat back for the cable ties to bear on, and what it
+    costs is the whole reason the sheet is there. Face down, the sheet touches the
+    inductor and the diode and nothing else, with the rest of a 3 W regulator
+    standing in a closed pocket 3 mm under the SBC. Face up, the sheet takes the
+    module's whole 35 x 24 back, which is 700-odd mm2 of contact through 1.6 mm of
+    laminate that has copper planes in it, and the parts themselves are in the air
+    under the SBC rather than facing the board. THE CABLE TIES BEAR ON THE PARTS,
+    and that is the price: each strap lands on whatever is tallest in its lane,
+    which on the outboard lane is the inductor's steel can. Keep them snug and not
+    tight.
+
+    ITS FOUR PADS THEN FACE UP, which is what makes the pins work. Four pins stand
+    out of this board, the module drops over them through the sheet's cut edge,
+    and they are soldered at the module's own rings on top where a joint can be
+    seen. SOLDER THEM FROM UNDER THIS BOARD, not on top: the module's back lies
+    1 mm off the copper here and a fillet on the top face would hold it off the
+    sheet.
+
+    NO VENDOR HOLE PATTERN EXISTS to screw it by, so it is not screwed at all.
+    Four Ø3 holes take two 2.5 mm ties across its short axis, inboard of the pins,
+    and each tie's head is what goes under the board -- 2.4 mm of the 3 mm the
+    standoffs leave. That is the whole reason the ties are 2.5 mm and not 4.
 
     35 x 24 x 5.5 is cad/electronics.py's becWidth, becDepth and becHeight, which
     are catalogue figures. Measure the part when it arrives: the tie holes are
-    drilled to the catalogue and a brick 2 mm wider than the catalogue says will
+    drilled to the catalogue and a module 2 mm wider than the catalogue says will
     not sit between them.
     """
+    # Seen from above, the right way up: the pin row is on the +x edge and OUT is
+    # the +y end of it, which is Matek's photograph turned half round and NOT
+    # mirrored. Half round because that is what puts the input pin nearest the
+    # fuse that feeds it and the output pin nearest the bulk it charges.
     pads = tuple(
         Pad(
             str(n),
-            7.81 - 2.54 * (n - 1),
-            15.0,
+            17.5 - BEC_PIN_INSET,
+            12.0 - BEC_PIN_END - BEC_PIN_PITCH * (4 - n),
             1.7,
             1.7,
             1.0,
@@ -277,55 +331,96 @@ def bec_module() -> Footprint:
         for n in (1, 2, 3, 4)
     )
     return Footprint(
-        "Matek BEC12S-PRO, tied down, on a 1 x 4",
+        "Matek BEC12S-PRO on a sheet, on pins",
         pads,
         (
-            Body((-17.5, -12.0, 17.5, 12.0, 0.0, 1.0), "thermal pad"),
+            # The sheet stops short of the pin row rather than being pierced four
+            # times by it. The module overhangs it there by 5 mm, 1 mm over copper
+            # and over four joints that are made from underneath.
+            Body((-17.5, -12.0, 12.5, 12.0, 0.0, 1.0), "thermal sheet"),
+            # One body for the module, but two things in it: its own laminate is
+            # the 1.6 above the sheet, and its parts stand from 2.6 to 6.5.
             Body((-17.5, -12.0, 17.5, 12.0, 1.0, 6.5), "BEC"),
             # Two straps and not a lid over the whole module: drawn as one slab
             # it fouled the SBC's microSD socket, which hangs 7.8 mm over this
-            # board, and a cable tie is 4 mm wide.
-            Body((-14.0, -14.5, -10.0, 14.5, 6.5, 8.5), "cable tie"),
-            Body((10.0, -14.5, 14.0, 14.5, 6.5, 8.5), "cable tie"),
+            # board. 2.5 mm of strap, in 2 mm of height to lie loose in. They
+            # cross the module's parts, which is what lying the right way up
+            # costs: the outboard strap lands on the inductor's can.
+            Body((-13.25, -14.5, -10.75, 14.5, 6.5, 8.5), "cable tie"),
+            Body((10.75, -14.5, 13.25, 14.5, 6.5, 8.5), "cable tie"),
         ),
         tuple((dx, dy, 3.0) for dx in (-12.0, 12.0) for dy in (-13.6, 13.6)),
     )
 
 
-def ina226_module() -> Footprint:
-    """The INA226 breakout on two M2 standoffs, its logic side on a header.
+# THE BUS MONITOR'S HEADER SITS 2.5 mm IN FROM ITS OWN EDGE, which is the one
+# number about this module that cad/electronics.py does not carry: nothing in the
+# torso depended on it until this board started landing the module on its pins.
+# Scaled off the vendor's photographs like the rest of that block, and unmeasured
+# like the rest of it. The column of four large holes is on the OPPOSITE edge.
+BUS_MONITOR_HEADER_INSET = 2.5
 
-    THE ONLY PART OF THIS BOARD THAT NEEDS MORE THAN 9.4 mm OF AIR, which is why
+
+def ina226_module() -> Footprint:
+    """The INA226 breakout on two M2 standoffs, landed on all eight of its pins.
+
+    THE ONLY PART OF THIS BOARD THAT NEEDS MORE THAN 10 mm OF AIR, which is why
     it is at this end of the carrier and not somewhere more convenient: 8 mm of
-    module on 3 mm standoffs is 11, and 9.4 is all the SBC leaves anywhere it
+    module on 3 mm standoffs is 11, and 10 mm is all the SBC leaves anywhere it
     stands over. cad/electronics.py's headroom is what settled that.
+
+    ALL EIGHT PINS COME DOWN INTO THIS BOARD -- VCC, GND, SDA, SCL, ALE, VBS, IN-
+    and IN+, in that order down the column, off the vendor's own photograph of the
+    silkscreen. It was drawn as five pads on a header standing 3 mm outboard of
+    the module, and that was wrong twice over: a module's pins cannot reach a
+    header beside it, so it needed five flying wires nobody had drawn, and that
+    header was on the same edge as the module's four large holes -- which is the
+    opposite edge from the one its pins are on. Landed on all eight it plugs in,
+    and its two mounting holes come down on the two M2 standoffs instead of near
+    them.
+
+    ITS SCREW TERMINALS ARE LEFT EMPTY and the shunt's twisted pair lands on J7
+    instead, because IN+ and IN- are on the header too. What that buys is a pair
+    that arrives in a connector with strain relief on the edge of the board, on a
+    deck whose whole stack is meant to lift out on plugs, rather than in two screw
+    terminals in the middle of it facing the charge socket. What it costs is that
+    the 75 mV now crosses about 20 mm of this board's copper as a pair over the
+    ground plane, where before it never touched the board at all.
+
+    THE MODULE CARRIES ITS OWN 0.1 OHM SHUNT between those two pins. It stays in
+    circuit, in parallel with whatever external shunt is fitted, so a milliohm
+    shunt reads about half a percent low unless R100 is lifted off the module.
 
     The two mounting holes are the outer pair of the four in the board's own
     column -- busSenseHolePitch 16.7, busSenseHoleInset 2.5, both read off the
-    vendor's photographs and neither measured. ITS SHUNT TERMINALS ARE NOT HERE.
-    IN+ and IN- are screw terminals on the module and the twisted pair from the
-    shunt lands in them directly, so the 75 mV never touches this board's copper.
+    vendor's photographs and neither measured.
     """
+    # Pin 1 at the rear, pin 8 at the front, so that IN+ and IN- come out of the
+    # end nearest J7 and the pair is as short as this board can make it.
+    span = PITCH * 7
     pads = tuple(
         Pad(
             str(n),
-            2.54 * (n - 1) - 5.08,
-            -14.0,
+            -11.0 + BUS_MONITOR_HEADER_INSET,
+            PITCH * (n - 1) - span / 2,
             1.7,
             1.7,
             1.0,
             "rect" if n == 1 else "circle",
         )
-        for n in (1, 2, 3, 4, 5)
+        for n in range(1, 9)
     )
     return Footprint(
-        "INA226 breakout on two M2 standoffs, on a 1 x 5",
+        "INA226 breakout on standoffs, on a 1 x 8",
         pads,
         (
             Body((-11.0, -11.0, 11.0, 11.0, 0.0, 3.0), "standoffs"),
             Body((-11.0, -11.0, 11.0, 11.0, 3.0, 11.0), "bus monitor"),
         ),
-        tuple((dx, -8.5, 2.4) for dx in (-8.35, 8.35)),
+        tuple(
+            (11.0 - e.busSenseHoleInset, dy, 2.4)
+            for dy in (-e.busSenseHolePitch / 2, e.busSenseHolePitch / 2)
+        ),
     )
 
 
@@ -476,6 +571,19 @@ class Placed:
         s = round(math.sin(math.radians(self.rotation)))
         return (self.x + px * c - py * s, self.y + px * s + py * c)
 
+    def un(self, bx: float, by: float) -> tuple[float, float]:
+        """The reverse of at(): a point on the board, in the footprint's frame.
+
+        A footprint is written out with its own geometry at its own offsets, so
+        anything measured against the whole board -- a silkscreen line clipped
+        against the part next door -- has to come back into the part's frame
+        before it is written.
+        """
+        c = round(math.cos(math.radians(self.rotation)))
+        s = round(math.sin(math.radians(self.rotation)))
+        dx, dy = bx - self.x, by - self.y
+        return (dx * c + dy * s, -dx * s + dy * c)
+
     def pads(self) -> list[tuple[Pad, float, float, float, float]]:
         """(pad, x, y, w, h) on the board, sizes swapped for a quarter turn."""
         placed = []
@@ -545,16 +653,17 @@ def _fp(refdes: str) -> Footprint:
 # WHERE EVERYTHING SITS, AND WHY IT SITS THERE. Three things decide this board
 # and nothing else gets a vote.
 #
-# 1. THE SBC LEAVES 9.4 mm OF AIR over everything between x 40 and x 105, and a
-#    mated JST-XH plug is 9.8 mm tall. So every connector is on one of the two
-#    edges, outboard of the SBC's own front and rear edges, and so is anything
-#    else taller than the SBC's underside: the core board on its sockets, the bus
-#    monitor on its standoffs, the two pull-ups and the fuse.
-# 2. THE SBC'S FOUR POSTS COME UP THROUGH THIS BOARD in two pairs, at x 43.55 and
-#    x 101.55, 23 mm apart. Each pair is a wall 9.6 mm wide with a 14.4 mm gate
-#    in the middle of it, so nothing wider than that gate crosses either pair.
-#    That is why the BEC is between the two walls, the monitor outboard of the
-#    right-hand one, and the core board outboard of the left-hand one.
+# 1. THE SBC LEAVES 10 mm OF AIR over everything between x 40 and x 105, and a
+#    mated JST-XH plug is 9.8 mm tall with its wires still to leave. So every
+#    connector is on one of the two edges, outboard of the SBC's own front and
+#    rear edges, and so is anything else taller than the SBC's underside: the
+#    core board on its sockets, the bus monitor on its standoffs, the two
+#    pull-ups and the fuse.
+# 2. THE SBC STANDS ON THIS BOARD, on four standoffs in two pairs at x 43.55 and
+#    x 101.55, 23 mm apart. Each pair is a bollard 6.8 mm across with a 16.2 mm
+#    gate in the middle of it, so nothing wider than that gate crosses either
+#    pair. That is why the BEC is between the two pairs, the monitor outboard
+#    of the right-hand one, and the core board outboard of the left-hand one.
 # 3. WHAT COMES UP THROUGH THE DECK COMES UP AT THE REAR, through cad/deck.py's
 #    34 mm chase at x 82.55 to 116.55 in this frame. The three bus connectors sit
 #    over it, which is the whole reason this layout was redone: they used to be
@@ -570,13 +679,15 @@ PLACEMENT = {
     # The core board, outboard of the left-hand posts, where there are 16 mm of
     # air. Turned half round so P1 -- every signal but reset -- faces inboard.
     "A1": (WEACT_X, WEACT_Y, 180),
-    # NOTHING STANDS BETWEEN THE LEFT-HAND POSTS. A DIP-8 fits there and one was
-    # there, and it cost more than it was worth: eighteen nets have to cross that
-    # pair of posts to get from the core board to the rest of the board, the gate
-    # between them is 13.4 mm wide, and a transceiver standing in it left two
-    # slots of 2 mm. Four nets could not be routed at all. It is a corridor.
-    # The BEC, lying flat between the two pairs of posts. Its four leads come out
-    # on the header along its front edge, beside the 5 V bulk.
+    # NOTHING STANDS BETWEEN THE LEFT-HAND STANDOFFS. A DIP-8 fits there and one
+    # was there, and it cost more than it was worth: eighteen nets have to cross
+    # that pair to get from the core board to the rest of the board, and a
+    # transceiver standing in the gate left two slots of 2 mm. Four nets could
+    # not be routed at all. It is a corridor, and it was 2.8 mm narrower again
+    # when the deck's posts came up through here instead of standoffs.
+    # The BEC, flat between the two pairs of standoffs, component side up. Its
+    # four pins stand out of the board under its inboard end, on the side the
+    # fuse and the transceivers are.
     "A2": (66.5, 23.0, 0),
     # Bus B's and bus A's transceivers, stacked against the right-hand posts with
     # their own decoupling in the column beside them.
@@ -592,14 +703,27 @@ PLACEMENT = {
     "J3": (99.0, REAR_ROW_Y, 180),
     "J2": (115.0, REAR_ROW_Y, 180),
     # The front edge: the SBC's cable under its own 40-pin header, and the bus
-    # feed where the deck's second opening brings it up over the power bay.
+    # feed where the deck's second opening brings it up over the power bay. The
+    # shunt's pair comes up the same way, beside the feed it measures.
     "J5": (56.0, FRONT_ROW_Y, 0),
     "J1": (110.0, FRONT_ROW_Y, 0),
+    # THE SHUNT'S PAIR IS NOT ON AN EDGE ROW, and it is the only part on this
+    # board that is not. Both rows are full -- the front one down to 3.5 mm gaps
+    # between the bulk, bus A's decoupling pair and the mounting station at x 100,
+    # the rear one to 3.6 mm between the three bus connectors -- and this is the
+    # one measurement on the robot that is worth a special case. It stands in the
+    # channel between the SBC's outboard edge and the monitor, 6 mm from the two
+    # pins it feeds, where nothing overhangs it and a plug has its full height.
+    # The two I2C pull-ups moved aft to make room; a pull-up belongs to the bus
+    # rather than to either sensor and does not care where it sits.
+    "J7": (109.0, 35.0, 0),
     # The bus feed's own hardware, in the outboard strip where the fuse's 13 mm
     # of height is not under the SBC.
     "F1": (122.0, 43.0, 0),
     "C9": (130.0, 36.0, 0),
-    # Bulk on the 5 V rail, between the BEC's output pin and the SBC's cable.
+    # Bulk on the 5 V rail, at the SBC's cable, which is the load that takes most
+    # of it. It sat by the BEC's old header; the BEC's output pin is under the
+    # module now and there is nothing standing beside it to put a can on.
     "C1": (81.0, 43.0, 0),
     # A pair of 100 nF at each transceiver, VDD then VIO.
     # THE TWO SLOTS BETWEEN THE THREE SOCKETS ARE LEFT OPEN. They are 1.78 mm
@@ -616,10 +740,13 @@ PLACEMENT = {
     "C7": (97.0, 25.5, 0),
     "C4": (103.0, 20.0, 0),
     "C5": (103.0, 25.5, 0),
-    # 3.3 V decoupling and the two I2C pull-ups, by the monitor.
-    "C8": (118.0, 36.0, 0),
-    "R1": (110.0, 36.0, 180),
-    "R2": (113.5, 36.0, 0),
+    # 3.3 V decoupling at the monitor's own supply pin, which is at the rear end
+    # of its header now, and the two I2C pull-ups, which belong to the bus rather
+    # than to either sensor and stay where there is room for a 9.5 mm resistor
+    # outboard of the SBC.
+    "C8": (110.0, 13.0, 0),
+    "R1": (109.5, 18.0, 180),
+    "R2": (113.0, 18.0, 0),
     # The IMU's supply link, in the rear strip beside its connector.
     "JP1": (24.0, 4.0, 0),
 }
@@ -740,7 +867,8 @@ class Board:
         ys = np.arange(self.ny) * GRID
         self.gx, self.gy = np.meshgrid(xs, ys, indexing="ij")
         # How far each grid point is from anything copper may never touch: the
-        # board's edge, a mounting hole's washer, an SBC post, a drilled hole.
+        # board's edge, a mounting hole's washer, an SBC standoff, a drilled
+        # hole.
         self.fixed = np.minimum.reduce(
             [self.gx, self.gy, BOARD_W - self.gx, BOARD_D - self.gy]
         )
@@ -748,9 +876,10 @@ class Board:
             self.fixed = np.minimum(
                 self.fixed, np.hypot(self.gx - mx, self.gy - my) - MOUNT_COPPER_KEEPOUT
             )
-        for px, py in POSTS:
+        for px, py in STANDOFFS:
             self.fixed = np.minimum(
-                self.fixed, np.hypot(self.gx - px, self.gy - py) - POST_KEEPOUT
+                self.fixed,
+                np.hypot(self.gx - px, self.gy - py) - STANDOFF_COPPER_KEEPOUT,
             )
         self.own = {
             layer: np.full((self.nx, self.ny), -1, dtype=np.int32) for layer in LAYERS
@@ -758,15 +887,38 @@ class Board:
         self.nets: list[str] = []
         self.index: dict[str, int] = {}
         nets = net_of_pads(parts)
+        # How far each grid point is from the nearest DRILLED hole's edge. A via
+        # is a hole too, and a hole that breaks into another one is scrap
+        # whatever net either of them is on -- which is the case the clearance
+        # test above cannot see, because a ground via beside a ground pad has no
+        # clearance to violate.
+        self.drills = np.full_like(self.fixed, 1e3)
+        for mx, my in MOUNTS:
+            self.drills = np.minimum(
+                self.drills, np.hypot(self.gx - mx, self.gy - my) - e.m3Clearance / 2
+            )
+        for px, py in STANDOFFS:
+            self.drills = np.minimum(
+                self.drills,
+                np.hypot(self.gx - px, self.gy - py) - e.sbcStandoffHole / 2,
+            )
         for part in parts:
             for pad, x, y, w, h in part.pads():
                 net = nets[(part.refdes, pad.name)]
                 radius = math.hypot(w, h) / 2 if pad.shape == "rect" else max(w, h) / 2
                 for layer in LAYERS:
                     self.stamp(layer, x, y, radius, self.id(net))
+                self.drills = np.minimum(
+                    self.drills,
+                    np.hypot(self.gx - x, self.gy - y) - pad.drill / 2,
+                )
             for hx, hy, diameter in part.holes():
                 self.fixed = np.minimum(
                     self.fixed,
+                    np.hypot(self.gx - hx, self.gy - hy) - diameter / 2,
+                )
+                self.drills = np.minimum(
+                    self.drills,
                     np.hypot(self.gx - hx, self.gy - hy) - diameter / 2,
                 )
 
@@ -799,8 +951,13 @@ class Board:
                 f = i / steps
                 self.stamp(layer, ax + (bx - ax) * f, ay + (by - ay) * f, radius, owner)
 
-    def forbidden(self, owner: int, width: float):
-        """Cells this net may not put the centre of a track on, per layer."""
+    def forbidden(self, owner: int, width: float, drilled: bool = False):
+        """Cells this net may not put the centre of a track on, per layer.
+
+        With `drilled`, the cell has to take a HOLE as well as copper, so every
+        other drilled hole on the board is kept away from it by HOLE_TO_HOLE --
+        the one rule that does not care whose net it is.
+        """
         np = self.np
         offsets = _disc(width / 2 + CLEARANCE + GRID_MARGIN)
         out = {}
@@ -814,6 +971,8 @@ class Board:
                 shifted[x0:x1, y0:y1] = taken[x0 - dx : x1 - dx, y0 - dy : y1 - dy]
                 blocked |= shifted
             blocked |= self.fixed < (width / 2 + EDGE_CLEARANCE + GRID / 2)
+            if drilled:
+                blocked |= self.drills < (VIA_DRILL / 2 + HOLE_TO_HOLE + GRID / 2)
             out[layer] = blocked
         return out
 
@@ -1008,7 +1167,7 @@ def _one_pass(board: Board, order, sites):
         owner = board.id(net)
         before = {layer: board.own[layer].copy() for layer in LAYERS}
         blocked = board.forbidden(owner, width)
-        via_blocked = board.forbidden(owner, VIA_PAD)
+        via_blocked = board.forbidden(owner, VIA_PAD, drilled=True)
         points = _nearest_first(sites[net])
         tree = [(*board.cell(*points[0]), layer) for layer in LAYERS]
         laid: list[Track] = []
@@ -1032,7 +1191,7 @@ def _one_pass(board: Board, order, sites):
             for ix, iy, il in path:
                 tree.append((ix, iy, LAYERS[il]))
             blocked = board.forbidden(owner, width)
-            via_blocked = board.forbidden(owner, VIA_PAD)
+            via_blocked = board.forbidden(owner, VIA_PAD, drilled=True)
         if ok:
             tracks += laid
             vias += via_set
@@ -1058,7 +1217,9 @@ def _stitching(board: Board, parts, tracks, vias) -> list[Via]:
     for via in vias:
         for layer in LAYERS:
             board.stamp(layer, via.x, via.y, VIA_PAD / 2, board.id(via.net))
-    blocked = board.forbidden(owner, VIA_PAD + 2 * (POUR_CLEARANCE - CLEARANCE))
+    blocked = board.forbidden(
+        owner, VIA_PAD + 2 * (POUR_CLEARANCE - CLEARANCE), drilled=True
+    )
     out: list[Via] = []
 
     def place(x: float, y: float) -> bool:
@@ -1146,9 +1307,13 @@ def _hole_keepouts(parts: list[Placed] | None = None):
         holes += [Point(x, y).buffer(d / 2 + CLEARANCE) for x, y, d in part.holes()]
     return unary_union(
         [Point(x, y).buffer(MOUNT_COPPER_KEEPOUT) for x, y in MOUNTS]
-        + [Point(x, y).buffer(POST_KEEPOUT) for x, y in POSTS]
+        + [Point(x, y).buffer(STANDOFF_COPPER_KEEPOUT) for x, y in STANDOFFS]
         + holes
     )
+
+
+def _via_label(via: Via) -> str:
+    return f"via at {via.x:.2f},{via.y:.2f}"
 
 
 def build_copper(
@@ -1189,7 +1354,7 @@ def build_copper(
                 via.net,
                 LAYERS,
                 Point(via.x, via.y).buffer(VIA_PAD / 2, quad_segs=6),
-                f"via at {via.x:.2f},{via.y:.2f}",
+                _via_label(via),
                 "via",
             )
         )
@@ -1235,8 +1400,13 @@ def build_copper(
     return items
 
 
-def ground_islands(items: list[Copper]) -> list[list[tuple[float, float]]]:
-    """Which ground pads the drawn copper leaves out of touch with which."""
+def connected(items: list[Copper]):
+    """What touches what: one root per piece of copper, by net and by layer.
+
+    Everything that asks whether the drawn copper hangs together asks it this
+    way -- the island joiner, the stray-stitch pass and the connectivity check --
+    so they share one answer rather than three that could differ.
+    """
     from shapely.strtree import STRtree
 
     tree = STRtree([item.geom for item in items])
@@ -1255,6 +1425,32 @@ def ground_islands(items: list[Copper]) -> list[list[tuple[float, float]]]:
                 continue
             if set(item.layers) & set(items[b].layers):
                 parent[find(a)] = find(b)
+    return find
+
+
+def stranded_vias(items: list[Copper], vias: list[Via]) -> list[Via]:
+    """Stitching vias that hold nothing but copper reaching no pin.
+
+    A stitch is put down on a grid BEFORE there is a pour to judge it by, so now
+    and then a route moves and one of them is left in a pocket the pour comes out
+    in with no ground pad anywhere in it. What it joins is then two pieces of
+    floating copper on a net that is meant to be one plane, which is exactly what
+    the connectivity check calls a stray. Dropping the via drops the pockets with
+    it, because a pour piece nothing else anchors is not kept.
+    """
+    find = connected(items)
+    anchored = {find(i) for i, item in enumerate(items) if item.kind == "pad"}
+    stray = {
+        item.label
+        for i, item in enumerate(items)
+        if item.kind == "via" and find(i) not in anchored
+    }
+    return [via for via in vias if _via_label(via) in stray]
+
+
+def ground_islands(items: list[Copper]) -> list[list[tuple[float, float]]]:
+    """Which ground pads the drawn copper leaves out of touch with which."""
+    find = connected(items)
     islands: dict[int, list[tuple[float, float]]] = {}
     for index, item in enumerate(items):
         if item.net == POUR_NET and item.kind == "pad":
@@ -1287,7 +1483,7 @@ def join_islands(parts, tracks, vias, islands, report: Report):
         if island is main:
             continue
         blocked = board.forbidden(owner, TRACK)
-        via_blocked = board.forbidden(owner, VIA_PAD)
+        via_blocked = board.forbidden(owner, VIA_PAD, drilled=True)
         path = _search(board, blocked, via_blocked, tree, board.cell(*island[0]))
         if path is None:
             report.faults.append(
@@ -1360,7 +1556,7 @@ BODY_AIR = 0.25
 
 def check_placement(report: Report, parts: list[Placed]) -> None:
     """Bodies on the board, off the holes, and out of each other."""
-    post_top = e.upperBandZ - TOP_Z
+    standoff_top = e.upperBandZ - TOP_Z
     for part in parts:
         for body, box in part.boxes():
             label = f"{part.refdes} {body.what}"
@@ -1381,14 +1577,16 @@ def check_placement(report: Report, parts: list[Placed]) -> None:
             for hx, hy, diameter in part.holes():
                 if _box_circle_distance(box, hx, hy) < diameter / 2:
                     continue  # its own tie holes, which it is meant to sit over
-            for px, py in POSTS:
-                # The posts stop at the SBC's underside, and the core board
-                # sits higher than that, so only what is lower has to miss.
+            for px, py in STANDOFFS:
+                # The standoffs stop at the SBC's underside, and the core
+                # board sits higher than that, so only what is lower has to
+                # miss.
                 gap = _box_circle_distance(box, px, py)
-                if gap < POST_KEEPOUT and box[4] < post_top:
+                if gap < STANDOFF_BODY_KEEPOUT and box[4] < standoff_top:
                     report.faults.append(
-                        f"{label} is {gap:.2f} mm from the SBC post at "
-                        f"({px:.2f}, {py:.2f}); wants {POST_KEEPOUT:.2f}"
+                        f"{label} is {gap:.2f} mm from the SBC standoff at "
+                        f"({px:.2f}, {py:.2f}); wants "
+                        f"{STANDOFF_BODY_KEEPOUT:.2f}"
                     )
     for i, first in enumerate(parts):
         for second in parts[i + 1 :]:
@@ -1444,27 +1642,96 @@ def check_copper(report: Report, parts: list[Placed], items: list[Copper]) -> No
                 )
 
 
+def check_holes(report: Report, parts: list[Placed], vias: list[Via]) -> None:
+    """No two drilled holes closer than HOLE_TO_HOLE, whatever is on them.
+
+    THE ONE RULE THAT IS NOT ABOUT COPPER, and the one this file was missing: a
+    via and a pad on the same net have no clearance to violate, so a stitch or a
+    layer change could be put down on top of a pin and every copper check would
+    still pass. KiCad's own DRC found three of them on a board this file called
+    clean, which is the whole reason that export exists.
+    """
+    holes = [
+        (x, y, e.m3Clearance, f"mounting hole at ({x:g}, {y:g})") for x, y in MOUNTS
+    ]
+    holes += [
+        (x, y, e.sbcStandoffHole, f"SBC standoff hole at ({x:.2f}, {y:.2f})")
+        for x, y in STANDOFFS
+    ]
+    for part in parts:
+        for pad, x, y, _, _ in part.pads():
+            holes.append((x, y, pad.drill, f"{part.refdes}-{pad.name}"))
+        for hx, hy, diameter in part.holes():
+            holes.append((hx, hy, diameter, f"{part.refdes} hole"))
+    holes += [(via.x, via.y, VIA_DRILL, _via_label(via)) for via in vias]
+    for i, (ax, ay, ad, a) in enumerate(holes):
+        for bx, by, bd, b in holes[i + 1 :]:
+            gap = math.hypot(ax - bx, ay - by) - (ad + bd) / 2
+            if gap < HOLE_TO_HOLE - 1e-6:
+                report.faults.append(
+                    f"{a} and {b} are drilled {gap:.3f} mm apart, edge to edge; "
+                    f"wants {HOLE_TO_HOLE}"
+                )
+
+
+MIN_SPOKES = 2
+
+
+def check_thermals(report: Report, parts: list[Placed], items: list[Copper]) -> None:
+    """Every ground pad reaches the plane by at least two of its four spokes.
+
+    A pad in a plane is joined to it by four 0.5 mm spokes so that a small iron
+    can heat it, and a spoke only exists where there is pour on the other side of
+    the gap to join. Between two pads on a 2.5 mm pitch there is not: the two
+    clearances leave 0.2 mm of copper and the sliver pass takes it away, so those
+    two spokes were never there. That leaves the other two, and a track laid over
+    one of them leaves the pad hanging on a single 0.5 mm bridge.
+
+    KiCad calls that starved_thermal and it is right to. This is the same
+    question asked on our own geometry, so the answer comes out here rather than
+    three tools later.
+
+    IT IS A NOTE AND NOT A FAULT, which is a judgement and should be read as one.
+    Reserving all four lanes off every ground pad before routing was tried, and
+    then reserving only the lanes that a neighbouring pad has not already closed:
+    both cost the router more routes than they saved pads, on a board whose
+    corridors are already 2 mm wide. One 0.5 mm spoke carries about 2 A and is
+    warm to solder, not cold. WATCH THE ONE THAT CARRIES CURRENT: J5-2 is one of
+    the SBC's two returns, and the SBC draws up to 2 A across the pair.
+    """
+    from shapely.geometry import Point
+
+    starved: list[str] = []
+    pours = {layer: [] for layer in LAYERS}
+    for item in items:
+        if item.kind == "pour":
+            pours[item.layers[0]].append(item.geom)
+    nets = net_of_pads(parts)
+    for part in parts:
+        for pad, x, y, w, h in part.pads():
+            if nets[(part.refdes, pad.name)] != POUR_NET:
+                continue
+            for layer, pieces in pours.items():
+                reach = max(w, h) / 2 + THERMAL_GAP + THERMAL_SPOKE / 2
+                alive = sum(
+                    any(
+                        piece.contains(Point(x + dx * reach, y + dy * reach))
+                        for piece in pieces
+                    )
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                )
+                if 0 < alive < MIN_SPOKES:
+                    starved.append(f"{part.refdes}-{pad.name} on {layer}")
+    if starved:
+        report.notes.append(
+            f"{len(starved)} ground pad(s) reach the plane on one spoke of four: "
+            + ", ".join(starved)
+        )
+
+
 def check_connectivity(report: Report, items: list[Copper]) -> None:
     """Each net's copper is one piece, and that piece holds every pin on the net."""
-    from shapely.strtree import STRtree
-
-    tree = STRtree([item.geom for item in items])
-    parent = list(range(len(items)))
-
-    def find(m: int) -> int:
-        while parent[m] != m:
-            parent[m] = parent[parent[m]]
-            m = parent[m]
-        return m
-
-    for a, item in enumerate(items):
-        for b in tree.query(item.geom, predicate="intersects"):
-            b = int(b)
-            if b <= a or items[b].net != item.net:
-                continue
-            if set(item.layers) & set(items[b].layers):
-                parent[find(a)] = find(b)
-
+    find = connected(items)
     by_net: dict[str, list[int]] = {}
     for index, item in enumerate(items):
         by_net.setdefault(item.net, []).append(index)
@@ -1517,7 +1784,7 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
         for name, bodies in e.torsoElectronicsGroups().items()
         if name not in CARRIER_STAND_INS
     }
-    groups["deck and SBC posts"] = deck.electronicsDeck()
+    groups["deck"] = deck.electronicsDeck()
     groups["pelvis"] = torso.pelvisShell()[:7]
 
     def solid(box):
@@ -1646,9 +1913,9 @@ def draw(path: Path, parts: list[Placed], items: list[Copper]) -> None:
                     )
         for mx, my in MOUNTS:
             ax.add_patch(Circle((mx, my), e.m3Clearance / 2, fc="w", ec="k", lw=0.6))
-        for px, py in POSTS:
+        for px, py in STANDOFFS:
             ax.add_patch(
-                Circle((px, py), e.sbcPostClearance / 2, fc="w", ec="k", lw=0.6)
+                Circle((px, py), e.sbcStandoffHole / 2, fc="w", ec="k", lw=0.6)
             )
         if layer is None:
             for part in parts:
@@ -1765,21 +2032,16 @@ def summary(
     return "\n".join(lines)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--draw", action="store_true", help="rewrite the SVG")
-    parser.add_argument("--no-cad", action="store_true", help="skip the torso check")
-    parser.add_argument("--png", type=Path, help="also draw to this PNG")
-    args = parser.parse_args()
+def lay_out(
+    report: Report,
+) -> tuple[list[Placed], list[Track], list[Via], list[Copper]]:
+    """The whole board: placed, routed, poured, joined, and checked on the copper.
 
-    faults = carrier.check()
-    if faults:
-        print("carrier netlist: FAILED")
-        for fault in faults:
-            print(f"  {fault}")
-        return 1
-
-    report = Report()
+    ONE SEQUENCE AND NOT TWO. electrical/carrier_kicad.py exports what this
+    returns, and it used to repeat these fifteen lines to get it -- which is a
+    second design of the same board sitting in the file whose whole point is that
+    it decides nothing. What is checked here is what is exported.
+    """
     parts = placed()
     check_footprints(report)
     check_placement(report, parts)
@@ -1795,8 +2057,37 @@ def main() -> int:
         tracks += hop
         vias += hopVias
         items = build_copper(parts, tracks, vias)
+    stray = stranded_vias(items, vias)
+    if stray:
+        vias = [via for via in vias if via not in stray]
+        items = build_copper(parts, tracks, vias)
+        report.notes.append(
+            f"{len(stray)} stitching via(s) dropped, each in a pocket of pour with "
+            "no ground pad in it: " + ", ".join(_via_label(via) for via in stray)
+        )
     check_copper(report, parts, items)
+    check_holes(report, parts, vias)
+    check_thermals(report, parts, items)
     check_connectivity(report, items)
+    return parts, tracks, vias, items
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--draw", action="store_true", help="rewrite the SVG")
+    parser.add_argument("--no-cad", action="store_true", help="skip the torso check")
+    parser.add_argument("--png", type=Path, help="also draw to this PNG")
+    args = parser.parse_args()
+
+    faults = carrier.check()
+    if faults:
+        print("carrier netlist: FAILED")
+        for fault in faults:
+            print(f"  {fault}")
+        return 1
+
+    report = Report()
+    parts, tracks, vias, items = lay_out(report)
     if not args.no_cad:
         check_against_cad(report, parts)
 

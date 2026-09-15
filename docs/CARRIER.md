@@ -4,7 +4,8 @@ The carrier is the only board on this robot that nobody sells. It is 140 × 46 m
 standing on six M3 pillars on the electronics deck, and it holds the WeAct core
 board on sockets, three CAN-FD transceivers in DIP-8 sockets, the logic BEC and
 the bus monitor, a handful of passives, and the connectors that every other
-piece of electronics in the torso plugs into. It was a sheet of 2.54 mm
+piece of electronics in the torso plugs into. **The single-board computer stands
+on it too**, on four M2.5 standoffs, since 14 September 2026. It was a sheet of 2.54 mm
 perfboard until 14 September 2026; it is a two-layer printed board now, still
 entirely through-hole, and the section [The printed board](#the-printed-board-2026-09-14)
 is the layout. [`cad/electronics.py`](../cad/electronics.py) draws its envelope
@@ -99,14 +100,24 @@ right hole spacing, and the footprints use it.
 
 | | | |
 |---|---|---|
-| **J1** | 2-pin | 1 `+5V`, 2 `GND` — in from the Matek BEC |
+| **J1** | 2-pin | 1 `VBAT`, 2 `GND` — the raw battery bus in, from the distribution board |
 | **J2** | 4-pin | bus A: 1 H, 2 L to the left hip; 3 H, 4 L to the right hip |
 | **J3** | 4-pin | bus B, the two knees, same order |
 | **J4** | 4-pin | bus C, the two wheels, same order |
-| **J5** | 5-pin | 1 `GND`, 2 MCU→SBC, 3 SBC→MCU, 4 `BOOT0`, 5 `NRST` |
-| **J6** | 6-pin | IMU: 1 supply, 2 `GND`, 3 `SCL`, 4 `SDA`, 5 `INT`, 6 `RST` |
-| **J7** | 5-pin | bus monitor: 1 `+3V3`, 2 `GND`, 3 `SCL`, 4 `SDA`, 5 `ALERT` |
+| **J5** | 8-pin | the SBC: 1 and 2 `GND`, 3 and 4 `+5V`, 5 MCU→SBC, 6 SBC→MCU, 7 `BOOT0`, 8 `NRST` |
+| **J6** | 6-pin | IMU: 1 `SCL`, 2 `GND`, 3 supply, 4 `INT`, 5 `RST`, 6 `SDA` |
+| **J7** | 2-pin | the shunt's sense pair: 1 `IN+`, 2 `IN−`, twisted, down to the shunt at the distribution board |
 | **JP1** | 3 pads | IMU supply link: bridge 1–2 for 5 V, 2–3 for 3.3 V |
+
+**Three of these changed on 14 September 2026, when the BEC and the monitor came
+onto the board.** J1 was the 5 V coming in from a BEC mounted elsewhere and is
+the raw pack bus now, through the fuse and into the BEC's own input pin. J7 was
+the monitor's five-wire I²C lead: that bus no longer leaves the board at all, and
+the number has been reused for the shunt's sense pair, which does. J5 grew from 5 pins to
+8 because the SBC's 5 V comes off this board as well as its serial link, on two
+conductors each. **Two pins that are the same net are always adjacent in these
+housings** — 5 V on 3 and 4, ground on 1 and 2 — because a crimp that misses is
+then a lost conductor rather than a dead rail.
 
 Each bus connector's pins 1/3 and 2/4 are the same net. That is the junction
 that puts the carrier on the line rather than off it, and it is the only place
@@ -121,9 +132,10 @@ teardown.
 
 ## Power
 
-5 V arrives from the BEC on J1 and does two things: it feeds the three
-transceivers' `VDD` directly, and it feeds the core board's own regulator
-through P1-1/2. The 3.3 V that regulator makes comes back out on P2-1/2 and sets
+The raw pack bus arrives on J1, passes through a 1.85 A resettable fuse and a
+10 µF of bulk, and goes into the BEC and nowhere else. The 5 V the BEC makes
+does three things: it feeds the three transceivers' `VDD` directly, it feeds the
+SBC out on J5, and it feeds the core board's own regulator through P1-1/2. The 3.3 V that regulator makes comes back out on P2-1/2 and sets
 the logic level on every transceiver's `VIO`. That split is the whole reason the
 bill buys MCP2562FD rather than MCP2561FD — the 2561 has no separate I/O supply
 and would drive 5 V logic into a 3.3 V microcontroller.
@@ -135,9 +147,10 @@ link defaults to 5 V. And `SB9` on the core board ties the rail you are feeding
 to the USB-C connector's `VBUS` pin, so either do not plug a host into the core
 board while the robot is powered, or cut `SB9`.
 
-Decoupling is 10 µF of bulk on the 5 V at J1, and 100 nF at both `VDD` and `VIO`
-of every transceiver — nine capacitors in total with the one by the sensor
-connectors. The two 4.7 kΩ I²C pull-ups go on only if neither sensor module
+Decoupling is nine capacitors: 100 nF at both `VDD` and `VIO` of every
+transceiver, one more on the 3.3 V beside the sensor connectors, 10 µF of bulk
+on the 5 V, and a second 10 µF on the bus where it arrives — that last one for
+the lead's own inductance when the loop key is pushed home. The two 4.7 kΩ I²C pull-ups go on only if neither sensor module
 brings its own.
 
 The transceivers' `STBY` pins are tied to ground rather than driven. They have
@@ -146,26 +159,27 @@ mode, and nothing on this robot wants a transceiver asleep. A line that has to
 be driven correctly before any bus works is one more thing to get wrong at
 bring-up.
 
-## Four places this disagrees with docs/BOM.md
+## Four places this disagreed with docs/BOM.md, and all four are settled
 
-**The bill names two different core boards.** Its purchase link is WeAct's
-*long type*, which is 63.06 × 18.24 mm with two 1 × 20 headers. Its quoted
-dimension, its carrier assembly note and `cad/electronics.py` all describe the
-compact board, 36.53 × 28.40 mm with two 2 × 12 headers. Both numbers were
-measured off the vendor STEP files, so this is not a rounding disagreement — it
-is two boards. **This schematic is drawn to the compact one**, because that is
-what the CAD packs and what the carrier layout has room for; a 63 mm board does
-not fit the piece of carrier the SBC's posts leave. The purchase link is what
-needs correcting, and it is worth doing before anything is ordered.
+**The bill named two different core boards, and now names one.** Its purchase
+link was WeAct's *long type*, which is 63.06 × 18.24 mm with two 1 × 20 headers,
+while its quoted dimension, its carrier assembly note and `cad/electronics.py`
+all described the compact board, 36.53 × 28.40 mm with two 2 × 12 headers. Both
+numbers were measured off the vendor STEP files, so it was not a rounding
+disagreement — it was two boards. **This schematic is drawn to the compact one**,
+because that is what the CAD packs and what the carrier layout has room for; a
+63 mm board does not fit the strip of carrier the SBC leaves. The bill buys the
+compact board from WeAct's own shop since 14 September 2026, and says plainly
+that both Indian listings are the long one.
 
 **The header line followed from that, and it is corrected.** It said
 "2 × 2.54 mm 1 × 20 female header", which is right for the long board and wrong
 for this one, which needs two 2 × 12 sockets — 48 pins, four rows. Since
 2026-09-14 the bill buys two 1 × 40 female strips and cuts them into the four
-rows. The purchase link above is still the long board's.
+rows.
 
-**Bus A is on PA11/PA12, not PB8/PB9.** The bill puts FDCAN1 on PB8 and reads
-the cost as the BOOT0 button. The cost is worse than that. PB8 *is* the boot
+**Bus A is on PA11/PA12, not PB8/PB9, and the bill agrees since 2026-09-14.**
+The bill put FDCAN1 on PB8 and read the cost as the BOOT0 button. The cost is worse than that. PB8 *is* the boot
 select pin, and a transceiver's `RXD` idles high on a quiet bus, so wiring `RXD`
 to PB8 makes the level the MCU samples at reset depend on whether the 5 V rail
 has passed the transceiver's 4 V undervoltage threshold yet — flash if it has
@@ -221,15 +235,40 @@ footprint carries exactly the pins the netlist gives its part; that each net's
 copper is ONE connected piece touching every pin on that net and nothing else —
 a short and open test run on the drawn copper, ground pour included; that no two
 nets come within 0.2 mm on either layer, and no copper comes near the edge, a
-mounting hole, a post or a drilled hole; and that every part, and every plug with
+mounting hole, a standoff or a drilled hole; **that no two drilled holes come
+within 0.25 mm of each other, whatever is on them**, which is the rule two pads
+on the same net slip past and the one KiCad caught this board breaking; and that every part, and every plug with
 its wires leaving it, clears every drawn thing in the torso, measured in the
 CAD's own frame rather than asserted. A track that stops a tenth of a millimetre
 short of its pad fails it.
 
 **140 × 46 mm, two layers, 1.6 mm FR-4.** 0.25 mm signal tracks, 0.6 mm for the
-5 V run and 0.5 mm for the other rails, 0.2 mm clearance, 245 holes in six sizes
-and 103 vias at Ø0.4 — every figure well inside what any hobby board house builds
-as standard, because the margin is what makes hand soldering forgiving.
+5 V run and 0.5 mm for the other rails, 0.2 mm clearance, 241 holes in six sizes
+and 94 vias at Ø0.4, and the largest hole on the board is a Ø3.4 mounting hole —
+every figure well inside what any hobby board house builds as standard, because
+the margin is what makes hand soldering forgiving.
+
+### The SBC stands on this board, 2026-09-14
+
+**It stood on four posts printed with the electronics deck**, 14 mm pillars that
+came up through this board in Ø8.6 clearance holes, and it stands on four M2.5 ×
+10 standoffs screwed to this board instead. The Banana Pi is held exactly where
+it was, half a millimetre higher.
+
+**What that cost while it lasted, and what changing it bought.** A post and its
+clearance was a barrier 9.6 mm across, and the SBC's two pairs stand 23 mm apart
+across the middle of this board, so every net between the core board and the
+rest of the layout had to go through the gate between them. A 5 mm standoff on a
+Ø2.7 hole is 6.8 mm across, which widens each gate by 2.8 mm. **And it takes the
+one unbuildable hole off the drawing**: Ø8.6 is past the largest drill the board
+house in [`docs/BOM.md`](BOM.md) owns, so those four holes would have had to be
+cut out of the board outline as routed slots before anyone could order it. They
+are ordinary screw holes now.
+
+**What it costs is two screws per corner rather than one**, and an M2.5 rather
+than the M3 the rest of this torso is built with — the Banana Pi's holes are
+2.75 mm and an M3 will not pass them. The deck is 2.5 g lighter and has no
+heat-set insert anywhere on it.
 
 ### Why the BEC and the monitor came up here
 
@@ -246,25 +285,82 @@ the bus up, and there is now only one such run instead of two.
 
 **What it costs is the shunt's measurement, and this is the honest part.** The
 shunt stands in the main bus path carrying the whole pack current, so it cannot
-come up here and it has not: it stays at the distribution board and its IN+ and
-IN− go into the monitor's own screw terminals on a twisted pair, about 75 mV at
-25 V of common mode over 150 mm. Twist it, filter it at the inputs, and expect a
-noisier reading than a monitor sitting on the shunt would give.
+come up here and it has not: it stays at the distribution board, and a twisted
+pair carrying about 75 mV at 25 V of common mode runs 150 mm up to the carrier.
+Twist it, filter it at the inputs, and expect a noisier reading than a monitor
+sitting on the shunt would give.
+
+**That pair lands on J7 on this board now, and not in the monitor's own screw
+terminals**, which is a change of mind made on 15 September 2026 when the monitor
+was landed on all eight of its pins. Its `IN+` and `IN−` are on that header as
+well as on the terminals, so the choice is free. What it buys is a pair arriving
+in a connector with strain relief on the edge of a board whose whole stack is
+meant to lift out on plugs, rather than in two screw terminals in the middle of
+it facing the charge socket. What it costs is about 20 mm of this board's copper
+under the measurement, drawn as a pair over the plane, where before the 75 mV
+never touched the board at all.
+
+**The monitor carries its own 0.1 Ω shunt across those two pins**, and it stays
+in circuit in parallel with whatever external shunt is fitted. A milliohm shunt
+then reads about half a per cent low. Lift R100 off the module, or take the half
+per cent knowingly.
+
+**Its bus-voltage input is connected now too.** `VBS` was not brought out at all
+while the monitor sat on five wires, which left the thing that measures the pack
+unable to measure its voltage. It is on the fused side of the bus, so what it
+reads is the pack less the fuse's own drop — about 50 mV of 25 V at the 1.3 A
+this lead carries, or 0.2 % low, which is worth more than an unfused track
+across the middle of the board.
 
 **And the raw bus is now on the controller board.** It arrives on J1, goes
 through a resettable fuse and into the BEC and nowhere else. The pack's own fuse
 is sized for 30 A and this lead draws under two, which is why there is a fuse at
 the board at all.
 
+### Which way up the BEC lies, and how it lands, 2026-09-14
+
+**Component side up, laminate face down on the sheet.** This had never been
+decided: the BEC was drawn as a featureless brick with flying leads, and a brick
+has no sides. The real part is a bare 35 × 24 mm PCB with a shielded inductor, a
+diode and a switching FET standing most of its 5.5 mm on one face and nothing but
+laminate on the other.
+
+**Turning it over was tried and taken off again.** Face down, the only thing
+gained is a flat back for the cable ties to bear on, and what it costs is the
+whole reason the thermal sheet exists: the sheet would touch the inductor and the
+diode and nothing else, leaving the rest of a 3 W regulator in a closed pocket
+3 mm under the SBC. Face up, the sheet takes the module's entire 35 × 24 back —
+700-odd mm² of contact through 1.6 mm of laminate with copper planes in it — and
+the hot parts stand in the air under the SBC rather than facing the board.
+**What it costs is that the two ties cross the parts**: each strap lands on
+whatever is tallest in its lane, which on the outboard lane is the inductor's
+steel can. Keep them snug rather than tight.
+
+**Its four pads face up, and that is what makes the pins work.** Four pins stand
+out of the carrier — IN, G, G, OUT, at the module's own 3.81 mm — the module drops
+over them past the sheet's cut edge, and they are soldered at the module's own
+rings on top, where a joint can be seen. **Solder them from under the carrier**,
+not on top: the module's back lies 1 mm off the copper there, and a fillet on the
+top face would hold it off the sheet.
+
+**Each tie's head goes under the board**, in the 3 mm the carrier's own standoffs
+leave: about 2.4 mm of it. That is why the ties are the 2.5 mm size and not the
+4 mm one — a wider tie does not pass a Ø3 hole, and its head does not fit under
+the board either.
+
 ### Why the board is 140 mm and not 96
 
 **Because of the monitor's height, and nothing else.** The INA226 is a bought
 22 mm breakout and it stands about 11 mm over a board once it is on standoffs,
-where the SBC leaves 9.4 mm of air over this one. The only air on this deck
+where the SBC leaves 10 mm of air over this one — 9.4 mm when this was worked
+out, and the argument did not turn on the half millimetre. The only air on this deck
 deeper than that is outboard of the SBC's own two edges — and outboard to the
 left is where the core board already stands. So the monitor has to go to the
 right of the SBC's right-hand posts, which with their clearance allowed for is
 x +33.8 in the torso, and 22 mm of board past that puts the edge at x +67.45.
+Those posts are standoffs now and the barrier is narrower, but the SBC's own
+edge is at x +32.5 and the monitor still cannot stand under it, so the width
+stands.
 
 **The rear outboard corner is cut out of the reservation.** The charge socket's
 body reaches 17.1 mm in from the rear wall and passes 3.65 mm over this board, so
@@ -277,21 +373,21 @@ than an awkward shape.
 
 **Three things fix the layout, and none of them is electrical.**
 
-**The SBC leaves 9.4 mm of air** over everything between x 40 and x 105 of this
+**The SBC leaves 10 mm of air** over everything between x 40 and x 105 of this
 board, and a mated JST-XH plug is 9.8 mm tall with its wires still to leave — so
 no connector stands under the SBC, and neither does anything else tall: the core
 board on its sockets, the monitor on its standoffs, the two pull-ups and the
 fuse are all outboard of the SBC's edges or in the strips beyond its front and
 rear ones.
 
-**The SBC's four posts come up through this board** in two pairs, at x 43.55 and
-x 101.55, 23 mm apart. Each pair is a wall 9.6 mm wide with a 14.4 mm gate in the
-middle. That is what puts the core board outboard of the left pair, the monitor
-outboard of the right pair, and the BEC between them — and it is why **nothing at
-all stands in the left-hand gate**. A transceiver socket was there, and it cost
-four nets their route: eighteen nets have to cross that pair of posts to get from
-the core board to the rest of the board, and a socket standing in the gate left
-two slots of 2 mm. The gate is a corridor.
+**The SBC's four standoffs stand on this board** in two pairs, at x 43.55 and
+x 101.55, 23 mm apart. Each pair is a bollard 6.8 mm across with a 16.2 mm gate
+in the middle. That is what puts the core board outboard of the left pair, the
+monitor outboard of the right pair, and the BEC between them — and it is why
+**nothing at all stands in the left-hand gate**. A transceiver socket was there,
+and it cost four nets their route: eighteen nets have to cross that pair to get
+from the core board to the rest of the board, and a socket standing in the gate
+left two slots of 2 mm. The gate is a corridor.
 
 **What comes up through the deck comes up at the rear**, through the deck's 34 mm
 cable chase. The three bus connectors sit over it. That is the whole reason this
@@ -305,8 +401,7 @@ the bus feed.
 ### How the copper runs
 
 **It is searched for, not typed.** The 76 mm board was hand routed and that was
-reasonable for what it was. This one is 140 mm with six more parts and four posts
-through it, and a table of two hundred hand-typed vertices is a table nobody
+reasonable for what it was. This one is 140 mm with six more parts and the SBC standing on it, and a table of two hundred hand-typed vertices is a table nobody
 dares change. So the tracks are found by a maze router on a 0.2 mm grid, in
 [`electrical/carrier_pcb.py`](../electrical/carrier_pcb.py), and then held to
 exactly the checks the hand-routed ones were held to. **A router that cheats
@@ -315,8 +410,16 @@ still fails the check**, which is the only reason it is allowed to do the work.
 **Ground is poured on both layers and not routed**, except where the pour comes
 out in pieces: a bundle of signals crossing both layers in the same place cuts
 both planes there, and a pad on the far side of that is on an island. Those are
-found after the pour is built and joined by a few short hops. 103 vias stitch the
+found after the pour is built and joined by a few short hops. 94 vias stitch the
 two planes together.
+
+**A stitch that joins nothing is taken out again.** The vias go down on a grid
+before there is a pour to judge them by, so a route change can leave one sitting
+in a pocket of pour with no ground pad anywhere in it — two pieces of floating
+copper on the net that is meant to be one plane. They are found the same way the
+islands are, and dropped, and the pockets go with them because a pour piece
+nothing anchors is not kept. None is dropped on the board as it stands; one was
+while the BEC's pins were being moved, which is what the pass was written for.
 
 ### What it measures against the torso
 
@@ -325,19 +428,23 @@ tightest, in millimetres:
 
 | gap | between |
 |---|---|
-| 0.45 | the BEC's cable tie and the SBC's microSD socket |
 | 0.85 | the IMU plug and the antenna's bulkhead |
-| 1.10 | the IMU and bus-B headers and the SBC's posts |
+| 1.20 | the BEC's cable tie and the SBC's microSD socket |
 | 1.25 | the bus-A connector and the charge socket |
-| 1.30 | the BEC and the SBC's microSD socket |
-| 2.01 | the core board and the edge of the SBC |
+| 1.60 | three plugs on the rear and front rows, and the edge of the SBC |
+| 1.76 | the core board and the edge of the SBC |
+| 1.90 | the BEC and the SBC's microSD socket |
+| 2.60 | the bus-B header and the nearest SBC standoff |
 
 ### Taking it to KiCad
 
 [`electrical/carrier_kicad.py`](../electrical/carrier_kicad.py) writes
 `electrical/kicad/carrier.kicad_pcb`: the outline, every footprint and pad, every
-track, every via, the netlist and the two ground pours. KiCad 7 or 8 opens it,
-and the Gerbers, the drill files and the 3D view come from there.
+track, every via, the silkscreen, the netlist and the two ground pours. It also
+runs [`electrical/carrier_sch.py`](../electrical/carrier_sch.py), which writes
+`carrier.kicad_sch` and the symbol library beside it, so a project opened from
+that folder has both. KiCad opens all of it directly, and the Gerbers, the drill
+files and the 3D view come from there.
 
 **It is a translation and not a second design.** Everything in it is read from
 the layout, so the two cannot disagree about where a pad is. What KiCad adds is
@@ -346,7 +453,65 @@ ours, so if it complains, one of the two is wrong and the disagreement is the
 finding. **Fill the zones before reading the DRC** — the pours are declared with
 this board's rules rather than copied, and KiCad fills them itself.
 
-Nothing has been fabricated and nobody has opened this file in KiCad yet.
+**And it complained, which is the whole point.** Run against the board on
+15 September 2026, KiCad's DRC found sixteen pairs of drilled holes too close
+together — three of them overlapping, a via drilled into the edge of a pin's hole
+— on a board this repository's own checks called clean. Nothing was wrong with
+the copper: a via and a pad on the same net have no clearance to violate, so the
+question had never been asked. `carrier_pcb.py` asks it now, before and after
+routing, and the board is routed to keep 0.25 mm of laminate between any two
+holes. That cost eight stitching vias and no routes.
+
+What is left after that is **three starved thermal reliefs** and nothing else:
+0 errors, 0 unconnected pads, 0 footprint errors, 0 silkscreen violations. The
+schematic passes ERC with 0 violations.
+
+### The silkscreen
+
+**Part outlines, a pin-one dot on every part, the reference designators, and
+what each connector is for.** The last of those is the one that matters: three
+mechanically identical four-way plugs sit in a row on the rear edge, and the only
+thing that stops a knee harness going into the wheel bus is what is printed
+beside it. `BUS A HIP`, `BUS B KNEE`, `BUS C WHEEL`, `PWR IN`, `SBC`, `IMU`,
+`SHUNT`.
+
+**It is placed by measurement rather than by offset.** Silk printed over a pad is
+scraped off by the fab and silk printed over silk cannot be read, so every
+outline is clipped off every pad on the board, and every legend is tried at a
+series of stations until one is clear of the pads, the holes, the other silk and
+the board's own edge. A legend that will not fit anywhere is dropped and named
+rather than printed over a pin — and each one has a shorter form to fall back on,
+which is what gets `BUS B` onto the middle connector of three.
+
+**The reference designators did not print at all when this was first written.**
+In the board format this file writes, a footprint's `(property ...)` is a key and
+a value and nothing is drawn from it; a reference is an `fp_text`. The board
+opened, passed DRC and plotted with no part names on it. It was found by plotting
+the silkscreen and looking at the picture, which is the only way it could have
+been found.
+
+### The schematic
+
+[`electrical/carrier_sch.py`](../electrical/carrier_sch.py) draws the netlist as
+a single A2 sheet: one symbol per part, laid out in columns by kind, with every
+pin's net on the end of a stub.
+
+**It is drawn with labels and not with wires**, deliberately. A net here is a
+name shared by up to thirteen pins spread across the board, and drawing that as
+lines between symbols is the same problem as routing the board, with a drawing
+nobody can follow at the end of it. Two pins carrying the same name are the same
+net, which is how a dense board is drawn by hand anyway.
+
+**Every pin is declared passive**, which is the honest declaration rather than a
+lazy one: marking supply pins as power inputs makes ERC ask for power flags and
+then report against a model of the board that nobody maintains. What is actually
+checked — every pin on exactly one net, no dead ends, no pin on two nets, and
+copper that reaches all of it — is checked in `carrier.py` and `carrier_pcb.py`
+against the real geometry.
+
+Nothing has been fabricated. The board and the schematic have both been opened by
+KiCad's own command-line tools, which is where the DRC and ERC figures above come
+from.
 
 ### Which row of each header carries the odd pins, settled
 
@@ -367,24 +532,55 @@ beeping with a meter before ordering.**
 
 ### Still open on the board itself
 
-- **There is no spare transceiver socket.** 140 × 46 mm with the posts through it
-  and the modules on it has no room for a fourth DIP-8. The spare stays in its
+- **There is no spare transceiver socket.** 140 × 46 mm with the SBC standing on
+  it and the modules on it has no room for a fourth DIP-8. The spare stays in its
   bag.
 - **Bus B's two decoupling capacitors are 16 mm from their chip**, in the channel
-  beside the right-hand posts, because the two 1.78 mm slots between the three
+  beside the right-hand standoffs, because the two 1.78 mm slots between the three
   sockets are the only way across that column for anything heading for the
   monitor and a capacitor standing in one costs three nets their route. The
   ground plane under the pair is what makes that tolerable rather than the lead
   length. The other two pairs are 5 to 9 mm away.
-- **No silkscreen has been drawn** beyond reference designators in the KiCad
-  file, and it is the cheapest thing on the board to get right: every connector
-  wants its pin 1 and its function on it, because this is a board whose three
-  four-wire harnesses are all the same shape.
-- **The BEC's outline is a catalogue figure and its hold-down is a guess.** It is
-  a moulded brick with flying leads and no published hole pattern, so it lies on
-  a 1 mm thermal pad under two cable ties through four Ø3 holes drilled to that
-  catalogue. Measure the part when it arrives: a brick 2 mm wider than the
-  catalogue says will not sit between the ties.
+- **Seven ground pads reach the plane on one spoke of four**, where the pour
+  gives every pad four: the two spokes between pads on a 2.5 mm pitch never
+  existed, and a track was laid over one of the other two. One 0.5 mm spoke
+  carries about 2 A and solders warm rather than cold, so this is a note and not
+  a fault — but J5-2 is one of the SBC's two returns and the SBC draws up to 2 A
+  across the pair, so that is the one to widen if any of them is. Reserving the
+  spoke lanes before routing was tried twice and cost more routes than it saved
+  pads.
+- **The bus feed and the shunt pair come up from the power bay, and the deck
+  under them is solid.** `cad/deck.py` cuts one opening, the 34 mm chase in its
+  rear edge, and both of those connectors are on the front edge — where the
+  layout's own comment claims a second opening over the distribution board that
+  the plate does not have. Either the deck gains an opening or those two leads
+  come up the chase and run forward under the board, in the 3 mm the carrier's
+  standoffs leave. **Neither has been decided**, and it is the one thing in this
+  document that is a contradiction rather than a gap.
+- **The carrier's own standoffs are drawn at 3 mm and nobody stocks that.** The
+  shortest brass pillar on an Indian shelf is 5 or 6 mm, and every millimetre
+  under the carrier lifts the SBC with it — the reserved volume over the SBC has
+  2 mm of air under the lid, so a 6 mm pillar spends all of it. Cut spacers, or
+  move the whole stack down, but do not buy 6 mm pillars and hope.
+- **1.2 mm is the tightest thing on this board**, between the BEC's outboard
+  cable tie and the SBC's microSD socket hanging over it. It is a real clearance
+  rather than a computed one, but it is 1.2 mm between a bought module whose
+  outline nobody has measured and a socket on a board whose hole pattern is
+  inherited rather than published. Measure both before ordering.
+- **Where the BEC's four pins are is scaled off a photograph**, and it is the
+  softest number on the board. Matek publish no drawing of the part: the 3.81 mm
+  pitch is dimensioned on their product photograph, and the row's 2.5 mm inset
+  from the module's short edge is measured off the same picture. The tie holes
+  can take a millimetre of error and this cannot — a pin row 1 mm out is a module
+  that does not go on. **Measure one before the board is ordered.**
+- **The BEC's outline is a catalogue figure and its hold-down is a guess.** No
+  vendor hole pattern exists to screw it by, so it lies on a 1 mm silicone sheet
+  under two 2.5 mm cable ties through four Ø3 holes drilled to the catalogue
+  35 × 24. Measure the part when it arrives: a module 2 mm wider than the
+  catalogue says will not sit between the ties. **Where the straps land on its
+  parts has been reasoned from a photograph and not checked** — the outboard one
+  crosses the inductor's can, which will take it, and the inboard one crosses
+  smaller parts on the input side.
 
 ## What is not settled
 

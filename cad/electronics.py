@@ -46,9 +46,18 @@ are bought ones that bolt or clamp themselves to it.
 
 from __future__ import annotations
 
+import math
+
 from build123d import Align, Box, Cylinder, Pos, Rot
 
-from cad.parameters import m2NutAcrossFlats, m2NutThickness, m3Clearance, shellWall
+from cad.parameters import (
+    m2NutAcrossFlats,
+    m2NutThickness,
+    m3Clearance,
+    m25CapHeadDiameter,
+    m25CapHeadHeight,
+    shellWall,
+)
 from cad.torso_shell import cablePortX, torsoShellDepth
 from cad.wheeled_parameters import (
     wheeledHipSaddleRise,
@@ -123,11 +132,13 @@ powerHeight = 36.0
 #
 # THE WIDTH IS NOT A PREFERENCE. The bus monitor is a bought 22 mm breakout and
 # it stands about 11 mm over a board once it is on standoffs, where the SBC
-# leaves 9.4 mm of air over this one. The only air on this deck deeper than that
+# leaves 10 mm of air over this one -- 9.4 when this was worked out. The only air on this deck deeper than that
 # is outboard of the SBC's own edges -- electrical/carrier_pcb.py measures the
 # headroom over every square millimetre of it -- and outboard to the LEFT is
 # where the core board already stands. So the monitor goes to the right of the
 # SBC's right-hand posts, which with their clearance allowed for is x +33.8.
+# (Posts then; standoffs since, and narrower, but the monitor still cannot
+# stand under the SBC and the SBC's edge is at +32.5, so the width stood.)
 # What has to stand past them is the monitor, the last of the three CAN
 # transceivers and the BEC's own input hardware, and 33.65 mm of board is what
 # holds them, which puts this bay's edge at x +67.45.
@@ -187,7 +198,9 @@ bayGap = (powerX - powerWidth / 2) - (batteryX + batteryWidth / 2)
 lowerBandZ = saddleTopZ
 deckZ = lowerBandZ + batteryHeight
 deckBandZ = deckZ + deckThickness
-upperBandZ = deckBandZ + controllerHeight + bandGap
+# upperBandZ, the plane the SBC sits on, is below the standoffs: it was
+# deckBandZ + controllerHeight + bandGap while the SBC stood on the deck's own
+# posts, and it is the carrier's top face plus a bought standoff now.
 
 # WHERE THE DECK LANDS. Four pads on the front and rear inner walls, built by
 # cad/torso.py and screwed into by cad/deck.py, which is why the stations are
@@ -207,15 +220,37 @@ deckLedgeY = interiorHalfDepth - (deckLedgeDepth / 2)
 
 # Standoffs. Every board is held off what it sits on, and these are the gaps.
 # 3 mm is a stock M3 brass standoff and clears the leads that have to pass under
-# a board; the SBC's 2 mm is not a choice at all -- see the microSD note below.
+# a board.
 standoffHeight = 3.0
 standoffDiameter = 6.0
-sbcStandoffHeight = bandGap
+# THE SBC STANDS ON THE CONTROLLER CARRIER, September 2026, on four M2.5 x 10
+# female-female hex standoffs: an M2.5 x 6 up through the carrier into each one's
+# foot, and the SBC's own four screws down into its head. It stood on four posts
+# printed with cad/deck.py until then, and the posts came up THROUGH the carrier
+# in Ø8.6 holes, which cost the board two walls of copper-free laminate 9.6 mm
+# wide and a drill the board house does not own.
+#
+# M2.5 AND NOT M3, although the rest of this torso is M3. The SBC's holes are
+# 2.75 mm -- see the provenance block below -- and an M3 does not pass them.
+#
+# 10 mm BECAUSE IT IS A LENGTH SOMEBODY SELLS. The posts put the SBC's underside
+# 9.4 mm over the carrier; stock M2.5 standoffs come in 6, 8, 10 and 12, and 8
+# puts the SBC's microSD socket onto the BEC's cable ties, which stand 8.5 mm
+# over the board. So the SBC went up 0.6 mm, with 2 mm still clear under the lid
+# over its reservation. 5 mm across the flats, drawn round as every standoff
+# here is. The 2 mm this name used to hold was the band gap the posts spent,
+# and see the microSD note below for why that gap had to exist.
+sbcStandoffHeight = 10.0
 sbcStandoffDiameter = 5.0
+# The carrier's hole for the M2.5 up through it: a drilled hole in laminate
+# rather than a printed one, so the ISO 273 medium figure for M2.5 and not the
+# 0.4 mm over nominal a print needs.
+sbcStandoffHole = 2.7
 
 controllerBoardZ = deckBandZ + standoffHeight
 
 pcbThickness = 1.6
+upperBandZ = controllerBoardZ + pcbThickness + sbcStandoffHeight
 capacitorDiameter = 16.0
 capacitorHeight = 25.0
 
@@ -512,7 +547,8 @@ capacitorZ = pdbTopZ
 # CAPACITOR BANK AND SIX DRIVERS' INPUT CAPACITANCE THROUGH BARE CONTACTS with
 # nothing to limit it. docs/BOM.md carries what that means and what would buy it
 # back; the short version is that the pre-charge this robot used to get free with
-# the key now has to come from the contactor line that is still on WAIT.
+# the key was to come from the motor-power contactor line, and THAT LINE WAS
+# DELETED on 2026-09-14, so nothing on the bill limits this inrush at all.
 xt60PanelNoseWidth = 14.2
 xt60PanelNoseHeight = 6.7
 xt60PanelCutWidth = 14.7
@@ -871,74 +907,57 @@ sbcHoleDiameter = 2.75
 # 8 mm inset would.
 boardHoleInset = 4.0
 
-# WHERE THE SBC'S POSTS STAND, AND WHY THE CARRIER IS DRILLED FOR ALL FOUR.
-# The SBC sits 14 mm above the deck on four posts of cad/deck.py's, on a 58 by
-# 23 mm pitch about the centre line. It was two of them while the carrier spanned
-# 76 mm from the left wall -- x = -29 landed inside it and x = +29 did not -- and
-# it is four now that the carrier reaches x +67.45 to carry the BEC and the bus
-# monitor. Ø8.6 clearance holes in a board we are designing anyway is the cheap
-# answer: the post is Ø8 and this is 0.3 mm of air round it. Shuffling either
-# board to miss them is not possible, and never was, because 140 + 85 is far more
-# than the shell is wide however they are arranged.
-#
-# WHAT IT COSTS THE LAYOUT is a barrier rather than two holes, and that is the
-# thing to know before moving anything on this deck: a post and its clearance is
-# 9.6 mm across, the pair stands 23 mm apart, so nothing taller than the board
-# and wider than 13 mm can cross the line they stand on. That is what decides
-# which end of the carrier each of the bought modules lives at.
-#
-# THIS COMMENT SAID Ø5.5 until September 2026, which was smaller than the post
-# it is a clearance for and so could never have been built. The geometry was
-# always 8.6 and tools/gate_e.py has always counted it at r4.3; only the prose
-# was wrong.
-sbcPostClearance = 8.6
-sbcPostDiameter = 8.0
-sbcPostHeight = upperBandZ - deckBandZ
 
+# WHERE THE SBC STANDS: ON THE CARRIER, on four standoffs on its own 58 by 23 mm
+# hole pattern about the centre line. The carrier reaches from x -72.55 to
+# +67.45, so all four land on it, and this asks rather than assumes that.
+#
+# IT STOOD ON FOUR POSTS UNTIL SEPTEMBER 2026, printed with cad/deck.py and
+# 14 mm tall, and they came up THROUGH the carrier in Ø8.6 clearance holes:
+# sbcPostDiameter 8.0, sbcPostClearance 8.6, sbcPostHeight 14.0, which were
+# retired with them. What that cost is worth keeping, because it is what a
+# standoff bought back. A post and its clearance was a wall 9.6 mm across, the
+# pair stood 23 mm apart, so nothing taller than the board and wider than 13 mm
+# crossed the line they stood on, and every net between the core board and the
+# rest of the carrier had to be routed through that gate. And Ø8.6 is past the
+# largest drill the board house in docs/BOM.md owns, so four holes would have had
+# to be routed out of the outline. A 5 mm standoff on a Ø2.7 hole narrows each
+# wall to under 7 mm and takes the problem hole off the drawing altogether.
+def sbc_standoff_xy() -> list[tuple[float, float]]:
+    """The four SBC standoffs, on the board's own hole pattern, in torso x and y.
 
-def _sbc_post_xy() -> list[tuple[float, float]]:
-    """The four SBC post centres, on the board's own hole pattern."""
-    return [
+    Checked against the carrier's outline rather than taken on trust: a standoff
+    with no board under it is a mount that does not exist, and moving either
+    board should say so here rather than in a clearance nobody reads.
+    """
+    stations = [
         (dx, dy)
         for dx in (-sbcHolePitchX / 2, sbcHolePitchX / 2)
         for dy in (-sbcHolePitchY / 2, sbcHolePitchY / 2)
     ]
-
-
-def sbc_posts_through_carrier() -> list[tuple[float, float]]:
-    """The posts that have to pass through the controller carrier, if any.
-
-    Asked of the geometry rather than answered with a constant, so that moving
-    either board changes the carrier's drilling instead of silently colliding.
-    """
-    halfWidth = controllerWidth / 2
-    halfDepth = controllerDepth / 2
-    return [
-        (dx, dy)
-        for dx, dy in _sbc_post_xy()
-        if abs(dx - controllerX) < halfWidth and abs(dy) < halfDepth
-    ]
+    for dx, dy in stations:
+        if not (
+            abs(dx - controllerX) < controllerWidth / 2 - sbcStandoffDiameter
+            and abs(dy) < controllerDepth / 2 - sbcStandoffDiameter
+        ):
+            raise ValueError(f"the SBC standoff at ({dx}, {dy}) is off the carrier")
+    return stations
 
 
 # WHERE THE WeAct SITS ON THE CARRIER, and it is derived rather than placed. The
-# SBC's posts cut this board into strips and the core board goes in the outboard
-# one, west of the leftmost post; this is that strip's centre line. It is also
-# the only strip tall enough for the core board on its sockets, because the SBC
-# itself is over everything between the posts. It moves if the shell's width
-# moves, which it now does on its own -- cad/wheeled_parameters.py builds it from
-# the hip clevises -- so a number typed here would go stale silently and
-# tools/gate_f.py would be the only thing to notice.
-_postsThrough = sbc_posts_through_carrier()
-weActX = (
-    (
-        (controllerX - (controllerWidth / 2))
-        + min(dx for dx, _ in _postsThrough)
-        - (sbcPostDiameter / 2)
-    )
-    / 2
-    if _postsThrough
-    else controllerX
-)
+# core board on its sockets stands taller than the SBC's underside, so it cannot
+# go under the SBC and has to stand outboard of it, in the strip between the
+# carrier's left-hand edge and the SBC's own left-hand edge; this is that
+# strip's centre line. It moves if the shell's width moves, which it now does
+# on its own -- cad/wheeled_parameters.py builds it from the hip clevises -- so a
+# number typed here would go stale silently and tools/gate_f.py would be the only
+# thing to notice.
+#
+# THE STRIP WAS BOUNDED BY THE POSTS until they went, whose outboard faces were
+# half a millimetre outboard of the SBC's edge. The standoffs are 1 mm inside
+# it, so the SBC's edge is what bounds the strip now and the core board moved
+# 0.25 mm inboard.
+weActX = ((controllerX - (controllerWidth / 2)) - (sbcBoardWidth / 2)) / 2
 
 
 # ---- what the carrier carries, and where ------------------------------------
@@ -983,8 +1002,12 @@ def carrier_screw_xy() -> list[tuple[float, float]]:
 # The three CAN transceivers, stacked in a column at board x 90.
 transceiverX, transceiverY = onCarrier(90.0, 23.0)
 transceiverPitch = 11.0
-# The BEC, lying flat on a thermal pad between the two pairs of SBC posts, and
-# the bus monitor on its standoffs outboard of the right-hand pair.
+# The BEC, lying flat on a thermal sheet between the two pairs of SBC standoffs,
+# COMPONENT SIDE UP: its bare laminate face is what lands on the sheet, which is
+# the only way the sheet takes any real heat out of it. The 6.5 is 1 mm of sheet,
+# then 1.6 of its own board, then its parts standing to 5.5 above that board's
+# underside; electrical/carrier_pcb.py has the whole of why it lies this way up.
+# And the bus monitor on its standoffs outboard of the right-hand pair.
 becX, becY = onCarrier(66.5, 23.0)
 becOnCarrierHeight = 6.5
 busSenseX, busSenseY = onCarrier(126.0, 22.0)
@@ -1020,8 +1043,8 @@ def board(width, depth, atX, atY, atZ, holeDiameter, holeInset, extraHoles=()):
     which is what stops a cut being filled in behind it. tools/gate_e.py counts
     them on the finished solid rather than taking that on trust.
 
-    `extraHoles` is (x, y, diameter) in the board's own frame, for the two the
-    controller carrier needs so the SBC's posts can pass through it.
+    `extraHoles` is (x, y, diameter) in the board's own frame, for the holes
+    the controller carrier has that are not on a corner.
     """
     blank = Pos(atX, atY, atZ) * Box(
         width, depth, pcbThickness, align=(Align.CENTER, Align.CENTER, Align.MIN)
@@ -1066,15 +1089,6 @@ def standoff(diameter, height, atX, atY, atZ):
     )
 
 
-def _corner_standoffs(width, depth, atX, atY, atZ, inset, diameter, height):
-    """Four of them, on a board's own hole pattern."""
-    return [
-        standoff(diameter, height, atX + dx, atY + dy, atZ)
-        for dx in (inset - (width / 2), (width / 2) - inset)
-        for dy in (inset - (depth / 2), (depth / 2) - inset)
-    ]
-
-
 def distributionBoard():
     """The bought distribution board on its own, so its holes can be counted.
 
@@ -1103,11 +1117,17 @@ def distributionBoard():
 def controllerCarrierBoard():
     """The controller carrier on its own, so its holes can be counted.
 
-    Six holes, not four: the four it is mounted by and the two the SBC's posts
-    pass through. Both patterns are counted separately by tools/gate_e.py,
+    Ten holes: the six it is screwed down by and the four the SBC's standoffs
+    are screwed to. Both patterns are counted separately by tools/gate_e.py,
     because they are different diameters and a union that filled either would be
     the same failure as the rotor hub's.
+
+    board() cuts the four corners itself, so what is passed on is the two
+    mid-edge stations carrier_screw_xy() adds and the standoffs. THIS DREW ONLY
+    THE FOUR CORNERS until September 2026, for a board screwed down at six.
     """
+    cornerX = controllerWidth / 2 - boardHoleInset
+    cornerY = controllerDepth / 2 - boardHoleInset
     return board(
         controllerWidth,
         controllerDepth,
@@ -1117,9 +1137,14 @@ def controllerCarrierBoard():
         m3Clearance,
         boardHoleInset,
         extraHoles=[
-            (dx - controllerX, dy, sbcPostClearance)
-            for dx, dy in sbc_posts_through_carrier()
-        ],
+            (atX - controllerX, atY, m3Clearance)
+            for atX, atY in carrier_screw_xy()
+            if not (
+                math.isclose(abs(atX - controllerX), cornerX)
+                and math.isclose(abs(atY), cornerY)
+            )
+        ]
+        + [(dx - controllerX, dy, sbcStandoffHole) for dx, dy in sbc_standoff_xy()],
     )
 
 
@@ -1204,7 +1229,8 @@ partNumbers = {
     "charge socket": "AMASS XT60E-F panel mount, socket contacts",
     "antenna bulkhead": "SMA or RP-SMA bulkhead jack on a u.FL pigtail",
     "controller standoffs": "M3 brass, 6 mm A/F x 3 mm",
-    "controller carrier board": "ours -- 76 x 46 mm of 2.54 mm perfboard, not yet laid out",
+    "controller carrier board": "ours -- 140 x 46 mm two-layer PCB, electrical/carrier_pcb.py",
+    "SBC standoffs": "M2.5 x 10 female-female hex standoff, 5 mm A/F, on M2.5 x 6 SHCS",
     "CAN transceivers": "MCP2562FD-E/P, 8-pin PDIP, in sockets",
     "WeAct core board": "WeAct STM32G474CEU6",
     "SBC board": "Banana Pi BPI-M4 Zero",
@@ -1338,12 +1364,11 @@ def torsoElectronicsGroups() -> dict[str, list]:
             for dx in (-17.0, -5.7, 5.7, 17.0)
         ],
         "fuse holder": [slab(20.0, 10.0, 14.0, powerX + 12.0, pdbY + 2.0, pdbTopZ)],
-        # OFF THE DISTRIBUTION BOARD AND UNDER THE DECK, September 2026. It lay
-        # on the bought board's top face held by tape, which was an answer but a
-        # poor one for a part that carries the only reading of pack state this
-        # robot gets. The board turned out to have two mounting holes; the
-        # dimension block says what the photographs showed and cad/deck.py has
-        # the posts.
+        # ON THE CONTROLLER CARRIER, September 2026, on two M2 screws with nuts
+        # for standoffs. It lay on the distribution board held by tape, then hung
+        # from the deck, then sat on two pads off the rear wall; the dimension
+        # block says what its photographs showed, and electrical/carrier_pcb.py
+        # places it.
         "bus monitor": [
             slab(
                 busSenseWidth,
@@ -1354,11 +1379,12 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 controllerBoardZ + pcbThickness + busSenseStandoff,
             )
         ],
-        # The logic rail. It was a generic buck module reserved on the deck and it
-        # is a Matek 12S Pro BEC now: a fifth of the volume, and down here with
-        # the bus it steps down. It rides on a bracket over the bank because the
-        # board's own area is spoken for, which is also the coolest place in this
-        # bay -- it is the one item in the torso that makes real heat.
+        # The logic rail. It was a generic buck module reserved on the deck, then
+        # a Matek 12S Pro BEC on a bracket over the capacitor bank, and since
+        # September 2026 the same BEC lying on the controller carrier on a thermal
+        # sheet, component side up. It is the one item in the torso that makes
+        # real heat, and the sheet under its bare laminate face is the whole of
+        # what carries that into the carrier's ground plane.
         "logic BEC": [
             slab(
                 becWidth,
@@ -1486,28 +1512,24 @@ def torsoElectronicsGroups() -> dict[str, list]:
             ),
         ],
         # ---- controller carrier, on the deck --------------------------------
-        "controller standoffs": _corner_standoffs(
-            controllerWidth,
-            controllerDepth,
-            controllerX,
-            0.0,
-            deckBandZ,
-            boardHoleInset,
-            standoffDiameter,
-            standoffHeight,
-        ),
+        # Six, on carrier_screw_xy()'s stations. They were drawn on the four
+        # corners until September 2026, two short of what the board is screwed
+        # down by.
+        "controller standoffs": [
+            standoff(standoffDiameter, standoffHeight, atX, atY, deckBandZ)
+            for atX, atY in carrier_screw_xy()
+        ],
         "controller carrier board": [controllerCarrierBoard()],
         # The WeAct core board, on headers above the carrier -- headers and not
         # screws, because the board has no mounting holes at all. 36.53 x 28.40
         # is measured off the vendor STEP; docs/BOM.md's 36.3 x 28.1 came off a
         # shop listing and is near enough to be the same board, but this is the
         # drawing.
-        # OUTBOARD OF THE POST, not centred on the carrier. One column of the
-        # SBC's four posts comes up through this board -- unavoidably, because
-        # 76 mm of carrier plus 85 of SBC is wider than any shell this robot can
-        # have -- and it cuts the carrier into two unequal pieces. The WeAct goes
-        # in the larger one, and weActX is derived from the post rather than from
-        # the board so that it stays there if either moves.
+        # OUTBOARD OF THE SBC, not centred on the carrier. It stands taller than
+        # the SBC's underside, so it goes in the strip of carrier the SBC is not
+        # over, and weActX is derived from the SBC's edge rather than typed so
+        # that it stays there if either moves. It was derived from the post
+        # that came up through this board until the posts went.
         "WeAct core board": [
             slab(36.53, 28.40, 6.0, weActX, 2.0, controllerBoardZ + pcbThickness)
         ],
@@ -1573,11 +1595,38 @@ def torsoElectronicsGroups() -> dict[str, list]:
             )
         ],
         # ---- SBC: a Banana Pi BPI-M4 Zero, 65 x 30 --------------------------
-        # There is no "SBC standoffs" group. There was, and it was four stock
-        # pillars drawn inside the four posts cad/deck.py prints -- the same
-        # 2 mm of air modelled twice, which tools/gate_f.py reported as 93 mm3
-        # of shared volume the moment its intersection test was fixed. The
-        # deck's posts ARE the standoffs; the SBC screws into their inserts.
+        # ON FOUR STANDOFFS ON THE CARRIER, and the head of the screw that holds
+        # each one down, which hangs under the carrier in the 3 mm between it
+        # and the deck plate.
+        #
+        # THIS GROUP WAS DELETED ONCE, and the reason is still worth knowing: it
+        # was four stock pillars drawn inside the four posts cad/deck.py used
+        # to print -- the same air modelled twice, which tools/gate_f.py
+        # reported as 93 mm3 of shared volume the moment its intersection test
+        # was fixed. The posts are gone and the standoffs are the only thing
+        # under the SBC now, so they are drawn once, here.
+        "SBC standoffs": [
+            *(
+                standoff(
+                    sbcStandoffDiameter,
+                    sbcStandoffHeight,
+                    dx,
+                    dy,
+                    controllerBoardZ + pcbThickness,
+                )
+                for dx, dy in sbc_standoff_xy()
+            ),
+            *(
+                standoff(
+                    m25CapHeadDiameter,
+                    m25CapHeadHeight,
+                    dx,
+                    dy,
+                    controllerBoardZ - m25CapHeadHeight,
+                )
+                for dx, dy in sbc_standoff_xy()
+            ),
+        ],
         "SBC board": [sbcBoard()],
         # The 40-pin header is the tall thing on this board and the only part of
         # it that asks for headroom: 8.5 mm of body over a 1.6 mm board, against
@@ -1594,8 +1643,9 @@ def torsoElectronicsGroups() -> dict[str, list]:
             for atX, width in ((-20.1, 11.0), (8.9, 9.0), (21.5, 9.0))
         ],
         # The microSD slot is on the UNDERSIDE, which is why this board cannot
-        # sit flat on anything: it wants about 2 mm of air beneath it, and the
-        # 2 mm band gap under this band is exactly what the standoffs spend.
+        # sit flat on anything: it wants about 2 mm of air beneath it. It hangs
+        # over the BEC on the carrier, and it is what decided the standoffs are
+        # 10 mm and not 8 -- see sbcStandoffHeight.
         "SBC microSD slot": [slab(12.0, 11.0, 1.6, -26.5, 0.0, upperBandZ - 1.6)],
         # ---- the BMS, on edge in the gap between the two bays ----------------
         # THE DALY 6S 20 A AT ITS CATALOGUE SIZE, 58 x 33 x 8.2, which is this

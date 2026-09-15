@@ -30,9 +30,10 @@ PROVENANCE. Every pin number here came off a vendor document, read on
   * which board that is, settled by measuring the vendor STEP beside it --
     WeAct-STM32G47x_CoreBoard_3D.step is 36.53 x 28.40 mm, the size
     cad/electronics.py draws and the size docs/BOM.md quotes;
-  * the transceiver's pinout, from Microchip DS20005284A table 1-2, which also
-    gives the internal pull-ups on TXD and STBY that decide what this board does
-    before any firmware runs;
+  * the transceiver's pinout, from Microchip DS20005284A table 1-2, mirrored at
+    reference/MCP2561-2FD_DS20005284A.pdf, which also gives the internal
+    pull-ups on TXD and STBY that decide what this board does before any
+    firmware runs;
   * which STM32G474 pin can carry which peripheral, from Zephyr's hal_stm32,
     dts/st/g4/stm32g474c(b-c-e)tx-pinctrl.dtsi, generated from ST's own database;
   * the motor's connector and its default bus speed, from
@@ -281,17 +282,42 @@ PARTS = [
     ),
     Part(
         "A2",
-        "the logic BEC, lying flat on the carrier on a thermal pad under two "
-        "cable ties; its four leads land on this header",
-        "Matek BEC12S-PRO, on a 1 x 4 header",
-        {"1": "IN+", "2": "IN-", "3": "OUT+", "4": "OUT-"},
+        "the logic BEC, lying flat on the carrier on a thermal sheet under two "
+        "cable ties, component side up; its four pads face up and drop over four "
+        "pins standing out of the board, in the order the module prints them",
+        "Matek BEC12S-PRO, on four pins at 3.81 mm",
+        {"1": "IN", "2": "G", "3": "G", "4": "OUT"},
     ),
+    # THE MONITOR LANDS ON ALL EIGHT OF ITS PINS, September 2026. It was drawn as
+    # five of them into a header standing beside the module, which is not a thing
+    # that can be built: a module's pins go where its pins are. All eight come
+    # down into this board now, its shunt inputs included, so the twisted pair
+    # from the shunt lands on J7 here rather than in the screw terminals on the
+    # module. THE MODULE'S OWN 0.1 OHM SHUNT IS STILL ACROSS THOSE TWO PINS and is
+    # in parallel with the external one; lift R100 off the module, or accept that
+    # a milliohm shunt reads about half a percent low.
     Part(
         "A3",
-        "the bus monitor, on two M2 standoffs; its IN+ and IN- are its own screw "
-        "terminals and go to the shunt, not to this board",
-        "INA226 breakout, on a 1 x 5 header",
-        {"1": "VCC", "2": "GND", "3": "SCL", "4": "SDA", "5": "ALERT"},
+        "the bus monitor, on two M2 standoffs, landed on all eight of its pins; "
+        "its screw terminals are left empty and the shunt pair comes in on J7",
+        "INA226 breakout, on a 1 x 8 header",
+        {
+            "1": "VCC",
+            "2": "GND",
+            "3": "SDA",
+            "4": "SCL",
+            "5": "ALE",
+            "6": "VBS",
+            "7": "IN-",
+            "8": "IN+",
+        },
+    ),
+    Part(
+        "J7",
+        "the shunt's sense pair, down to the shunt at the distribution board -- "
+        "twisted, and about 75 mV at pack common mode",
+        "JST-XH 2-pin",
+        {"1": "IN+", "2": "IN-"},
     ),
     Part(
         "J2",
@@ -400,15 +426,20 @@ NETS: dict[str, list[tuple[str, str]]] = {
     # this board that is not a logic rail. It arrives at pack voltage -- 25.2 V
     # on a full 6S string, and higher than that while a leg is regenerating --
     # so it is fused at the board rather than relying on the 30 A fuse that
-    # protects the pack, and it goes nowhere except through F1 into A2.
+    # protects the pack. Past the fuse it feeds the BEC, and it is also what the
+    # monitor measures its bus voltage against: VBS is a high-impedance input, so
+    # it costs nothing to take it off the fused side, and what it reads is the
+    # pack less the fuse's own drop -- about 50 mV of 25 V at the 1.3 A this lead
+    # carries. A pack reading that is 0.2 % low is worth more than an unfused
+    # track across the board.
     "VBAT": [("J1", "1"), ("F1", "1")],
-    "VBAT_F": [("F1", "2"), ("C9", "1"), ("A2", "1")],
+    "VBAT_F": [("F1", "2"), ("C9", "1"), ("A2", "1"), ("A3", "6")],
     # Power. 5 V comes out of the BEC and feeds the transceivers, the SBC and
     # the core board through its own regulator; the 3.3 V that regulator makes
     # comes back out and is what sets the logic level on every VIO pin. That
     # split is the whole reason the bill buys MCP2562FD rather than MCP2561FD.
     "+5V": [
-        ("A2", "3"),
+        ("A2", "4"),
         ("J5", "3"),
         ("J5", "4"),
         ("C1", "1"),
@@ -440,7 +471,7 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "GND": [
         ("J1", "2"),
         ("A2", "2"),
-        ("A2", "4"),
+        ("A2", "3"),
         ("C9", "2"),
         ("C1", "2"),
         ("C2", "2"),
@@ -489,11 +520,18 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "CANC_L": [("U3", "6"), ("J4", "2"), ("J4", "4")],
     # One I2C bus for both sensors: the IMU in its seat on the shell floor, and
     # the INA226 on this board watching the battery bus through the shunt.
-    "I2C_SCL": [("A1", "P1-15"), ("R1", "2"), ("J6", "1"), ("A3", "3")],
-    "I2C_SDA": [("A1", "P1-22"), ("R2", "2"), ("J6", "6"), ("A3", "4")],
+    "I2C_SCL": [("A1", "P1-15"), ("R1", "2"), ("J6", "1"), ("A3", "4")],
+    "I2C_SDA": [("A1", "P1-22"), ("R2", "2"), ("J6", "6"), ("A3", "3")],
     "IMU_INT": [("A1", "P1-20"), ("J6", "4")],
     "IMU_RST": [("A1", "P1-21"), ("J6", "5")],
     "INA_ALERT": [("A1", "P1-8"), ("A3", "5")],
+    # THE SHUNT'S SENSE PAIR, and it is the only differential measurement on this
+    # robot. It leaves on J7, twisted, down to the shunt in the main bus path at
+    # the distribution board, and it carries about 75 mV riding on pack voltage.
+    # Keep the two tracks beside each other over the plane: what they pick up
+    # between here and the connector is what the monitor reads as current.
+    "SHUNT_P": [("A3", "8"), ("J7", "1")],
+    "SHUNT_N": [("A3", "7"), ("J7", "2")],
     # The SBC. A serial link rather than USB, and BOOT0 and reset travel with it
     # so the Banana Pi can drop the MCU into its own bootloader and reflash it
     # over the same wires. That matters on a robot whose controller sits under a
@@ -639,7 +677,10 @@ def parts_list() -> str:
     for part in PARTS:
         lines.append(f"  {part.refdes:<5}{part.partNumber}")
         lines.append(f"       {part.description}")
-    lines.append("  U4   DIP-8 socket, left empty -- the spare transceiver's seat")
+    # There was a U4 here, an empty DIP-8 socket for the spare transceiver. The
+    # printed board has no room for it: electrical/carrier_pcb.py puts the SBC's
+    # standoffs, the BEC and the monitor on a 140 x 46 mm board and a fourth
+    # socket does not fit. The spare stays in its bag.
     return "\n".join(lines)
 
 
@@ -713,7 +754,7 @@ def draw(path: Path) -> None:
     # parts apiece, one at each transceiver, because drawing nine identical
     # capacitors would say nothing the caption does not.
     passives = [
-        ("C1", "10 uF", "+5V", None, "bulk, by the connector the BEC lands on"),
+        ("C1", "10 uF", "+5V", None, "bulk, by the cable the SBC takes 5 V on"),
         ("C2 C4 C6", "100 nF", "+5V", None, "one at every transceiver's VDD"),
         ("C3 C5 C7", "100 nF", "+3V3", None, "one at every transceiver's VIO"),
         ("C8", "100 nF", "+3V3", None, "by the sensor connectors"),

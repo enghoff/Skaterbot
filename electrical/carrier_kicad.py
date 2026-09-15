@@ -25,9 +25,12 @@ WHAT THIS FILE DOES NOT CARRY ACROSS, and both are deliberate:
     rules are the ones carrier_pcb.py poured to, and pressing B in KiCad gives
     its own answer. That answer SHOULD look like carrier_pcb.svg. If it does not,
     read the difference rather than the file.
-  * THE SILKSCREEN IS REFERENCE DESIGNATORS ONLY. Nothing here draws part
-    outlines, pin-one marks or polarity. That is a job for KiCad, where it can be
-    seen while it is done.
+  * THE SILKSCREEN IS DRAWN HERE, and it is the one thing on this board that is
+    not copper and not a hole. Each part gets its outline, a pin-one dot and its
+    reference designator, and each connector gets its function spelled out beside
+    it, because this is a board with three identical four-way plugs on one edge.
+    Every line is clipped off every pad first, so the DRC's silk-over-pad rule
+    has nothing to say.
 
 THE Y AXIS TURNS OVER. This project measures the board with y forward and up the
 page; KiCad measures it with y down the page. Both look at the board from above,
@@ -50,6 +53,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "electrical"))
 
 import carrier_pcb as pcb  # noqa: E402
+import carrier_sch  # noqa: E402
 
 OUT = ROOT / "electrical" / "kicad"
 
@@ -152,7 +156,168 @@ def pad_shape(pad: pcb.Pad) -> str:
     return "circle"
 
 
-def footprint(part: pcb.Placed, index: dict[str, int], net_of) -> str:
+# WHAT THE SILKSCREEN IS DRAWN FROM. A part's outline is the bodies it occupies,
+# which carrier_pcb.py already knows because it measures them against the torso.
+# The three below are excluded from it: a plug is not on the board, a cable tie
+# is not the part it holds, and a thermal sheet is cut from a roll rather than
+# placed on a mark.
+NOT_AN_OUTLINE = ("plug", "wires", "cable tie", "thermal sheet")
+SILK_WIDTH = 0.15
+SILK_PAD_AIR = 0.2
+# Silk to silk. KiCad measures this one edge to edge as well, and silk to the
+# board's edge, where anything printed is half cut off by the router.
+SILK_AIR = 0.2
+SILK_EDGE = 0.3
+
+
+def _outline_box(part: pcb.Placed):
+    """The part's own extent in its own frame: x0 y0 x1 y1, or None."""
+    boxes = [
+        body.box
+        for body in part.footprint.bodies
+        if not any(word in body.what for word in NOT_AN_OUTLINE)
+    ]
+    if not boxes:
+        pads = part.footprint.pads
+        if not pads:
+            return None
+        return (
+            min(p.x - p.w / 2 for p in pads) - 0.5,
+            min(p.y - p.h / 2 for p in pads) - 0.5,
+            max(p.x + p.w / 2 for p in pads) + 0.5,
+            max(p.y + p.h / 2 for p in pads) + 0.5,
+        )
+    return (
+        min(b[0] for b in boxes),
+        min(b[1] for b in boxes),
+        max(b[2] for b in boxes),
+        max(b[3] for b in boxes),
+    )
+
+
+class Silk:
+    """Everything printed on the board, placed once and knowing about itself.
+
+    SILK IS THE ONE LAYER WHERE EVERY PART HAS TO SEE THE OTHERS. A footprint
+    drawn on its own puts its outline 0.2 mm off its own pads and prints it
+    straight over its neighbour's, and KiCad calls both of those an error: silk
+    over a pad is scraped off by the fab, and silk over silk cannot be read. So
+    this collects every pad and hole on the board first, then lays each part's
+    outline, its pin-one dot and every legend down in turn, cutting each against
+    what is already there.
+    """
+
+    def __init__(self, parts: list[pcb.Placed]) -> None:
+        from shapely.geometry import Point
+        from shapely.geometry import box as rectangle
+        from shapely.ops import unary_union
+
+        self.parts = parts
+        pads = []
+        for part in parts:
+            for pad, x, y, w, h in part.pads():
+                pads.append(Point(x, y).buffer(max(w, h) / 2 + SILK_PAD_AIR, 8))
+            for hx, hy, diameter in part.holes():
+                pads.append(Point(hx, hy).buffer(diameter / 2 + SILK_PAD_AIR, 8))
+        for x, y in pcb.MOUNTS:
+            pads.append(Point(x, y).buffer(pcb.MOUNT_COPPER_KEEPOUT, 8))
+        for x, y in pcb.STANDOFFS:
+            pads.append(Point(x, y).buffer(pcb.STANDOFF_COPPER_KEEPOUT, 8))
+        self.copper = unary_union(pads)
+        self.drawn = []  # what is already printed, buffered by SILK_AIR
+        self.room = rectangle(0, 0, pcb.BOARD_W, pcb.BOARD_D).buffer(-SILK_EDGE)
+
+    def clear(self, shape) -> bool:
+        """Room for this on the silkscreen: off the pads, off the other silk,
+        and inside the board rather than half printed over its routed edge."""
+        return (
+            shape.within(self.room)
+            and not shape.intersects(self.copper)
+            and not any(shape.intersects(other) for other in self.drawn)
+        )
+
+    def take(self, shape) -> None:
+        self.drawn.append(shape.buffer(SILK_AIR))
+
+    def reference(self, part: pcb.Placed) -> tuple[float, float]:
+        """Where the part's own name goes: the first clear station round it.
+
+        In the part's own frame, because that is where it is written. A refdes
+        printed over the part next door is as unreadable as one printed over a
+        pad, and on this board the gaps are 3 mm.
+        """
+        box = _outline_box(part)
+        if box is None:
+            return (0.0, -3.0)
+        x0, y0, x1, y1 = box
+        middle = ((x0 + x1) / 2, (y0 + y1) / 2)
+        stations = [
+            (middle[0], y1 + 1.2),
+            (middle[0], y0 - 1.2),
+            (middle[0], y1 + 2.4),
+            (middle[0], y0 - 2.4),
+            (x1 + 2.0, middle[1]),
+            (x0 - 2.0, middle[1]),
+        ]
+        for at in stations:
+            shape = _text_box(part.refdes, *part.at(*at))
+            if self.clear(shape):
+                self.take(shape)
+                return at
+        # Nowhere clear: put it inside the part's own outline, which is legible
+        # on the two modules big enough for this to happen to and is at least on
+        # the board.
+        return middle
+
+    def part_silk(self, part: pcb.Placed) -> list[str]:
+        """One part's outline and pin-one dot, in the part's own frame."""
+        from shapely.geometry import LineString, Point
+
+        box = _outline_box(part)
+        if box is None:
+            return []
+        x0, y0, x1, y1 = box
+        out = []
+        corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+        for a, b in zip(corners, corners[1:]):
+            line = LineString([part.at(*a), part.at(*b)])
+            cut = line.difference(self.copper)
+            for other in self.drawn:
+                cut = cut.difference(other)
+            for piece in getattr(cut, "geoms", [cut]):
+                if piece.is_empty or piece.length < 0.6:
+                    continue
+                self.take(piece)
+                (ax, ay), (bx, by) = piece.coords[0], piece.coords[-1]
+                (ux, uy), (vx, vy) = part.un(ax, ay), part.un(bx, by)
+                out.append(
+                    f"    (fp_line (start {ux:.4f} {-uy:.4f}) (end {vx:.4f} {-vy:.4f})"
+                    f' (stroke (width {SILK_WIDTH}) (type solid)) (layer "F.SilkS"))'
+                )
+        # A dot outside the outline at pin 1, on the diagonal away from the
+        # middle, so that a part with its pads under it still says which end is
+        # which.
+        first = next(
+            (pad for pad in part.footprint.pads if pad.name in ("1", "P1-1")), None
+        )
+        if first is None:
+            return out
+        dx = -1.0 if first.x < (x0 + x1) / 2 else 1.0
+        dy = -1.0 if first.y < (y0 + y1) / 2 else 1.0
+        at = (first.x + dx * (first.w / 2 + 0.7), first.y + dy * (first.h / 2 + 0.7))
+        dot = Point(*part.at(*at)).buffer(0.25, 8)
+        if self.clear(dot):
+            self.take(dot)
+            out.append(
+                f"    (fp_circle (center {at[0]:.4f} {-at[1]:.4f})"
+                f" (end {at[0] + 0.25:.4f} {-at[1]:.4f})"
+                f" (stroke (width {SILK_WIDTH}) (type solid)) (fill solid)"
+                ' (layer "F.SilkS"))'
+            )
+        return out
+
+
+def footprint(part: pcb.Placed, index: dict[str, int], net_of, silk: Silk) -> str:
     """One placed part, with its pads where carrier_pcb.py puts them.
 
     The footprint is written at the part's own station with the pads at their
@@ -161,17 +326,34 @@ def footprint(part: pcb.Placed, index: dict[str, int], net_of) -> str:
     """
     x, y = place(part.x, part.y)
     angle = (-part.rotation) % 360
+    box = _outline_box(part)
+    item = next((p for p in pcb.carrier.PARTS if p.refdes == part.refdes), None)
+    # THE REFDES IS AN fp_text AND NOT A PROPERTY. In the board format this file
+    # writes, a footprint's (property ...) is a key and a value and nothing is
+    # drawn from it; the reference and the value are fp_text items. Written the
+    # other way round the board opens, passes DRC, and plots with no part names
+    # on it at all -- which is how this was found, by plotting the silkscreen and
+    # looking at it.
+    silk_items = silk.part_silk(part)
+    rx, ry = silk.reference(part)
+    vx, vy = (box[0] + box[2]) / 2 if box else 0.0, (box[3] + 1.2) if box else 3.0
     out = [
         f'  (footprint "{part.refdes}"',
         '    (layer "F.Cu")',
         f"    (at {x:.4f} {y:.4f}{'' if angle == 0 else f' {angle}'})",
         f'    (descr "{part.footprint.name}")',
         "    (attr through_hole)",
-        f'    (property "Reference" "{part.refdes}"',
-        f"      (at 0 -{pcb.BOARD_D / 46 * 3:.2f} {angle})",
+        f'    (fp_text reference "{part.refdes}"',
+        f"      (at {rx:.4f} {-ry:.4f}{'' if angle == 0 else f' {angle}'})",
         '      (layer "F.SilkS")',
+        "      (effects (font (size 0.9 0.9) (thickness 0.14)))",
+        "    )",
+        f'    (fp_text value "{item.partNumber if item else part.footprint.name}"',
+        f"      (at {vx:.4f} {-vy:.4f}{'' if angle == 0 else f' {angle}'})",
+        '      (layer "F.Fab")',
         "      (effects (font (size 1 1) (thickness 0.15)))",
         "    )",
+        *silk_items,
     ]
     for pad in part.footprint.pads:
         net = net_of.get((part.refdes, pad.name))
@@ -209,6 +391,103 @@ def bare_hole(x: float, y: float, diameter: float, name: str) -> str:
             "  )",
         ]
     )
+
+
+# WHAT EACH CONNECTOR IS, PRINTED BESIDE IT. This board has three four-way plugs
+# in a row on its rear edge and they are mechanically identical, so the only
+# thing that stops a knee harness going into the wheel bus is what is written on
+# the laminate. Short enough to fit the strip each connector leaves.
+# Each one is tried in order and the first that fits is printed, because the
+# rear edge has room for "BUS A HIP" beside one connector and not beside the next.
+LEGENDS = {
+    "J1": ("PWR IN", "PWR"),
+    "J2": ("BUS A HIP", "BUS A"),
+    "J3": ("BUS B KNEE", "BUS B"),
+    "J4": ("BUS C WHEEL", "BUS C"),
+    "J5": ("SBC",),
+    "J6": ("IMU",),
+    "J7": ("SHUNT",),
+    "JP1": ("IMU V",),
+    "A2": ("BEC 5V",),
+    "A3": ("INA226",),
+}
+
+
+# HOW BIG A LETTER IS ON THIS BOARD. KiCad's stroke font advances about one size
+# per character and stands its size plus its stroke tall, and a legend has to be
+# placed knowing that: silk printed over a pad is scraped off by the fab, and
+# silk printed over other silk cannot be read. MEASURED BY KICAD AND NOT BY US --
+# the first estimate here was 0.65 mm a character and its DRC found the overlap
+# the 0.15 mm difference caused.
+LEGEND_SIZE = 0.8
+LEGEND_CHAR = 0.85
+LEGEND_TALL = 1.25
+LEGEND_AIR = 0.3
+
+
+def _text_box(text: str, x: float, y: float):
+    """What a centred legend occupies on the board, in board coordinates."""
+    from shapely.geometry import box
+
+    half = LEGEND_CHAR * len(text) / 2
+    return box(x - half, y - LEGEND_TALL / 2, x + half, y + LEGEND_TALL / 2)
+
+
+def legends(silk: Silk) -> str:
+    """The function of each connector, beside it, and the board's own name.
+
+    PLACED AGAINST THE BOARD RATHER THAN BESIDE THE PART. A first cut put each
+    legend a fixed distance inboard of its connector, and KiCad's DRC found five
+    of them printed over a pad and six over another part's outline: on a board
+    whose parts stand 3 mm apart there is no offset that is always clear. So each
+    is tried at a series of stations out from its part and along it, measured
+    against every pad, every hole and everything already printed, and the first
+    clear one wins. One that will not fit anywhere is left off rather than
+    printed over a pin, and it says which, because a legend that cannot be read
+    is worse than no legend at all.
+    """
+    out, missed = [], []
+    for part in silk.parts:
+        choices = LEGENDS.get(part.refdes)
+        box = _outline_box(part)
+        if choices is None or box is None:
+            continue
+        ends = [part.at(0.0, box[1])[1], part.at(0.0, box[3])[1]]
+        low, high = min(ends), max(ends)
+        middle = part.at(0.0, 0.0)[0]
+        inward = -1.0 if low > pcb.BOARD_D / 2 else 1.0
+        edge = low if inward < 0 else high
+        stations = [
+            (text, (middle + along, edge + inward * step))
+            for text in choices
+            for step in (1.4, 2.5, 3.6, 4.7, 5.8)
+            for along in (0.0, -3.0, 3.0, -6.0, 6.0)
+        ]
+        for text, at in stations:
+            shape = _text_box(text, *at)
+            if silk.clear(shape):
+                silk.take(shape)
+                tx, ty = place(*at)
+                out.append(
+                    f'  (gr_text "{text}" (at {tx:.4f} {ty:.4f})'
+                    ' (layer "F.SilkS")'
+                    f" (effects (font (size {LEGEND_SIZE} {LEGEND_SIZE})"
+                    f" (thickness 0.12))))"
+                )
+                break
+        else:
+            missed.append(f"{part.refdes} ({choices[-1]})")
+    # The board's own name, in the one clear strip: the rear edge, left of the
+    # IMU connector, where no part stands and no plug swings.
+    tx, ty = place(20.0, 2.0)
+    out.append(
+        f'  (gr_text "BIPED CONTROLLER CARRIER" (at {tx:.4f} {ty:.4f})'
+        ' (layer "F.SilkS")'
+        " (effects (font (size 1.2 1.2) (thickness 0.2))))"
+    )
+    if missed:
+        print(f"  note  no clear room for the legend on {', '.join(missed)}")
+    return "\n".join(out)
 
 
 def outline() -> str:
@@ -329,23 +608,7 @@ PROJECT = """{
 
 def build() -> tuple[str, dict]:
     report = pcb.Report()
-    parts = pcb.placed()
-    pcb.check_footprints(report)
-    pcb.check_placement(report, parts)
-    routed, placedVias = pcb.route(parts, report)
-    items = pcb.build_copper(parts, routed, placedVias)
-    for _ in range(3):
-        islands = pcb.ground_islands(items)
-        if len(islands) < 2:
-            break
-        hop, hopVias = pcb.join_islands(parts, routed, placedVias, islands, report)
-        if not hop and not hopVias:
-            break
-        routed += hop
-        placedVias += hopVias
-        items = pcb.build_copper(parts, routed, placedVias)
-    pcb.check_copper(report, parts, items)
-    pcb.check_connectivity(report, items)
+    parts, routed, placedVias, items = pcb.lay_out(report)
     if report.faults:
         return "", {"faults": report.faults}
 
@@ -363,13 +626,15 @@ def build() -> tuple[str, dict]:
         setup(),
         netLines,
     ]
+    silk = Silk(parts)
     for part in parts:
-        body.append(footprint(part, index, net_of))
+        body.append(footprint(part, index, net_of, silk))
     for n, (x, y) in enumerate(pcb.MOUNTS, start=1):
         body.append(bare_hole(x, y, pcb.e.m3Clearance, f"MountingHole_M3_{n}"))
-    for n, (x, y) in enumerate(pcb.POSTS, start=1):
-        body.append(bare_hole(x, y, pcb.e.sbcPostClearance, f"SBC_Post_Clearance_{n}"))
+    for n, (x, y) in enumerate(pcb.STANDOFFS, start=1):
+        body.append(bare_hole(x, y, pcb.e.sbcStandoffHole, f"SBC_Standoff_M2.5_{n}"))
     body.append(outline())
+    body.append(legends(silk))
     body.append(tracks(routed, index))
     body.append(vias(placedVias, index))
     body.append(zones(index))
@@ -394,6 +659,12 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "carrier.kicad_pcb").write_text(text, encoding="utf-8")
     (OUT / "carrier.kicad_pro").write_text(PROJECT, encoding="utf-8")
+    # The schematic comes from the netlist rather than from the board, so it is
+    # written by its own file -- but it is written here too, because a project
+    # whose sheet and whose board were generated from different runs is exactly
+    # the kind of disagreement this whole arrangement exists to prevent.
+    if carrier_sch.main():
+        return 1
     print(f"wrote {OUT / 'carrier.kicad_pcb'}")
     print(
         f"  {counts['parts']} parts, {counts['pads']} pads, {counts['nets']} nets, "
@@ -401,6 +672,7 @@ def main() -> int:
     )
     print()
     print("IN KICAD, IN THIS ORDER:")
+    print("  0. open electrical/kicad/carrier.kicad_sch to read the netlist drawn")
     print("  1. open electrical/kicad/carrier.kicad_pcb")
     print("  2. Edit > Fill All Zones (B) -- the pours are declared, not copied")
     print("  3. Inspect > Design Rules Checker, and read what it says")
