@@ -865,14 +865,17 @@ FITS = [
         "it. Half a millimetre is what the drawn socket leaves",
     ),
     (
-        "the PBV shunt and power parts vs the deck",
+        "the power switch parts vs the deck",
         "power switch parts",
         "deck plate",
-        1.1,
-        "the PBV-F1 shunt reserves 20.7 mm installed height, leaving 1.1 mm "
-        "under the deck. It replaces the invalid 8 mm axial placeholder. "
-        "The TO-220s still have 3.0 mm clearance; the PCB placement check "
-        "also checks each real part separately",
+        3.0,
+        "THE TWO TO-220 SWITCHES ARE THE TALLEST THING ON THIS BOARD AGAIN, "
+        "standing 18.8 mm on their leads and leaving 3.0 mm under the deck. "
+        "It was 1.1 mm while the PBV-F1 Kelvin shunt stood here at 20.7 mm "
+        "installed, and that shunt went with the current measurement on "
+        "2026-09-16, so the tightest figure in this bay is nearly three times "
+        "what it was. The PCB placement check also checks each real part "
+        "separately",
     ),
     (
         # THE BANK USED TO BE THE THING THIS BOARD STOPPED SHORT OF, 2 mm off

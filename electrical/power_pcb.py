@@ -15,8 +15,7 @@ HOW THIS DIFFERS FROM THE CARRIER, and why. The carrier is through-hole and ever
 pad on it is drawn here in Python; this board is a power board, and most of its
 area is copper carrying 24 A rather than tracks carrying signals. So:
 
-  * Most footprints come from KiCad. R1 uses the checked-in power library:
-    Isabellenhuette PBV-F1, drawn from manufacturer drawing Z-DW-132b.
+  * Every footprint comes from KiCad's own libraries.
   * THE HIGH-CURRENT NETS ARE ZONES ON BOTH LAYERS, not tracks. The signals are
     searched for on a grid the way the carrier's are, and kept out of those zones
     so that no track can cut a power path in two.
@@ -254,13 +253,15 @@ def load_footprint(library: str, name: str, height: float) -> Footprint:
 # have taken 29 and there would have been no board left. What did grow is the
 # comparator (a DIP-8 is 104 mm2 against a SOIC-8's 40), the reference and the two
 # small transistors (TO-92, 26 against a SOT-23's 13), the four small capacitors
-# -- and the shunt, which is the whole story.
+# -- and, until 2026-09-16, the Kelvin shunt, which was the whole story.
 #
-# The original axial shunt placeholder did not exist at 1 mOhm. R1 now uses
-# the PBV-F1: four inline through-hole pins, 17.78 mm current-pin span, and
-# a 22.5 x 4.45 mm body. Its 20.7 mm installed height clears the deck by 1.1 mm.
-# The board keeps the bought distribution board's own 50 x 50 footprint, which it became
-# when the capacitor bank stopped reserving four cans for the two it buys.
+# THE SHUNT IS GONE and with it the tightest thing on this board. It was a 22.5 x
+# 4.45 mm body standing 20.7 mm tall, clearing the deck above by 1.1 mm, on four
+# inline pins with a 17.78 mm current span -- about 250 mm2 of courtyard in the
+# middle of the bus path, plus a second pour to get current into it. The board
+# keeps the bought distribution board's own 50 x 50 footprint, which it became
+# when the capacitor bank stopped reserving four cans for the two it buys, so
+# what the removal bought is room rather than a smaller board.
 #
 # THE HEIGHTS OF THE UPRIGHT PARTS ARE NOT SPARE HEADROOM. The pack's own XT60s
 # hang over the inboard column of this board with 7.4 mm to spare, so a 9 mm can
@@ -275,7 +276,6 @@ FOOTPRINT_OF = {
     "F1": ("Fuse", "Fuseholder_Blade_Mini_Keystone_3568", 7.37 + 9.0),
     "Q1": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
     "Q2": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
-    "R1": ("power", "R_Shunt_Isabellenhuette_PBV_F1", 20.7),
     "U1": ("Package_DIP", "DIP-8_W7.62mm", 5.0),
     # The staggered TO-92 and not the inline one: inline stands three 1.1 mm pads
     # on a 1.27 mm pitch, which leaves 0.17 mm of gap where this board's rules
@@ -508,10 +508,9 @@ def net_of() -> dict[tuple[str, str], str]:
 # arbitrate, and a router that stays out of them cannot cut one in two.
 #
 # BATT and VSRC are poured on both layers: every pad on them is a through-hole
-# pin, so the two layers share the current. VDRN and VBUS join the switches'
-# drains to the shunt's pads and the shunt to the output pad, and a 2512 is only
-# on the top: they are top-layer pours, which leaves the bottom layer under them
-# free for the gate line and the Kelvin pair to cross.
+# pin, so the two layers share the current. VBUS runs from the switches' drains
+# to the output pad and is a top-layer pour, which leaves the bottom layer under
+# it free for the gate line to cross.
 ZONES = [
     {
         "net": "BATT",
@@ -530,35 +529,26 @@ ZONES = [
         "priority": 2,
     },
     {
-        "net": "VDRN",
-        "layers": ("F.Cu",),
-        "rects": [
-            (51.4, -11.6, 67.5, -9.4),
-            (51.4, -15.5, 53.6, -11.6),
-            (62.4, -15.5, 64.7, -11.6),
-            (60.5, -9.8, 63.9, -5.2),
-        ],
-        "priority": 1,
-    },
-    {
         "net": "VBUS",
         "layers": ("F.Cu",),
-        # The bar from the shunt's far lead to the output pad, and two risers up
-        # to the bank's positive leads. THE RISERS REACH WELL INSIDE THE BAR
-        # rather than meeting it edge to edge: a pour drawn as boxes that share
-        # only a boundary line fills as two islands, and KiCad reported exactly
-        # that -- one VBUS zone unconnected to another VBUS zone.
-        # The bar from the shunt's far lead to the output pad, and two risers up
-        # to the bank's positive leads. The outboard riser cannot stand on the bar
-        # -- the shunt's inboard sense lead is in the way -- so it comes off a link
-        # that runs UNDER that lead, and the whole of it overlaps rather than
-        # touching: a pour drawn as boxes that meet only on a boundary line fills
-        # as two islands, and KiCad reported exactly that, one VBUS zone
-        # unconnected to another VBUS zone.
+        # ONE POUR FROM THE DRAINS TO THE OUTPUT PAD. It was two, VDRN and VBUS,
+        # with the Kelvin shunt bridging them; with the shunt gone there is
+        # nothing in the path to separate. So: a bar under the two switches
+        # picking up both drains through their own risers, a link forward and
+        # inboard, the bus bar along to the output pad, and two risers up to the
+        # bank's positive leads.
+        #
+        # EVERY RECTANGLE OVERLAPS THE NEXT rather than meeting it edge to edge.
+        # A pour drawn as boxes that share only a boundary line fills as two
+        # islands, and KiCad has reported exactly that on this board before --
+        # one VBUS zone unconnected to another VBUS zone.
         "rects": [
+            (51.4, -15.5, 53.6, -11.6),
+            (62.4, -15.5, 64.7, -11.6),
+            (51.4, -11.6, 67.5, -9.4),
+            (44.0, -11.6, 53.0, -9.4),
             (31.6, -9.9, 46.2, -5.1),
             (31.9, -8.6, 34.1, 4.0),
-            (41.0, -9.9, 44.3, -8.9),
             (42.9, -9.9, 44.3, 4.0),
         ],
         "priority": 1,
@@ -989,7 +979,7 @@ def _track(grid: Grid, run, net: str, width: float):
 # The nets with the least room to find a way through, first. Ground is early
 # rather than late for the same reason: each of its pads is one via from the
 # pour under the board, and a via needs somewhere to sit.
-ROUTE_FIRST = ("GATE", "GND", "VSRC", "VBUS", "SHUNT_P", "SHUNT_N", "EN", "REF")
+ROUTE_FIRST = ("GATE", "GND", "VSRC", "VBUS", "EN", "REF")
 PASSES = 4
 
 
@@ -1186,10 +1176,6 @@ def bodies(part: Placed) -> list[tuple[str, tuple[float, ...]]]:
         out.append(("holder", (x0, y0, x1, y1, top, top + 7.37)))
         x0, y0, x1, y1 = part.box(4.96 - 5.45, 1.7 - 1.9, 4.96 + 5.45, 1.7 + 1.9)
         out.append(("fuse", (x0, y0, x1, y1, top + 7.37, top + part.footprint.height)))
-    elif name == "R_Shunt_Isabellenhuette_PBV_F1":
-        # Manufacturer drawing Z-DW-132b; reserve the lead stand-off as body too.
-        x0, y0, x1, y1 = part.box(-2.36, -2.55, 20.14, 1.9)
-        out.append(("body", (x0, y0, x1, y1, top, top + part.footprint.height)))
     elif name.startswith("SolderWire"):
         pad = part.footprint.pads[0]
         x0, y0, x1, y1 = part.box(-pad.w / 2, -pad.h / 2, pad.w / 2, pad.h / 2)

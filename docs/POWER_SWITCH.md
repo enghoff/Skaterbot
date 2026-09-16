@@ -2,12 +2,16 @@
 
 The second board this robot designs for itself, and the first one that carries
 its own bus current. It stands in the pack's positive lead between the pack and
-the distribution board, and it holds the four things that lead needed: the
-**main fuse**, which was an in-line holder taped to the bought distribution
-board; the **bus shunt** the INA226 on the controller carrier reads, which had no
-mount at all; a **MOSFET switch** that is the robot's on/off and its low-battery
-cutoff at once, which the bill had never bought; and the **bulk capacitor bank**,
-which used to stand on the bought board underneath.
+the distribution board, and it holds three of the four things that lead needed:
+the **main fuse**, which was an in-line holder taped to the bought distribution
+board; a **MOSFET switch** that is the robot's on/off and its low-battery cutoff
+at once, which the bill had never bought; and the **bulk capacitor bank**, which
+used to stand on the bought board underneath.
+
+**The fourth was a bus shunt, and it was deleted on 16 September 2026** along
+with the current measurement it existed to serve. The section at the end of this
+file records why, and it reverses what the rest of the file used to argue rather
+than quietly rewriting it.
 
 It is the bought distribution board's own 50 × 50 mm footprint, two layers, and
 it sits 8 mm above that board on that board's own four screws.
@@ -69,7 +73,7 @@ in under two microseconds.
 pass: it is a board a person can place by hand, solder with an iron and read
 with their eyes. The resistors and the diodes **stand on end** on a 2.54 mm
 pitch, the comparator is a DIP-8, the reference and the two small transistors
-are TO-92, and the shunt is a four-terminal PBV-F1 through-hole part.
+and the transistors are TO-92.
 
 Standing the passives up is the one choice here that is not the obvious one, and
 it is what made the rest fit: an 0204 resistor upright occupies 9.5 mm² of board
@@ -91,7 +95,7 @@ with Nexperia's BC546 data sheet.
 ## What the board grew, and what paid for it
 
 The board was 54 × 32.5 mm over the rear half of the bought distribution board.
-Through-hole wants about half again the area, and **the shunt is the extreme
+Through-hole wants about half again the area, and **the shunt was the extreme
 case in the original layout**: its axial placeholder reserved 246 mm² against the 2512's 33. That placeholder was invalid at 1 mΩ and has now been replaced by the PBV-F1 described below. On the old
 outline that was arithmetically impossible — parts and pours came to 98 % of the
 board.
@@ -132,7 +136,6 @@ than described beside them**, so changing a resistor changes the answer:
 | soft start | 192 V/s, 131 ms, about 0.30 A into the bank |
 | switch off | 56 mA of gate pull-up, 1.5 µs through the plateau |
 | the switch | 1.58 W per MOSFET at a sustained 24 A; 21 A continuous at 50 °C ambient |
-| the shunt | 0.58 W of its 3 W at 24 A, 24 mV across it, 81.92 A ADC range; 65.534 A current-register range |
 
 The run fails if the cutoff leaves 3.05–3.35 V per cell, if the hold is outside
 0.5–2 s, if the gate drive falls under the −10 V the MOSFET's on-resistance is
@@ -152,8 +155,7 @@ before that.** The first version drew one generated rectangle per part with its
 net's name on a stub off every pin, and joined nothing to anything: legible to a
 machine, and to nobody else, because a resistor looked like a diode looked like a
 comparator. It now places **KiCad's own symbols** — `Device:R`, `Device:D_Zener`,
-`Transistor_FET:Q_PMOS_GDS`, `Device:R_Shunt` for the four-terminal shunt,
-`Comparator:LM393` drawn as the three real units it has — and **joins them with
+`Transistor_FET:Q_PMOS_GDS`, `Comparator:LM393` drawn as the three real units it has — and **joins them with
 wire**, in the four blocks the circuit is read in: the power path, the gate
 drive, the reference and its comparators, and the hold with its button.
 Each symbol was chosen so that **its pin numbers already match the footprint the
@@ -165,7 +167,7 @@ that mattered most.
 whole top, the pack pad at one edge and the bus pad at the other. The control
 underneath is a feedback loop around it — it senses the bus at the right-hand
 end of that path and drives the gates near the left-hand end, because the fuse
-has to come before the switches and the shunt after them — so the lower half
+has to come before the switches and the bank after them — so the lower half
 returns right to left, and the hold and the button are drawn that way on
 purpose, their connectors at the right edge and their signals running leftward
 into the comparators and on into the gate drive. Moving those connectors to the
@@ -240,7 +242,8 @@ copper would run hot at the peak current this robot has never measured.
 Worth writing down, because each was a board that passed every check this
 repository owned and would not have worked:
 
-* **A pad's middle is its hole.** The shunt's leads sit in 1.5 mm drills inside
+* **A pad's middle is its hole**, found on the shunt while it was still here
+  and true of every drilled pad on the board. Its leads sat in 1.5 mm drills inside
   3.0 mm pads, leaving a 0.75 mm ring of copper. The router aimed at the pad's
   centre and laid its track into the hole; KiCad called both sense pads
   unconnected. A track may land on the ring now, and on the ring only — and not
@@ -271,7 +274,6 @@ What the fit comes to, all of it measured by `tools/gate_f.py` and
 | 8.00 mm | under the board, over the distribution board: its solder joints and the motor leads leaving them |
 | 5.80 mm | over the two capacitor cans, to the electronics deck above |
 | 3.00 mm | over the two TO-220 switches, to that deck |
-| 1.10 mm | over the PBV shunt, to that deck |
 | 0.60 mm | from the nearest trimmed lead to the distribution board's own XT60 input socket |
 | 0.65 mm | from the nearest can to the pack's own XT60 connectors overhead |
 | 0.50 mm | over that input socket |
@@ -288,12 +290,9 @@ this board, and leaves 1 mm over the switches instead of 3.
 * **The fuse moved onto this board** and became a mini (ATM) blade in a
   PCB-mount holder, where it was a standard blade in an in-line holder taped to
   the distribution board. The rating still follows the measurement.
-* **The shunt has a mount for the first time.** It is a four-terminal 1 mΩ PBV-F1 through-hole
-  part soldered into this board, and the twisted pair to the carrier's J7 leaves
-  on J1 with the same pin order.
-* **It is on the switched side of the MOSFETs**, deliberately: with the robot
-  off, the only live copper on this board is the fuse and the MOSFET sources,
-  and the two sense wires running up to the carrier are dead with it.
+* **There is no bus shunt and no sense pair.** Both went with the current
+  measurement; the carrier's J7 is now a spare header. With the robot off, the
+  only live copper on this board is the fuse and the MOSFET sources.
 * **The capacitor bank is on this board**, two cans on the switched bus, where it
   stood on the bought board before. It is the capacitance the soft start is
   sized to charge, so it belongs here.
@@ -324,9 +323,11 @@ this board, and leaves 1 mm over the switches instead of 3.
   inside the lid, which is a lid-off job. **What the change does not cost is
   standing current**: the off state has no DC path from the pack at all, so a
   pack left connected is drained by its own leakage rather than by this board.
-* **The bus current has still never been measured.** The fuse's rating, the
-  shunt's value and the switch's continuous rating all follow that measurement,
-  and the 24 A this board is sized to is an estimate.
+* **The bus current has still never been measured**, and this board no longer
+  contains anything that would measure it. The fuse's rating and the switch's
+  continuous rating both follow that measurement, and the 24 A this board is
+  sized to is an estimate. Take it once on a bench with a clamp meter round the
+  pack lead, through a first stand and a first drive.
 * **The bought board's own geometry is a catalogue outline.** Its XT60 input
   socket, which this board passes half a millimetre over and keeps every lead
   out of, is drawn from a listing rather than from a board anybody has held.
@@ -334,60 +335,59 @@ this board, and leaves 1 mm over the switches instead of 3.
 * **A regeneration clamp is still not on the bill.** This board switches the bus;
   it does not absorb energy coming back into it.
 
-## Shunt correction and INA226 configuration — 2026-09-16
+## The current measurement was removed — 2026-09-16
 
-R1 is **Isabellenhütte PBV-R001-F1-1.0**, 1 mΩ ±1 %, four-terminal
-through-hole. [Manufacturer datasheet](https://www.isabellenhuette.de/fileadmin/user_upload/PBV.PDF),
-issue 12-Feb-2026, specifies **3 W without a heatsink**; the 10 W headline
-requires a heatsink. DigiKey India listed 442 at ₹4,144 each on 2026-09-16.
-The previous Vishay CPSL-based footprint was not a valid part selection:
-that discontinued family starts at 10 mΩ. Do not fit a 10 mΩ substitute.
+**There is no shunt on this board and no current measurement anywhere on the
+robot.** The section this replaces had just re-specified R1 as an Isabellenhütte
+PBV-R001-F1-1.0 — 1 mΩ ±1 %, four-terminal, 3 W without a heatsink — after the
+Vishay CPSL footprint it replaced turned out to be for a part nobody makes at
+1 mΩ. That correction was right and it is what made the cost visible.
 
-The board stays entirely through-hole and retains its 50 × 50 mm outline.
-The local footprint numbers the terminals left-to-right as 1=current,
-2=sense, 3=sense, 4=current, at 0 / 5.08 / 12.70 / 17.78 mm.
-The body is 22.5 × 4.45 × 17.5 mm, with a conservative installed height of
-20.7 mm including lead shoulders. The drawing's maximum rectangular lead
-sections determine 2.2 mm current-pin drills and 1.9 mm sense-pin drills,
-with 3.4 mm and 3.0 mm pads respectively. Check actual plated-lead fit before
-fabrication. The model clears the deck by 1.10 mm; no heatsink is fitted.
+**Sourcing it is what settled the question.** €14.22 at Bürklin in Germany,
+$18.60 at LCSC and out of stock, $43.37 at DigiKey with 442 on the shelf, and no
+Indian seller stocking a four-terminal shunt in any package at any value near
+1 mΩ. A genuine Kelvin through-hole shunt is a three-part market — the others
+are the Ohmite CS3FR001E at $29.65 and the Riedon PCS-0R001D1 at $39.40 — so the
+PBV was already the cheap one. It would have been the most expensive component on
+this board by more than the rest of it put together, and the reason it costs that
+is not margin alone: what you buy in a milliohm shunt is a value that stays put
+across its own self-heating, a manganin alloy whose thermal EMF against copper
+is about a microvolt per degree, and a pair of sense taps trimmed to ten
+microohms — because the solder joint holding the part down is itself worth about
+half a milliohm.
 
-**1 mΩ is appropriate for the requested 24–30 A measurement range.**
-The [INA226 datasheet](https://www.ti.com/lit/ds/symlink/ina226.pdf) gives
-approximately ±81.92 mV ADC range and a 2.5 µV shunt-voltage step.
+**Nothing was protected by it.** The low-battery cutoff on this board is a
+comparator watching bus VOLTAGE through a divider and never looked at current, so
+the pack's protection is untouched. All six actuators report torque in their own
+CAN feedback frame, referred to the output shaft, so a stalled or straining joint
+stays visible. And the INA226 on the carrier reads bus voltage on its own VBS
+pin, which never went through the shunt, so pack telemetry survives intact.
 
-| Current | Shunt voltage | Nominal dissipation | Positive ADC range used |
-|---|---:|---:|---:|
-| 24 A | 24 mV | 0.576 W | 29.3 % |
-| 30 A | 30 mV | 0.900 W | 36.6 % |
+**What it would have bought is the runtime figure** that
+[`docs/NOTES.md`](NOTES.md) still lists as unknown — two hours balancing, an hour
+driving, under twenty minutes in a loaded crouch, every one computed and none
+seen — along with the fuse rating and the switch's continuous rating. All of
+those are a characterisation taken once, on a bench, through a first stand and a
+first drive, where a clamp meter round the pack lead answers as well as a fitted
+Kelvin shunt does. **What is genuinely given up is coulomb counting**: state of
+charge from integrated current rather than from voltage sagging under load, which
+on a LiPo is much better. Nothing on this robot does it yet, and the cheap way
+back is a two-terminal shunt on a future board revision with a one-off software
+calibration, not a €28 Kelvin part.
 
-At +1 % resistance tolerance, 30 A produces 30.3 mV and 0.909 W.
-The raw current step is 2.5 mA. A larger 2 mΩ shunt would double the signal
-but also double the heating to 1.8 W at 30 A; the existing resolution is
-adequate for bus monitoring, so retain 1 mΩ. Resolution is not accuracy:
-1 % shunt tolerance, temperature drift, INA226 gain/offset and installation
-errors remain. At the datasheet's reference conditions, the INA226's maximum
-10 µV offset corresponds to 10 mA with this shunt.
+**What came off, measured rather than asserted.** R1 and its sense plug J1 are
+gone from the netlist, which is 49 parts, 108 pins and 24 nets where it was 51,
+114 and 27. VDRN and VBUS were two pours with the shunt bridging them and are one
+pour now, running from both MOSFET drains to the output pad. The board keeps the
+bought distribution board's 50 × 50 footprint, so what the removal bought is room
+rather than a smaller board: about 250 mm² of courtyard out of the middle of the
+bus path, and it shows in the layout — 97 tracks and 58 vias where the same board
+took 107 and 66, with KiCad's DRC reporting 0 errors and 0 unconnected on the
+filled board. The mass line falls from 36 g to 28.
 
-Firmware must set **Current_LSB = 0.002 A** and **CAL = 2560 (0x0A00)**:
-`CAL = 0.00512 / (Current_LSB × Rshunt)`. Read the current register as signed
-16-bit and multiply by 0.002 A; the power-register multiplier is 0.050 W.
-The signed current range is −65.536 to +65.534 A, below the ADC's approximately
-±81.92 A but well above 30 A. These are configuration requirements, not a
-claim that firmware exists or has been programmed. Regeneration is represented
-by negative current; do not interpret the unsigned power register as signed power.
-
-**Remove the INA226 breakout's R100 resistor before attaching the Kelvin pair.**
-Leaving it fitted draws current through the sense wiring. Even with ideal
-sense wires it parallels the 1 mΩ element and causes approximately 0.99 %
-under-reading; real sense wiring adds further error. The carrier circuit comment
-now requires removal rather than accepting the earlier incorrect 0.5 % estimate.
-
-The shunt's 3 W rating and <15 K/W thermal resistance give useful margin at
-0.9 W, but enclosure temperature and terminal-temperature derating still apply.
-This does **not** rate the rest of the power board for 30 A continuous: its
-MOSFET thermal estimate remains about 21 A continuous at 50 °C ambient.
-
-Mass allowance: reserve 8 g for the PBV instead of the previous unsupported
-2 g placeholder, adding **6 g** to the power-board budget. This is a provisional
-allowance, not a manufacturer mass or a measurement; printed geometry is unchanged.
+**Two loose ends.** The carrier's J7 is now a header with nothing to plug into
+it, and the INA226's IN+ and IN− behind it are left floating; tie them to ground
+rather than leaving them so, which is a wire at the plug rather than a change to
+a board already at a checked fabrication release. And the instruction to lift the
+INA226 breakout's own R100 is withdrawn — it existed only to stop that 0.1 Ω
+sitting in parallel with the external Kelvin pair, and there is no longer a pair.

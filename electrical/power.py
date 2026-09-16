@@ -6,9 +6,21 @@
 
 The second board this robot designs for itself. It stands in the pack's positive
 lead between the pack and the distribution board, and it carries the three
-things that lead needed and had nowhere to put: the main fuse, the current shunt
-the bus monitor on the controller carrier reads, and a MOSFET switch that is the
-robot's on/off and its low-battery cutoff at once.
+things that lead needed and had nowhere to put: the main fuse, a MOSFET switch
+that is the robot's on/off and its low-battery cutoff at once, and the bulk
+capacitor bank the soft start is sized to charge.
+
+THERE IS NO CURRENT MEASUREMENT ON THIS BOARD, since 2026-09-16, and the reason
+is worth keeping because the shunt was one of the four reasons this board was
+drawn. Nothing was ever protected by it: the cutoff below is a comparator on bus
+VOLTAGE and never looked at current, and the six actuators report their own
+torque over CAN, so a straining joint stays visible. What it would have bought
+is the runtime measurement docs/NOTES.md is still waiting on -- and that is a
+characterisation taken once on a bench, where a clamp meter round the pack lead
+answers it as well as a fitted Kelvin shunt does. What it costs is coulomb
+counting, which nothing on this robot does yet. The INA226 stays on the carrier
+and still reads bus voltage on its own VBS pin, which never went through the
+shunt.
 
     uv run electrical/power.py          # check it, then print the tables
 
@@ -49,17 +61,11 @@ resistor changes the answer rather than leaving a comment behind.
 NOT ONE PART ON THIS BOARD IS SURFACE MOUNT, and that is the point of its second
 pass: it is a board a person can build with an iron and their eyes. The resistors
 and the diodes stand on end on a 2.54 mm pitch, the comparator is a DIP, the
-reference and the two small transistors are TO-92. The shunt is an
-Isabellenhuette PBV-R001-F1-1.0 with four inline through-hole terminals.
-docs/POWER_SWITCH.md records its selection and the INA226 calibration.
+reference and the two small transistors are TO-92.
 
 PROVENANCE. The MOSFET is Vishay's SQP120P06-6m7L, datasheet S18-0554 rev. A:
 -60 V, 6.7 mOhm max at -10 V and 25 C, 11.0 at 125 C, VGS +/-20 V, Crss 809 pF
-typical, TO-220AB with G-D-S pinout and the tab on the drain. The shunt is a
-PBV-R001-F1-1.0: 1 mOhm, 1 %, 3 W without a heatsink. Its local footprint
-follows manufacturer drawing Z-DW-132b, issue 12-Feb-2026, with I-U-U-I pins
-at 0, 5.08, 12.70 and 17.78 mm. The earlier Vishay CPSL footprint was invalid:
-that obsolete family starts at 10 mOhm, not 1 mOhm.
+typical, TO-220AB with G-D-S pinout and the tab on the drain.
 
 TWO PINOUTS CHANGED WITH THE PACKAGE and both are worth stating, because a
 transposed one is a board that does nothing. The TL431 in TO-92 (TI's LP) is
@@ -147,15 +153,6 @@ BUS_CAPACITANCE = 940e-6 + 6 * 100e-6  # the bank, plus a guess at six drivers' 
 AMBIENT = 50.0
 JUNCTION_LIMIT = 125.0
 
-SHUNT = 1e-3
-SHUNT_PART = "Isabellenhuette PBV-R001-F1-1.0, 1 mOhm 1 % 3 W, through-hole Kelvin"
-SHUNT_TOLERANCE = 0.01
-SHUNT_POWER = 3.0  # PBV without heatsink; the advertised 10 W requires one.
-SHUNT_MAX_CURRENT = 30.0  # measurement requirement, not a board continuous rating
-INA226_SHUNT_LSB = 2.5e-6
-INA226_SHUNT_FULL_SCALE = 32767 * INA226_SHUNT_LSB
-INA226_CURRENT_LSB = 2e-3  # +/-65.536 A register range; raw resolution is 2.5 mA
-INA226_CALIBRATION = int(0.00512 / (INA226_CURRENT_LSB * SHUNT))
 # A 0204 metal film resistor standing on end. The same quarter watt the 1206s
 # these replaced were held to, so the dissipation check below is unchanged.
 RESISTOR_POWER = 0.25
@@ -186,12 +183,6 @@ PARTS = [
         "high-side switch, one of two in parallel",
         "Vishay SQP120P06-6m7L, P-channel 60 V, TO-220",
         {"1": "G", "2": "D", "3": "S"},
-    ),
-    Part(
-        "R1",
-        "the bus shunt the INA226 on the carrier reads, four-terminal",
-        SHUNT_PART,
-        {"1": "I1", "2": "E1", "3": "E2", "4": "I2"},
     ),
     Part(
         "P2",
@@ -416,12 +407,6 @@ PARTS = [
         {"1": "K", "2": "A"},
     ),
     # ---- what plugs in -------------------------------------------------------
-    Part(
-        "J1",
-        "the shunt's sense pair, up to J7 on the carrier -- same pin order",
-        "JST-XH 2-pin",
-        {"1": "IN+", "2": "IN-"},
-    ),
     # ONE HOUSING FOR BOTH HOLDS, and the lead splits after it: three wires to
     # the carrier, one to a GPIO on the SBC's 40-pin header. The SBC needs no
     # ground of its own on this plug -- it already shares the carrier's.
@@ -440,10 +425,14 @@ PARTS = [
 ]
 
 NETS: dict[str, list[tuple[str, str]]] = {
-    # THE POWER PATH, in the order the current takes it. The shunt is AFTER the
-    # switch and not before it, so that with the robot off the only live copper
-    # is the fuse and the MOSFET sources -- and the two sense wires that run up
-    # to the carrier are dead with it.
+    # THE POWER PATH, in the order the current takes it. With the robot off the
+    # only live copper on this board is the fuse and the MOSFET sources.
+    #
+    # THE DRAINS AND THE BUS ARE ONE NET. They were two, VDRN and VBUS, with the
+    # Kelvin shunt between them; with the shunt gone there is nothing in the path
+    # to separate, so the switched bus runs from both drains straight to the
+    # output pad. C1 hangs off it as before -- the Miller capacitor watches the
+    # drains, and the drains are the bus.
     "BATT": [("P1", "1"), ("F1", "1")],
     "VSRC": [
         ("F1", "2"),
@@ -455,9 +444,10 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("R8", "1"),
         ("R24", "1"),
     ],
-    "VDRN": [("Q1", "2"), ("Q2", "2"), ("R1", "1"), ("C1", "2")],
     "VBUS": [
-        ("R1", "4"),
+        ("Q1", "2"),
+        ("Q2", "2"),
+        ("C1", "2"),
         ("P2", "1"),
         ("C5", "1"),
         ("C6", "1"),
@@ -467,8 +457,6 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("R11", "1"),
         ("R15", "1"),
     ],
-    "SHUNT_P": [("R1", "2"), ("J1", "1")],
-    "SHUNT_N": [("R1", "3"), ("J1", "2")],
     # THE GATES. Clamped to their sources, each behind its own resistor, and
     # pulled down only through R5 -- so the soft-start is the same whether the
     # button or the board is holding them.
@@ -763,40 +751,6 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
         f"({rise:.0f} C over ambient); {continuous:.0f} A continuous keeps "
         f"{JUNCTION_LIMIT:.0f} C at {AMBIENT:.0f} C ambient"
     )
-    shunt_watts = PEAK_CURRENT**2 * SHUNT
-    lines.append(
-        f"shunt           {shunt_watts:.2f} W at {PEAK_CURRENT:.0f} A of its "
-        f"{SHUNT_POWER:.0f} W; {PEAK_CURRENT * SHUNT * 1e3:.0f} mV across it, "
-        f"{INA226_SHUNT_FULL_SCALE / SHUNT:.2f} A ADC full scale on the INA226"
-    )
-    if shunt_watts > SHUNT_POWER * 0.7:
-        faults.append("the shunt is run too close to its rating")
-
-    # Check the requested measurement range independently of the board's 24 A
-    # peak estimate. Both ADC voltage and signed current-register range matter.
-    max_shunt = SHUNT * (1 + SHUNT_TOLERANCE)
-    sense_voltage = SHUNT_MAX_CURRENT * max_shunt
-    sense_power = SHUNT_MAX_CURRENT**2 * max_shunt
-    if sense_voltage >= INA226_SHUNT_FULL_SCALE:
-        faults.append("INA226 shunt ADC clips within the required 30 A range")
-    if sense_power > SHUNT_POWER * 0.7:
-        faults.append("shunt exceeds 70 percent of its unheatsinked rating at 30 A")
-    if SHUNT_MAX_CURRENT >= 32767 * INA226_CURRENT_LSB:
-        faults.append("INA226 signed current register clips within the required range")
-    if not 0 < INA226_CALIBRATION <= 0x7FFF:
-        faults.append("INA226 calibration does not fit its 15-bit register")
-    effective_lsb = 0.00512 / (INA226_CALIBRATION * SHUNT)
-    if not math.isclose(effective_lsb, INA226_CURRENT_LSB, rel_tol=1e-6):
-        faults.append("INA226 calibration rounding changes the declared current scale")
-    lines.append(
-        f"INA226          30 A: {SHUNT_MAX_CURRENT * SHUNT * 1e3:.0f} mV, "
-        f"{SHUNT_MAX_CURRENT**2 * SHUNT:.2f} W nominal; "
-        f"{INA226_SHUNT_LSB / SHUNT * 1e3:.1f} mA raw resolution; "
-        f"CAL={INA226_CALIBRATION} (0x{INA226_CALIBRATION:04X}), "
-        f"current LSB {INA226_CURRENT_LSB * 1e3:g} mA, "
-        f"power LSB {25 * INA226_CURRENT_LSB * 1e3:g} mW"
-    )
-
     # Resistor dissipation at the top of the bus, against a 0204's quarter watt.
     top = BUS_RANGE[1]
     worst = {

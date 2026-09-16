@@ -376,9 +376,11 @@ xt60Height = 7.5
 # inlet lands on the BMS's charge input, which is on the pack side of
 # everything, so it is at pack voltage whenever cells are connected. That is
 # why it carries recessed sockets rather than pins.
-# INA226 bus monitor and its shunt. New hardware: the controller has had no way
-# to read pack state, which matters on a battery in a way it never did on a bench
-# supply.
+# INA226 bus monitor. New hardware: the controller has had no way to read pack
+# state, which matters on a battery in a way it never did on a bench supply. It
+# reads VOLTAGE ONLY since 2026-09-16, on its own VBS pin, which never went
+# through a shunt: the current measurement and the Kelvin shunt it needed were
+# deleted from the design that day.
 #
 # THE BOARD IS DRAWN FROM THE VENDOR'S OWN PHOTOGRAPHS NOW rather than as a
 # guessed block, and both plan figures moved: it is square at about 22 mm a side
@@ -1107,13 +1109,11 @@ powerSwitchStations = {
     "F1": (41.0, -19.5, 0),
     "Q1": (50.0, -15.0, 0),
     "Q2": (66.08, -15.0, 180),
-    "R1": (62.2, -7.0, 180),
     "P2": (34.8, -7.5, 0),
     "P3": (28.0, -18.0, 0),
     "C5": (33.0, 3.0, 0),
     "C6": (44.0, 3.0, 0),
     "J3": (34.0, 20.5, 0),
-    "J1": (44.0, 20.5, 0),
     "J2": (54.5, 20.5, 0),
 }
 
@@ -1285,10 +1285,6 @@ powerSwitchBodies = {
     ],
     "Q1": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
     "Q2": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
-    # PBV-F1: 22.5 x 4.45 body, 17.5 tall plus 3.2 lead shoulder allowance.
-    # Four inline pins at 0, 5.08, 12.70, 17.78 mm; outer pins carry current.
-    "R1": [(22.5, 4.45, 20.7, 8.89, 0.325, 0.0)],
-    "J1": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
     "J2": [(13.4, 6.75, 12.8, 3.75, -0.525, 0.0)],
     "J3": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
 }
@@ -1445,7 +1441,7 @@ partNumbers = {
     "power switch board": "ours -- 50 x 50 mm two-layer PCB, electrical/power_pcb.py",
     "power switch parts": "the fuse, the shunt and the switch -- electrical/power.py",
     "power switch spacers": "M3 nylon spacer, 6 mm across x 8 mm, on M3 x 20 self-tapping",
-    "bus monitor": "INA226, external shunt",
+    "bus monitor": "INA226, bus voltage only -- no external shunt",
     "logic BEC": "Matek BEC12S-PRO",
     "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
     "charge socket": "AMASS XT60E-F panel mount, socket contacts",

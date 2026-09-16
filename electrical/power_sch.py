@@ -74,10 +74,8 @@ GRID = 1.27
 #
 # Every one of these is a stock symbol whose PIN NUMBERS already match the
 # footprint the board uses, which is the thing that has to be true for the
-# drawing and the copper to mean the same part. Three were worth choosing
-# carefully: Device:R_Shunt is the four-terminal Kelvin symbol, with the current
-# pair top and bottom and the sense pair off the side, which is exactly what R1
-# is; Reference_Voltage:TL431LP is the TO-92 pinout, 1 REF 2 anode 3 cathode,
+# drawing and the copper to mean the same part. Two were worth choosing
+# carefully: Reference_Voltage:TL431LP is the TO-92 pinout, 1 REF 2 anode 3 cathode,
 # and NOT the TL431P's; and Comparator:LM393 is drawn as three units, the two
 # comparators and the supply, which is how the wired-AND on the enable line
 # becomes visible instead of being asserted.
@@ -90,7 +88,6 @@ SYMBOL_OF = {
     "Q2": "Transistor_FET:Q_PMOS_GDS",
     "Q3": "Transistor_BJT:BC546",
     "Q4": "Transistor_BJT:BC546",
-    "R1": "Device:R_Shunt",
     "U1": "Comparator:LM393",
     "U2": "Reference_Voltage:TL431LP",
     "C1": "Device:C",
@@ -107,7 +104,6 @@ SYMBOL_OF = {
     "D5": "Device:D_Schottky",
     "D6": "Device:D_Schottky",
     "D7": "Device:D_Schottky",
-    "J1": "Connector_Generic:Conn_01x02",
     "J3": "Connector_Generic:Conn_01x02",
     "J2": "Connector_Generic:Conn_01x04",
 }
@@ -147,10 +143,8 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     "F1": [(1, 45.72, 45.72, 90, None)],
     "Q1": [(1, 76.20, 43.18, 270, None)],
     "Q2": [(1, 76.20, 68.58, 270, None)],
-    "R1": [(1, 139.70, 45.72, 90, None)],
-    "J1": [(1, 139.70, 17.78, 90, None)],
-    "C5": [(1, 190.50, 60.96, 0, None)],
-    "C6": [(1, 215.90, 60.96, 0, None)],
+    "C5": [(1, 127.00, 60.96, 0, None)],
+    "C6": [(1, 152.40, 60.96, 0, None)],
     "P2": [(1, 373.38, 45.72, 0, None)],
     "P3": [(1, 368.30, 83.82, 0, None)],
     # the gate drive
@@ -231,23 +225,18 @@ NET_DRAW: dict[str, dict] = {
             ("h", 114.30, ["R2.1", "D1.1", "R24.1", "R8.1", "Q4.1"]),
         ],
     },
-    "VDRN": {
-        "trunks": [("v", 101.60, ["Q1.2", "Q2.2", "R1.1"])],
-        "labels": ["C1.2"],
-    },
     "VBUS": {
         "trunks": [
             (
                 "h",
                 45.72,
-                ["R1.4", "C5.1", "C6.1", "U1.8", "C2.1", "P2.1"],
+                ["Q1.2", "Q2.2", "C5.1", "C6.1", "U1.8", "C2.1", "P2.1"],
                 [(311.15, 38.10)],
             ),
             ("h", 76.20, ["R10.1", "R11.1", "R15.1"]),
         ],
+        "labels": ["C1.2"],
     },
-    "SHUNT_P": {"trunks": [("h", 33.02, ["R1.2", "J1.1"])]},
-    "SHUNT_N": {"trunks": [("v", 142.24, ["R1.3", "J1.2"])]},
     "GATE": {
         "trunks": [
             ("h", 149.86, ["R2.2", "D1.2", "D8.1", "R3.1", "R4.1", "R5.1", "D2.1"])
@@ -346,7 +335,6 @@ VALUE_ON_SHEET = {
     "wire pad, 1.15 mm hole": "22 AWG pad",
     "Keystone 3568 holder + mini (ATM) blade fuse, 20 A to start": "20 A ATM",
     "Vishay SQP120P06-6m7L, P-channel 60 V, TO-220": "SQP120P06-6m7L",
-    power.SHUNT_PART: "PBV-R001-F1-1.0",
     "470 uF 35 V low-ESR aluminium, 10 x 16 radial": "470u 35V",
     "22 uF 16 V solid tantalum, radial": "22u 16V",
     "10 uF 16 V solid tantalum, radial": "10u 16V",
@@ -380,7 +368,6 @@ VALUE_ON_SHEET = {
 TEXT_CLEARANCE = {
     "Comparator:LM393": 8.89,
     "Reference_Voltage:TL431LP": 5.08,
-    "Device:R_Shunt": 6.35,
 }
 
 
@@ -394,7 +381,6 @@ DATASHEETS = {
     "Q2": "https://www.vishay.com/docs/63444/sqp120p06-6m7l.pdf",
     "U1": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
     "U2": "https://www.ti.com/lit/ds/symlink/tl431.pdf",
-    "R1": "https://www.isabellenhuette.de/fileadmin/user_upload/PBV.PDF",
     "F1": "https://www.keyelco.com/product-pdf.cfm?p=1160",
     "C5": "https://industrial.panasonic.com/cdbs/www-data/pdf/RDF0000/ABA0000C1053.pdf",
     "C6": "https://industrial.panasonic.com/cdbs/www-data/pdf/RDF0000/ABA0000C1053.pdf",

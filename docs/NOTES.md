@@ -1469,7 +1469,10 @@ was irrelevant; on a battery it is one mistake per pack.
   an hour driving, under twenty minutes holding a loaded crouch. The fixed
   overhead is a guess, the gearbox friction that decides the cost of holding a
   pose has never been characterised, and a twitchy balance loop at 100 Hz could
-  burn several times the calm figure. The INA226 on the bill is what closes this.
+  burn several times the calm figure. THE INA226 NO LONGER CLOSES THIS: the
+  current measurement was deleted on 16 September 2026 and the monitor is a
+  voltmeter now, so the figure is closed by a clamp meter round the pack lead
+  through a first stand and a first drive, taken once on a bench.
 * **The capacitor bank.** Still not sized, and its reservation is unchanged. The
   pack is the regeneration sink now, which is a reason to expect the bank to
   shrink and not a measurement of how far.
@@ -2455,3 +2458,45 @@ matches `power.py` pin for pin as KiCad reads it, ERC clean and the board's DRC
 unchanged at zero errors and zero unconnected. Mass 2083.4 g against the 2300
 ceiling — the 6 g is the shunt's re-specification, not the button, which is
 0.005 g. Nothing has been fabricated and no switch has been measured.
+
+## The current measurement is deleted — 16 September 2026
+
+**There is no shunt on the power switch board and no current measurement
+anywhere on this robot.** The entry above had just re-specified R1 as an
+Isabellenhütte PBV-R001-F1-1.0 after the Vishay CPSL footprint turned out to be
+for a part nobody makes at 1 mΩ. That correction was right, and pricing it is
+what made the case for deleting the whole function: €14.22 at Bürklin, $18.60 at
+LCSC and out of stock, $43.37 at DigiKey, and no Indian stock of any
+four-terminal shunt in any package. The rest of that market is two parts, the
+Ohmite CS3FR001E at $29.65 and the Riedon PCS-0R001D1 at $39.40, so the PBV was
+already the cheap one — and it would still have cost more than everything else
+on that board put together.
+
+**Nothing was protected by it and nothing is lost that protects.** The
+low-battery cutoff is a comparator on bus VOLTAGE and never looked at current.
+All six actuators report torque in their own CAN feedback frame, referred to the
+output shaft, so a straining joint stays visible. The INA226 stays on the carrier
+and reads the bus on its VBS pin, which never went through the shunt.
+
+**What it would have bought was the runtime figure**, which is a characterisation
+taken once on a bench rather than fitted telemetry: a clamp meter round the pack
+lead through a first stand and a first drive answers it as well. **What is given
+up is coulomb counting**, which nothing here does yet; the way back is a
+two-terminal shunt on a future revision with a software calibration.
+
+**Measured rather than asserted.** The netlist is 49 parts, 108 pins and 24 nets,
+where it was 51, 114 and 27: R1 and its sense plug J1 are gone, and VDRN and
+VBUS — two pours with the shunt bridging them — are one pour from both MOSFET
+drains to the output pad. The board keeps the bought board's 50 × 50 outline, so
+the gain is room and not size: about 250 mm² of courtyard out of the middle of
+the bus path. It shows in the result — 97 tracks and 58 vias against the same
+board's 107 and 66, KiCad DRC 0 errors and 0 unconnected on the filled board,
+and every pad where the layout meant to put it. The schematic carries the
+netlist pin for pin and ERC is clean. Mass 2075.4 g against the 2300 ceiling,
+which is −8 g, the whole of it the shunt's allowance.
+
+**Two loose ends.** The carrier's J7 is a header with nothing to plug into it,
+and the monitor's IN+ and IN− behind it are floating — link them to ground at the
+plug rather than revising a board already at a checked fabrication release. And
+the standing instruction to lift the INA226 breakout's own R100 is withdrawn: it
+existed only to keep that 0.1 Ω out of parallel with the external Kelvin pair.

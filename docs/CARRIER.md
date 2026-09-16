@@ -106,7 +106,7 @@ right hole spacing, and the footprints use it.
 | **J4** | 4-pin | bus C, the two wheels, same order |
 | **J5** | 8-pin | the SBC: 1 and 2 `GND`, 3 and 4 `+5V`, 5 MCU→SBC, 6 SBC→MCU, 7 `BOOT0`, 8 `NRST` |
 | **J6** | 6-pin | IMU: 1 `SCL`, 2 `GND`, 3 supply, 4 `INT`, 5 `RST`, 6 `SDA` |
-| **J7** | 2-pin | the shunt's sense pair: 1 `IN+`, 2 `IN−`, twisted, down to the shunt at the distribution board |
+| **J7** | 2-pin | **spare.** It was the shunt's sense pair, 1 `IN+`, 2 `IN−`, until the current measurement was deleted on 2026-09-16. Link both pins to ground rather than leaving the monitor's inputs floating |
 | **JP1** | 3 pads | IMU supply link: bridge 1–2 for 5 V, 2–3 for 3.3 V |
 
 **Three of these changed on 14 September 2026, when the BEC and the monitor came
