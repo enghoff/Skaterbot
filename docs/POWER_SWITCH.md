@@ -161,6 +161,20 @@ board uses**, which is what lets the drawing and the copper mean the same part;
 the TL431's TO-92 symbol rather than its surface-mount one is the case where
 that mattered most.
 
+**Which way the sheet reads.** The power path runs left to right across the
+whole top, the pack pad at one edge and the bus pad at the other. The control
+underneath is a feedback loop around it — it senses the bus at the right-hand
+end of that path and drives the gates near the left-hand end, because the fuse
+has to come before the switches and the shunt after them — so the lower half
+returns right to left, and the hold and the button are drawn that way on
+purpose, their connectors at the right edge and their signals running leftward
+into the comparators and on into the gate drive. Moving those connectors to the
+left edge would not remove the reversal, only move it onto the gate net. What
+the sheet does insist on is that nothing reads against its own block: the
+button's two diodes take the button line in from the right and hand the pull-down
+and the sense line out to the left, and the two gate resistors stand above the
+gate rail so that G1 and G2 leave pointing at the MOSFETs they feed.
+
 **Six nets are still names rather than lines**, and deliberately: the pack rail,
 the switched bus, the gates, the enable line and ground run the width of the
 board, and drawing those as wires between four corners of a sheet is how a

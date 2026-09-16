@@ -117,10 +117,26 @@ SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 25)})
 # ---- where each part stands, and which way up --------------------------------------
 #
 # Four blocks, each drawn the way that circuit is drawn: the power path runs
-# left to right across the top with the two switches stacked in parallel and
-# the bank hanging off the bus; the gate drive sits under it with the source
-# rail along its top and the gate bus across its middle; the reference and the
-# two comparators are top right; the hold and the button are bottom right.
+# left to right across the whole top, the pack pad at one edge of the sheet and
+# the bus pad at the other, with the two switches stacked in parallel and the
+# bank hanging off the bus; the gate drive sits under its left end with the
+# source rail along its top and the gate bus across its middle; the reference
+# and the two comparators are in the band under the bus rail; the hold and the
+# button are bottom right.
+#
+# WHICH WAY THE SHEET READS, because it is asked of every schematic and the
+# answer here is not the usual one. The power path reads left to right, pack to
+# bus. The control is a FEEDBACK LOOP around it: it senses the bus at the
+# right-hand end of that path and drives the gates near its left-hand end,
+# because the fuse has to come before the switches and the shunt after them. So
+# the lower half returns right to left, and the hold and the button are drawn
+# that way on purpose -- their connectors are at the right edge and their
+# signals run leftward into the comparators and on into the gate drive. Putting
+# those connectors on the left would not remove the reversal, only move it onto
+# GATE. What is worth insisting on is that nothing reads against its own block:
+# the button's two diodes take BTN from the right and hand PULL and SENSE out
+# to the left, and the gate resistors stand ABOVE the gate rail so that G1 and
+# G2 leave pointing at the MOSFETs they feed rather than away from them.
 #
 # A part is (unit, x, y, rotation, mirror). Rotation is counter-clockwise and
 # the y axis points down the sheet -- kicad_symbols.py carries the whole of what
@@ -128,23 +144,23 @@ SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 25)})
 PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     # the power path
     "P1": [(1, 25.40, 45.72, 0, "y")],
-    "F1": [(1, 40.64, 45.72, 90, None)],
-    "Q1": [(1, 60.96, 43.18, 270, None)],
-    "Q2": [(1, 60.96, 68.58, 270, None)],
-    "R1": [(1, 101.60, 45.72, 90, None)],
-    "J1": [(1, 101.60, 17.78, 90, None)],
-    "P2": [(1, 147.32, 45.72, 0, None)],
-    "C5": [(1, 121.92, 60.96, 0, None)],
-    "C6": [(1, 137.16, 60.96, 0, None)],
-    "P3": [(1, 165.10, 83.82, 0, None)],
+    "F1": [(1, 45.72, 45.72, 90, None)],
+    "Q1": [(1, 76.20, 43.18, 270, None)],
+    "Q2": [(1, 76.20, 68.58, 270, None)],
+    "R1": [(1, 139.70, 45.72, 90, None)],
+    "J1": [(1, 139.70, 17.78, 90, None)],
+    "C5": [(1, 190.50, 60.96, 0, None)],
+    "C6": [(1, 215.90, 60.96, 0, None)],
+    "P2": [(1, 373.38, 45.72, 0, None)],
+    "P3": [(1, 368.30, 83.82, 0, None)],
     # the gate drive
     "R2": [(1, 33.02, 129.54, 0, None)],
     "D1": [(1, 48.26, 129.54, 270, None)],
     "C1": [(1, 68.58, 129.54, 0, "x")],
     "D8": [(1, 76.20, 142.24, 90, None)],
     "R24": [(1, 83.82, 129.54, 0, None)],
-    "R3": [(1, 99.06, 154.94, 0, None)],
-    "R4": [(1, 111.76, 154.94, 0, None)],
+    "R3": [(1, 99.06, 144.78, 180, None)],
+    "R4": [(1, 111.76, 144.78, 180, None)],
     "R5": [(1, 129.54, 154.94, 0, None)],
     "D2": [(1, 144.78, 154.94, 270, None)],
     "Q3": [(1, 127.00, 177.80, 0, None)],
@@ -155,22 +171,24 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     "R9": [(1, 154.94, 154.94, 0, None)],
     "D3": [(1, 137.16, 163.83, 0, None)],
     # the reference and the comparators
-    "R10": [(1, 228.60, 40.64, 0, None)],
-    "U2": [(1, 228.60, 60.96, 90, None)],
-    "R11": [(1, 241.30, 40.64, 0, None)],
-    "R12": [(1, 241.30, 60.96, 0, None)],
-    "C3": [(1, 254.00, 60.96, 0, None)],
-    "R13": [(1, 259.08, 50.80, 90, None)],
-    "R14": [(1, 266.70, 33.02, 0, None)],
-    "R15": [(1, 292.10, 40.64, 0, None)],
-    "C2": [(1, 342.90, 40.64, 0, None)],
-    "R22": [(1, 241.30, 96.52, 0, None)],
-    "R23": [(1, 241.30, 116.84, 0, None)],
-    "R21": [(1, 254.00, 96.52, 0, None)],
+    "R10": [(1, 228.60, 96.52, 0, None)],
+    "U2": [(1, 228.60, 116.84, 90, None)],
+    "R11": [(1, 241.30, 96.52, 0, None)],
+    "R12": [(1, 241.30, 116.84, 0, None)],
+    "C3": [(1, 254.00, 116.84, 0, None)],
+    "R13": [(1, 259.08, 106.68, 90, None)],
+    "R14": [(1, 266.70, 88.90, 0, None)],
+    "R15": [(1, 292.10, 96.52, 0, None)],
+    "C2": [(1, 342.90, 55.88, 0, None)],
+    "R22": [(1, 241.30, 152.40, 0, None)],
+    "R23": [(1, 241.30, 172.72, 0, None)],
+    "R21": [(1, 254.00, 152.40, 0, None)],
+    # U1C is the comparator's own supply pin and its decoupling, so it stands on
+    # the bus rail at the top right rather than with the two comparator units.
     "U1": [
-        (1, 279.40, 63.50, 0, None),
-        (2, 279.40, 109.22, 0, None),
-        (3, 330.20, 40.64, 0, None),
+        (1, 279.40, 119.38, 0, None),
+        (2, 279.40, 165.10, 0, None),
+        (3, 330.20, 60.96, 0, None),
     ],
     # the hold and the button
     "R20": [(1, 266.70, 194.31, 270, None)],
@@ -179,8 +197,8 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     "R18": [(1, 309.88, 194.31, 270, None)],
     "D4": [(1, 337.82, 187.96, 0, None)],
     "D5": [(1, 337.82, 200.66, 0, None)],
-    "D6": [(1, 337.82, 223.52, 0, None)],
-    "D7": [(1, 337.82, 236.22, 0, None)],
+    "D6": [(1, 337.82, 223.52, 180, None)],
+    "D7": [(1, 337.82, 236.22, 180, None)],
     "R16": [(1, 360.68, 208.28, 0, None)],
     "R17": [(1, 353.06, 220.98, 0, None)],
     "J2": [(1, 386.08, 190.50, 0, None)],
@@ -209,27 +227,27 @@ NET_DRAW: dict[str, dict] = {
     "BATT": {"trunks": [("h", 45.72, ["P1.1", "F1.1"])]},
     "VSRC": {
         "trunks": [
-            ("v", 50.80, ["F1.2", "Q1.3", "Q2.3"]),
+            ("v", 60.96, ["F1.2", "Q1.3", "Q2.3"]),
             ("h", 114.30, ["R2.1", "D1.1", "R24.1", "R8.1", "Q4.1"]),
         ],
     },
     "VDRN": {
-        "trunks": [("v", 76.20, ["Q1.2", "Q2.2", "R1.1"])],
+        "trunks": [("v", 101.60, ["Q1.2", "Q2.2", "R1.1"])],
         "labels": ["C1.2"],
     },
     "VBUS": {
         "trunks": [
-            ("h", 45.72, ["R1.4", "P2.1", "C5.1", "C6.1"]),
             (
                 "h",
-                25.40,
-                ["R10.1", "R11.1", "R15.1", "U1.8", "C2.1"],
-                [(311.15, 19.05)],
+                45.72,
+                ["R1.4", "C5.1", "C6.1", "U1.8", "C2.1", "P2.1"],
+                [(311.15, 38.10)],
             ),
+            ("h", 76.20, ["R10.1", "R11.1", "R15.1"]),
         ],
     },
     "SHUNT_P": {"trunks": [("h", 33.02, ["R1.2", "J1.1"])]},
-    "SHUNT_N": {"trunks": [("v", 104.14, ["R1.3", "J1.2"])]},
+    "SHUNT_N": {"trunks": [("v", 142.24, ["R1.3", "J1.2"])]},
     "GATE": {
         "trunks": [
             ("h", 149.86, ["R2.2", "D1.2", "D8.1", "R3.1", "R4.1", "R5.1", "D2.1"])
@@ -260,16 +278,16 @@ NET_DRAW: dict[str, dict] = {
         "trunks": [("v", 220.98, ["R10.2", "U2.1", "U2.3"])],
         "labels": ["U1.2", "R22.1"],
     },
-    "UV_DIV": {"trunks": [("h", 50.80, ["R11.2", "R12.1", "C3.1", "R13.1"])]},
+    "UV_DIV": {"trunks": [("h", 106.68, ["R11.2", "R12.1", "C3.1", "R13.1"])]},
     "UV_IN": {"trunks": [("v", 266.70, ["R13.2", "R14.2", "U1.3"])]},
     "HOLD_REF": {
         "trunks": [("v", 241.30, ["R22.2", "R23.1", "U1.6"])],
-        "name_at": (241.30, 106.68, 180),
+        "name_at": (241.30, 162.56, 180),
     },
     "HOLD_IN": {
         "trunks": [("v", 259.08, ["R21.2", "U1.5"])],
         "labels": ["R20.2"],
-        "name_at": (259.08, 104.78, 180),
+        "name_at": (259.08, 160.66, 180),
     },
     "HOLD_MCU": {
         "trunks": [("v", 360.68, ["D4.2", "R16.1"])],
@@ -284,7 +302,7 @@ NET_DRAW: dict[str, dict] = {
         "trunks": [("h", 194.31, ["R18.2", "R20.1", "C4.1", "R19.1"])],
     },
     "BTN": {
-        "trunks": [("v", 320.04, ["D6.1", "D7.1"])],
+        "trunks": [("v", 346.71, ["D6.1", "D7.1"])],
         "labels": ["J3.1"],
     },
     "SENSE": {"labels": ["D7.2", "J2.2"]},
@@ -307,7 +325,7 @@ NET_DRAW: dict[str, dict] = {
             "R19.2",
         ],
         "labels": ["J2.3", "J3.2"],
-        "flag": (185.42, 76.20),
+        "flag": (342.90, 96.52),
     },
 }
 
@@ -608,7 +626,7 @@ def draw_nets(sheet: Sheet, where, facing) -> None:
             )
     # The bus rail's flag, wired onto the trunk by the "extras" above.
     sheet.lines.extend(
-        symbol_instance("#FLG", "power:PWR_FLAG", "PWR_FLAG", (311.15, 19.05), 1)
+        symbol_instance("#FLG", "power:PWR_FLAG", "PWR_FLAG", (311.15, 38.10), 1)
     )
 
 
@@ -663,7 +681,13 @@ def placed_part(part: power.Part, where, facing) -> list[str]:
         # KICAD ROTATES A FIELD WITH ITS SYMBOL, so a horizontal fuse or a
         # sideways shunt would print its value up the page. The angle stored
         # here is the one that cancels that back to level.
-        spin = int((360 - angle) % 360)
+        #
+        # A HALF TURN IS THE EXCEPTION, and it is worth knowing before drawing
+        # anything upside down: KiCad keeps a 180-rotated symbol's fields the
+        # right way up on its own, by swapping their justification rather than
+        # turning them. Cancelling it with another 180 is therefore what prints
+        # the value upside down -- checked against kicad-cli's own plot.
+        spin = 0 if angle % 180 == 0 else int((360 - angle) % 360)
         out += [
             f'  (symbol (lib_id "{lib_id}") (at {x:.2f} {y:.2f} {angle:g}){mirrored}'
             f" (unit {unit})",
