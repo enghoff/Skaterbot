@@ -150,7 +150,7 @@ def _payload_colour(name: str) -> str:
     if name in (
         "bus terminal",
         "fuse holder",
-        "main disconnect",
+        "on/off button",
         "charge socket",
         "antenna bulkhead",
     ):

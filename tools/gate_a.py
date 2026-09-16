@@ -166,6 +166,34 @@ RETIRED = {
 # a reason. If this list ever grows without one, the EXTRA rule has stopped
 # meaning anything.
 ADDED = {
+    # ---- THE POWER SWITCH BOARD, September 2026 -----------------------------
+    #
+    # A second board of our own, in the pack's positive lead between the loop key
+    # and the distribution board: the main fuse, the bus shunt, and a MOSFET
+    # switch that is the robot's on/off and its low-battery cutoff.
+    # electrical/power.py is the circuit and electrical/power_pcb.py is the
+    # board; these are the dimensions the CAD needs to pack it and to print the
+    # one feature that carries it.
+    #
+    # The outline and its height: an 8 mm spacer over the bought distribution
+    # board, and THE BOUGHT BOARD'S OWN 50 x 50 FOOTPRINT. It was a 54 x 32.5
+    # rectangle over the rear half of that board until the board went from
+    # surface mount to through-hole, which wants about half again the area; the
+    # rest came from the capacitor bank, which had reserved four positions of
+    # 16 x 25 for the two 10 x 16 cans docs/BOM.md buys. Landing on the bought
+    # board's outline also buys the mount: four screws where there were two and a
+    # printed pad on the wall, so powerSwitchPadScrewY, powerSwitchPadHeight and
+    # powerSwitchPadWidth are gone with it.
+    "powerSwitchSpacer": 8.0,
+    "powerSwitchSpacerDiameter": 6.0,
+    "powerSwitchBoardZ": -18.4,
+    "powerSwitchRightX": 71.55,
+    "powerSwitchRearY": -25.0,
+    "powerSwitchFrontY": 25.0,
+    "powerSwitchLeftX": 21.55,
+    # The bank's lead pitch, which is what places a can by its first lead the way
+    # every other footprint on that board is placed.
+    "capacitorPitch": 5.0,
     # cad/finish.py: the 0.5 mm chamfer put on every printed part's outer edges.
     # About one and a half layers at this nozzle -- a deburr, not a feature.
     "CHAMFER": 0.5,
@@ -587,18 +615,25 @@ ADDED = {
     # 42.0 across, and a pelvis drilled at 29 is a 182 g part no screw goes into.
     # The XT60E-M below is measured the same way -- 27.00 tip to tip, ears 20.00
     # apart, 16.70 along its axis in three sections. Measure one even so.
-    "xt60PanelNoseWidth": 14.2,
-    "xt60PanelNoseHeight": 6.7,
-    "xt60PanelCutWidth": 14.7,
-    "xt60PanelCutHeight": 7.2,
-    "xt60PanelFixingPitch": 20.0,
-    "xt60PanelEarSpan": 27.0,
-    "xt60PanelEarWidth": 6.13,
-    "xt60PanelEarThickness": 3.2,
-    "xt60PanelBodyWidth": 15.5,
-    "xt60PanelBodyDepth": 5.1,
-    "xt60PanelOutboardDepth": 6.0,
-    "xt60PanelInboardDepth": 8.3,
+    # THE DISCONNECT'S TWELVE NAMES WENT WITH IT on 2026-09-16, when the loop
+    # key was replaced by a momentary button that commands the switch board
+    # instead of breaking the pack lead by hand. What is left is a bushing, a
+    # nut and a body -- the antenna's way of mounting rather than the
+    # disconnect's, and no screws at all.
+    #
+    # THE STATION IS THE INTERESTING NUMBER. It is x -44 and not the
+    # disconnect's 18, because the depth behind this wall decides it: a sweep
+    # at the station height found 11.2 mm of clear air behind x 18 before the
+    # actuator harness bank, which took a connector reaching 8.3 mm in and will
+    # take no panel switch at all. 21.4 is the most the wall offers anywhere,
+    # outboard of x -44, and buttonClearDepth carries it so that a deeper
+    # switch has something to be checked against.
+    "buttonHoleDiameter": 12.2,
+    "buttonNutDiameter": 17.5,
+    "buttonNutDepth": 3.0,
+    "buttonBodyDepth": 16.0,
+    "buttonOutboardDepth": 6.0,
+    "buttonClearDepth": 21.4,
     # The one M2 clearance on this robot, and the nuts it takes, in
     # cad/parameters.py with the M3 ones. Forced by the disconnect's nuts: they
     # sit 2.25 mm from its body, which an M2 clears by 0.25 and an M2.5 fouls by
@@ -633,7 +668,7 @@ ADDED = {
     "antennaBodyDepth": 15.0,
     "antennaOutboardDepth": 8.0,
     "panelHardwareZ": 22.0,
-    "disconnectPanelX": 18.0,
+    "buttonPanelX": -44.0,
     # BOTH OTHER STATIONS MOVED WITH THE CHARGE SOCKET, and were solved for:
     # swept across the wall against every solid in the cavity and each other.
     # The socket went outboard from 50.0 to where its flange still lands on the
@@ -919,9 +954,23 @@ CHANGED = {
     ),
     "capacitorZ": (
         -18.9,
-        -26.4,
-        "the saddle plane, plus the 3 mm standoff the power-entry board now "
-        "stands on, plus the board's own thickness",
+        -16.8,
+        "the bank stands on the power switch board now, not on the bought one "
+        "under it: a 16 mm can on the bought board would be inside a board whose "
+        "underside is 8 mm above it",
+    ),
+    "capacitorDiameter": (
+        16.0,
+        10.0,
+        "the size of the cans the bill actually buys. 16 x 25 was a reservation "
+        "four times over, against two Panasonic EEU-FR1V471B that are 10 x 16, "
+        "and it was holding the whole front of the power bay -- which is the "
+        "power switch board now",
+    ),
+    "capacitorHeight": (
+        25.0,
+        16.0,
+        "the same two cans, in the other axis",
     ),
     "powerX": (
         39.1,

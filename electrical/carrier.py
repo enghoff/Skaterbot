@@ -295,9 +295,9 @@ PARTS = [
     # that can be built: a module's pins go where its pins are. All eight come
     # down into this board now, its shunt inputs included, so the twisted pair
     # from the shunt lands on J7 here rather than in the screw terminals on the
-    # module. THE MODULE'S OWN 0.1 OHM SHUNT IS STILL ACROSS THOSE TWO PINS and is
-    # in parallel with the external one; lift R100 off the module, or accept that
-    # a milliohm shunt reads about half a percent low.
+    # module. REMOVE THE MODULE'S R100 (0.1 OHM) before connecting the external
+    # Kelvin pair. Otherwise sense-wire current corrupts the measurement;
+    # even ideal zero-ohm sense wires would cause about 0.99 percent error.
     Part(
         "A3",
         "the bus monitor, on two M2 standoffs, landed on all eight of its pins; "

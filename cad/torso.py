@@ -36,7 +36,6 @@ from cad.electronics import (
     deckLedgeX,
     deckLedgeY,
     deckZ,
-    disconnectFlangeFixings,
     imuBoardDepth,
     imuBoardWidth,
     interiorHalfWidth,
@@ -313,6 +312,14 @@ def powerEntryPosts() -> list:
     return posts
 
 
+# THE POWER SWITCH BOARD USED TO NEED A PAD HERE, one printed block off the
+# right-hand wall carrying a third screw, because that board was a rectangle over
+# the rear half of the bought board and two screws on one edge are a hinge. It is
+# the bought board's own 50 x 50 footprint now and takes all four of that board's
+# screws, so the pad is gone and this bay costs the robot no printed material at
+# all. cad/electronics.py's power switch section says why the board grew.
+
+
 def deckLedges() -> list:
     """Four pads on the front and rear walls, carrying cad/deck.py's plate."""
     ledges = []
@@ -380,16 +387,21 @@ def pelvisShell() -> list:
     # hold a thread, and the printed panel that used to carry these needed 6 mm
     # of plate to tap into.
     #
-    # THE SIZE IS THE DISCONNECT'S NUTS' DOING: they sit 2.25 mm from its body,
-    # which an M2 clears and an M2.5 does not. It leaves 1.45 mm of wall between
-    # each disconnect screw and its cutout and 1.7 at the charge socket, the
-    # thinnest material anywhere on this wall; cad/parameters.py has the reason
-    # and tools/gate_e.py counts all four holes on the finished solid.
+    # THE SIZE WAS THE DISCONNECT'S NUTS' DOING and the disconnect is gone: its
+    # nuts sat 2.25 mm from its body, which an M2 cleared and an M2.5 did not,
+    # and that pair is what set M2 for the whole wall. The charge socket would
+    # take an M2.5 happily and keeps M2 anyway, because one thread size on one
+    # wall is worth more than a quarter millimetre of bridge. THE THINNEST
+    # MATERIAL ON THIS WALL WENT WITH THE DISCONNECT: it was the 1.45 mm between
+    # each of its ear screws and its cutout, and what is left is the charge
+    # socket's own 1.7. The button that replaced it needs no screws at all --
+    # it clamps the wall with its own nut -- so tools/gate_e.py counts two holes
+    # here now and not four.
     panelFixings = [
         Pos(atX, panelWallY, atZ)
         * Rot(90, 0, 0)
         * Cylinder(m2Clearance / 2, shellWall + 4.0)
-        for atX, atZ in [*disconnectFlangeFixings(), *chargeSocketFixings()]
+        for atX, atZ in chargeSocketFixings()
     ]
 
     # KCL-SHAPED: slots first, into the simple box, then the cavity. Taking them

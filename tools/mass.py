@@ -234,9 +234,16 @@ EXPECTED_CHANGE_G = {
         "the controller carrier grew from 76 mm wide to 140 to carry that "
         "monitor and the logic BEC itself. Both boards are on the carrier now, "
         "so the pads carried nothing and came off, and this shell is 0.6 g "
-        "lighter for it. THE SHUNT DID NOT MOVE AND CANNOT: it stands in the "
-        "main bus path at the distribution board, and what goes up to the "
-        "monitor is a twisted pair into the monitor's own screw terminals",
+        "lighter for it. THE SHUNT MOVED AFTER ALL, onto the power switch "
+        "board, where it is soldered into the switched side of the bus; what "
+        "goes up to the carrier is a twisted pair landing on J7 rather than in "
+        "the monitor's own screw terminals. Neither costs this shell anything. "
+        "THE "
+        "POWER SWITCH BOARD COSTS THIS SHELL NOTHING AT ALL: it took a 320 mm3 "
+        "pad on the right-hand wall for a third screw while it was a rectangle "
+        "over half the bought distribution board, and when it grew to that "
+        "board's own 50 x 50 outline it took all four of that board's screws "
+        "instead and the pad came off again. AND THE MAIN DISCONNECT WENT ON 2026-09-16, which is 4.83 mm3 and not a gram: a momentary button that commands the switch board replaced the loop key, and three holes in the rear wall became one -- a 14.7 x 7.2 nose cut and two O2.4 ear holes out, a single O12.2 bushing hole in, at x -44 rather than x 18 because there is 11.2 mm of clear depth behind the old station and a panel switch needs more. The wall loses the thinnest material on this shell with it, the 1.45 mm between each ear screw and its cutout. tools/gate_b.py holds the split",
     ),
 }
 

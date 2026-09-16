@@ -2145,3 +2145,313 @@ ERC, unconnected-pad and schematic-parity issues. The release contains 249
 drilled holes (233 plated, 16 unplated); its silkscreen was rendered from the
 actual Gerber and visually inspected. The ZIP and source hashes verify.
 No hardware has been fabricated or tested.
+
+## The power switch board, 2026-09-15
+
+The robot can be switched off now, and until today it could not. Pulling the
+loop key was the only disconnect, so a robot left on flattened its own pack, and
+the BMS added two days earlier is on the cell taps and cannot break the discharge
+path. What answers it is a second board of our own, in the pack's positive lead
+between the loop key and the distribution board: `electrical/power.py` is the
+circuit and `electrical/power_pcb.py` the board, and `docs/POWER_SWITCH.md` is
+the whole account. It carries the main fuse, which was an in-line holder taped to
+the bought board; the bus shunt, which had no mount at all; and two P-channel
+MOSFETs that are the on/off and the low-battery cutoff at once.
+
+Three things about it are worth keeping here rather than in the document.
+
+**The soft start was got wrong first, and the arithmetic caught it.** The gate
+was drawn pulled down through 4.7 kΩ against a 10 nF capacitor, which reads as a
+gentle ramp and is not one: 4.7 mA into 10 nF is 470 kV/s, so the bus would have
+come up in 60 microseconds and the check reported 617 A of inrush into the bank.
+What is there now is 470 kΩ against 220 nF — 192 V/s, 131 ms, about 0.3 A — with
+a diode that takes the capacitor out of circuit when the gates rise, so switching
+OFF stays fast at 1.5 µs through the plateau. Slow on, fast off, and one part
+between the two.
+
+**The cutoff is at 19.2 V on the filtered bus, which is 3.20 V per cell.** The
+actuators' own undervoltage cutout is 15 V, so this trips well above anything the
+motors would complain about, and the 0.28 s filter is what stops a motor's sag
+being read as a flat pack. It is a PACK-level cutoff: the BMS sees each cell and
+cannot act, this acts and cannot see a cell, and a single weak cell falls between
+them. The cell alarm on the balance tail is still the answer to that.
+
+**KiCad's design rule check is the only opinion that counts on the copper.**
+The layout is searched for here, but the board is assembled inside KiCad's own
+Python from KiCad's own library footprints, and `kicad-cli` runs DRC on the
+filled board: zero errors, zero unconnected, five warnings (two removed copper
+islands and three pieces of silkscreen over pads). Two findings came out of that
+loop rather than out of intention. Ten clearances came back at 0.175 mm where
+0.2 was wanted, all of them a diagonal or a via against a diagonal, and the
+router's grid margin went from 0.06 to 0.10. And the ground pour, which is the
+whole bottom layer, was cut in two by a signal crossing it — an open circuit
+KiCad called correctly. Ground is poured AND routed pad to pad now, so nothing
+depends on the fill staying in one piece.
+
+Mass: 2109.7 g against the 2300 g ceiling, +22.3 g for the change — 22 g of
+board, parts and mounting hardware added up rather than allowed for, and 0.3 g of
+printed pad on the pelvis's right-hand wall for the third screw. The other two
+screws are the distribution board's own rear pair, made longer.
+
+Validation: CAD build and lint clean, gates A–F pass (846 clearance and fastening
+checks, including six new figures for this board), the netlist and its arithmetic
+check, and KiCad's DRC is clean on the built board. Nothing has been fabricated
+or tested, the peak bus current has still never been measured, and three things
+this board needs are still missing: a hole in the rear wall for its button, a
+connector on the controller carrier for the hold and button-sense wires, and a
+regeneration clamp, which this board does not provide and never could.
+
+## The power switch board goes through-hole, and grows to fit, 2026-09-15
+
+Two changes, one day later, and the second one is the interesting one.
+
+**It has a schematic now.** `electrical/power_sch.py` writes the netlist out as a
+one-sheet KiCad drawing the way `carrier_sch.py` does — 51 symbols, 114 pins, 27
+nets, joined by label rather than by wire — and runs KiCad's own ERC on it as
+part of writing it. That check earned its keep immediately: the first version
+pointed all 51 parts at a footprint library that does not exist. Every symbol
+names the footprint the BOARD really uses, read out of `power_pcb.py`, so the
+drawing and the copper cannot disagree about a package. The sheet's title block
+carries the circuit's computed behaviour, so somebody reading it sees what these
+component values actually do.
+
+**Not one part on the board is surface mount any more.** It is a board a person
+can place by hand and solder with an iron. The resistors and the diodes stand on
+END on a 2.54 mm pitch, which is the one choice here that is not obvious and is
+what makes the rest fit: an 0204 upright is 9.5 mm² of board against a 1206's
+10.3, where the same part laid down on 7.62 mm would be 29. The comparator is a
+DIP, the reference and the two small transistors are TO-92, and **two pinouts
+changed with the package** — a TL431 in TO-92 is 1 REF, 2 anode, 3 cathode, not
+the SOT-23's 1 cathode, 2 reference, 3 anode; a BC546B is 1 collector, 2 base,
+3 emitter where the BC846B was 1 base, 2 emitter, 3 collector. A transposed one
+is a board that does nothing.
+
+**The shunt is what made it expensive, and the capacitor bank paid.** The only
+four-terminal shunt made in through-hole runs 25.4 mm between its current leads,
+246 mm² of courtyard against the 2512's 33, and on the old 54 × 32.5 outline that
+was arithmetically impossible: parts and pours came to 98 % of the board. What
+freed the room was a reservation nobody had re-read. The CAD drew FOUR cans of
+Ø16 × 25 across the front of the power bay while `docs/BOM.md` has specified TWO
+Panasonic EEU-FR1V471B — Ø10 × 16 — since the day it first named a part. Eight
+times the volume, for the whole front half of the bay. Sweeping a probe of the
+board's own thickness over the bought distribution board's entire 50 × 50
+footprint found the bank to be the only solid in the way.
+
+So the board is that bought board's own footprint now, stacked on it, and the two
+cans stand on THIS board on the bus copper they damp. **The capacitance is
+unchanged and still unmeasured**: what shrank is the reservation. It buys the
+mount as well — four screws where there were two and a printed pad on the wall —
+so the pad is gone and this bay costs the robot no printed material at all.
+
+**The robot got lighter.** 2077.4 g against the 2300 g ceiling, where it was
+2109.4: the bank's line falls from a 60 g allowance to the 20 g those two cans
+and their leads actually are, against the 8 g the bigger board costs.
+
+Three bugs in the layout tooling came out of this and each had produced a board
+that passed every check this repository owned. **A pad's middle is its hole**:
+the router aimed at the centre of the shunt's 3.0 mm pads and laid its track into
+the 1.5 mm drill, and KiCad called both sense pads unconnected. **A pour drawn as
+boxes that touch is two pours**: the bank's outboard riser met the bus bar on a
+boundary line and filled as a separate island. And **a round courtyard read as
+flat**: a radial capacitor's whole outline is one circle in KiCad's footprint
+file, and the reader took the two points it is written with as the extent, so a
+6 mm can measured 0 mm deep and parts were placed on top of it.
+
+**Raising the board to clear the bought board's XT60 was tried and is worse.**
+A trimmed lead hangs 2 mm under the board and that socket stands to within half a
+millimetre of the underside, so nothing with a lead may stand over it. Ten
+millimetres of spacer clears it outright — and takes two millimetres off the far
+side, where the pack's own connectors hang 7.4 mm over this board and an upright
+resistor is 5.5, and leaves 1 mm over the switches instead of 3. The socket stays
+a keepout in the layout.
+
+Validation: CAD build and lint clean, gates A–F pass (851 clearance and fastening
+checks), the netlist and its arithmetic check, KiCad's ERC is clean on the
+drawing and its DRC is clean on the built board at zero errors and zero
+unconnected. Nothing has been fabricated or tested, the peak bus current has
+still never been measured, and the bought board's own outline — including the
+input socket this board passes half a millimetre over — is a catalogue drawing
+rather than a board anybody has held.
+
+
+## The schematic becomes a schematic, and the board turns out to need an import, 2026-09-16
+
+Two pieces of work, and they are unrelated except that both are about the same
+board being taken seriously as something somebody will actually build.
+
+**The drawing is an ordinary schematic now.** What it was before is worth
+recording because it looked finished: one generated rectangle per part, every
+pin with a stub and its net's name on the end, and not one wire between any two
+symbols. Every check passed. KiCad's ERC was clean. And it was unreadable,
+because a resistor, a diode and a comparator were the same box with different
+words in it, and following a signal meant searching the sheet for a name. A
+drawing whose only reader is the program that wrote it is not a drawing.
+
+It now places KiCad's own symbols — `Device:R`, `Device:D_Zener`,
+`Transistor_FET:Q_PMOS_GDS`, `Comparator:LM393` as the three real units it has,
+and `Device:R_Shunt`, which is the four-terminal Kelvin symbol and exactly what
+R1 is — and joins them with wire, in the four blocks the circuit is read in.
+Each symbol was picked so that **its pin numbers already match the footprint the
+board uses**; the TL431's TO-92 symbol against its surface-mount one is where
+that mattered, being the same part with the pins in a different order. Six nets
+are still names rather than lines — the pack rail, the switched bus, the gates,
+the enable line, ground — because they run the width of the board and drawing
+those as wires between four corners is how a schematic stops being readable.
+That is how it would be drawn by hand.
+
+**The new check is the one worth keeping.** The sheet is handed to `kicad-cli`,
+which extracts its netlist, and that is compared pin by pin against `power.py`'s
+own. It caught something no rendering would have shown: **KiCad does not join a
+pin that merely lies part way along a wire.** A bus drawn as one long line with
+pins standing on it silently leaves those pins off the net. Trunks are drawn in
+segments between their pins now, so every pin is a wire end. Two smaller things
+came out the same way — a pin's angle in a KiCad library points INWARD, back at
+the body, so taking it as the outward direction put every ground symbol inside
+the part it grounded; and a field's angle is relative to its symbol, so a
+rotated part printed its value up the page.
+
+**The board cannot be built from Indian shops.** The bill had carried the word
+*generic* against most of this board since it was drawn, and sourcing it found
+that five of its lines have no Indian source at all. Two of those must be
+imported and there is no honest way round either: the **four-terminal shunt** is
+stocked by nobody here in any package at any resistance near 1 mΩ, and a
+two-terminal substitute puts a few milliohms of lead and solder in series with a
+1 mΩ element, which is most of a 24 mV reading; and the **P-channel MOSFET** has
+one domestic alternative that meets the voltage and current, the IRF4905, whose
+20 mΩ against the design's 6.7 is 4.7 W per device at 24 A with the tabs bolted
+to nothing.
+
+The other three are softer. **BAT46 Schottkys** are unobtainable and the
+substitution was measured rather than guessed: silicon 1N4148s in their place
+shorten the hold-through from 0.97 s to 0.84 s, which is survivable. The
+**BZX79-C15** has a stocked equivalent in the 1N4744A, in a fatter DO-41 body
+that wants a footprint check. The **14.7 kΩ 1 %** turned up nowhere, and it is
+one of the two resistors that set the cutoff voltage.
+
+**And one thing is unconfirmed rather than missing, which may yet cost a board
+revision.** No Indian resistor listing states a body size. The ordinary 1/4 W
+part sold here is the 0207, 6.3 × 2.5 mm, against the 0204 the layout is drawn
+around — and twenty-three of them stand upright on a 2.54 mm pitch, which is the
+choice the whole floorplan rests on. That wants checking before the board is
+ordered, not after.
+
+Validation: the drawing's netlist matches `power.py` pin for pin as KiCad reads
+it, KiCad's ERC is clean, the board's DRC is unchanged at zero errors and zero
+unconnected, CAD build and lint are clean and gates A–F pass. Nothing has been
+fabricated, nothing has been ordered, and the peak bus current has still never
+been measured.
+
+
+## 2026-09-16 — Replace the invalid axial shunt with PBV-F1
+
+The power board's 1 mΩ axial placeholder used a Vishay CPSL footprint, but
+that discontinued family starts at 10 mΩ. R1 is now the orderable
+**Isabellenhütte PBV-R001-F1-1.0**, preserving the entirely through-hole
+assembly requirement. DigiKey India listed 442 at ₹4,144 each; its advertised
+10 W requires a heatsink, so this design uses the manufacturer's **3 W** rating.
+The manufacturer PDF is archived in reference/Isabellenhuette_PBV.pdf.
+
+The 1 mΩ value is retained: 24 A produces 24 mV / 0.576 W, and 30 A produces
+30 mV / 0.900 W. Both fit the INA226's approximately ±81.92 mV ADC range with
+2.5 mA raw resolution. Documented firmware settings are 2 mA Current_LSB,
+CAL=2560 (0x0A00), and 50 mW Power_LSB. No firmware was programmed. The module's
+R100 must be removed before connecting the Kelvin pair; the previous text
+understated its parallel-loading error and incorrectly treated it as optional.
+
+A local footprint follows PBV drawing Z-DW-132b: I-U-U-I at 0, 5.08, 12.70,
+17.78 mm. The power pours, CAD station and body envelope were updated. The
+20.7 mm installed height leaves 1.10 mm to the deck. Gate F's existing check
+measured the entire power-parts group while calling it the switches; it now
+names the PBV and checks its intended 1.10 mm gap. The TO-220 clearance remains
+3 mm. There is no change to printed geometry or the board outline.
+
+Mass allowance rises **6 g**, from an unsupported 2 g axial placeholder to an
+8 g provisional PBV allowance. This is not a measured mass. The full budget is
+2,083.4 g against the 2,300 g ceiling, leaving 216.6 g.
+
+Validation: schematic netlist matches power.py; ERC has zero violations. The
+rebuilt PCB has 99 tracks and 57 vias, zero DRC errors and zero unconnected
+items; 11 unrelated silkscreen warnings remain. Per-part PCB/CAD collision
+checks pass. The 30 A measurement and dissipation checks pass and reject a
+10 mΩ substitution. The shunt selection does not raise the board's MOSFET
+continuous-current rating, and the prior review's startup and regeneration
+issues remain outside this change. Plated lead fit and installed thermal
+behavior have not been physically verified.
+
+Final validation: `uv run tools/check.py` passes, including CAD builds, lint
+and formatting; `uv run tools/gate_f.py` passes all 850 checks.
+
+## The loop key comes out and a button goes in, 2026-09-16
+
+**Asked for directly, and it reverses a decision this project had argued for in
+writing.** `docs/BOM.md` carried a section called "why the disconnect is a loop
+key and not a switch", and the half of that argument about amps still stands: no
+12–16 mm panel switch will CARRY 24 A, so a switch can only command the bus, and
+the power switch board is what commands it. What has gone is the second half —
+that the wall should keep a pull-link beside the button anyway, because a MOSFET
+usually fails shorted and silently and nothing but a mechanical break would say
+so.
+
+**Three things decided it.** A wall carrying both a switch and a pull-link asks
+the user which one turns the robot off, and two controls for one job is how a
+robot gets left on. The button had nowhere else to go. And the standing-current
+worry turns out not to exist: with the switch off there is no DC path from the
+pack through this board at all — every divider, comparator and reference hangs
+off the switched side — so a pack left connected is drained by its own leakage.
+That was checked rather than assumed.
+
+**The station moved, and the depth behind the wall is the whole reason.** The
+disconnect sat at x 18 with **11.2 mm** of clear air behind it before the
+actuator harness bank's mated plugs. That is enough for a connector reaching
+8.3 mm in and is not enough for any panel switch, which is a bushing, a body and
+its terminals. The wall was swept at the station height for the depth a round
+bushing can reach: 11.2 mm at the old station, 18.6 mm over the SBC, and
+**21.4 mm** outboard of x −44, where what stands in front is the WeAct core
+board on the far side of the carrier. So the button is at x −44 and the CAD
+reserves 16 mm of it, leaving 5.4 mm.
+
+**The part is a 12 mm and not a 16 mm anti-vandal, and that follows from the
+same figure.** Common 16 mm switches are 21 to 27 mm behind the panel and would
+not clear 21.4 with anything in hand. The one candidate anybody publishes a
+dimensioned drawing for is a Daier GQ-12B/S: 12 mm hole, M12 × 1, momentary,
+screw terminal, **21 mm from its dome to the tip of its terminal**, ₹190 and in
+stock in Mumbai. No listing anywhere states a behind-panel length, so that 21 mm
+is the only real figure and the 16 mm reservation errs deep against it. Measure
+one before the pelvis is printed.
+
+**The wall lost two screw holes and its thinnest material with them.** A button
+mounts on its own thread, so the M2 pair 20 mm apart that held the disconnect's
+ears is gone, and with it the 1.45 mm bridge between each of those screws and
+the cutout — which was the thinnest material anywhere on this shell. What is
+left is the charge socket's own 1.7 mm.
+
+**What it costs is stated rather than buried.** Nothing isolates the pack any
+more except unplugging one from the series harness with the lid off. A
+failed-short MOSFET looks exactly like a working one, and there is no longer a
+hand-operated break to prove otherwise. If that is not acceptable the fix is not
+to put the key back in this wall — there is no depth for the button anywhere
+else on it — but to make the pack's own in-shell connector the service
+disconnect and say so in the build notes.
+
+**The geometry is 4.83 mm³ and the arithmetic matches to four places.** A Ø12.2
+hole through 2.4 mm of wall is 280.5568 mm³; the rectangle and two ear holes it
+replaces were 275.7307. Gate B's register carries the split against the golden —
+−4.0218 added, 0.8044 removed — and that split was MEASURED rather than solved
+for: the shell was built twice, once with the disconnect put back, and each
+differenced against the golden. Both holes are cut almost entirely in wall the
+golden never had, which is why a 280 mm³ hole reads as 0.80 against it.
+
+**One correction that arrived from elsewhere in the same pass, and it matters
+more than the button.** The bus shunt had been specified as a Vishay CPSL axial
+part, and **that part does not exist at this value** — the family starts at
+10 mΩ, not 1 mΩ. It is an Isabellenhuette PBV-R001-F1-1.0 now, four inline
+through-hole pins on a footprint drawn from the maker's own Z-DW-132b, standing
+20.7 mm tall with 1.1 mm over it to the deck. The board was laid out to a
+footprint for a shunt nobody makes.
+
+Validation: gates A–F pass at 850 clearance and fastening checks, CAD build and
+lint clean, the netlist and its arithmetic check, the schematic's netlist still
+matches `power.py` pin for pin as KiCad reads it, ERC clean and the board's DRC
+unchanged at zero errors and zero unconnected. Mass 2083.4 g against the 2300
+ceiling — the 6 g is the shunt's re-specification, not the button, which is
+0.005 g. Nothing has been fabricated and no switch has been measured.

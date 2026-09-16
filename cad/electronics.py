@@ -251,8 +251,17 @@ controllerBoardZ = deckBandZ + standoffHeight
 
 pcbThickness = 1.6
 upperBandZ = controllerBoardZ + pcbThickness + sbcStandoffHeight
-capacitorDiameter = 16.0
-capacitorHeight = 25.0
+# THE BANK IS WHAT THE BILL BUYS, September 2026, and it used to be four times
+# that. It was drawn as four cans of 16 x 25 standing along the front of the power
+# bay while docs/BOM.md specified TWO Panasonic EEU-FR1V471B -- 470 uF 35 V, and
+# 10 x 16 on a 5 mm lead pitch. That reserve was eight times the volume of the
+# parts it was reserving for, and it was the whole of the front half of the bay.
+# The two cans the bill names stand on the power switch board now; the strip they
+# held is that board. THE CAPACITANCE ITSELF IS UNCHANGED and still unmeasured:
+# what shrank is the reservation, not the bank.
+capacitorDiameter = 10.0
+capacitorHeight = 16.0
+capacitorPitch = 5.0
 
 pcbGreen = "#1c6b42"
 componentBlack = "#20232a"
@@ -357,16 +366,16 @@ xt60Height = 7.5
 #
 # The XT30's figures were 11.0 wide, 6.2 high and 15.0 deep, and they are kept
 # here because the reasoning that picked it still holds: 2.2 A at 1C needs
-# nothing bigger, and NO PLUG MEANT FOR ONE PORT IN THIS WALL MAY FIT THE OTHER.
-# That rule is stated precisely because the two ports are now the same family,
-# and it is met by gender instead of by shape. The disconnect is the male half
-# and its loop key is a bridged female; the charge socket is the female half and
-# the charger's lead ends in a male. So the key cannot go into the charge port,
-# where its bridge would be a dead short across the pack, and the charger's lead
-# cannot go onto the disconnect, where it would stand in series with the pack and
-# put something like 50 V onto drivers rated for 30. Both mistakes are physically
-# impossible rather than merely labelled -- which two identical male panel mounts
-# would not have been, and that was asked.
+# nothing bigger. THE RULE THAT NO PLUG MEANT FOR ONE PORT IN THIS WALL MAY FIT
+# THE OTHER is met by there being only one port now: the disconnect went in
+# September 2026 and the button that replaced it takes no plug at all. While
+# both were here the rule was met by gender -- the disconnect male and its key a
+# bridged female, the charge socket female and the charger's lead male -- so
+# that a bridged key could not short the charge port and a charger could not
+# sit in series with the pack. WHAT IS LEFT IS STILL A LIVE SOCKET: the charge
+# inlet lands on the BMS's charge input, which is on the pack side of
+# everything, so it is at pack voltage whenever cells are connected. That is
+# why it carries recessed sockets rather than pins.
 # INA226 bus monitor and its shunt. New hardware: the controller has had no way
 # to read pack state, which matters on a battery in a way it never did on a bench
 # supply.
@@ -460,10 +469,6 @@ panelX = powerX - 10.0
 # Where the pack's own connectors sit: above the fuse and the monitor, clear of
 # the disconnect that reaches in over the board's rear edge.
 packLeadZ = pdbTopZ + 17.0
-# The cans stand on the bought board now rather than on one of ours, which is why
-# this station has moved down here: it cannot be stated until that board's own
-# thickness and standoff are.
-capacitorZ = pdbTopZ
 
 
 # ---- what the rear wall carries, and how it is held --------------------------
@@ -502,71 +507,60 @@ capacitorZ = pdbTopZ
 # controller carrier above it. cad/deck.py draws that chase now, and these two
 # power leads share it.
 
-# AMASS XT60E-M, the eared panel-mount XT60, in place of the bare XT90-S that
-# used to be bonded into the panel and of the XT90E-M that briefly replaced it.
-# EVERY FIGURE BELOW IS OFF AMASS'S OWN DIMENSIONED DRAWING rather than off a
-# seller's listing, which is the difference that mattered: the listing figures
-# this file carried for the XT90E-M -- a 25 x 16 cutout with the screws 29 mm
-# apart -- were wrong on both counts against the maker's drawing, and a 29 mm
-# pitch against a real 32.4 would have left a 182 g pelvis that no screw goes
-# into. Measure a connector before the pelvis is printed even so.
+# THE ON/OFF BUTTON, September 2026, in place of the XT60E-M loop key that stood
+# in this wall before it. WHAT WENT AND WHY IS NOT A GEOMETRY ARGUMENT: the power
+# switch board turns the robot on and off electronically, and a wall that carries
+# both a switch and a pull-link asks the user which one turns the robot off. The
+# button is the answer to that question and the loop key was the older one.
 #
-# IT IS NOT A FLANGE, IT IS TWO EARS PARTWAY ALONG THE BODY, and the shape of the
-# part decides how the wall is cut. Along its axis it is 16.70 overall in three
-# pieces: the mating nose stands 8.40 proud of the ear plate, the ear plate is
-# 3.20 thick, and the rear body with its solder tabs is 5.10 behind that. So the
-# ears bear on the INSIDE face of the wall, the nose passes through the cutout
-# and stands 6.0 mm outside it, and the tabs the leads land on stay in the
-# cavity. That is the whole reason this part fits where an XT90E-M does not:
-# 8.3 mm of it is inside the shell against the XT90E-M's 19.7.
+# WHAT IT COSTS IS REAL AND IS NOT DRAWN HERE. A loop key is a MECHANICAL break
+# in the pack's positive lead and a transistor is not, and a MOSFET fails shorted
+# far more often than it fails open. With the key gone there is nothing that
+# isolates this pack except unplugging it inside the shell, and docs/BOM.md
+# argues that trade rather than burying it. What the change does NOT cost is
+# standing current: electrical/power.py's off state has no DC path from the pack
+# at all -- every divider, comparator and reference hangs off the SWITCHED side
+# -- so a pack left connected is drained by leakage rather than by this board.
 #
-# THOSE THREE AXIAL FIGURES ARE THE ONE THING HERE NOT READ STRAIGHT OFF A LABEL,
-# and they are the first thing to measure on a real connector. The drawing's own
-# side view labels the tab end to the ear plate 9.50 and the plate 4.00, which
-# leaves 3.20 of nose -- and that cannot be right: it is contradicted by the same
-# view's proportions, by AMASS's own photograph, in which the nose is plainly
-# the longest section, and by the part's purpose, since 3.2 mm of nose through a
-# 2.4 mm wall is 0.8 mm for a key to grip. The figures above are the view's
-# proportions at its 16.70 scale. IF A MEASURED PART SAYS THE LABELS WERE RIGHT,
-# this station does not work as drawn: the body would reach 13.5 mm in, 5.1 from
-# the SBC, and the nose would need the ears on the outside instead.
+# IT IS A THREADED BUSHING AND A NUT, which is the antenna's way of mounting and
+# not the disconnect's: the switch passes through a round hole and its own nut
+# clamps the wall from inside, so THIS WALL LOSES TWO SCREW HOLES. The M2 pair
+# 20 mm apart that held the disconnect's ears is gone, and with it the 1.45 mm
+# bridge between each of those screws and the cutout, which was the thinnest
+# material anywhere on this shell.
 #
-# THE CUTOUT IS CUT TO THE NOSE, NOT TO THE BODY -- 14.20 x 6.70 plus half a
-# millimetre all round -- and that is forced rather than chosen. The ear holes
-# are 20.00 apart and the body is 15.50 long, so a cutout sized to the body would
-# run into them. AT 14.7 THERE IS 1.45 mm OF WALL BETWEEN THE CUTOUT AND EACH
-# SCREW HOLE, which is the thinnest thing on this wall, at M2 -- and M2 is forced
-# by the nuts rather than by the wall, which cad/parameters.py sets out. One
-# millimetre between two bodies is still zero between two openings, and this is
-# as close to that rule as anything here comes.
+# THE STATION MOVED, AND THE DEPTH BEHIND THE WALL IS WHY. The disconnect sat at
+# x 18 with 11.2 mm of clear air behind it before the actuator harness bank's
+# mated plugs -- enough for a connector that reaches 8.3 mm in, and not enough
+# for any panel-mount switch, which is a bushing plus a body plus its terminals.
+# The whole wall was swept at the station height for the depth a round bushing
+# can reach, and it is 11.2 mm at the old station, 18.6 mm over the SBC, and
+# 21.4 mm anywhere outboard of x -44, where what stands in front is the WeAct
+# core board on the far side of the carrier. So the button goes at x -44, which
+# is the closest-in station that buys the full 21.4, and it leaves 30.5 mm of
+# wall between its own nut and the antenna's.
 #
-# THERE IS NO ANTI-SPARK IN THE XT60 RANGE, and that is what this change costs.
-# AMASS invented and still own the XT90-S, whose pre-charge resistor lives in the
-# female half; there is no XT60 equivalent from them or from anybody else. So the
-# loop key is a plain bridged XT60 female, and the FIRST CONNECTION SLAMS THE
-# CAPACITOR BANK AND SIX DRIVERS' INPUT CAPACITANCE THROUGH BARE CONTACTS with
-# nothing to limit it. docs/BOM.md carries what that means and what would buy it
-# back; the short version is that the pre-charge this robot used to get free with
-# the key was to come from the motor-power contactor line, and THAT LINE WAS
-# DELETED on 2026-09-14, so nothing on the bill limits this inrush at all.
-xt60PanelNoseWidth = 14.2
-xt60PanelNoseHeight = 6.7
-xt60PanelCutWidth = 14.7
-xt60PanelCutHeight = 7.2
-xt60PanelFixingPitch = 20.0
-# The ear plate, which is what actually holds the connector: 27.00 tip to tip,
-# 6.13 across and 3.20 thick, bearing on the inside face either side of the
-# cutout. The rear body behind it is the 15.50 x 8.10 of the XT60 shell.
-xt60PanelEarSpan = 27.0
-xt60PanelEarWidth = 6.13
-xt60PanelEarThickness = 3.2
-xt60PanelBodyWidth = 15.5
-xt60PanelBodyDepth = 5.1
-# How far the connector reaches either side of the wall it is bolted to. Outboard
-# is the nose the key goes onto, measured from the wall's OUTER face; inboard is
-# the ear plate and the rear body, measured from its inner face.
-xt60PanelOutboardDepth = 6.0
-xt60PanelInboardDepth = 8.3
+# 12 mm AND NOT 16. A 16 mm anti-vandal switch is the part anybody reaches for
+# and the common ones are 21 to 27 mm behind the panel, which does not clear
+# 21.4 with anything to spare. A 12 mm one is 17 to 20, so it fits with a
+# couple of millimetres in hand. THE BODY DEPTH BELOW IS A CLASS FIGURE AND NOT
+# A PART'S: it is what the reservation is drawn to, and the first thing to
+# measure on a real switch. If a measured part is deeper than 18 mm this station
+# still works up to 21.4 and nothing beyond that does.
+#
+# M12 x 1 is the thread, the hole is that plus two tenths, and the nut is
+# reserved at 17 mm across corners, which errs large for an M12. The button
+# stands 10 mm proud, which covers the bushing left outside the wall and the
+# actuator on top of it.
+buttonHoleDiameter = 12.2
+buttonNutDiameter = 17.5
+buttonNutDepth = 3.0
+buttonBodyDepth = 16.0
+buttonOutboardDepth = 6.0
+# What the sweep found behind this wall, kept as a dimension because it is the
+# thing that chose the station and the thing a bigger switch would have to be
+# checked against. tools/gate_f.py measures it on the built scene.
+buttonClearDepth = 21.4
 
 # THE CHARGE INLET IS AN AMASS XT60E-F, the female twin of the disconnect's
 # XT60E-M, September 2026. It was a GX16-2 before that and an XT30 before that.
@@ -664,7 +658,7 @@ antennaOutboardDepth = 8.0
 # change. Move one station and all three want re-checking -- tools/gate_f.py
 # measures the lot.
 panelHardwareZ = 22.0
-disconnectPanelX = 18.0
+buttonPanelX = -44.0
 chargeSocketPanelX = 55.5
 antennaPanelX = -8.0
 # Negative Y is the rear: the foot's front pressure pads sat at y = +51 and its
@@ -683,11 +677,11 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
     """
     return [
         (
-            "XT60E-M disconnect",
-            disconnectPanelX,
+            "on/off button",
+            buttonPanelX,
             panelHardwareZ,
-            xt60PanelCutWidth,
-            xt60PanelCutHeight,
+            buttonHoleDiameter,
+            buttonHoleDiameter,
         ),
         (
             "XT60E-F charge socket",
@@ -703,30 +697,6 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
             antennaHoleDiameter,
             antennaHoleDiameter,
         ),
-    ]
-
-
-def disconnectFlangeFixings() -> list[tuple[float, float]]:
-    """The XT60E-M's two ear screws, in the pelvis's own x and z.
-
-    They are clearance holes and nothing else: the screw head takes the wall on
-    the outside, the connector's own ear plate sits against the inside face, and
-    a nut behind the ear takes the load, so 2.4 mm of wall is CLAMPED rather
-    than threaded. That is the whole difference between this and the panel it
-    replaced, which needed six millimetres of printed plate to tap into.
-
-    M2, AND THE NUT IS WHY. Each ear hole is 2.25 mm from the side of the
-    connector's own body, and the nut sits in that gap: an M2's flats clear it by
-    a quarter of a millimetre, where an M2.5 fouls it by the same, and the body
-    then holds the nut square so the screw is turned from outside. The wall
-    keeps 1.45 mm between each screw and the nose cutout. The connector's own
-    holes are 3.00, which leaves an M2 half a millimetre of adjustment each side
-    -- the cutout, not the screws, is what locates the part.
-    """
-    half = xt60PanelFixingPitch / 2
-    return [
-        (disconnectPanelX - half, panelHardwareZ),
-        (disconnectPanelX + half, panelHardwareZ),
     ]
 
 
@@ -755,13 +725,17 @@ def chargeSocketFixings() -> list[tuple[float, float]]:
 # for ever charging this pack in place.
 #
 # WIRED CHARGE-ONLY, WHICH IS WHY A SMALL BOARD WILL DO. The discharge path stays
-# exactly as it is -- pack to disconnect to fuse to distribution board -- and the
+# exactly as it is -- pack to the switch board's fuse and MOSFETs to the
+# distribution board -- and the
 # BMS sees only the charge current, about 2.2 A at 1C. A common-port BMS carrying
 # the whole bus would need 30 to 40 A of FET dissipating into a sealed box that
 # already has the BEC's 3 W in it, and no board of that size fits this torso
 # anyway. The cost of the choice is honest and worth stating: NO OVER-DISCHARGE
-# CUTOFF. The pack can still be flattened by leaving the robot switched on, and
-# the main disconnect is still what prevents that.
+# CUTOFF OF ITS OWN. The pack can still be flattened by leaving the robot
+# switched on, and since September 2026 what prevents that is the power switch
+# board's hardware cutoff at 19.2 V rather than a hand on a loop key -- a
+# PACK-level cutoff, where this board sees each cell and cannot act on the
+# discharge path at all. A single weak cell falls between the two of them.
 #
 # WHERE IT GOES, AND IT IS THE LAST FREE COLUMN IN THIS TORSO. The gap between
 # the battery bay and the power bay is 15.1 mm of slack nobody chose -- the shell
@@ -1020,6 +994,130 @@ harnessDepth = 5.75
 harnessHeight = 12.8
 
 
+# ---- the power switch board, over the distribution board ---------------------
+#
+# A SECOND BOARD OF OUR OWN, September 2026, and electrical/power.py says what is
+# on it: the main fuse, the bus shunt and a MOSFET switch that is the robot's
+# on/off and its low-battery cutoff. It sits in the pack's positive lead between
+# the pack and the distribution board, which is why it is down here in the power
+# bay rather than on the deck with the carrier. SINCE THE LOOP KEY WENT it is
+# the only thing in that lead: the pack's own connector, mated inside the shell,
+# is what makes and breaks it now.
+#
+# WHERE IT GOES IS DIRECTLY OVER THE BOUGHT BOARD, covering it exactly: the
+# outline below is that board's own 50 x 50 footprint, 8 mm above it, which is
+# over its XT60 input socket and clears the plug that goes into it by half a
+# millimetre. It held the rear half of the bay and the capacitor bank held the
+# front until the bank's reservation was cut to what the bill buys; the note
+# further down says where that area came from.
+#
+# HOW IT IS HELD. Four M3 self-tapping screws from above, which is the only
+# direction a screwdriver has in this bay: each goes through this board, an 8 mm
+# spacer and the distribution board into the printed post that already carries
+# that board's corner. They are the bought board's own four screws, made longer,
+# so this board costs the print nothing at all.
+#
+# 8 mm OF SPACER is what clears the bought board's own solder joints and the
+# motor leads leaving them, and it is as much as the deck above allows: the
+# tallest parts on this board are the two TO-220 switches, 18.8 mm over it.
+#
+# TEN WAS TRIED WHEN THE BOARD WENT THROUGH-HOLE and it is worse. A trimmed lead
+# hangs about 2 mm under the board and the bought board's XT60 input socket
+# stands to within half a millimetre of the underside, so at 8 mm nothing with a
+# lead may stand over that socket. Ten clears it -- and takes two millimetres off
+# the far side, where the pack's own connectors hang 7.4 mm over this board and
+# an upright resistor is 5.5. That trade buys 180 mm2 of board at one end and
+# spends the inboard column at the other, and it leaves 1 mm over the switches
+# instead of 3. So the socket stays a keepout, and electrical/power_pcb.py takes
+# its rectangle from bus_input_socket_box() below.
+powerSwitchSpacer = 8.0
+powerSwitchSpacerDiameter = 6.0
+powerSwitchBoardZ = pdbTopZ + powerSwitchSpacer
+# The bank stands on THIS board now, not on the bought one: a can on the bought
+# board would be 16 mm tall under a board whose underside is 8 mm above it.
+capacitorZ = round(powerSwitchBoardZ + pcbThickness, 6)
+# IT IS THE BOUGHT BOARD'S OWN FOOTPRINT, September 2026, and it was a 54 x 32.5
+# rectangle over the rear half of that board until this file's second pass. Two
+# things drove the change and the second is the interesting one.
+#
+# THE BOARD WENT FROM SURFACE MOUNT TO THROUGH-HOLE, so that it can be built by
+# hand with an iron, and a through-hole part wants about half again the area of
+# the surface-mount one it replaces. The four-terminal shunt is the extreme case:
+# the original axial placeholder was later replaced by the real PBV-F1 part.
+#
+# AND THE CAPACITOR BANK HAD RESERVED FOUR TIMES WHAT IT BUYS. The bank was drawn
+# as four cans of 16 x 25 across the whole front of this bay while the bill
+# specifies TWO Panasonic EEU-FR1V471B, which are 10 x 16. Those two cans stand on
+# THIS board now, on the bus copper that feeds them, and the strip they used to
+# reserve is board. That is where the area came from, and it is why this change
+# costs the robot nothing: the outline lands exactly on the bought board under it.
+#
+# WHICH BUYS THE MOUNT AS WELL, on the bought board's own four screws as above.
+# The wall pad that used to stop a two-screw board turning about its own edge is
+# gone with it, and so is the only printed material this board ever cost.
+powerSwitchRightX = round(powerX + (pdbWidth / 2), 6)
+powerSwitchLeftX = round(powerX - (pdbWidth / 2), 6)
+powerSwitchRearY = pdbY - (pdbDepth / 2)
+powerSwitchFrontY = pdbY + (pdbDepth / 2)
+
+
+def power_switch_outline() -> list[tuple[float, float]]:
+    """The board's edge, anticlockwise from its rear inboard corner, torso x and y."""
+    return [
+        (powerSwitchLeftX, powerSwitchRearY),
+        (powerSwitchRightX, powerSwitchRearY),
+        (powerSwitchRightX, powerSwitchFrontY),
+        (powerSwitchLeftX, powerSwitchFrontY),
+    ]
+
+
+def power_switch_screw_xy() -> list[tuple[float, float]]:
+    """All four of the bought board's screws, made longer to carry this one too."""
+    return [
+        (powerX + sx * (pdbHolePitch / 2), pdbY + sy * (pdbHolePitch / 2))
+        for sx in (-1, 1)
+        for sy in (-1, 1)
+    ]
+
+
+# WHERE THE TALL PARTS STAND, and they are the only parts this file places: the
+# torso decides where a TO-220 or a plugged connector can go, so the stations are
+# here and electrical/power_pcb.py reads them, and everything under 2 mm tall is
+# placed there around them. (x, y, KiCad rotation), in torso coordinates.
+#
+#   P1  the pack's positive in, soldered through, where the pack's own lead
+#       comes down behind the bay
+#   F1  the fuse, in a mini-blade holder, with its blade clear of the pack leads'
+#       chase over the rear corner
+#   Q1  the two switches in a row with their sources meeting in the middle, so one
+#   Q2  pour behind them feeds both and one in front takes both drains
+#   R1  PBV-F1 shunt, four inline terminals spanning 17.78 mm; 20.7 mm high
+#   P2  the switched bus out, on the inboard side where the distribution board's
+#       input is
+#   P3  ground in, a 22 AWG lead
+#   C5  the bulk bank, two cans on the bus copper they damp -- they stood on the
+#   C6  bought board until this board covered it
+#   J3  the button, J1 the shunt's sense pair and J2 both holds, along the front
+#
+# NOTHING TALLER THAN 7.4 mm GOES INBOARD OF x 29.6 below y 4, because that is
+# where the pack's own XT60s hang over this board. electrical/power_pcb.py
+# measures every part against the drawn torso rather than trusting this note.
+powerSwitchStations = {
+    "P1": (33.0, -21.5, 0),
+    "F1": (41.0, -19.5, 0),
+    "Q1": (50.0, -15.0, 0),
+    "Q2": (66.08, -15.0, 180),
+    "R1": (62.2, -7.0, 180),
+    "P2": (34.8, -7.5, 0),
+    "P3": (28.0, -18.0, 0),
+    "C5": (33.0, 3.0, 0),
+    "C6": (44.0, 3.0, 0),
+    "J3": (34.0, 20.5, 0),
+    "J1": (44.0, 20.5, 0),
+    "J2": (54.5, 20.5, 0),
+}
+
+
 # ---- the boards themselves --------------------------------------------------
 #
 # Every one of these is a stand-in for a bought board, pack or connector, drawn
@@ -1114,6 +1212,128 @@ def distributionBoard():
     return blank
 
 
+def _bus_input_socket_slab():
+    """The bought board's XT60 input: width, depth, height and where it stands."""
+    return (
+        xt60Width,
+        xt60Length,
+        xt60Height,
+        powerX - (pdbWidth / 2) + (xt60Width / 2) + 2.0,
+        pdbY - 8.0,
+        pdbTopZ,
+    )
+
+
+def bus_input_socket_box() -> tuple[float, float, float, float]:
+    """That socket's footprint in x and y, and how far under the power board it
+    reaches.
+
+    NAMED BECAUSE TWO FILES NEED IT. The group above draws it; electrical/
+    power_pcb.py keeps the power switch board's through-hole leads out of it,
+    because this socket stands to within half a millimetre of that board's
+    underside and a trimmed lead is 2 mm long. A part with a drilled pad over
+    this rectangle is a part whose leads land inside the socket.
+    """
+    width, depth, height, atX, atY, atZ = _bus_input_socket_slab()
+    return (atX - width / 2, atY - depth / 2, atX + width / 2, atY + depth / 2)
+
+
+def bus_input_socket_top() -> float:
+    width, depth, height, atX, atY, atZ = _bus_input_socket_slab()
+    return atZ + height
+
+
+def powerSwitchBoard():
+    """The power switch board on its own, so its three holes can be counted.
+
+    A plain rectangle with its screw holes cut and nothing unioned back on, for
+    the reason every board here is drawn that way: tools/gate_e.py counts the
+    holes on the finished solid, and a component unioned over one would fill it
+    in with nothing else to report it.
+    """
+    width = powerSwitchRightX - powerSwitchLeftX
+    depth = powerSwitchFrontY - powerSwitchRearY
+    blank = Pos(
+        (powerSwitchLeftX + powerSwitchRightX) / 2,
+        (powerSwitchRearY + powerSwitchFrontY) / 2,
+        powerSwitchBoardZ,
+    ) * Box(width, depth, pcbThickness, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    for atX, atY in power_switch_screw_xy():
+        blank -= Pos(atX, atY, powerSwitchBoardZ + (pcbThickness / 2)) * Cylinder(
+            m3Clearance / 2, pcbThickness * 3
+        )
+    return blank
+
+
+# WHAT EACH TALL PART ON THAT BOARD OCCUPIES, in its own unturned frame: width
+# across the robot, depth fore and aft, height above the board's top face, and
+# where its centre sits from the station electrical/power_pcb.py places it by --
+# which for a footprint is its first pin, not its middle.
+#
+# EVERY FIGURE IS A CATALOGUE ONE or is KiCad's own 3D model of the part, which
+# is the same rule the rest of this file follows for a bought part: a TO-220
+# standing on its leads is 18.8 mm tall and 10 wide, a mini blade fuse stands
+# 9 mm over a 7.4 mm holder, and a JST-XH with its plug in and 3 mm for the wires
+# to leave is 12.8 -- the figure the controller carrier already uses.
+powerSwitchBodies = {
+    "P1": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
+    "P2": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
+    "P3": [(2.3, 2.3, 6.0, 0.0, 0.0, 0.0)],
+    "F1": [
+        (16.0, 6.74, 7.37, 4.96, -1.7, 0.0),
+        (10.9, 3.8, 9.0, 4.96, -1.7, 7.37),
+    ],
+    "Q1": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
+    "Q2": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
+    # PBV-F1: 22.5 x 4.45 body, 17.5 tall plus 3.2 lead shoulder allowance.
+    # Four inline pins at 0, 5.08, 12.70, 17.78 mm; outer pins carry current.
+    "R1": [(22.5, 4.45, 20.7, 8.89, 0.325, 0.0)],
+    "J1": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
+    "J2": [(13.4, 6.75, 12.8, 3.75, -0.525, 0.0)],
+    "J3": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
+}
+
+# The bank's two cans, drawn round rather than as slabs because they are round and
+# because they are the only round thing in this torso. They stand at their own
+# stations above, on the lead nearest the station -- a radial can is placed by its
+# first lead like every other footprint here, and its body is centred half a lead
+# pitch along from it.
+capacitorRefdes = ("C5", "C6")
+
+
+def powerSwitchParts() -> list:
+    """The parts on that board tall enough for the torso to care about.
+
+    Not all of them, and not the bank: everything under about 9 mm is left to
+    electrical/power_pcb.py, which measures the real footprints against the
+    drawn torso. These are the stand-ins that let the packing be looked at
+    without running that.
+
+    THE SMALL PARTS ARE NO LONGER 2 mm PROUD. This board was surface mount until
+    September 2026 and is through-hole now, so its resistors and diodes stand on
+    end and its tallest small part is a 9 mm can. That matters in exactly one
+    place -- the inboard column, where the pack's connectors leave 7.4 mm -- and
+    it is checked there rather than assumed.
+    """
+    out = []
+    for refdes, (atX, atY, rotation) in powerSwitchStations.items():
+        if refdes not in powerSwitchBodies:
+            continue
+        turn = -1 if rotation == 180 else 1
+        for width, depth, height, dx, dy, dz in powerSwitchBodies[refdes]:
+            out.append(
+                slab(
+                    width,
+                    depth,
+                    height,
+                    atX + turn * dx,
+                    atY + turn * dy,
+                    powerSwitchBoardZ + pcbThickness + dz,
+                )
+            )
+    return out
+
+
 def controllerCarrierBoard():
     """The controller carrier on its own, so its holes can be counted.
 
@@ -1185,7 +1405,7 @@ def batteryPacks() -> list:
 # ---- what each group is, as a thing you can buy ------------------------------
 #
 # WHAT THE PARENTHESIS IN A TREE NODE MEANS. cad/scenes.py and tools/view.py name
-# every payload body by what it IS -- "distribution board", "main disconnect" --
+# every payload body by what it IS -- "distribution board", "on/off button" --
 # and that is the right name for a clearance to be reported against, but it is
 # not the name on an order. This table is the other half: the designation that
 # identifies the part, so a tree node reads "distribution board (SwiftWing
@@ -1221,11 +1441,13 @@ partNumbers = {
     "distribution board": "SwiftWing PDB-02-XT60",
     "distribution board standoffs": "M3 brass, 6 mm A/F x 3 mm",
     "bus input socket": "AMASS XT60, factory-fitted",
-    "capacitor bank": "not sized",
-    "fuse holder": "automotive blade, rating not set",
+    "capacitor bank": "2 x Panasonic EEU-FR1V471B, 470 uF 35 V -- bank not sized",
+    "power switch board": "ours -- 50 x 50 mm two-layer PCB, electrical/power_pcb.py",
+    "power switch parts": "the fuse, the shunt and the switch -- electrical/power.py",
+    "power switch spacers": "M3 nylon spacer, 6 mm across x 8 mm, on M3 x 20 self-tapping",
     "bus monitor": "INA226, external shunt",
     "logic BEC": "Matek BEC12S-PRO",
-    "main disconnect": "AMASS XT60E-M panel mount, with a bridged XT60 loop key",
+    "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
     "charge socket": "AMASS XT60E-F panel mount, socket contacts",
     "antenna bulkhead": "SMA or RP-SMA bulkhead jack on a u.FL pigtail",
     "controller standoffs": "M3 brass, 6 mm A/F x 3 mm",
@@ -1318,16 +1540,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
         "distribution board": [distributionBoard()],
         # The pack's own socket, on the board's inboard edge where the leads from
         # the battery reach it.
-        "bus input socket": [
-            slab(
-                xt60Width,
-                xt60Length,
-                xt60Height,
-                powerX - (pdbWidth / 2) + (xt60Width / 2) + 2.0,
-                pdbY - 8.0,
-                pdbTopZ,
-            )
-        ],
+        "bus input socket": [slab(*_bus_input_socket_slab())],
         # The pack's own two XT60s and the link between them. They used to stand
         # in the lead chase beside the battery; the bought board took that width,
         # so they live here instead, in the air above the fuse and the monitor.
@@ -1345,25 +1558,53 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 packLeadZ + xt60Height + 0.5,
             )
         ],
+        # THE PACK'S MAIN LEAD, and where it goes changed twice in September
+        # 2026. It used to run across this bay to the fuse; the fuse moved onto
+        # the power switch board, and the positive then rose through the deck's
+        # rear notch to the loop key above and came back down to that board's
+        # input pad. WITH THE LOOP KEY GONE IT DOES NOT LEAVE THIS BAY AT ALL:
+        # it runs from the pack's own XT60 straight to the board's input pad,
+        # and this chase is the part of it that crosses the bay in free air.
         "battery main leads": [
             slab(
-                abs(panelX - (powerX - 21.0)) + 6.0,
+                abs(31.0 - (powerX - 21.0)) + busWireDiameter,
                 busWireDiameter,
                 busWireDiameter,
-                (panelX + powerX - 21.0) / 2,
+                (31.0 + powerX - 21.0) / 2,
                 -24.0,
                 packLeadZ + xt60Height + 1.0,
             )
-            for _ in (0,)
         ],
-        # Four cans in a row along the board's forward edge. STILL NOT SIZED --
-        # cad/wheeled_parameters.py and tools/mass_budget.toml both say so, and
-        # buying the board underneath them did not change that.
+        # The two cans the bill buys, standing on the power switch board. THIS
+        # WAS FOUR RESERVED POSITIONS OF 16 x 25 until September 2026, against a
+        # bill that has specified two 10 x 16 cans since the day it named a part.
+        # STILL NOT SIZED -- cad/wheeled_parameters.py and tools/mass_budget.toml
+        # both say so, and neither shrinking the reserve nor moving the cans onto
+        # our own board changed that. What changed is that the reserve is now the
+        # size of the parts in it.
         "capacitor bank": [
-            can(capacitorDiameter, capacitorHeight, powerX + dx, pdbY + 16.0, pdbTopZ)
-            for dx in (-17.0, -5.7, 5.7, 17.0)
+            can(
+                capacitorDiameter,
+                capacitorHeight,
+                powerSwitchStations[refdes][0] + capacitorPitch / 2,
+                powerSwitchStations[refdes][1],
+                capacitorZ,
+            )
+            for refdes in capacitorRefdes
         ],
-        "fuse holder": [slab(20.0, 10.0, 14.0, powerX + 12.0, pdbY + 2.0, pdbTopZ)],
+        # ---- the power switch board, on the bought board's own rear screws ----
+        #
+        # THE FUSE HOLDER USED TO BE HERE, a 20 x 10 x 14 block taped to the
+        # bought board's top face. It is a part ON this board now -- a mini blade
+        # holder soldered into it -- and so are the shunt, which had no mount at
+        # all, and the MOSFET switch, which had no home in the CAD because the
+        # bill had never bought one.
+        "power switch spacers": [
+            standoff(powerSwitchSpacerDiameter, powerSwitchSpacer, atX, atY, pdbTopZ)
+            for atX, atY in power_switch_screw_xy()
+        ],
+        "power switch board": [powerSwitchBoard()],
+        "power switch parts": powerSwitchParts(),
         # ON THE CONTROLLER CARRIER, September 2026, on two M2 screws with nuts
         # for standoffs. It lay on the distribution board held by tape, then hung
         # from the deck, then sat on two pads off the rear wall; the dimension
@@ -1401,56 +1642,42 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # mount does and because both halves matter: what is outside decides
         # whether a hand can reach it, and what is inside is what everything in
         # the cavity has to keep clear of. The wall's outer face is the datum.
-        # THE DISCONNECT IS THREE BODIES AND NOT ONE, because the XT60E-M is
-        # three different sections along its axis and drawing it as one prism at
-        # the cutout's size is exactly the mistake this wall has already made
-        # once: the XT90E-M stood here as a 25 x 16 slab, which is neither its
-        # flange nor its body, and tools/gate_f.py measured that slab instead of
-        # the part. The nose is what stands outside, the ear plate is what bears
-        # on the inside face, and the rear body with its solder tabs is what the
-        # cavity has to keep clear of.
-        "main disconnect": [
-            # The nose, from where a hand reaches it to the wall's inner face.
-            slab(
-                xt60PanelNoseWidth,
-                xt60PanelOutboardDepth + shellWall,
-                xt60PanelNoseHeight,
-                disconnectPanelX,
-                outerWallY - (xt60PanelOutboardDepth / 2) + (shellWall / 2),
-                panelHardwareZ - (xt60PanelNoseHeight / 2),
+        # THE BUTTON IS A BUSHING, A NUT AND A BODY, drawn the antenna's way
+        # rather than the disconnect's: it needs no screws, so the only things
+        # here are what a hand reaches outside and what the cavity has to keep
+        # clear of inside. The body figure is a class reservation and not a
+        # measured part -- cad/electronics.py's block above says so, and says
+        # what the wall behind it will take before something is in the way.
+        "on/off button": [
+            # The actuator a thumb reaches, standing off the OUTER face. It is
+            # the nut's diameter and not the thread's, which is why it is drawn
+            # outside the wall rather than through it: a dome the size of the
+            # nut passed through a 12.2 hole would share volume with the shell,
+            # and tools/gate_f.py says so.
+            _bulkhead(
+                buttonNutDiameter,
+                buttonOutboardDepth,
+                buttonPanelX,
+                outerWallY - (buttonOutboardDepth / 2),
+                panelHardwareZ,
             ),
-            # The ear plate, flat against the inside face.
-            slab(
-                xt60PanelEarSpan,
-                xt60PanelEarThickness,
-                xt60PanelEarWidth,
-                disconnectPanelX,
-                innerWallY + (xt60PanelEarThickness / 2),
-                panelHardwareZ - (xt60PanelEarWidth / 2),
+            # The thread through the wall and the body and terminals behind it,
+            # which is what the sweep behind this wall was run for.
+            _bulkhead(
+                buttonHoleDiameter,
+                shellWall + buttonBodyDepth,
+                buttonPanelX,
+                outerWallY + ((shellWall + buttonBodyDepth) / 2),
+                panelHardwareZ,
             ),
-            # The rear body and its solder tabs, which is what reaches furthest
-            # into the cavity and what the SBC in front of it has to clear.
-            slab(
-                xt60PanelBodyWidth,
-                xt60PanelBodyDepth,
-                xt60Width,
-                disconnectPanelX,
-                innerWallY + xt60PanelEarThickness + (xt60PanelBodyDepth / 2),
-                panelHardwareZ - (xt60Width / 2),
+            # Its nut, clamping the inside face.
+            _bulkhead(
+                buttonNutDiameter,
+                buttonNutDepth,
+                buttonPanelX,
+                innerWallY + (buttonNutDepth / 2),
+                panelHardwareZ,
             ),
-            # Its two nuts, on the back of the ear plate beside the body -- the
-            # quarter of a millimetre between them is why these screws are M2.
-            *[
-                slab(
-                    m2NutAcrossFlats,
-                    m2NutThickness,
-                    m2NutAcrossFlats,
-                    atX,
-                    innerWallY + xt60PanelEarThickness + (m2NutThickness / 2),
-                    atZ - (m2NutAcrossFlats / 2),
-                )
-                for atX, atZ in disconnectFlangeFixings()
-            ],
         ],
         # The charge inlet, on the BMS's charge input ahead of the disconnect. It
         # is the only connector here that is not part of running the robot, and
