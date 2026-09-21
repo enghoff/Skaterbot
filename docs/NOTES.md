@@ -2500,3 +2500,24 @@ and the monitor's IN+ and IN− behind it are floating — link them to ground a
 plug rather than revising a board already at a checked fabrication release. And
 the standing instruction to lift the INA226 breakout's own R100 is withdrawn: it
 existed only to keep that 0.1 Ω out of parallel with the external Kelvin pair.
+
+## 2026-09-21 - Power-board C1 reset
+
+Replaced the slow R24 reset path with Q5/R25/R26 and a source-to-gate C7.
+The board remains through-hole and the current shunt remains deleted. The
+original soft-start timing components remain; D2 and D8 now use BAT46.
+`electrical/power_reset.py` reproduces the old cold-start failure and passes
+26 revised cold-start/restart cases in a simplified ngspice model. Maximum
+modeled capacitor charging current is 1.419 A. Turn-off is 0.785 ms nominal
+and 5.557 ms in the additional adverse case; the old microsecond claim was
+invalid and is removed. Loaded switching SOA and temperature/leakage limits
+remain unverified, as do the separate held-button UVLO and regeneration issues.
+
+The schematic passes netlist comparison and ERC. The board has 111 tracks,
+67 vias, zero DRC errors and zero unconnected nets; 13 silkscreen warnings
+remain. Placement clears the torso geometry. The project build and mass check
+pass: +2 g unweighed component allowance, total 2077.4 g against 2300 g.
+See POWER_SWITCH.md for component sources and the regression's limits.
+
+The broader mechanical clearance suite also passes: gate F, 850 checks,
+including 741 body pairs with no shared volume.

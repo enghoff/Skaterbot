@@ -62,17 +62,17 @@ controller or by the board itself when the pack falls too far.
    whichever comes first. It is then latched off, because everything that could
    hold it on has just lost its supply. Only the button starts it again.
 
-Switching off is fast even though switching on is slow: a diode takes the
-soft-start capacitor out of circuit when the gates rise, so the transistor that
-pulls them up drives 56 mA into them and the switch is through its linear region
-in under two microseconds.
+The active C1 reset uses Q5 to restore the Miller node and C7 to hold the gates
+near their sources while that happens. D8 isolates a falling bus. Turn-off is
+checked with a transient model: the old sub-2 microsecond claim ignored Q4's
+falling base drive and was not a valid bound.
 
 ## Every part on it is through-hole
 
 **Nothing on this board is surface mount**, which is the whole of its second
 pass: it is a board a person can place by hand, solder with an iron and read
 with their eyes. The resistors and the diodes **stand on end** on a 2.54 mm
-pitch, the comparator is a DIP-8, the reference and the two small transistors
+pitch, the comparator is a DIP-8, the reference and the three small transistors
 and the transistors are TO-92.
 
 Standing the passives up is the one choice here that is not the obvious one, and
@@ -133,13 +133,13 @@ than described beside them**, so changing a resistor changes the answer:
 | button | held about 0.4 s from a full pack, 0.8 s from a tired one |
 | hold | 0.97 s after the last hold input drops |
 | gate drive | −10.3 V at an 18 V bus, clamped to −15 at 30 |
-| soft start | 192 V/s, 131 ms, about 0.30 A into the bank |
-| switch off | 56 mA of gate pull-up, 1.5 µs through the plateau |
+| soft start | 193 V/s, 130 ms, about 0.30 A into the bank |
+| switch off | See the C1 reset transient results below; loaded MOSFET SOA unverified |
 | the switch | 1.58 W per MOSFET at a sustained 24 A; 21 A continuous at 50 °C ambient |
 
 The run fails if the cutoff leaves 3.05–3.35 V per cell, if the hold is outside
 0.5–2 s, if the gate drive falls under the −10 V the MOSFET's on-resistance is
-specified at, if the inrush exceeds 2 A, if switching off takes more than 10 µs,
+specified at, if the calculated inrush exceeds 2 A,
 if a resistor is asked for more than half its quarter watt, or if any part sees
 more than 85 % of its voltage rating at a 30 V bus.
 
@@ -391,3 +391,54 @@ rather than leaving them so, which is a wire at the plug rather than a change to
 a board already at a checked fabrication release. And the instruction to lift the
 INA226 breakout's own R100 is withdrawn — it existed only to stop that 0.1 Ω
 sitting in parallel with the external Kelvin pair, and there is no longer a pair.
+
+## Active C1 reset, 2026-09-21
+
+The old 10 Mohm R24 / 220 nF C1 reset had a 2.2 s time constant. A cold
+connection with the button held, or a brief off/on cycle, could turn the
+MOSFETs on before C1 recovered. R24 is now removed. Q5, a BC546B emitter
+follower, restores MILLER toward GATE minus one base-emitter drop. Its base
+comes from GATE through R25 (10 kohm), and its collector from VSRC through
+R26 (1 kohm, 1 W). Q5 stops conducting during the rising Miller ramp.
+C7 (2.2 uF film) connects VSRC to GATE and delays turn-on while C1 resets.
+D2 and D8 are now BAT46 Schottky diodes to reduce the recovery voltage gap.
+The original R2, R5 and C1 values are retained. Nominal plateau slew is
+193 V/s, about 130 ms and 0.30 A into 1540 uF, excluding the initial gate delay.
+
+All added parts are through-hole. C7 is WIMA MKS2C042201K00KSSD, 2.2 uF
++/-10%, 63 V, 7.2 x 7.2 x 13 mm with 5 mm pitch; the layout reserves 13.5 mm
+height. It occupies space released by the deleted shunt connector. R26 is a
+Vishay PR01 1 kohm 1 W axial part, in a DIN0207 vertical footprint. Sources:
+[WIMA MKS2](https://wima.de/wp-content/uploads/media/e_WIMA_MKS_2.pdf),
+[Vishay PR01](https://www.vishay.com/docs/28729/pr010203.pdf),
+[BC546B](https://www.onsemi.com/pdf/datasheet/bc546-d.pdf),
+[BAT46](https://www.vishay.com/docs/85662/bat46.pdf).
+
+Run `uv run electrical/power_reset.py` for the ngspice regression. It checks
+model connections against the actual netlist and reads the timing values from
+power.py. It reproduces the original cold-start failure, then passes 26 revised
+cases: 18/25.2/30 V; 0.1-100 ms OFF gaps; 1 ohm load; 2200 uF bus capacitance;
+C1 +20%, C7 -20%, BJT gain 50, MOSFET threshold 1.5 V; plus nominal light
+load and the opposite capacitor corner. Each run checks completed initial and
+repeat startup, capacitor charging current, gate voltage, and complete turn-off
+for longer OFF requests. Very short requests need not fully disconnect the load.
+
+Maximum modeled capacitor charging current is 1.419 A. Nominal light-load
+turn-off is 0.785 ms; the additional adverse turn-off case is 5.557 ms.
+The old microsecond turn-off claim has been removed. These are simplified
+semiconductor models at nominal temperature, NOT qualified manufacturer models
+or a guaranteed hardware inrush limit. Loaded startup/turn-off SOA, temperature
+and leakage margins, and constant-power loads remain unverified. The held-button
+UVLO override and regeneration clamp remain separate open issues.
+
+Mass allowance increases by 2 g for the reset components, to 30 g for this
+board and 2077.4 g for the robot, with 222.6 g below the 2300 g ceiling.
+The allowance is unweighed. The shunt and current sensing remain removed.
+
+Verification: schematic netlist comparison and ERC pass (52 parts, 115 pins,
+26 nets). The regenerated PCB has 111 tracks and 67 vias; DRC reports zero
+errors, zero unconnected nets, and 13 silkscreen warnings. Component and lead
+clearance checks pass; minimum reported lead clearance is 0.60 mm.
+
+The broader mechanical clearance suite also passes: gate F, 850 checks,
+including 741 body pairs with no shared volume.

@@ -88,6 +88,8 @@ SYMBOL_OF = {
     "Q2": "Transistor_FET:Q_PMOS_GDS",
     "Q3": "Transistor_BJT:BC546",
     "Q4": "Transistor_BJT:BC546",
+    "Q5": "Transistor_BJT:BC546",
+    "C7": "Device:C",
     "U1": "Comparator:LM393",
     "U2": "Reference_Voltage:TL431LP",
     "C1": "Device:C",
@@ -97,9 +99,9 @@ SYMBOL_OF = {
     "C5": "Device:C_Polarized",
     "C6": "Device:C_Polarized",
     "D1": "Device:D_Zener",
-    "D2": "Device:D",
+    "D2": "Device:D_Schottky",
     "D3": "Device:D",
-    "D8": "Device:D",
+    "D8": "Device:D_Schottky",
     "D4": "Device:D_Schottky",
     "D5": "Device:D_Schottky",
     "D6": "Device:D_Schottky",
@@ -107,7 +109,7 @@ SYMBOL_OF = {
     "J3": "Connector_Generic:Conn_01x02",
     "J2": "Connector_Generic:Conn_01x04",
 }
-SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 25)})
+SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 27) if n != 24})
 
 
 # ---- where each part stands, and which way up --------------------------------------
@@ -152,7 +154,10 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     "D1": [(1, 48.26, 129.54, 270, None)],
     "C1": [(1, 68.58, 129.54, 0, "x")],
     "D8": [(1, 76.20, 142.24, 90, None)],
-    "R24": [(1, 83.82, 129.54, 0, None)],
+    "C7": [(1, 30.48, 228.60, 0, None)],
+    "R25": [(1, 63.50, 228.60, 90, None)],
+    "Q5": [(1, 91.44, 228.60, 0, None)],
+    "R26": [(1, 93.98, 208.28, 0, None)],
     "R3": [(1, 99.06, 144.78, 180, None)],
     "R4": [(1, 111.76, 144.78, 180, None)],
     "R5": [(1, 129.54, 154.94, 0, None)],
@@ -220,9 +225,10 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
 NET_DRAW: dict[str, dict] = {
     "BATT": {"trunks": [("h", 45.72, ["P1.1", "F1.1"])]},
     "VSRC": {
+        "labels": ["C7.1", "R26.1"],
         "trunks": [
             ("v", 60.96, ["F1.2", "Q1.3", "Q2.3"]),
-            ("h", 114.30, ["R2.1", "D1.1", "R24.1", "R8.1", "Q4.1"]),
+            ("h", 114.30, ["R2.1", "D1.1", "R8.1", "Q4.1"]),
         ],
     },
     "VBUS": {
@@ -238,12 +244,19 @@ NET_DRAW: dict[str, dict] = {
         "labels": ["C1.2"],
     },
     "GATE": {
+        "labels": ["C7.2", "R25.1"],
         "trunks": [
             ("h", 149.86, ["R2.2", "D1.2", "D8.1", "R3.1", "R4.1", "R5.1", "D2.1"])
         ],
     },
     "MILLER": {
-        "trunks": [("h", 138.43, ["C1.1", "R24.2", "D8.2"])],
+        "labels": ["Q5.3"],
+        "trunks": [("h", 138.43, ["C1.1", "D8.2"])],
+    },
+    "RESET_B": {"trunks": [("h", 228.60, ["R25.2", "Q5.2"])]},
+    "RESET_C": {
+        "trunks": [("v", 93.98, ["R26.2", "Q5.1"])],
+        "name_at": (93.98, 217.17, 0),
     },
     "G1": {"labels": ["Q1.1", "R3.2"]},
     "G2": {"labels": ["Q2.1", "R4.2"]},
@@ -331,6 +344,9 @@ NET_DRAW: dict[str, dict] = {
 # nearly right leaves one part mislabelled and nothing to catch it. Every
 # specification power.py uses has to appear here or build() stops.
 VALUE_ON_SHEET = {
+    "WIMA MKS2C042201K00KSSD, 2.2 uF 63 V 10 %, 5 mm pitch": "2.2u 63V",
+    "10 kOhm, 0204 metal film": "10k",
+    "1 kOhm 1 W, PR01 axial": "1k 1W",
     "wire pad, 3.0 mm hole": "14 AWG pad",
     "wire pad, 1.15 mm hole": "22 AWG pad",
     "Keystone 3568 holder + mini (ATM) blade fuse, 20 A to start": "20 A ATM",
@@ -377,6 +393,11 @@ TEXT_CLEARANCE = {
 # commodity parts named by their generic number, and a link to one vendor's copy
 # of a 1N4148 data sheet would be a link, not a provenance.
 DATASHEETS = {
+    "Q5": "https://www.onsemi.com/pdf/datasheet/bc546-d.pdf",
+    "C7": "https://wima.de/wp-content/uploads/media/e_WIMA_MKS_2.pdf",
+    "R26": "https://www.vishay.com/docs/28729/pr010203.pdf",
+    "D2": "https://www.vishay.com/docs/85662/bat46.pdf",
+    "D8": "https://www.vishay.com/docs/85662/bat46.pdf",
     "Q1": "https://www.vishay.com/docs/63444/sqp120p06-6m7l.pdf",
     "Q2": "https://www.vishay.com/docs/63444/sqp120p06-6m7l.pdf",
     "U1": "https://www.ti.com/lit/ds/symlink/lm393.pdf",

@@ -284,6 +284,9 @@ FOOTPRINT_OF = {
     "U2": ("Package_TO_SOT_THT", "TO-92", 6.5),
     "Q3": ("Package_TO_SOT_THT", "TO-92", 6.5),
     "Q4": ("Package_TO_SOT_THT", "TO-92", 6.5),
+    "Q5": ("Package_TO_SOT_THT", "TO-92", 6.5),
+    "C7": ("Capacitor_THT", "C_Rect_L7.2mm_W7.2mm_P5.00mm", 13.5),
+    "R26": ("Resistor_THT", "R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical", 9.0),
     "C1": ("Capacitor_THT", "C_Rect_L7.0mm_W2.5mm_P5.00mm", 8.0),
     "C2": ("Capacitor_THT", "C_Disc_D5.0mm_W2.5mm_P2.50mm", 7.0),
     "C3": ("Capacitor_THT", "CP_Radial_Tantal_D6.0mm_P2.50mm", 9.0),
@@ -356,7 +359,7 @@ EDGE_CLEARANCE = 0.4
 VIA_PAD = 0.8
 VIA_DRILL = 0.4
 HOLE_TO_HOLE = 0.25
-# Round an M3 screw: its head and washer on top, the Ø6 spacer underneath.
+# Round an M3 screw: its head and washer on top, the ÃƒÆ’Ã‹Å“6 spacer underneath.
 SCREW_BODY_KEEPOUT = 4.0
 SCREW_COPPER_KEEPOUT = 3.6
 SCREW_HOLE = e.m3Clearance
@@ -446,7 +449,10 @@ TARGETS: dict[str, tuple[float, float, int]] = {
     "R2": (38.05, -16.3, 0),
     "R3": (42.9, -16.3, 0),
     "R8": (33.2, -13.0, 0),
-    "R24": (38.05, -13.0, 0),
+    "Q5": (38.0, -13.0, 0),
+    "C7": (47.0, 20.0, 180),
+    "R25": (38.0, -10.0, 0),
+    "R26": (48.0, 16.0, 90),
     "D2": (42.9, -13.0, 0),
     # The inboard pocket. Nothing with a lead may stand behind it, over the
     # bought board's own input socket, and nothing over 7.4 mm may stand in it,
@@ -979,8 +985,8 @@ def _track(grid: Grid, run, net: str, width: float):
 # The nets with the least room to find a way through, first. Ground is early
 # rather than late for the same reason: each of its pads is one via from the
 # pour under the board, and a via needs somewhere to sit.
-ROUTE_FIRST = ("GATE", "GND", "VSRC", "VBUS", "EN", "REF")
-PASSES = 4
+ROUTE_FIRST = ("FAST_E", "HOLD_REF", "GATE", "GND", "VSRC", "VBUS", "EN", "REF")
+PASSES = 6
 
 
 def _pins_by_net(parts: list[Placed]) -> dict[str, list[tuple[str, str]]]:
@@ -1084,6 +1090,7 @@ def route(parts: list[Placed], report: Report):
             + [n for n in rest if n not in first]
         )
         tracks, vias, failures, grid = _one_pass(parts, order, by_net)
+        print(f"route pass {attempt + 1}: unfinished {failures}", flush=True)
         copper = sum(
             math.dist(t["points"][i], t["points"][i + 1])
             for t in tracks
@@ -1094,7 +1101,7 @@ def route(parts: list[Placed], report: Report):
             best = (score, tracks, vias, failures, grid)
         if not failures:
             break
-        first = failures + first
+        first = list(dict.fromkeys(failures + first))
     _, tracks, vias, failures, grid = best
     for net in failures:
         report.faults.append(f"{net}: no route found, in {PASSES} orders")

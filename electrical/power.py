@@ -34,7 +34,7 @@ WHAT THE SWITCH DOES, in the order a user meets it:
      pulled through 470 kOhm against a 220 nF Miller capacitor, which slews the
      bus up over about a tenth of a second instead of slamming the capacitor
      bank. A diode takes that capacitor out of circuit when the switch opens,
-     so switching OFF stays fast.
+     and Q5 resets it while C7 delays the next gate turn-on.
   3. The controller boots and drives HOLD high; the SBC may as well. Either one
      is enough, which is what lets the MCU be reflashed by the SBC -- a reset of
      one does not drop the power to the other.
@@ -61,7 +61,7 @@ resistor changes the answer rather than leaving a comment behind.
 NOT ONE PART ON THIS BOARD IS SURFACE MOUNT, and that is the point of its second
 pass: it is a board a person can build with an iron and their eyes. The resistors
 and the diodes stand on end on a 2.54 mm pitch, the comparator is a DIP, the
-reference and the two small transistors are TO-92.
+reference and the three small transistors are TO-92.
 
 PROVENANCE. The MOSFET is Vishay's SQP120P06-6m7L, datasheet S18-0554 rev. A:
 -60 V, 6.7 mOhm max at -10 V and 25 C, 11.0 at 125 C, VGS +/-20 V, Crss 809 pF
@@ -110,7 +110,9 @@ GATE_CLAMP_RANGE = (14.3, 15.8)
 R_GATE_SOURCE = 680e3
 R_GATE_PULL = 470e3
 C_MILLER = 220e-9
-R_MILLER_RESET = 10e6
+C_GATE_SOURCE = 2.2e-6
+R_RESET_BASE = 10e3
+R_RESET_COLLECTOR = 1e3
 R_FAST_OFF_BASE = 47e3
 
 # The comparator and its reference.
@@ -240,13 +242,28 @@ PARTS = [
     Part(
         "D8",
         "lets C1 slow the drain rising and not the switch opening",
-        "1N4148, DO-35",
+        "BAT46 Schottky 100 V, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
-        "R24",
-        "resets C1 between one power-up and the next",
-        "10 MOhm, 0204 metal film",
+        "Q5",
+        "actively resets C1",
+        "BC546B NPN 65 V, TO-92",
+        {"1": "C", "2": "B", "3": "E"},
+    ),
+    Part(
+        "C7",
+        "holds the gates off while C1 resets",
+        "WIMA MKS2C042201K00KSSD, 2.2 uF 63 V 10 %, 5 mm pitch",
+        {"1": "1", "2": "2"},
+    ),
+    Part(
+        "R25", "Q5 base current limit", "10 kOhm, 0204 metal film", {"1": "1", "2": "2"}
+    ),
+    Part(
+        "R26",
+        "Q5 collector current limit",
+        "1 kOhm 1 W, PR01 axial",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -284,7 +301,7 @@ PARTS = [
     Part(
         "D2",
         "Q4's emitter to the gate, one way only",
-        "1N4148, DO-35",
+        "BAT46 Schottky 100 V, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
@@ -442,7 +459,8 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("D1", "1"),
         ("Q4", "1"),
         ("R8", "1"),
-        ("R24", "1"),
+        ("C7", "1"),
+        ("R26", "1"),
     ],
     "VBUS": [
         ("Q1", "2"),
@@ -468,13 +486,17 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("D8", "1"),
         ("R5", "1"),
         ("D2", "1"),
+        ("C7", "2"),
+        ("R25", "1"),
     ],
     # THE MILLER NODE. While the drain rises, C1 pushes current through D8 into
     # the gates and holds the slew to what R5 can pull against it. When the
     # drain falls, D8 blocks, so Q4 is not fighting 220 nF to turn the switch
-    # off. R24 lifts the node back to the source afterwards; without it the
-    # capacitor would stay charged and the next power-up would not be soft.
-    "MILLER": [("C1", "1"), ("D8", "2"), ("R24", "2")],
+    # off. Q5 restores MILLER toward GATE minus one VBE. C7 slows the next
+    # gate fall while this happens, including connection with ON already held.
+    "MILLER": [("C1", "1"), ("D8", "2"), ("Q5", "3")],
+    "RESET_B": [("R25", "2"), ("Q5", "2")],
+    "RESET_C": [("R26", "2"), ("Q5", "1")],
     "G1": [("R3", "2"), ("Q1", "1")],
     "G2": [("R4", "2"), ("Q2", "1")],
     # THE NODE EVERYTHING THAT TURNS THE ROBOT ON PULLS DOWN: Q3 for the board,
@@ -632,13 +654,13 @@ def gate_drive(bus: float) -> float:
     """VGS with the board holding the switch on, at this bus voltage.
 
     The gate node is a divider -- R2 up to the source, R5 down to a saturated
-    Q3 -- with R24 feeding a little more up through D8. The zener only matters
+    Q3. Q5 is off during steady ON operation. The zener only matters
     at the top of the bus, where the divider alone would overdrive the gate.
     """
     low, high = 0.0, bus
     for _ in range(60):
         vgs = (low + high) / 2
-        up = vgs / R_GATE_SOURCE + max(0.0, vgs - 0.6) / R_MILLER_RESET
+        up = vgs / R_GATE_SOURCE
         down = (bus - 0.1 - vgs) / R_GATE_PULL
         if up > down:
             high = vgs
@@ -703,11 +725,7 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
     # The soft-start. On the Miller plateau the gate stands still about 3 V
     # below the source and everything R5 pulls goes into C1 as the drain rises.
     plateau = 3.0
-    pull = (
-        (PACK_FULL - plateau) / R_GATE_PULL
-        - plateau / R_GATE_SOURCE
-        - (plateau - 0.6) / R_MILLER_RESET
-    )
+    pull = (PACK_FULL - plateau) / R_GATE_PULL - plateau / R_GATE_SOURCE
     slew = pull / (C_MILLER + MOSFETS * MOSFET_CRSS)
     inrush = BUS_CAPACITANCE * slew
     ramp = PACK_FULL / slew
@@ -720,17 +738,10 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
     if ramp > 0.4:
         faults.append(f"soft-start {ramp:.2f} s: longer than the button wants")
 
-    # Switching off. D8 has taken C1 out of circuit, so Q4 only has the two
-    # MOSFETs' own gate-drain charge to move: 43 nC each, typical.
-    vgs_on = gate_drive(PACK_FULL)
-    fast = NPN_HFE_MIN * (vgs_on - 1.4) / R_FAST_OFF_BASE
-    turn_off = MOSFETS * 43e-9 / fast
-    lines.append(
-        f"switch-off      Q4 pulls {fast * 1e3:.0f} mA: through the plateau in "
-        f"{turn_off * 1e6:.1f} us"
-    )
-    if turn_off > 0.01:
-        faults.append(f"switch-off takes {turn_off * 1e3:.0f} ms: too long under load")
+    # Q4's base drive falls as GATE rises. Initial current / Qgd did not bound
+    # turn-off and omitted the reset capacitor. Use the transient regression.
+    lines.append("C1 reset        Q5 active reset, C7 2.2 uF gate delay; R24 removed")
+    lines.append("switch-off      see power_reset.py; loaded MOSFET SOA unverified")
 
     # Enough base drive to hold the gates.
     enabled = enable_level(BUS_RANGE[0])
@@ -780,13 +791,15 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
     ratings = {
         "Q1/Q2 VDS": (MOSFET_VDS_MAX, top),
         "U1 supply (LM393, 36 V)": (36.0, top),
-        "Q3/Q4 VCE (BC846B, 65 V)": (65.0, top),
-        "D4-D7 reverse (BAT46W, 100 V)": (100.0, top),
-        "D2/D3 reverse (1N4148W, 75 V)": (75.0, top),
+        "Q3/Q4 VCE (BC546B, 65 V)": (65.0, top),
+        "Q5 VCE (BC546B, 65 V)": (65.0, top + gate_drive(top)),
+        "D2/D4-D7 reverse (BAT46, 100 V)": (100.0, top),
+        "D3 reverse (1N4148, 75 V)": (75.0, top),
         # Off, with the drain discharged: the gate is at the source and C1's
         # far end has been pulled a clamp's worth below ground.
-        "D8 reverse (1N4148W, 75 V)": (75.0, top + gate_drive(top)),
-        "C1 (50 V)": (50.0, top),
+        "D8 reverse (BAT46, 100 V)": (100.0, top + gate_drive(top)),
+        "C1 (63 V)": (63.0, top),
+        "C7 (63 V)": (63.0, GATE_CLAMP_RANGE[1]),
     }
     for what, (rating, seen) in ratings.items():
         if seen > rating * 0.85:
