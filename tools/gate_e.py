@@ -134,6 +134,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         m3CapCounterbore,
         m3Clearance,
         rotorFilletRadius,
+        saddleDrainDiameter,
     )
     from cad.torso_shell import bossHoleDiameter
 
@@ -272,6 +273,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
                 bossHoleDiameter / 2,
                 12,
             ),
+            # Four, because the pelvis carries two hip clevises and the drain
+            # is bored through both side walls of each one's saddle.
+            (
+                "Ø4 powder drains through the two hip saddles",
+                saddleDrainDiameter / 2,
+                4,
+            ),
             # There were two more pilots here, Ø1.7 in two pads for the bus
             # monitor's M2 screws. The monitor went onto the controller carrier
             # in September 2026 and the pads came off this part with it.
@@ -362,6 +370,11 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ),
         ("Ø17.5 shoulder the bearing seats against", bearingSeatShoulderBore / 2, 1),
         ("Ø26 boss carrying that shoulder", bearingSeatBossDiameter / 2, 1),
+        # Two faces, not one: the drain is bored straight through the saddle, so
+        # it leaves a cylinder in each of the two side walls it opens. One
+        # saddle on a thigh, hence two. If this ever reads zero the cavity has
+        # been sealed back up and the part is a powder trap again.
+        ("Ø4 powder drain through the knee saddle", saddleDrainDiameter / 2, 2),
     ]
     rows["thigh-105-mirrored"] = rows["thigh-105-unmirrored"]
     return rows

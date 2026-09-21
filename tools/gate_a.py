@@ -194,6 +194,16 @@ ADDED = {
     # The bank's lead pitch, which is what places a can by its first lead the way
     # every other footprint on that board is placed.
     "capacitorPitch": 5.0,
+    # ---- THE SADDLE'S POWDER DRAIN, September 2026 -------------------------
+    #
+    # cad/joint.py's saddle is a closed box, and on the union of the finished
+    # bodies that box measured as a genuinely sealed cavity: 7.66 cm3 in each
+    # thigh and 7.53 cm3 in each of the pelvis's two hip clevises. In a sintered
+    # part that is un-fused powder with no way out -- about 14 g of it across
+    # the robot -- and it is the kind of thing an SLS house either refuses or
+    # fixes to suit itself. One Ø4 bore through both side walls opens each one.
+    # Nothing the KCL ever had, so it can only be declared here.
+    "saddleDrainDiameter": 4.0,
     # cad/finish.py: the 0.5 mm chamfer put on every printed part's outer edges.
     # About one and a half layers at this nozzle -- a deburr, not a feature.
     "CHAMFER": 0.5,

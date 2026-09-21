@@ -225,6 +225,24 @@ shellWidth = 30.0
 shellDepth = 30.0
 shellWall = 2.4
 
+# THE SADDLE'S POWDER DRAIN, September 2026. cad/joint.py builds the saddle as a
+# closed box on purpose -- it is the only path the joint load has into the limb
+# above -- but a closed box in a sintered part is a sealed cavity full of powder
+# that was never fused. Measured on the union of each piece's bodies, not on a
+# drawing: 7.66 cm3 inside each thigh and 7.53 cm3 inside each of the pelvis's
+# two hip clevises, which at PA12's loose bulk density of about 0.45 g/cm3 is
+# roughly 14 g of dead powder across the robot that nothing in this file counts.
+# An SLS house will either refuse the part or open the cavity wherever suits its
+# own process rather than wherever suits this joint.
+#
+# 4 mm is the smallest escape hole PA12 vendors quote for a cavity of this size,
+# and it is bored straight through so it opens both side walls at once: powder
+# can then be blown through rather than worked out of a blind pocket. It fits
+# the 7.2 mm cavity with 1.6 mm of wall left above and below it, and it goes in
+# the side walls because the load runs from the four rear bolts up the cheek
+# necks and out through the saddle's top face -- the sides carry none of it.
+saddleDrainDiameter = 4.0
+
 # The joint clevis. The actuator only offers a grip on two faces -- 4 x M3 on
 # Ø41 at the rear and 6 x M3 on Ø24 at the front -- so the stationary side has
 # to reach around the body to support the moving side, and the moving side is

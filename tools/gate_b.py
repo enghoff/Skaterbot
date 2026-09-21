@@ -326,6 +326,27 @@ DEVIATIONS = {
                 "±77 mm and the wheels are at ±104, so it costs no envelope."
             ),
         },
+        {
+            "removed_mm3": 60.3185789489,
+            "why": (
+                "THE SADDLE IS NOT A SEALED BOX ANY MORE. It is built as a "
+                "closed box on purpose -- it is the only path the joint load "
+                "has into the limb above -- and on the union of the finished "
+                "bodies that box measured as a genuinely sealed cavity of "
+                "7.53 cm3, which in a sintered part is that much un-fused "
+                "powder with no way out of the print. The golden STEP has the "
+                "same defect; it was never visible because a piece that is "
+                "several interpenetrating shells has no enclosed void until "
+                "something unions it. One Ø4 bore straight through opens both "
+                "side walls at once, so the powder blows through rather than "
+                "having to be worked out of a blind hole. The figure is that "
+                "bore through 2 x 2.4 mm of wall and nothing else: the sides "
+                "carry none of the joint load, which runs from the four rear "
+                "bolts up the cheek necks and out through the saddle's top "
+                "face. saddleDrainDiameter in cad/parameters.py carries why "
+                "4 mm, and tools/gate_e.py counts the two faces it leaves."
+            ),
+        },
     ],
     "pelvis-shell": [
         # A WHOLE-PART RESIZE, and it is a different kind of entry from every
@@ -661,6 +682,25 @@ DEVIATIONS = {
             "why": (
                 "the same shoulder boss, twice: exactly twice the clevis figure "
                 "above again, on the two hips."
+            ),
+        },
+        {
+            "added_mm3": -120.6371578978,
+            "why": (
+                "the same powder drain, twice, because the pelvis carries two "
+                "hip saddles and each was its own sealed 7.53 cm3 cavity. It "
+                "is exactly twice the clevis figure above AND IT CARRIES THE "
+                "OPPOSITE SIGN, which is the check rather than an "
+                "inconsistency. On the clevis the bore cuts saddle wall the "
+                "golden also has, so it reads as material removed. Here the "
+                "saddles rode 12.9 mm outboard with the flank when the shell "
+                "was taken out to meet them -- the first entry above is that "
+                "move -- so the wall this bore cuts is wall only this shell "
+                "has, and drilling it is 120.64 mm3 LESS ADDED rather than "
+                "anything taken off the reference. Across the robot the three "
+                "saddles held about 14 g of un-fused PA12 that no figure in "
+                "tools/mass_budget.toml counted, because a cavity full of "
+                "powder weighs what it weighs whatever the CAD says."
             ),
         },
         # THE BUS MONITOR'S TWO REAR-WALL PADS ARE GONE, September 2026, and

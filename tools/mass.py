@@ -77,7 +77,7 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +22.1,
+        +21.9,
         "THE JOURNAL IS NOT PART OF THIS PRINT AND CANNOT BE, which is -0.2 g of "
         "the figure. It was a bonded dowel, then a printed stub worth 1.4 g on "
         "the pair, and neither can be assembled: both stand proud of the output "
@@ -132,7 +132,15 @@ EXPECTED_CHANGE_G = {
         "housing and stops the plate seating at all. What the plate gives up is "
         "its pilot, which cad/parameters.py argues is worth less than the "
         "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
-        "asserts the millimetre in front of the plate is empty.",
+        "asserts the millimetre in front of the plate is empty. AND THE KNEE "
+        "SADDLE IS DRAINED, 21 September 2026, which is the 0.1 g this line "
+        "came DOWN by. The saddle is a closed box, and on the union of the "
+        "finished bodies it measured as a sealed 7.66 cm3 cavity -- un-fused "
+        "powder with no way out of a sintered print, about 3.4 g of it in "
+        "each thigh that nothing on this table counts. One Ø4 bore through "
+        "both side walls opens it. The 0.1 g is the wall that bore takes, "
+        "60.3 mm3 a saddle; the powder it lets out is worth thirty times as "
+        "much and was never on the bill to lose.",
     ),
     "cad/shin.py": (
         +2.9,
@@ -178,7 +186,7 @@ EXPECTED_CHANGE_G = {
         "of runout on an Ø80 wheel is nothing.",
     ),
     "cad/torso.py": (
-        +68.2,
+        +68.1,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -245,7 +253,13 @@ EXPECTED_CHANGE_G = {
         "pad on the right-hand wall for a third screw while it was a rectangle "
         "over half the bought distribution board, and when it grew to that "
         "board's own 50 x 50 outline it took all four of that board's screws "
-        "instead and the pad came off again. AND THE MAIN DISCONNECT WENT ON 2026-09-16, which is 4.83 mm3 and not a gram: a momentary button that commands the switch board replaced the loop key, and three holes in the rear wall became one -- a 14.7 x 7.2 nose cut and two O2.4 ear holes out, a single O12.2 bushing hole in, at x -44 rather than x 18 because there is 11.2 mm of clear depth behind the old station and a panel switch needs more. The wall loses the thinnest material on this shell with it, the 1.45 mm between each ear screw and its cutout. tools/gate_b.py holds the split",
+        "instead and the pad came off again. AND THE MAIN DISCONNECT WENT ON 2026-09-16, which is 4.83 mm3 and not a gram: a momentary button that commands the switch board replaced the loop key, and three holes in the rear wall became one -- a 14.7 x 7.2 nose cut and two O2.4 ear holes out, a single O12.2 bushing hole in, at x -44 rather than x 18 because there is 11.2 mm of clear depth behind the old station and a panel switch needs more. The wall loses the thinnest material on this shell with it, the 1.45 mm between each ear screw and its cutout. tools/gate_b.py holds the split. "
+        "AND BOTH HIP SADDLES ARE DRAINED, 21 September 2026, which is the "
+        "0.1 g this line came DOWN by: the same Ø4 bore as the knee's, twice, "
+        "opening two sealed 7.53 cm3 cavities that between them held about "
+        "6.8 g of powder this shell would have been weighed with and the CAD "
+        "never counted. 120.6 mm3 of wall on the pair, and gate B holds it "
+        "exactly.",
     ),
 }
 
