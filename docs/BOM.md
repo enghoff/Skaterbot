@@ -6,7 +6,7 @@
 
 This BOM is intentionally split between parts that should be sourced early and commodity parts that should remain flexible until the CAD/electrical design is mature. Purchase links are practical India-oriented sourcing references, not immutable approved vendors. Re-check price, GST, shipping, stock and seller immediately before ordering. Imported prices exclude shipping, customs duty, IGST, payment/FX charges and courier handling unless explicitly stated.
 
-Printed structural parts will be fabricated offsite. The BOM therefore keeps the required material/specification information but does not attempt to source printers, dryers, filament or printed parts.
+Printed structural parts will be fabricated offsite. The BOM therefore keeps the required material/specification information and still does not attempt to source printers, dryers or filament. **It does now name the bureaus that would print the parts — section 12, added 2026-09-21** — because "quote separately" had stood against the printed structure in section 5 since this bill was written with nobody named to ask. None of those rows is a quote; no file has been sent to anybody.
 
 **One caveat that sits above the whole table.** The 2,300 g ceiling and the actuator size were both derived for the walking robot, and **the wheeled robot's torque envelope has not been re-derived**. The answer does change with wheels. Nothing here should be read as confirming that six DM-J3507s are the right size for this machine; it records what the current CAD is built around.
 
@@ -291,7 +291,7 @@ These figures are intentionally broad because actuator shipping/import treatment
 | Area | Rough provisional cost |
 |---|---:|
 | 6 × DM-J3507-2EC at Foxtech list price | **US$534–570 before shipping/import charges** |
-| Offsite printed structure | **Quote separately** |
+| Offsite printed structure | **₹13k–16k a set**, at iamRapid's published ₹32–40 per cm³ over the 406 cm³ the robot's printed parts really are. **Not a quote** — see section 12, including why a bureau that prices by bounding box will say something far larger |
 | Wheels and wheel clamp hardware | **~₹1k–2k** |
 | Bearings and fasteners | **~₹2k–4k** |
 | MCU, SBC, CAN and IMU | **~₹8k–14k** |
@@ -842,3 +842,79 @@ from the deck). Total **2087.4 g**, leaving **212.6 g**. These include estimates
 The power switch board's move to the distribution board's footprint on
 2026-09-15 then took the capacitor bank's allowance from 60 g to the 20 g two
 cans really are, so the roll-up stands at **2077.4 g**, leaving **222.6 g**.
+
+## 12. Where the printed parts get printed
+
+**Added 2026-09-21.** Section 5 has carried "quote separately" against the printed
+structure since this bill was written, with nobody named to ask. This section names
+them. **Nothing in it is a quote.** No file has been uploaded to anybody and no
+vendor has been contacted, so the ranking is built from what each one publishes
+about itself — certification, machine fleet, stated lead time and whether it will
+show a price at all — and not from anyone's experience of their work. Treat it as
+the shortlist to send the STEPs to, and mark a row *checked* only when a real
+quote comes back against it.
+
+### What is being sent out
+
+**Thirteen prints from nine STEP files**, which `uv run tools/export.py` writes into
+`exports/`. Two handed thighs, two handed shins, two identical wheel adapters, four
+journal sleeves, the pelvis shell, the torso cover and the electronics deck.
+
+| | |
+|---|---|
+| Material | **PA12** — sintered, per the `[material]` block in `tools/mass_budget.toml` |
+| Volume of nylon, whole robot | **about 406 cm³**, the union figure from `uv run tools/mass.py --union` |
+| Printed mass at 0.93 g/cm³ | **377.6 g** union, 411.0 g by the sum convention this bill's roll-up uses |
+| Largest single piece | **pelvis shell, 160.9 × 72.0 × 133.6 mm** — envelope from the 2026-09-14 STL export |
+
+The pelvis shell is the only piece with an envelope worth checking against a machine,
+and at 161 mm on its longest side it clears every SLS and MJF bed in the country with
+room to spare. **Build volume rules nobody out**, so this decision is service and
+price and nothing else.
+
+### The bureaus, ranked
+
+| | Vendor | Process and place | Why it sits here | Cost signal |
+|---:|---|---|---|---|
+| 1 | [**Amuse3D**](https://www.amuse3d.in/mjf-3d-printing-service) | HP MJF, PA12 / PA11 / PA12 Smooth. Chennai factory, sales in Bengaluru, Hyderabad, Pune, Mumbai, Delhi | Five HP MJF 5620 machines, **HP-certified production partner**, **ISO 9001:2015 and IATF 16949:2016** — the only automotive-grade quality paperwork on this list. 3–5 days to the door in India, 24-hour express if ordered by 14:30 IST | Quote only |
+| 2 | [**iamRapid**](https://iamrapid.com/pricing/) | MJF and SLS nylon. Bengaluru, Delhi, Pune, Noida | **The only one that publishes its rates**: [MJF PA12](https://iamrapid.com/3d-printing-services/mjf/) and SLS nylon both **₹32–40 per cm³**, FDM PLA ₹6/gram, instant quote from an upload in under a minute, 3–5 business days | **₹13k–16k a set** at the published rate, before GST |
+| 3 | [**Imaginarium**](https://imaginarium.io/additive-manufacturing/) | SLS and eight other processes. Mumbai, trading since 2006 | India's oldest and largest bureau, **17 machines across 24 materials**, and the strongest finishing shop of the five. No instant quote, so it is an email conversation, and on reputation it will be the dearest | Quote only |
+| 4 | [**think3D**](https://www.think3d.in/) | FDM, SLA, SLS, MJF, DMLS, plus CNC and **14 injection moulding machines**. Hyderabad | Same printing range as the others with tooling behind it, which matters only if the pelvis ever goes to a mould. ISO certified, quote by email | Quote only |
+| 5 | [**Makenica**](https://makenica.com/) | SLA, FDM, SLS, MJF | Upload for an instant quote, priced back by email inside half an hour. Wide range, **no industrial certification stated**, which is what keeps it below the four above | Quote only |
+| 6 | [**Tesseract**](https://www.tesseract3d.com/sls-3d-printing/) | SLS nylon, Mumbai | A specialist rather than a full-service shop, and on exactly the process this bill's density figure was taken from. Worth a quote if the parts stay sintered PA12 rather than going to MJF | Quote only |
+| — | [**Zbotic**](https://zbotic.in/3d-print-order/) | Industrial SLS and MJF, PA11 / PA12 / glass-filled | **Do not use.** Its industrial line quotes **15–20 days**, three to four times everyone else, for the same parts | — |
+
+The recommendation is **Amuse3D for the parts and an iamRapid instant quote to price
+them against**. iamRapid's published ₹32–40 per cm³ is the only number on this table
+that did not have to be asked for, and 406 cm³ of nylon puts a whole robot's printed
+structure at **₹13,000–16,240 before GST** — which is the first figure this bill has
+ever carried against section 5's "quote separately" row.
+
+### Two questions to put to every one of them
+
+**Do you price on the part's own volume, or on its packed bounding box?** This is
+worth more than the choice of vendor. The pelvis shell is 173 cm³ of nylon standing
+inside a 1,548 cm³ box — it is a nine-tenths-empty open shell — so a bureau that
+charges by bounding box or by packing density is quoting a part nine times the size
+of the one being made. Ask before uploading, and ask again when the number comes back
+looking wrong.
+
+**What density do your finished parts come out at?** `tools/mass_budget.toml` already
+says to, and it is the softest number on this whole bill that is not an estimate.
+It currently assumes **0.93 g/cm³**, EOS PA2200's published part density for laser
+sintering. **Four of the six vendors above are MJF houses, and HP's PA12 finishes
+nearer 1.01**, which over 406 cm³ is **about +33 g** on a robot with 222.6 g of
+headroom. That is not a rounding error and it is not free: choosing MJF is a change
+to the `[material]` block and a re-run of the roll-up, not just a change of supplier.
+
+### The cheap way to fail early
+
+Before committing to sintered parts, the whole printed set in **FDM PLA at ₹6/gram**
+— [iamRapid](https://iamrapid.com/3d-printing-services/) or
+[3Ding](https://3ding.in/print/), the latter quoting 24–48 hours — comes to roughly
+**₹2,500 and a couple of days**. It is the wrong material and will not carry a joint,
+but it settles every question this bill cannot answer on paper: whether the 6800
+bearings press into a Ø19.2 bore printed to size, whether an actuator with its disc
+bolted on actually enters a 45.2 mm clevis, and whether the battery, BMS, carrier and
+deck stack into the pelvis in the order section 11 says they do. **A wrong dimension
+found in PLA costs ₹200; the same dimension found in PA12 costs a 198.8 g reprint.**
