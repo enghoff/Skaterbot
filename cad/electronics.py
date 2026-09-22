@@ -1091,8 +1091,12 @@ def power_switch_screw_xy() -> list[tuple[float, float]]:
 #       comes down behind the bay
 #   F1  the fuse, in a mini-blade holder, with its blade clear of the pack leads'
 #       chase over the rear corner
-#   Q1  the two switches in a row with their sources meeting in the middle, so one
-#   Q2  pour behind them feeds both and one in front takes both drains
+#   Q1  the switches, two rows of two, each row with its sources meeting in the
+#   Q2  middle so one pour feeds both and one takes both drains. THE SECOND ROW
+#   Q6  IS FED FROM THE BOTTOM LAYER: VBUS is a top-layer pour, so the copper
+#   Q7  under it is free for VSRC to run forward to the front row's sources.
+#       There are four since 2026-09-22, when the switch became an IRF4905 --
+#       20 mOhm against the obsolete part's 6.7, so the current is shared wider.
 #   R1  PBV-F1 shunt, four inline terminals spanning 17.78 mm; 20.7 mm high
 #   P2  the switched bus out, on the inboard side where the distribution board's
 #       input is
@@ -1109,6 +1113,8 @@ powerSwitchStations = {
     "F1": (41.0, -19.5, 0),
     "Q1": (50.0, -15.0, 0),
     "Q2": (66.08, -15.0, 180),
+    "Q6": (50.0, -6.0, 0),
+    "Q7": (66.08, -6.0, 180),
     "P2": (34.8, -7.5, 0),
     "P3": (28.0, -18.0, 0),
     "C5": (33.0, 3.0, 0),
@@ -1285,6 +1291,8 @@ powerSwitchBodies = {
     ],
     "Q1": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
     "Q2": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
+    "Q6": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
+    "Q7": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
     "J2": [(13.4, 6.75, 12.8, 3.75, -0.525, 0.0)],
     "J3": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
 }

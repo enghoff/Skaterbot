@@ -87,6 +87,12 @@ def fixture(
     extra = ""
     if new:
         extra = f"C7 s g {power.C_GATE_SOURCE * gscale}\nR25 g rb {power.R_RESET_BASE}\nR26 s rc {power.R_RESET_COLLECTOR}\nQ5 rc rb m reset"
+    # FOUR DEVICES ON TWO GATE RESISTORS since 2026-09-22, which is how the board
+    # is built: R3 feeds Q1 and Q6, R4 feeds Q2 and Q7. The per-gate capacitances
+    # are therefore two devices' worth of an IRF4905 -- Ciss 3400 pF less Crss
+    # 640 leaves 2.76 nF of Cgs each, and Crss is 640 pF each -- against the one
+    # device's worth of the obsolete Vishay part they replace. rs and rd carry
+    # the 20 mOhm channel the same way, five times the 6.7 that was here.
     return f"""Reset probe - simplified analytical MOSFET, not a manufacturer model
 Vbat s 0 PWL(0 0 1u {bus})
 Vcmd cmd 0 PWL(0 1 {off} 1 {off + 1e-7} 0 {off + gap} 0 {off + gap + 1e-7} 1)
@@ -112,12 +118,14 @@ C1 m d {power.C_MILLER * cscale}
 R3 g g1 10
 R4 g g2 10
 M1 x g1 s s pm
+M6 x g1 s s pm
 M2 x g2 s s pm
-.model pm pmos(level=1 vto=-{threshold} kp=30 rs=.002 rd=.002)
-Cgs1 s g1 10.6n
-Cgs2 s g2 10.6n
-Cgd1 g1 d 809p
-Cgd2 g2 d 809p
+M7 x g2 s s pm
+.model pm pmos(level=1 vto=-{threshold} kp=30 rs=.01 rd=.01)
+Cgs1 s g1 5.52n
+Cgs2 s g2 5.52n
+Cgd1 g1 d 1280p
+Cgd2 g2 d 1280p
 Cds s d 2n
 Vsense x d 0
 Cload d 0 1540u

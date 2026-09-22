@@ -276,6 +276,8 @@ FOOTPRINT_OF = {
     "F1": ("Fuse", "Fuseholder_Blade_Mini_Keystone_3568", 7.37 + 9.0),
     "Q1": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
     "Q2": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
+    "Q6": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
+    "Q7": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
     "U1": ("Package_DIP", "DIP-8_W7.62mm", 5.0),
     # The staggered TO-92 and not the inline one: inline stands three 1.1 mm pads
     # on a 1.27 mm pitch, which leaves 0.17 mm of gap where this board's rules
@@ -452,7 +454,11 @@ TARGETS: dict[str, tuple[float, float, int]] = {
     "Q5": (38.0, -13.0, 0),
     "C7": (47.0, 20.0, 180),
     "R25": (38.0, -10.0, 0),
-    "R26": (48.0, 16.0, 90),
+    # R26 SAT AT (48, 16) UNTIL 2026-09-22 and its net ran the length of the
+    # board to reach Q5. That routed while there were two switches; with four it
+    # does not, and the fix is the one that should have been there anyway --
+    # a collector resistor belongs at its collector. RESET_C is 4 mm now, not 29.
+    "R26": (36.0, -13.0, 0),
     "D2": (42.9, -13.0, 0),
     # The inboard pocket. Nothing with a lead may stand behind it, over the
     # bought board's own input socket, and nothing over 7.4 mm may stand in it,
@@ -534,6 +540,31 @@ ZONES = [
         ],
         "priority": 2,
     },
+    # THE SECOND ROW'S SOURCE FEED, AND WHY IT IS ON THE BOTTOM ALONE. VBUS is a
+    # top-layer pour, so the copper under it was left free; this spends some of
+    # it. The lane runs forward between the two drain risers, from the rear
+    # source pour up to the front row's own source pads, and the pads bridge it
+    # to the top because every pad on this net is a through-hole pin.
+    {
+        "net": "VSRC",
+        "layers": ("B.Cu",),
+        # TWO NARROW COLUMNS AND NOT ONE BROAD LANE. The first attempt poured
+        # the whole width between the drain risers and routed everything but
+        # RESET_C, which has to cross this band to reach Q5; a pour is a wall to
+        # every net but its own. These are 1.8 mm wide, directly under the rear
+        # row's source risers and up to the front row's source pads, which is
+        # the copper the current actually wants and no more.
+        "rects": [
+            (54.2, -16.5, 56.0, -13.0),
+            (54.2, -14.0, 56.0, -5.5),
+            (60.1, -16.5, 61.9, -13.0),
+            (60.1, -14.0, 61.9, -5.5),
+        ],
+        # PRIORITY 3 AND NOT 2, because this lane overlaps the rear VSRC pour on
+        # purpose -- that is how it joins it -- and KiCad refuses two zones that
+        # intersect at the same priority even when they are the same net.
+        "priority": 3,
+    },
     {
         "net": "VBUS",
         "layers": ("F.Cu",),
@@ -551,6 +582,11 @@ ZONES = [
         "rects": [
             (51.4, -15.5, 53.6, -11.6),
             (62.4, -15.5, 64.7, -11.6),
+            # AND TWO MORE FORWARD, to the second row of switches. Same pitch as
+            # the pair behind them, because the two rows are the same footprint
+            # at the same x: a riser lands on a drain either way it is reached.
+            (51.4, -9.9, 53.6, -5.5),
+            (62.4, -9.9, 64.7, -5.5),
             (51.4, -11.6, 67.5, -9.4),
             (44.0, -11.6, 53.0, -9.4),
             (31.6, -9.9, 46.2, -5.1),
@@ -986,7 +1022,7 @@ def _track(grid: Grid, run, net: str, width: float):
 # rather than late for the same reason: each of its pads is one via from the
 # pour under the board, and a via needs somewhere to sit.
 ROUTE_FIRST = ("FAST_E", "HOLD_REF", "GATE", "GND", "VSRC", "VBUS", "EN", "REF")
-PASSES = 6
+PASSES = 16
 
 
 def _pins_by_net(parts: list[Placed]) -> dict[str, list[tuple[str, str]]]:

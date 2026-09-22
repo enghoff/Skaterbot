@@ -63,9 +63,38 @@ pass: it is a board a person can build with an iron and their eyes. The resistor
 and the diodes stand on end on a 2.54 mm pitch, the comparator is a DIP, the
 reference and the three small transistors are TO-92.
 
-PROVENANCE. The MOSFET is Vishay's SQP120P06-6m7L, datasheet S18-0554 rev. A:
--60 V, 6.7 mOhm max at -10 V and 25 C, 11.0 at 125 C, VGS +/-20 V, Crss 809 pF
-typical, TO-220AB with G-D-S pinout and the tab on the drain.
+PROVENANCE. The MOSFET is Infineon's IRF4905PbF, datasheet rev. 2.1 of
+2026-04-08: -55 V, 20 mOhm max at -10 V and 25 C, VGS +/-20 V, Crss 640 pF
+typical, RthJA 62 C/W, TO-220AB with G-D-S pinout and the tab on the drain. The
+hot resistance is 35 mOhm, which is figure 4's normalised curve at 125 C rather
+than a tabulated maximum -- that datasheet gives no hot figure, and the one it
+replaced did.
+
+THE SWITCH WAS VISHAY'S SQP120P06-6m7L UNTIL 2026-09-22 and the change is a
+sourcing one, not an electrical improvement. That part is discontinued: Vishay
+still publishes the data sheet, but no distributor carries it, and its nearest
+living relative in the same package -- the SUP90P06-09L at 9.3 mOhm -- is
+backordered into 2028. Low-resistance P-channel in a TO-220 has become a thin
+category, and what is left in it either costs four times as much per milliohm or
+is surface mount.
+
+WHAT THAT COSTS IS THREE TIMES THE RESISTANCE AND TWICE THE DEVICES. 20 mOhm
+against 6.7 is the whole of the difference, and since the heat goes as the square
+of the current each device carries, the answer is to share it wider: MOSFETS is 4
+where it was 2, which brings the continuous rating back to 23.5 A against the old
+21. THE SWITCH IS NO BETTER AND NO WORSE THAN IT WAS; it is four commodity parts
+instead of two specialist ones. The IRF4905 is a fifth-generation HEXFET that has
+been in volume production for twenty years, 38 000 of them on one distributor's
+shelf in Denmark, and -- the reason it was preferred to a surface-mount part with
+better numbers -- it is stocked in India too, at ~78 rupees, so a spare is not an
+import. docs/BOM.md section 1b carries that sourcing argument.
+
+A NOTE ON THE 24 A THIS IS SIZED AGAINST, because the arithmetic below reads
+worse than it is. PEAK_CURRENT is an estimate of what six actuators draw at once
+at their peak, and the dissipation line calls it "sustained", which no duty cycle
+on this robot actually is. The board did not meet it before either: two of the
+old parts at 24 A came to 148 C of junction against a 125 C limit, and the honest
+figure was always the continuous rating beside it.
 
 TWO PINOUTS CHANGED WITH THE PACKAGE and both are worth stating, because a
 transposed one is a board that does nothing. The TL431 in TO-92 (TI's LP) is
@@ -98,13 +127,13 @@ from carrier import Part  # noqa: E402
 # description is a value nothing checks.
 
 # The switch.
-MOSFET_RDS_ON_25C = 0.0067  # ohm, max at VGS -10 V
-MOSFET_RDS_ON_125C = 0.0110
-MOSFET_VDS_MAX = 60.0
+MOSFET_RDS_ON_25C = 0.020  # ohm, max at VGS -10 V and ID -38 A
+MOSFET_RDS_ON_125C = 0.035  # figure 4's normalised curve, 1.75x; not a tabulated max
+MOSFET_VDS_MAX = 55.0
 MOSFET_VGS_MAX = 20.0
-MOSFET_CRSS = 809e-12  # typical, at VDS -25 V
-MOSFET_RTH_JA = 62.0  # C/W, a TO-220 standing in free air
-MOSFETS = 2
+MOSFET_CRSS = 640e-12  # typical, at f = 1 MHz
+MOSFET_RTH_JA = 62.0  # C/W, a TO-220 standing in free air -- the data sheet's own max
+MOSFETS = 4  # four, since the IRF4905 is 20 mOhm where the obsolete part was 6.7
 GATE_CLAMP = 15.0  # BZT52C15, nominal: a clamp for transients, idle in normal use
 GATE_CLAMP_RANGE = (14.3, 15.8)
 R_GATE_SOURCE = 680e3
@@ -174,16 +203,33 @@ PARTS = [
         "Keystone 3568 holder + mini (ATM) blade fuse, 20 A to start",
         {"1": "a", "2": "b"},
     ),
+    # FOUR IN PARALLEL, AND THEY ARE Q1, Q2, Q6 AND Q7 rather than Q1 to Q4,
+    # because Q3, Q4 and Q5 are the three small signal transistors and have been
+    # since this board was drawn. Renumbering them would touch this file, the
+    # schematic, the board, power_reset.py and the bill for no gain a reader can
+    # see; the gap is cheaper than the churn.
     Part(
         "Q1",
-        "high-side switch, one of two in parallel",
-        "Vishay SQP120P06-6m7L, P-channel 60 V, TO-220",
+        "high-side switch, one of four in parallel",
+        "Infineon IRF4905PbF, P-channel 55 V, TO-220AB",
         {"1": "G", "2": "D", "3": "S"},
     ),
     Part(
         "Q2",
-        "high-side switch, one of two in parallel",
-        "Vishay SQP120P06-6m7L, P-channel 60 V, TO-220",
+        "high-side switch, one of four in parallel",
+        "Infineon IRF4905PbF, P-channel 55 V, TO-220AB",
+        {"1": "G", "2": "D", "3": "S"},
+    ),
+    Part(
+        "Q6",
+        "high-side switch, one of four in parallel",
+        "Infineon IRF4905PbF, P-channel 55 V, TO-220AB",
+        {"1": "G", "2": "D", "3": "S"},
+    ),
+    Part(
+        "Q7",
+        "high-side switch, one of four in parallel",
+        "Infineon IRF4905PbF, P-channel 55 V, TO-220AB",
         {"1": "G", "2": "D", "3": "S"},
     ),
     Part(
@@ -227,11 +273,32 @@ PARTS = [
         "BZX79-C15, 15 V 0.5 W zener, DO-35",
         {"1": "K", "2": "A"},
     ),
+    # ONE RESISTOR PER PAIR OF DEVICES, NOT PER DEVICE, and that is a departure
+    # worth reading before it is copied. Paralleled MOSFETs whose gates are tied
+    # hard together can ring against one another's capacitance through the gate
+    # loop, and the usual guard is a few ohms in each gate. There is no room on
+    # this board for two more of them -- with the second row of switches down,
+    # legalize() finds five legal positions on the whole 50 x 50 for one more
+    # 0204, all of them 10 to 23 mm from the gate they would serve, which is
+    # further than the track they would be damping.
+    #
+    # It is defensible here because THIS IS NOT A SWITCHING CONVERTER. The gates
+    # move twice in a power cycle: up over the 130 ms soft-start below, and down
+    # through Q4 in milliseconds. Parasitic oscillation between paralleled
+    # devices is a hard-switching problem, and nothing on this board switches
+    # hard. If a built board rings, the fix is one resistor per device and a
+    # bigger board, and that is the trade this comment exists to record.
     Part(
-        "R3", "Q1's own gate resistor", "10 Ohm, 0204 metal film", {"1": "1", "2": "2"}
+        "R3",
+        "gate resistor for Q1 and Q6",
+        "10 Ohm, 0204 metal film",
+        {"1": "1", "2": "2"},
     ),
     Part(
-        "R4", "Q2's own gate resistor", "10 Ohm, 0204 metal film", {"1": "1", "2": "2"}
+        "R4",
+        "gate resistor for Q2 and Q7",
+        "10 Ohm, 0204 metal film",
+        {"1": "1", "2": "2"},
     ),
     Part(
         "C1",
@@ -455,6 +522,8 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("F1", "2"),
         ("Q1", "3"),
         ("Q2", "3"),
+        ("Q6", "3"),
+        ("Q7", "3"),
         ("R2", "1"),
         ("D1", "1"),
         ("Q4", "1"),
@@ -465,6 +534,8 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "VBUS": [
         ("Q1", "2"),
         ("Q2", "2"),
+        ("Q6", "2"),
+        ("Q7", "2"),
         ("C1", "2"),
         ("P2", "1"),
         ("C5", "1"),
@@ -497,8 +568,8 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "MILLER": [("C1", "1"), ("D8", "2"), ("Q5", "3")],
     "RESET_B": [("R25", "2"), ("Q5", "2")],
     "RESET_C": [("R26", "2"), ("Q5", "1")],
-    "G1": [("R3", "2"), ("Q1", "1")],
-    "G2": [("R4", "2"), ("Q2", "1")],
+    "G1": [("R3", "2"), ("Q1", "1"), ("Q6", "1")],
+    "G2": [("R4", "2"), ("Q2", "1"), ("Q7", "1")],
     # THE NODE EVERYTHING THAT TURNS THE ROBOT ON PULLS DOWN: Q3 for the board,
     # D6 for the button. When neither does, R8 lifts Q4's base and Q4 drags the
     # gates up to the source in milliseconds.
@@ -789,7 +860,7 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
 
     # Voltage ratings, against the highest voltage each part can see.
     ratings = {
-        "Q1/Q2 VDS": (MOSFET_VDS_MAX, top),
+        "Q1/Q2/Q6/Q7 VDS": (MOSFET_VDS_MAX, top),
         "U1 supply (LM393, 36 V)": (36.0, top),
         "Q3/Q4 VCE (BC546B, 65 V)": (65.0, top),
         "Q5 VCE (BC546B, 65 V)": (65.0, top + gate_drive(top)),

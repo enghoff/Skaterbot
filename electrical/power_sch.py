@@ -86,6 +86,8 @@ SYMBOL_OF = {
     "F1": "Device:Fuse",
     "Q1": "Transistor_FET:Q_PMOS_GDS",
     "Q2": "Transistor_FET:Q_PMOS_GDS",
+    "Q6": "Transistor_FET:Q_PMOS_GDS",
+    "Q7": "Transistor_FET:Q_PMOS_GDS",
     "Q3": "Transistor_BJT:BC546",
     "Q4": "Transistor_BJT:BC546",
     "Q5": "Transistor_BJT:BC546",
@@ -143,8 +145,16 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     # the power path
     "P1": [(1, 25.40, 45.72, 0, "y")],
     "F1": [(1, 45.72, 45.72, 90, None)],
+    # FOUR SWITCHES SINCE 2026-09-22, and the two added ones sit side by side
+    # below the pair that were here rather than continuing their column. Q7
+    # WAS AT (76.20, 119.38) AND THAT WAS A SHORT: a P-MOS turned this way puts
+    # its gate 5.08 mm above itself, which is exactly the y the source trunk
+    # runs along to reach R8 and Q4, so G2 and VSRC came out as one net.
+    # check_drawing() refused it, which is the whole point of that check.
     "Q1": [(1, 76.20, 43.18, 270, None)],
     "Q2": [(1, 76.20, 68.58, 270, None)],
+    "Q6": [(1, 76.20, 93.98, 270, None)],
+    "Q7": [(1, 101.60, 93.98, 270, None)],
     "C5": [(1, 127.00, 60.96, 0, None)],
     "C6": [(1, 152.40, 60.96, 0, None)],
     "P2": [(1, 373.38, 45.72, 0, None)],
@@ -225,7 +235,11 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
 NET_DRAW: dict[str, dict] = {
     "BATT": {"trunks": [("h", 45.72, ["P1.1", "F1.1"])]},
     "VSRC": {
-        "labels": ["C7.1", "R26.1"],
+        # Q6 AND Q7 BY LABEL, LIKE THEIR DRAINS AND GATES. Running the source
+        # trunk down the column to reach them put it through Q2's gate and
+        # shorted VSRC to G2 -- check_drawing() caught it, which is what that
+        # check is for. Every pin of the two added devices is a label.
+        "labels": ["C7.1", "R26.1", "Q6.3", "Q7.3"],
         "trunks": [
             ("v", 60.96, ["F1.2", "Q1.3", "Q2.3"]),
             ("h", 114.30, ["R2.1", "D1.1", "R8.1", "Q4.1"]),
@@ -241,7 +255,10 @@ NET_DRAW: dict[str, dict] = {
             ),
             ("h", 76.20, ["R10.1", "R11.1", "R15.1"]),
         ],
-        "labels": ["C1.2"],
+        # Q6 AND Q7 TAKE A LABEL RATHER THAN THE TRUNK. The bus trunk runs along
+        # y 45.72 past the top of the column, and a stub down to the third and
+        # fourth device would cross both the devices above it.
+        "labels": ["C1.2", "Q6.2", "Q7.2"],
     },
     "GATE": {
         "labels": ["C7.2", "R25.1"],
@@ -258,8 +275,10 @@ NET_DRAW: dict[str, dict] = {
         "trunks": [("v", 93.98, ["R26.2", "Q5.1"])],
         "name_at": (93.98, 217.17, 0),
     },
-    "G1": {"labels": ["Q1.1", "R3.2"]},
-    "G2": {"labels": ["Q2.1", "R4.2"]},
+    # ONE RESISTOR FEEDS TWO GATES. electrical/power.py says why there is not one
+    # per device: there is no room left on the board for two more resistors.
+    "G1": {"labels": ["Q1.1", "Q6.1", "R3.2"]},
+    "G2": {"labels": ["Q2.1", "Q7.1", "R4.2"]},
     "PULL": {
         "trunks": [("v", 129.54, ["R5.2", "Q3.1", "D3.1"])],
         "labels": ["D6.2"],
@@ -350,7 +369,7 @@ VALUE_ON_SHEET = {
     "wire pad, 3.0 mm hole": "14 AWG pad",
     "wire pad, 1.15 mm hole": "22 AWG pad",
     "Keystone 3568 holder + mini (ATM) blade fuse, 20 A to start": "20 A ATM",
-    "Vishay SQP120P06-6m7L, P-channel 60 V, TO-220": "SQP120P06-6m7L",
+    "Infineon IRF4905PbF, P-channel 55 V, TO-220AB": "IRF4905",
     "470 uF 35 V low-ESR aluminium, 10 x 16 radial": "470u 35V",
     "22 uF 16 V solid tantalum, radial": "22u 16V",
     "10 uF 16 V solid tantalum, radial": "10u 16V",
@@ -398,8 +417,10 @@ DATASHEETS = {
     "R26": "https://www.vishay.com/docs/28729/pr010203.pdf",
     "D2": "https://www.vishay.com/docs/85662/bat46.pdf",
     "D8": "https://www.vishay.com/docs/85662/bat46.pdf",
-    "Q1": "https://www.vishay.com/docs/63444/sqp120p06-6m7l.pdf",
-    "Q2": "https://www.vishay.com/docs/63444/sqp120p06-6m7l.pdf",
+    "Q1": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
+    "Q2": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
+    "Q6": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
+    "Q7": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
     "U1": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
     "U2": "https://www.ti.com/lit/ds/symlink/tl431.pdf",
     "F1": "https://www.keyelco.com/product-pdf.cfm?p=1160",
