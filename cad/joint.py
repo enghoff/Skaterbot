@@ -86,6 +86,7 @@ from cad.parameters import (
     rotorHubInnerX,
     rotorHubOuterX,
     rotorHubThickness,
+    saddleDrainDiameter,
     shellDepth,
     shellWall,
     shellWidth,
@@ -152,7 +153,18 @@ def statorClevis():
     saddleCavity = Pos(saddleCenterX, 0, saddleCenterZ) * Box(
         saddleWidth - (shellWall * 2), shellInnerDepth, saddleHeight - (shellWall * 2)
     )
-    saddleRaw = saddleBlank - saddleCavity
+
+    # That cavity is closed on all six faces, and in a sintered part a closed
+    # cavity is a pocket of loose powder with no way out of the print. One bore
+    # straight through opens it at both side walls, so the powder can be blown
+    # out rather than worked out of a blind hole. saddleDrainDiameter carries
+    # why it is 4 mm and why it goes in the sides rather than anywhere else.
+    saddleDrain = (
+        Pos(saddleCenterX, 0, saddleCenterZ)
+        * Rot(90, 0, 0)
+        * Cylinder(saddleDrainDiameter / 2, shellDepth + 2.0)
+    )
+    saddleRaw = saddleBlank - saddleCavity - saddleDrain
 
     # The four rear bolts, on Ø41 at 45 degrees, so both offsets are one number.
     rearBolts = [

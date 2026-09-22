@@ -326,6 +326,27 @@ DEVIATIONS = {
                 "±77 mm and the wheels are at ±104, so it costs no envelope."
             ),
         },
+        {
+            "removed_mm3": 60.3185789489,
+            "why": (
+                "THE SADDLE IS NOT A SEALED BOX ANY MORE. It is built as a "
+                "closed box on purpose -- it is the only path the joint load "
+                "has into the limb above -- and on the union of the finished "
+                "bodies that box measured as a genuinely sealed cavity of "
+                "7.53 cm3, which in a sintered part is that much un-fused "
+                "powder with no way out of the print. The golden STEP has the "
+                "same defect; it was never visible because a piece that is "
+                "several interpenetrating shells has no enclosed void until "
+                "something unions it. One Ø4 bore straight through opens both "
+                "side walls at once, so the powder blows through rather than "
+                "having to be worked out of a blind hole. The figure is that "
+                "bore through 2 x 2.4 mm of wall and nothing else: the sides "
+                "carry none of the joint load, which runs from the four rear "
+                "bolts up the cheek necks and out through the saddle's top "
+                "face. saddleDrainDiameter in cad/parameters.py carries why "
+                "4 mm, and tools/gate_e.py counts the two faces it leaves."
+            ),
+        },
     ],
     "pelvis-shell": [
         # A WHOLE-PART RESIZE, and it is a different kind of entry from every
@@ -455,6 +476,21 @@ DEVIATIONS = {
         # opening plus a socket wall, an aperture gap and a seat all round --
         # 25.5 x 13 -- through 2.4 mm of wall, less the 11 x 3.5 of it the
         # disconnect's own aperture had already taken.
+        # THE POWER SWITCH BOARD'S PAD, September 2026, AND THE THIRD NEGATIVE
+        # REMOVAL IN THIS REGISTER. The pad itself is one block off the
+        # right-hand wall, 8.5 mm out and 8 wide, piloted Ø2.5 like every other
+        # printed mount in this cavity: 340 mm3 less 19.6 of pilot, and 320.365
+        # measured. But only 164.09 of that is material the golden does not
+        # have. The other 156.27 stands exactly where the TETHERED pelvis's hip
+        # clevis stood -- that torso was 21 mm shorter, so its clevis filled this
+        # corner of the bay, and the resize entry at the top of this register has
+        # already counted that material as REMOVED. Putting a pad back into the
+        # same space is material un-removed rather than material added, which is
+        # why the second figure is negative.
+        #
+        # The pair is the check rather than a bookkeeping trick: 164.09 + 156.27
+        # is the 320.365 the part gained, and 164.09 - 156.27 is the 7.82 the
+        # symmetric difference moved. Only the real geometry satisfies both.
         {
             "added_mm3": 595.3600000000,
             "removed_mm3": -107.8400000000,
@@ -584,6 +620,55 @@ DEVIATIONS = {
                 "12.6 mm of it and the deck's own ledges stand on it."
             ),
         },
+        # AND THEN THE DISCONNECT WENT ALTOGETHER, 2026-09-16. The loop key was
+        # replaced by a momentary button that commands the power switch board
+        # rather than breaking the pack lead by hand, and a button mounts on its
+        # own thread through a round hole. So three holes in this wall became
+        # one: the 14.7 x 7.2 nose cut and its two Ø2.4 ear holes are not cut,
+        # and a Ø12.2 bushing hole is, at x -44 rather than x 18.
+        #
+        # THE STATION MOVED BECAUSE OF WHAT IS BEHIND THE WALL, not because of
+        # anything in it. A sweep at the station height found 11.2 mm of clear
+        # air behind x 18 before the actuator harness bank's mated plugs -- room
+        # for a connector reaching 8.3 mm in, and not for any panel switch --
+        # against 21.4 mm outboard of x -44.
+        #
+        # THE VOLUME IS ARITHMETIC AND MATCHES THE MEASUREMENT TO FOUR PLACES.
+        # A Ø12.2 hole through 2.4 mm of wall is 280.5568 mm3; the rectangle and
+        # the two ear holes it replaces were 254.0160 and 21.7147, so 275.7307.
+        # The wall loses 4.8261 mm3 more than it did, and -4.0218 - 0.8044 is
+        # that figure.
+        #
+        # THE SPLIT IS MEASURED AND NOT SOLVED FOR, which matters because two
+        # numbers that satisfy two equations can be fitted rather than found.
+        # The shell was built twice -- as it is, and with the disconnect's
+        # rectangle and ear holes put back and the button's hole taken out --
+        # and each differenced against the golden. The change between those two
+        # differences is this entry.
+        #
+        # WHY IT IS SO SMALL. Both holes are cut almost entirely in wall the
+        # golden does not have: that shell was 125 x 68 x 65 where this one is
+        # 153.9 x 72 x 86, and at z = 22 the two overlap in a thin band near the
+        # golden's top. So what shows against the golden is the sliver of each
+        # hole that falls inside the band they share, which is why a 280 mm3
+        # hole reads as 0.80.
+        {
+            "added_mm3": -4.0217717651,
+            "removed_mm3": 0.8043663031,
+            "why": (
+                "THE MAIN DISCONNECT IS GONE AND A BUTTON STANDS WHERE IT DID "
+                "NOT. Three holes became one -- a 14.7 x 7.2 nose cut and two "
+                "Ø2.4 ear holes out, a single Ø12.2 bushing hole in, and at the "
+                "other end of the wall, because 11.2 mm of clear depth behind "
+                "the old station takes a connector and takes no switch. The "
+                "wall also loses the thinnest material on this shell with it: "
+                "the 1.45 mm bridge between each ear screw and its cutout. What "
+                "the change costs is not geometry and is not measured here -- a "
+                "loop key is a mechanical break in the pack lead and a "
+                "transistor is not, and docs/BOM.md argues that trade rather "
+                "than burying it."
+            ),
+        },
         {
             "added_mm3": 2560.7121719410,
             "why": (
@@ -599,6 +684,25 @@ DEVIATIONS = {
                 "above again, on the two hips."
             ),
         },
+        {
+            "added_mm3": -120.6371578978,
+            "why": (
+                "the same powder drain, twice, because the pelvis carries two "
+                "hip saddles and each was its own sealed 7.53 cm3 cavity. It "
+                "is exactly twice the clevis figure above AND IT CARRIES THE "
+                "OPPOSITE SIGN, which is the check rather than an "
+                "inconsistency. On the clevis the bore cuts saddle wall the "
+                "golden also has, so it reads as material removed. Here the "
+                "saddles rode 12.9 mm outboard with the flank when the shell "
+                "was taken out to meet them -- the first entry above is that "
+                "move -- so the wall this bore cuts is wall only this shell "
+                "has, and drilling it is 120.64 mm3 LESS ADDED rather than "
+                "anything taken off the reference. Across the robot the three "
+                "saddles held about 14 g of un-fused PA12 that no figure in "
+                "tools/mass_budget.toml counted, because a cavity full of "
+                "powder weighs what it weighs whatever the CAD says."
+            ),
+        },
         # THE BUS MONITOR'S TWO REAR-WALL PADS ARE GONE, September 2026, and
         # this is the entry they used to have. They were 6 x 6.5 x 8 apiece with
         # a Ø1.7 pilot 5 deep for an M2, 705.30 mm3 on the pair, and they split
@@ -610,6 +714,37 @@ DEVIATIONS = {
         # rewritten. cad/electronics.py keeps the argument for the rear wall,
         # because it is the argument that has to be answered again if the
         # monitor ever comes back off the carrier.
+        {
+            "added_mm3": 9031.6520650,
+            "why": (
+                "THE TWO HOIST LUGS, September 2026, and they are a "
+                "development fitting rather than a part of the machine: a "
+                "block on each flank with a Ø6 eye through it, so the robot "
+                "can hang from an overhead rail and so a topple is caught "
+                "before it reaches the floor. docs/NOTES.md puts a sideways "
+                "topple at 2.85 J against a limb that stores 0.21 J before it "
+                "fails across the layers, so the catch is protecting a known "
+                "failure rather than a hypothetical one. It is on the flank "
+                "and not on the lid because the four cover bosses -- the "
+                "strongest anchorage on this box -- sit 4 mm inboard of the "
+                "cavity edge, and cad/deck.py's 148.3 mm deck lifts straight "
+                "out of a 149.1 mm opening, so anything bolted to them seals "
+                "the battery in. PURE ADDITION AND NOTHING REMOVED, which is "
+                "the whole of the check here: each lug laps 1 mm into a "
+                "2.4 mm wall and every millimetre of it outside that lap "
+                "stands in air the reference also has, so 12 x 30 x 16 less "
+                "the 375 mm3 of the corner relief and the 848.23 of the eye, "
+                "4 536.77 a side, less the 10.47 that each mouth of the eye "
+                "gives up to the 45 degree break on it. THAT BREAK IS DRAWN "
+                "INTO THE PART rather than left to cad/finish.py, which takes "
+                "OUTER edges only and so never sees the rim of a bore: every "
+                "other bore on this robot is a seat or a clearance hole and "
+                "wants a sharp mouth, and this is the one place on the machine "
+                "where a rope turns over a printed edge under load. "
+                "cad/parameters.py carries the shape's argument and "
+                "tools/gate_e.py counts the two eyes."
+            ),
+        },
     ],
     # The lid, and this is the cleanest example of what a resize does to this
     # test: the figures below are EXACTLY the new lid's volume and exactly the

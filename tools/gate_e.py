@@ -120,6 +120,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     """
     from cad.electronics import (
         antennaHoleDiameter,
+        buttonHoleDiameter,
         sbcHoleDiameter,
         sbcStandoffHole,
     )
@@ -127,12 +128,14 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         bearingSeatBossDiameter,
         bearingSeatDiameter,
         bearingSeatShoulderBore,
+        hoistLugHoleDiameter,
         journalScrewClearance,
         journalSeatDiameter,
         m2Clearance,
         m3CapCounterbore,
         m3Clearance,
         rotorFilletRadius,
+        saddleDrainDiameter,
     )
     from cad.torso_shell import bossHoleDiameter
 
@@ -259,10 +262,24 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # carried the same Ø2.5 pilot since the pelvis was first drawn, and
             # they are on the same part. Counting only the new eight would fail
             # the moment anyone looked, so all twelve are named here.
+            #
+            # THIRTEEN FOR ONE DAY, September 2026, when the power switch board
+            # was a rectangle over half the bought distribution board and needed
+            # a pad on the right-hand wall to stop it turning about the two
+            # screws on its rear edge. It is that board's own 50 x 50 outline
+            # now and takes all four of its screws, so the pad is gone and this
+            # is twelve again.
             (
                 "pilots: four cover bosses, four power-entry posts, four deck ledges",
                 bossHoleDiameter / 2,
                 12,
+            ),
+            # Four, because the pelvis carries two hip clevises and the drain
+            # is bored through both side walls of each one's saddle.
+            (
+                "Ø4 powder drains through the two hip saddles",
+                saddleDrainDiameter / 2,
+                4,
             ),
             # There were two more pilots here, Ø1.7 in two pads for the bus
             # monitor's M2 screws. The monitor went onto the controller carrier
@@ -281,12 +298,15 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # screws are M2 now and are counted separately below, because a
             # wrong size is exactly what this gate is for.
             ("M3 clearances: two Ø41 rear patterns", m3Clearance / 2, 8),
-            # THE TWO XT60s' FOUR SCREWS, the only M2 on the robot. Four and not
-            # two: a pair 20.00 apart for the disconnect and a pair 25.00 apart
-            # for the charge socket, each 1.45 or 1.7 mm from the edge of its
-            # own cutout. If one of those bridges ever closes, that pair merges
-            # into its cutout and this reads two rather than four.
-            ("M2 clearances: two XT60E-M ear screws, two XT60E-F", m2Clearance / 2, 4),
+            # THE CHARGE SOCKET'S TWO SCREWS, the only M2 left on the robot. TWO
+            # AND NOT FOUR since 2026-09-16: the disconnect's pair, 20.00 apart,
+            # went when the loop key was replaced by a button that clamps the
+            # wall with its own nut and needs no screws at all. What is left is
+            # the socket's own pair at 25.00, each 1.7 mm from the edge of its
+            # cutout -- and that bridge is now the thinnest material on the
+            # wall, the disconnect's 1.45 having gone with it. If it ever
+            # closes, the pair merges into the cutout and this reads none.
+            ("M2 clearances: the XT60E-F's two flange screws", m2Clearance / 2, 2),
             # THE ANTENNA'S BUSHING, counted here rather than as an opening below
             # because a round hole leaves a cylindrical face and this is what
             # reads those. One: a hole that closed back over would leave none,
@@ -294,6 +314,20 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # used to be counted beside it; the XT60E-F is cut square and is
             # asked about as an opening instead.
             ("Ø6.5 for the SMA antenna bulkhead", antennaHoleDiameter / 2, 1),
+            # THE BUTTON'S BUSHING, new on 2026-09-16 and counted the same way.
+            # It is the hole the XT60E-M's 14.7 x 7.2 rectangle used to be, in a
+            # different place and a different shape: the loop key was replaced
+            # by a momentary switch that commands the power switch board, and a
+            # switch mounts through a round hole on its own thread. One, for the
+            # same reason the antenna's is one.
+            ("Ø12.2 for the on/off button's bushing", buttonHoleDiameter / 2, 1),
+            # THE TWO HOIST LUGS' EYES, and TWO is the number that matters
+            # rather than the radius. Each eye is bored through 30 mm of solid
+            # lug and leaves one cylinder; the lug is a body of its own,
+            # interpenetrating the flank the way everything else on this part
+            # does, so a merge that swallowed one would read none here and
+            # nothing else on the robot would notice until it was hung from it.
+            ("Ø6 eyes through the two hoist lugs", hoistLugHoleDiameter / 2, 2),
         ],
         # THE ELECTRONICS DECK, which is the one piece on this robot with no
         # golden STEP behind it -- the KCL never had it, so gate B cannot say
@@ -344,6 +378,11 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ),
         ("Ø17.5 shoulder the bearing seats against", bearingSeatShoulderBore / 2, 1),
         ("Ø26 boss carrying that shoulder", bearingSeatBossDiameter / 2, 1),
+        # Two faces, not one: the drain is bored straight through the saddle, so
+        # it leaves a cylinder in each of the two side walls it opens. One
+        # saddle on a thigh, hence two. If this ever reads zero the cavity has
+        # been sealed back up and the part is a powder trap again.
+        ("Ø4 powder drain through the knee saddle", saddleDrainDiameter / 2, 2),
     ]
     rows["thigh-105-mirrored"] = rows["thigh-105-unmirrored"]
     return rows

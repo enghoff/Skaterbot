@@ -532,7 +532,7 @@ which lands in the gap between the two bays. The robot stands 360 mm.
 **The power hardware is bought rather than drawn.** The power-entry PCB this
 project was going to lay out is gone; a SwiftWing PDB-02-XT60 distribution board
 does that job, a Matek 12S Pro BEC makes the logic rail, and an INA226 watches
-the bus. That deleted three BOM lines outright -- the tether's main connector,
+the bus voltage. That deleted three BOM lines outright -- the tether's main connector,
 the DC power switch the XT90-S replaced, and the M3 heat-set inserts every board
 mount used to need -- and it is why the capacitor bank now stands on somebody
 else's copper.
@@ -569,7 +569,9 @@ fix is track width rather than mass placement.
 - [ ] Measure the actual bus current through a first stand and a first drive. The
       runtime estimate -- roughly two hours balancing, an hour driving, under
       twenty minutes holding a loaded crouch -- is computed and nothing in it has
-      been seen. The INA226 on the bill is what closes it.
+      been seen. THE INA226 NO LONGER CLOSES IT -- the current measurement was
+      deleted on 2026-09-16 -- so take it with a clamp meter round the pack
+      lead, once, rather than waiting on fitted instrumentation.
 
 ### Phase 6 — assembly, cables and service
 

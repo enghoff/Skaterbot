@@ -557,6 +557,12 @@ def check_packing() -> tuple[int, int]:
     -- is asserted in FITS below, exactly as the packs resting on their rails is.
     The seat is still measured against everything else by check_no_clashes().
 
+    THE POWER SWITCH BOARD'S PAD IS THE SECOND SUCH CASE, September 2026, and for
+    the same reason: it is a pad off the right-hand wall carrying a board that
+    lives INSIDE the power bay, so it stands in that bay's own reserved volume by
+    definition. Its row is measured against the shell less that pad, and the fit
+    that matters -- the board sitting on it -- is asserted in FITS below.
+
     WHAT THIS GIVES UP is worth writing down. The 22 x 22 reservation used to say
     that any breakout up to that size would fit, and the seat is cut to 11 x 10.
     The reservation still holds the headroom, but spending it now means
@@ -569,10 +575,13 @@ def check_packing() -> tuple[int, int]:
     print("WHAT STANDS IN THE TORSO, AND WHETHER IT FITS")
     groups = scenes.GROUPS["torso_packing_check"]()
     shell = groups["pelvis"]
-    # cad/torso.py returns the seat last, and the docstring above says why the
-    # IMU alone is measured without it. Sliced rather than named so that a new
-    # feature on the pelvis cannot quietly drop out of this check as well.
+    # cad/torso.py returns the IMU's seat last and the power switch board's wall
+    # pad immediately before it, and the docstring above says why a reservation
+    # is measured without its OWN mount and against everything else. Sliced
+    # rather than named so that a new feature on the pelvis cannot quietly drop
+    # out of this check as well.
     shellLessImuSeat = shell[:-1]
+    shellLessPowerSwitchPad = shell[:-2] + shell[-1:]
 
     # The cavity, in the robot's frame: the shell's inner walls, its cavity floor
     # and the underside of the lid.
@@ -585,8 +594,9 @@ def check_packing() -> tuple[int, int]:
     # simulation/robot.py places a mass in each.
     items = ("battery", "power entry", "controller carrier", "SBC", "IMU", "BMS")
     checked = failed = 0
+    without = {"IMU": shellLessImuSeat, "power entry": shellLessPowerSwitchPad}
     for name, item in zip(items, groups["reservations"]):
-        against = shellLessImuSeat if name == "IMU" else shell
+        against = without.get(name, shell)
         distance, shared = measure([item], against)
         box = item.bounding_box()
         inside = min(
@@ -685,44 +695,29 @@ FITS = [
     # number in this column means is "the part as AMASS draws it, where this file
     # puts it". Change either and the number changes with it, on purpose.
     (
-        "the disconnect vs the deck below it",
-        "main disconnect",
+        "the button vs the deck below it",
+        "on/off button",
         "deck plate",
-        9.95,
+        5.25,
         "the whole reason this hardware stands above the deck rather than down "
-        "in the bay with the bus it breaks: below the plate the rear wall is "
-        "committed end to end and a bushing's nut fits nowhere. This is the air "
-        "between the XT60E-M's rear body and the top face of the plate its leads "
-        "drop through, and it is what a lead needs to turn in. It was 6.00 while "
-        "the drawn body was a 16 mm slab; the real connector is 8.1 mm tall, so "
-        "the same station leaves four millimetres more",
+        "in the bay with the bus it used to break: below the plate the rear "
+        "wall is committed end to end and a bushing's nut fits nowhere. This is "
+        "the air between the switch's body and the top face of the plate its "
+        "two wires drop through, and it is what a lead needs to turn in. It is the nut's bottom edge and not the body's: the nut is Ø17.5 where the thread is 12.2, so the widest thing on the inside face is what comes closest",
     ),
     (
-        "the disconnect vs the SBC in front of it",
-        "main disconnect",
-        "SBC board",
-        10.3,
-        "the price of putting the bus link in the logic band, and the figure to "
-        "watch if the SBC ever moves back. THIS IS THE NUMBER THE XT90 DIED ON: "
-        "an XT90E-M stands 19.7 mm inside this wall and the board's rear edge is "
-        "18.6 mm from it, so the part named here used to overlap the board it "
-        "was gated as clearing by 8 mm. The XT60E-M stands 8.3 mm in -- an ear "
-        "plate 3.2 thick and a rear body 5.1 behind it -- which is what makes "
-        "this station possible at all",
-    ),
-    (
-        "the charge socket vs the disconnect beside it",
-        "charge socket",
-        "main disconnect",
-        7.4,
-        "diagonally through the wall, from the XT60E-F's flange edge outside to "
-        "the XT60E-M's ear tip inside, which is nearer than anything on the same "
-        "side: 9.5 mm between the socket's nut and that ear, 13.4 between its "
-        "flange and the disconnect's nose. The two genders of one family stand "
-        "side by side here ON PURPOSE -- the key only fits the male and the "
-        "charger's lead only the female -- so this station is solved rather "
-        "than laid out: the socket went as far outboard as its 34 mm flange "
-        "still lands on the wall",
+        "the button vs the core board in front of it",
+        "on/off button",
+        "WeAct core board",
+        5.4,
+        "THE FIGURE THAT CHOSE THIS STATION. The wall was swept at the station "
+        "height for the depth a round bushing can reach before it meets "
+        "something, and the answer is 11.2 mm behind the disconnect's old x 18 "
+        "-- enough for a connector reaching 8.3 mm in and not enough for any "
+        "panel switch -- against 21.4 outboard of x -44, where what stands in "
+        "front is the core board on the far side of the carrier. The body "
+        "drawn here is 16 mm, which errs deep against the one part that has a "
+        "dimensioned drawing behind it -- a Daier GQ-12B/S is 21 mm from its dome to the tip of its terminal, and a 2.4 mm wall and its own dome come out of that before anything is behind the wall. Measure a real one: this gap is the margin it has to fit in",
     ),
     (
         "the charge socket's flange vs the deck below it",
@@ -745,14 +740,15 @@ FITS = [
         "used to have with the GX16 is gone with the GX16",
     ),
     (
-        "the antenna vs the disconnect beside it",
+        "the antenna vs the button beside it",
         "antenna bulkhead",
-        "main disconnect",
-        7.0,
-        "nut circle to ear tip, both on the inside face. Chosen together with "
-        "the board figure above: x -8 keeps this at 7 and puts the bushing in "
-        "the gap between the SBC's mini-HDMI and its first USB-C rather than "
-        "square in front of either",
+        "on/off button",
+        21.75,
+        "nut circle to nut circle, both on the inside face, and generous where "
+        "the disconnect's ear tip used to leave 7.0. The two are the only "
+        "things on this wall that mount on their own thread, and they are at "
+        "opposite ends of the free stretch of it: the button went outboard for "
+        "the depth behind it, which took it 36 mm away from the antenna",
     ),
     # THE BMS BAY, and all three of its bounds are somebody else's face. It is the
     # last free column in this torso -- 15.1 mm of slack between the two bays that
@@ -832,6 +828,68 @@ FITS = [
         "own standoffs leave over the deck. A longer head, or a carrier standoff "
         "bought 2 mm short, and they land on the plate and tilt the board",
     ),
+    # THE POWER SWITCH BOARD, September 2026, and its four numbers are the whole
+    # of how it is held and what it has to miss. Two screws go down through it,
+    # an 8 mm spacer and the bought distribution board, into that board's own
+    # rear posts; the third goes into a pad on the right-hand wall. It stands
+    # over the bought board's XT60 input socket. The PBV shunt now stands taller
+    # than the TO-220 switches, so it sets the clearance to the deck.
+    (
+        "power switch board on its spacers",
+        "power switch board",
+        "power switch spacers",
+        0.0,
+        "the board SITS ON the four spacers, so any gap here means it is hanging "
+        "on its screws -- the same test the packs on their rails get. FOUR, not "
+        "two and a printed pad on the wall: this board is the bought board's own "
+        "50 x 50 outline and takes all four of that board's screws",
+    ),
+    (
+        "power switch board vs the distribution board under it",
+        "power switch board",
+        "distribution board",
+        8.0,
+        "the spacer, and what the bought board's own solder joints and the motor "
+        "leads leaving them have to fit in. It is as much as the deck above "
+        "allows: the switches are 18.8 mm tall on top of it",
+    ),
+    (
+        "power switch board vs the bought board's XT60 socket",
+        "power switch board",
+        "bus input socket",
+        0.5,
+        "THE TIGHTEST FIGURE ON THIS BOARD, and it is the one to measure a real "
+        "distribution board against before anything is ordered: this board "
+        "passes over that socket, and the plug that goes into it has to come out "
+        "rearward, under this board, because the capacitor bank is in front of "
+        "it. Half a millimetre is what the drawn socket leaves",
+    ),
+    (
+        "the power switch parts vs the deck",
+        "power switch parts",
+        "deck plate",
+        3.0,
+        "THE TWO TO-220 SWITCHES ARE THE TALLEST THING ON THIS BOARD AGAIN, "
+        "standing 18.8 mm on their leads and leaving 3.0 mm under the deck. "
+        "It was 1.1 mm while the PBV-F1 Kelvin shunt stood here at 20.7 mm "
+        "installed, and that shunt went with the current measurement on "
+        "2026-09-16, so the tightest figure in this bay is nearly three times "
+        "what it was. The PCB placement check also checks each real part "
+        "separately",
+    ),
+    (
+        # THE BANK USED TO BE THE THING THIS BOARD STOPPED SHORT OF, 2 mm off
+        # four reserved cans of 16 x 25 across the whole front of the bay. It
+        # stands ON the board now -- two 10 x 16 cans, which is what docs/BOM.md
+        # has bought since it first named a part -- so what is worth measuring
+        # is no longer a gap beside them but the air over them.
+        "the capacitor bank vs the deck plate over it",
+        "capacitor bank",
+        "deck plate",
+        5.8,
+        "a 16 mm can standing on this board, under a deck 21.8 mm above it. The "
+        "two switches beside them are what governs this bay's height, at 3.0",
+    ),
     (
         "IMU board vs the ribs that aim it",
         "IMU board",
@@ -868,7 +926,8 @@ def check_fits(items: tuple) -> tuple[int, int]:
             name: electronics.torsoElectronicsGroups()[name]
             for name in (
                 "IMU board",
-                "main disconnect",
+                "on/off button",
+                "WeAct core board",
                 "charge socket",
                 "antenna bulkhead",
                 "SBC board",
@@ -876,6 +935,11 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "BMS board",
                 "bus monitor",
                 "distribution board",
+                "bus input socket",
+                "capacitor bank",
+                "power switch board",
+                "power switch parts",
+                "power switch spacers",
             )
         },
         **{

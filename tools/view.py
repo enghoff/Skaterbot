@@ -58,11 +58,19 @@ and `--finished --count` reports the faces and volume it changed.
 Free and offline: the geometry is tessellated locally and pushed to a viewer over
 a socket, so unlike /views this spends no API credits and takes about a second.
 
-WHERE THE VIEWER COMES FROM. Either the OCP CAD Viewer extension in VS Code --
-open its panel and it listens on port 3939 -- or the standalone browser viewer,
+WHERE THE VIEWER COMES FROM, AND HOW IT IS FOUND. Either the OCP CAD Viewer
+extension in VS Code -- open its panel -- or the standalone browser viewer,
 which this repository can start for itself:
 
-    uv run --with ocp_vscode --with build123d python -m ocp_vscode --port 3939
+    uv run --with ocp_viewer --with build123d python -m ocp_viewer
+
+WHICH PORT IT IS ON IS NOT 3939 AND MUST NOT BE ASSUMED. Every viewer registers
+itself in `~/.ocpvscode` as it starts and drops out of it as it stops, and every
+client reads that file to find one; 3939 is only where the VS Code extension
+begins looking for a free port, so anything already holding it -- a standalone
+viewer, a second window, a viewer that outlived its editor -- pushes the panel
+to 3940 and up. This asks `ocp_vscode` for the answer rather than naming a
+number, which is what `--port` is for when you do want to name one.
 
 Colours are the robot's own palette, read from cad/parameters.py, for the same
 reason the URDF reads it: a colour retyped here would be a second source of it.
@@ -150,7 +158,7 @@ def _payload_colour(name: str) -> str:
     if name in (
         "bus terminal",
         "fuse holder",
-        "main disconnect",
+        "on/off button",
         "charge socket",
         "antenna bulkhead",
     ):
@@ -510,7 +518,14 @@ def main() -> int:
         " (cad/finish.py). Works on a single piece or on the whole robot, and on"
         " the robot it takes about a minute because the pelvis is slow.",
     )
-    parser.add_argument("--port", type=int, default=3939)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="the viewer to draw into. The default is discovery:"
+        " whichever viewer registered itself in ~/.ocpvscode and still"
+        " answers, or the OCP_PORT environment variable, or 3939",
+    )
     parser.add_argument(
         "--size",
         type=float,
@@ -541,7 +556,12 @@ def main() -> int:
 
     import ocp_vscode
 
-    ocp_vscode.set_port(args.port)
+    if args.port is None:
+        # Its own discovery rather than ours: it reads the same registry, and it
+        # honours OCP_PORT, which is how you pin a viewer without a flag.
+        ocp_vscode.find_and_set_port()
+    else:
+        ocp_vscode.set_port(args.port)
 
     if args.piece and args.piece != "robot":
         from cad.scenes import GROUPS

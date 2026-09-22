@@ -1,0 +1,40 @@
+{
+    // Watching the CAD, in one gesture: ctrl-shift-P, "Tasks: Run Task",
+    // "watch the CAD". It opens the OCP CAD Viewer panel and then runs
+    // watch.cmd against it, which is the pair of steps the script cannot take
+    // on its own -- opening the panel is a VS Code command, and the extension
+    // registers no URI handler, so nothing in a terminal can reach it.
+    //
+    // It is the default build task, so ctrl-shift-B is the whole gesture.
+    //
+    // Order matters, but the port does not: the panel takes 3939 if it is free
+    // and the next port up if it is not, and watch.cmd reads ~/.ocpvscode to
+    // find whichever it took. The viewer task still has to finish first, so
+    // that there is something registered to find.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "open the CAD viewer",
+            "detail": "the OCP CAD Viewer panel, on port 3939",
+            "type": "runCommands",
+            "commands": ["ocpCadViewer.ocpCadViewer"],
+            "presentation": { "reveal": "never" }
+        },
+        {
+            "label": "watch the CAD",
+            "detail": "open the viewer panel, then redraw the robot on every save",
+            "type": "shell",
+            "group": { "kind": "build", "isDefault": true },
+            "command": "${workspaceFolder}\\watch.cmd",
+            "dependsOn": ["open the CAD viewer"],
+            "dependsOrder": "sequence",
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        }
+    ]
+}

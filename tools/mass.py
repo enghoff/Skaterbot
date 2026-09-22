@@ -77,7 +77,7 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +22.1,
+        +21.9,
         "THE JOURNAL IS NOT PART OF THIS PRINT AND CANNOT BE, which is -0.2 g of "
         "the figure. It was a bonded dowel, then a printed stub worth 1.4 g on "
         "the pair, and neither can be assembled: both stand proud of the output "
@@ -132,7 +132,15 @@ EXPECTED_CHANGE_G = {
         "housing and stops the plate seating at all. What the plate gives up is "
         "its pilot, which cad/parameters.py argues is worth less than the "
         "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
-        "asserts the millimetre in front of the plate is empty.",
+        "asserts the millimetre in front of the plate is empty. AND THE KNEE "
+        "SADDLE IS DRAINED, 21 September 2026, which is the 0.1 g this line "
+        "came DOWN by. The saddle is a closed box, and on the union of the "
+        "finished bodies it measured as a sealed 7.66 cm3 cavity -- un-fused "
+        "powder with no way out of a sintered print, about 3.4 g of it in "
+        "each thigh that nothing on this table counts. One Ø4 bore through "
+        "both side walls opens it. The 0.1 g is the wall that bore takes, "
+        "60.3 mm3 a saddle; the powder it lets out is worth thirty times as "
+        "much and was never on the bill to lose.",
     ),
     "cad/shin.py": (
         +2.9,
@@ -178,7 +186,7 @@ EXPECTED_CHANGE_G = {
         "of runout on an Ø80 wheel is nothing.",
     ),
     "cad/torso.py": (
-        +68.2,
+        +78.7,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -234,9 +242,42 @@ EXPECTED_CHANGE_G = {
         "the controller carrier grew from 76 mm wide to 140 to carry that "
         "monitor and the logic BEC itself. Both boards are on the carrier now, "
         "so the pads carried nothing and came off, and this shell is 0.6 g "
-        "lighter for it. THE SHUNT DID NOT MOVE AND CANNOT: it stands in the "
-        "main bus path at the distribution board, and what goes up to the "
-        "monitor is a twisted pair into the monitor's own screw terminals",
+        "lighter for it. THE SHUNT MOVED ONTO THE POWER SWITCH BOARD AND THEN "
+        "OFF THE ROBOT ALTOGETHER: the current measurement was deleted on "
+        "16 September 2026, so there is no shunt, and no twisted pair up to "
+        "the carrier's J7 either. The monitor stays on the carrier reading bus "
+        "voltage on its own pin, which never went through the shunt. None of "
+        "it ever cost this shell anything. "
+        "THE "
+        "POWER SWITCH BOARD COSTS THIS SHELL NOTHING AT ALL: it took a 320 mm3 "
+        "pad on the right-hand wall for a third screw while it was a rectangle "
+        "over half the bought distribution board, and when it grew to that "
+        "board's own 50 x 50 outline it took all four of that board's screws "
+        "instead and the pad came off again. AND THE MAIN DISCONNECT WENT ON 2026-09-16, which is 4.83 mm3 and not a gram: a momentary button that commands the switch board replaced the loop key, and three holes in the rear wall became one -- a 14.7 x 7.2 nose cut and two O2.4 ear holes out, a single O12.2 bushing hole in, at x -44 rather than x 18 because there is 11.2 mm of clear depth behind the old station and a panel switch needs more. The wall loses the thinnest material on this shell with it, the 1.45 mm between each ear screw and its cutout. tools/gate_b.py holds the split. "
+        "AND BOTH HIP SADDLES ARE DRAINED, 21 September 2026, which is the "
+        "0.1 g this line came DOWN by: the same Ø4 bore as the knee's, twice, "
+        "opening two sealed 7.53 cm3 cavities that between them held about "
+        "6.8 g of powder this shell would have been weighed with and the CAD "
+        "never counted. 120.6 mm3 of wall on the pair, and gate B holds it "
+        "exactly. "
+        "AND IT NOW CARRIES TWO HOIST LUGS, 22 September 2026, which is 10.6 g "
+        "of this line at the baseline's density and 9.3 g on the robot's "
+        "total. They are the only thing on the printed robot that is there "
+        "for the bench rather than for the machine: a block on each flank, "
+        "12 mm proud of the wall with a O6 eye through it, so the robot hangs "
+        "from an overhead rail and a topple is caught before it lands. "
+        "docs/NOTES.md measures that fall at 2.85 J against a limb that "
+        "stores 0.21 J before it breaks across the layers, so nine grams buys "
+        "back a part the project would otherwise reprint. It is on the flank "
+        "because the four cover bosses sit 4 mm inboard of the cavity mouth "
+        "and the electronics deck is 148.3 mm wide in a 149.1 mm opening, so "
+        "a bracket on the lid's own screws would seal the battery in. "
+        "4 536.77 mm3 a side, less the 10.47 each mouth of the eye gives "
+        "up to the 45 degree break on it -- drawn into the part because "
+        "cad/finish.py takes outer edges only and never sees the rim of a "
+        "bore, and this is the one place on the robot where a rope turns "
+        "over a printed edge under load. Gate B holds the whole of it as a "
+        "pure addition.",
     ),
 }
 

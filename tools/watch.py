@@ -12,11 +12,11 @@ Everything the watcher does not recognise is handed to tools/view.py unchanged,
 so whatever `uv run tools/view.py ...` shows, this shows and then keeps current.
 
 The scripts at the project root -- watch.cmd on Windows, watch.sh anywhere else
--- are the one-command version of this: they are `--serve --finished` plus
-whatever you give them, so `watch.cmd pelvis-shell` opens a viewer and watches
-that piece as it would be printed. They take `--raw` to drop the --finished
-again, which is worth doing on the whole robot, where the chamfer is about a
-minute of every redraw.
+-- are the one-command version of this: they are `--finished` plus whatever you
+give them, so `watch.cmd pelvis-shell` watches that piece as it would be
+printed. They take `--raw` to drop the --finished again, which is worth doing on
+the whole robot, where the chamfer is about a minute of every redraw, and
+`--browser` to pass `--serve` through.
 
 It watches every .py under cad/ -- and tools/view.py itself -- and when one of
 them changes it draws the view again in a FRESH interpreter. That is the whole
@@ -28,16 +28,34 @@ A build that fails does not stop it. The traceback prints and the watch carries
 on, so the loop is edit, save, look, with no command in between.
 
 Free and offline, exactly like tools/view.py: the geometry is tessellated here
-and pushed over a socket to a viewer on port 3939 -- either the OCP CAD Viewer
-panel in VS Code, or the standalone one this repository can start for itself:
+and pushed over a socket to a viewer -- either the OCP CAD Viewer panel in VS
+Code, or the standalone one this repository can start for itself:
 
-    uv run --with ocp_vscode --with build123d python -m ocp_vscode --port 3939
+    uv run --with ocp_viewer --with build123d python -m ocp_viewer
 
-If nothing is listening it waits for a viewer rather than building a robot it has
-nowhere to send, and if the viewer goes away mid-session it waits again. With
-`--serve` it starts that standalone viewer itself -- unless the port is already
-answering, because an open panel in VS Code is a viewer and a second server
-would only fail to bind -- and stops it again when you stop watching.
+THE SERVER AND THE CLIENT ARE TWO PACKAGES SINCE OCP CAD Viewer 4.1, and only
+one of them was renamed. What pushes geometry is still `ocp_vscode`, which is
+what tools/view.py imports; the standalone server moved out of it into
+`ocp_viewer`. `python -m ocp_vscode` did not start failing when that happened --
+it prints where the viewer went and exits 0 -- so the symptom was this script
+reporting "the viewer exited with 0 before it listened" and nothing else. The
+browser tab the old server opened as it came up went the same way, and is opened
+by `open_viewer_page` below instead.
+
+THE VS CODE PANEL IS THE DEFAULT and the browser is the fallback, because a
+model beside the code it is drawn from is the point of watching it at all. So
+this waits for a viewer rather than building a robot it has nowhere to send, and
+waits again if the viewer goes away mid-session. `--serve` is the other way:
+it starts the standalone server itself and opens a tab on it -- unless the port
+is already answering, because an open panel in VS Code is a viewer and a second
+server would only fail to bind -- and stops it again when you stop watching.
+
+NOTHING HERE CAN OPEN THE VS CODE PANEL, which is why the wait is a printed
+instruction rather than a command. Opening it is `ocpCadViewer.ocpCadViewer`,
+a VS Code command, and the extension registers no URI handler, so there is no
+`code --open-url` or any other way in from a terminal. What can drive it is VS
+Code itself: .vscode/tasks.json's "watch the CAD" opens the panel and then runs
+this, and it is the default build task, so ctrl-shift-B is the whole gesture.
 
 AND IT STILL PROVES NOTHING. Watching a part rebuild is not evidence that a
 feature is there; structure behind a hole makes an open one look closed, which is
@@ -49,6 +67,7 @@ Those are the checks. This is for looking at the machine while you work on it.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import signal
@@ -56,10 +75,14 @@ import socket
 import subprocess
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VIEW = ROOT / "tools" / "view.py"
+# Where every viewer announces itself, and the port the first one takes.
+REGISTRY = Path.home() / ".ocpvscode"
+DEFAULT_PORT = 3939
 
 
 def sources() -> dict[Path, float]:
@@ -80,29 +103,81 @@ def viewer_listening(port: int) -> bool:
         return probe.connect_ex(("127.0.0.1", port)) == 0
 
 
-def wait_for_viewer(port: int, server: subprocess.Popen | None = None) -> bool:
-    """Block until something holds the port, and say so if it never does.
+def registered_ports() -> list[int]:
+    """Every viewer that has announced itself, whether or not it is still there.
 
-    With no viewer of our own there is nothing to do but wait for a human to
-    open one, so the message is the instruction. With one, the wait is a second
-    or two -- unless it dies on the way up, which is the False.
+    `~/.ocpvscode` is the registry all of this shares: the VS Code extension
+    writes it from TypeScript as its panel opens, the standalone server writes
+    it too, and every Python client reads it to find a viewer. A viewer removes
+    its own line as it stops -- but one that is killed rather than stopped
+    leaves it behind, so this is the candidate list and `find_viewer` is the
+    answer.
     """
-    if viewer_listening(port):
-        return True
+    try:
+        config = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    ports = []
+    for name in config.get("services", {}):
+        try:
+            ports.append(int(name))
+        except ValueError:
+            continue  # a malformed line is somebody else's to clean up
+    return sorted(ports)
+
+
+def find_viewer(pinned: int | None = None) -> int | None:
+    """The port of a viewer that is actually answering, or None.
+
+    WHY THIS IS NOT THE CONSTANT 3939. That is only where the VS Code extension
+    STARTS looking for a free port. Anything already holding it -- a standalone
+    viewer in a browser tab, a second window, a viewer that outlived the editor
+    that opened it -- pushes the panel to 3940 and up, and then a watcher aimed
+    at 3939 sits waiting with the viewer open on screen in front of it. That is
+    exactly what happened here, and the registry is the cure: ask which viewers
+    exist rather than asserting where one ought to be.
+    """
+    if pinned is not None:
+        return pinned if viewer_listening(pinned) else None
+    live = [port for port in registered_ports() if viewer_listening(port)]
+    if not live:
+        # A viewer old enough not to register, or one whose line was lost.
+        return DEFAULT_PORT if viewer_listening(DEFAULT_PORT) else None
+    if DEFAULT_PORT in live:
+        return DEFAULT_PORT  # the conventional one, when there is a choice
+    return live[0]
+
+
+def wait_for_viewer(
+    pinned: int | None = None, server: subprocess.Popen | None = None
+) -> int | None:
+    """Block until a viewer answers, and return the port it answered on.
+
+    The port is discovered rather than assumed, and discovered again on every
+    pass of the wait, because the viewer this is waiting for does not exist yet
+    and will register whichever port it ends up on. With no viewer of our own
+    there is nothing to do but wait for a human to open one, so the message is
+    the instruction. With one, the wait is a second or two -- unless it dies on
+    the way up, which is the None.
+    """
+    found = find_viewer(pinned)
+    if found is not None:
+        return found
     if server is None:
-        print(f"nothing is listening on port {port}.")
-        print("Open the OCP CAD Viewer panel in VS Code, or start the standalone one:")
-        print(
-            "  uv run --with ocp_vscode --with build123d python -m ocp_vscode"
-            f" --port {port}"
-        )
-    while not viewer_listening(port):
+        where = f"port {pinned}" if pinned else "any port"
+        print(f"no viewer is listening on {where}; waiting for one.")
+        print('In VS Code: ctrl-shift-P, "OCP CAD Viewer: Open viewer".')
+        print("  (or ctrl-shift-B, which opens the panel and runs this)")
+        print("In a browser: run this again with --browser, or start one yourself:")
+        print("  uv run --with ocp_viewer --with build123d python -m ocp_viewer")
+    while found is None:
         if server is not None and server.poll() is not None:
             print(f"the viewer exited with {server.returncode} before it listened")
-            return False
+            return None
         time.sleep(1.0)
-    print("viewer is up.")
-    return True
+        found = find_viewer(pinned)
+    print(f"viewer is up on port {found}.")
+    return found
 
 
 def serve_viewer(port: int) -> subprocess.Popen | None:
@@ -117,15 +192,36 @@ def serve_viewer(port: int) -> subprocess.Popen | None:
         return None
     uv = shutil.which("uv")
     if uv is None:
-        command = [sys.executable, "-m", "ocp_vscode", "--port", str(port)]
+        command = [sys.executable, "-m", "ocp_viewer", "--port", str(port)]
     else:
-        command = [uv, "run", "--with", "ocp_vscode", "--with", "build123d"]
-        command += ["python", "-m", "ocp_vscode", "--port", str(port)]
-    print(f"starting the standalone viewer on port {port}; it opens a browser tab")
+        command = [uv, "run", "--with", "ocp_viewer", "--with", "build123d"]
+        command += ["python", "-m", "ocp_viewer", "--port", str(port)]
+    print(f"starting the standalone viewer on port {port}")
     # Its own process group on POSIX, so that stopping it later stops the
     # interpreter uv started underneath it instead of orphaning the server.
     group = {} if sys.platform == "win32" else {"start_new_session": True}
     return subprocess.Popen(command, cwd=ROOT, **group)
+
+
+def open_viewer_page(port: int) -> None:
+    """Put the viewer on screen, which the server no longer does for itself.
+
+    Until OCP CAD Viewer 4.1 the standalone server opened a browser tab as it
+    came up. `ocp_viewer` serves the page and waits to be visited instead -- it
+    prints its URL, says "No browser registered" and sits there -- so `watch.cmd`
+    came up listening, watching and redrawing with nothing on screen to redraw
+    onto. Opening the tab is ours to do now, and only when the viewer is ours:
+    an OCP CAD Viewer panel in VS Code is already a window.
+    """
+    url = f"http://127.0.0.1:{port}"
+    print(f"opening {url}")
+    try:
+        opened = webbrowser.open(url)
+    except OSError as failure:  # no browser to open, on a headless machine
+        opened = False
+        print(f"  could not: {failure}")
+    if not opened:
+        print(f"  open {url} yourself to see the model")
 
 
 def stop_viewer(server: subprocess.Popen | None) -> None:
@@ -186,13 +282,28 @@ def changed_names(before: dict[Path, float], after: dict[Path, float]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=3939)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="pin the viewer to draw into. The default is to find one:"
+        " whichever viewer registered itself in ~/.ocpvscode and still"
+        " answers, which is how the VS Code panel is found when it did"
+        " not get the conventional 3939",
+    )
     parser.add_argument(
         "--serve",
         action="store_true",
         help="start the standalone viewer first if nothing is listening on the"
-        " port, and stop it again on the way out -- which is all the watch.cmd"
-        " and watch.sh scripts at the project root do",
+        " port, open a browser tab on it, and stop it again on the way out."
+        " Without this the wait is for an OCP CAD Viewer panel in VS Code,"
+        " which is what watch.cmd does unless you pass it --browser",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="do not open a browser tab on the viewer this script started,"
+        " for a machine that has no browser or a tab that is already open",
     )
     parser.add_argument(
         "--interval",
@@ -209,12 +320,21 @@ def main() -> int:
     # watcher's whole job is to say what it is doing as it does it.
     sys.stdout.reconfigure(line_buffering=True)
 
-    command = viewer_command() + ["--port", str(args.port), *forwarded]
-    server = serve_viewer(args.port) if args.serve else None
+    # A viewer we start is one we choose the port of; one we find is one we ask
+    # the registry about. Either way the answer is known before anything is
+    # drawn, and view.py is then told the number rather than repeating the
+    # search for itself.
+    served = args.port or DEFAULT_PORT
+    server = serve_viewer(served) if args.serve else None
+    pinned = served if args.serve else args.port
 
     try:
-        if not wait_for_viewer(args.port, server):
+        port = wait_for_viewer(pinned, server)
+        if port is None:
             return 1
+        if server is not None and not args.no_browser and "--list" not in forwarded:
+            open_viewer_page(port)
+        command = viewer_command() + ["--port", str(port), *forwarded]
 
         watched = sources()
         print(f"watching {len(watched)} files under cad/; ctrl-c to stop")
@@ -236,7 +356,12 @@ def main() -> int:
             watched = now
             drawn = draw(command)
             if not drawn:
-                wait_for_viewer(args.port, server)  # a closed panel recovers
+                # A closed panel recovers, and recovers onto whatever port it
+                # comes back on, which is why the command is rebuilt with it.
+                port = wait_for_viewer(pinned, server)
+                if port is None:
+                    return 1
+                command = viewer_command() + ["--port", str(port), *forwarded]
     except KeyboardInterrupt:
         print("\nstopped")
     finally:

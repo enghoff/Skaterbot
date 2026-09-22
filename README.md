@@ -19,6 +19,8 @@ All project documentation lives in [`docs/`](docs/):
 - [`docs/PLAN.md`](docs/PLAN.md) — **the active plan**: overhauling the skeleton into a stressed-shell design.
 - [`docs/CHECKLIST.md`](docs/CHECKLIST.md) — superseded by `PLAN.md`; kept as the record of the skeleton design.
 - [`docs/BOM.md`](docs/BOM.md) — provisional bill of materials with India-focused sourcing notes and supply-risk flags.
+- [`docs/CARRIER.md`](docs/CARRIER.md) — the controller carrier: what is soldered to what, why each part is where it is, and what the board is checked against.
+- [`docs/POWER_SWITCH.md`](docs/POWER_SWITCH.md) — the power switch board: the main fuse, the bus shunt, the bulk bank and the MOSFET switch that is the robot's on/off and its low-battery cutoff. Every part on it is through-hole, and since 2026-09-16 the button on the rear wall is the only thing that turns the robot on — the loop key is gone, and nothing isolates the pack but its own connector.
 - [`docs/BUILD123D_MIGRATION.md`](docs/BUILD123D_MIGRATION.md) — how the CAD moved from KCL to build123d, and the six gates it is held to.
 - [`docs/KCL_GOTCHAS.md`](docs/KCL_GOTCHAS.md) — what the Zoo engine refused and which way the robot faces. **History now**, but it is why several parts are shaped as they are: the interpenetrating shells, the rectangular cable ports, the arcs drawn into profiles instead of real fillets.
 

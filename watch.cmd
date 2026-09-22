@@ -7,6 +7,7 @@ rem   watch.cmd torso-packing-check a check scene, with its groups named
 rem   watch.cmd --raw               as modelled, sharp arrises, which is faster
 rem   watch.cmd --size 2            an exaggerated chamfer, to SEE it is there
 rem   watch.cmd --list              what can be shown
+rem   watch.cmd --browser          a standalone viewer in a browser tab
 rem
 rem IT SHOWS THE FINISHED DESIGN unless you ask for --raw. The parts leave
 rem cad/ with sharp arrises and the 0.5 mm chamfer is a separate pass in
@@ -22,11 +23,22 @@ rem at a zoom that fits a whole limb: --size 2 exaggerates it, at the price of a
 rem few edges OCCT then refuses to cut at all.
 rem
 rem Everything you pass goes through to tools/view.py, which is what draws. The
-rem work is all in tools/watch.py --serve: it starts the standalone viewer if
-rem nothing is already listening on port 3939, redraws on every save, and stops
-rem the viewer again when you stop watching with ctrl-c. An open OCP CAD Viewer
-rem panel in VS Code counts as listening, so this uses that panel when it is
-rem there and opens a browser tab when it is not.
+rem work is all in tools/watch.py, which redraws on every save.
+rem
+rem IT DRAWS INTO VS CODE, AND CTRL-SHIFT-B IS THE WHOLE GESTURE. That is the
+rem "watch the CAD" task in .vscode/tasks.json: it opens the OCP CAD Viewer panel
+rem and then runs this against it. By hand it is two steps -- ctrl-shift-P,
+rem "OCP CAD Viewer: Open viewer", then this -- and in either order, because
+rem until a viewer exists this waits for one rather than drawing a robot it has
+rem nowhere to put.
+rem
+rem WHICH PORT THE PANEL IS ON IS NOT ASSUMED. 3939 is only where the extension
+rem starts looking for a free one, so a standalone viewer or a second window puts
+rem the panel on 3940 and up. Every viewer registers itself in ~/.ocpvscode and
+rem tools/watch.py reads that, so it finds the panel wherever it landed.
+rem
+rem --browser is the other way: a standalone viewer in a browser tab, started
+rem here and stopped again when you stop watching.
 rem
 rem Free and offline, like everything else here: the geometry is tessellated on
 rem this machine and pushed to the viewer over a socket.
@@ -40,16 +52,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem --raw is this script's own flag and view.py knows nothing about it, so it is
-rem taken out of the arguments rather than passed on. Everything else goes
-rem through untouched, quoting and all, which is why this is a shift loop and
-rem not a for over %* -- that one splits on commas and expands wildcards.
+rem --raw and --browser are this script's own flags and view.py knows nothing
+rem about either, so they are taken out of the arguments rather than passed on.
+rem Everything else goes through untouched, quoting and all, which is why this is
+rem a shift loop and not a for over %* -- that one splits on commas and expands
+rem wildcards.
 set "FINISH=--finished"
+set "SERVE="
 set "ARGS="
 :parse
 if "%~1"=="" goto run
 if /I "%~1"=="--raw" (
     set "FINISH="
+) else if /I "%~1"=="--browser" (
+    set "SERVE=--serve"
 ) else (
     set "ARGS=%ARGS% %1"
 )
@@ -57,7 +73,7 @@ shift
 goto parse
 
 :run
-uv run tools/watch.py --serve %FINISH%%ARGS%
+uv run tools/watch.py %SERVE% %FINISH%%ARGS%
 set WATCH_EXIT=%ERRORLEVEL%
 popd
 exit /b %WATCH_EXIT%

@@ -106,7 +106,7 @@ right hole spacing, and the footprints use it.
 | **J4** | 4-pin | bus C, the two wheels, same order |
 | **J5** | 8-pin | the SBC: 1 and 2 `GND`, 3 and 4 `+5V`, 5 MCU→SBC, 6 SBC→MCU, 7 `BOOT0`, 8 `NRST` |
 | **J6** | 6-pin | IMU: 1 `SCL`, 2 `GND`, 3 supply, 4 `INT`, 5 `RST`, 6 `SDA` |
-| **J7** | 2-pin | the shunt's sense pair: 1 `IN+`, 2 `IN−`, twisted, down to the shunt at the distribution board |
+| **J7** | 2-pin | **spare.** It was the shunt's sense pair, 1 `IN+`, 2 `IN−`, until the current measurement was deleted on 2026-09-16. Link both pins to ground rather than leaving the monitor's inputs floating |
 | **JP1** | 3 pads | IMU supply link: bridge 1–2 for 5 V, 2–3 for 3.3 V |
 
 **Three of these changed on 14 September 2026, when the BEC and the monitor came
@@ -150,8 +150,8 @@ board while the robot is powered, or cut `SB9`.
 Decoupling is nine capacitors: 100 nF at both `VDD` and `VIO` of every
 transceiver, one more on the 3.3 V beside the sensor connectors, 10 µF of bulk
 on the 5 V, and a second 10 µF on the bus where it arrives — that last one for
-the lead's own inductance when the loop key is pushed home. The two 4.7 kΩ I²C pull-ups go on only if neither sensor module
-brings its own.
+the lead's own inductance when the switch board's MOSFETs open. The two
+4.7 kΩ I²C pull-ups go on only if neither sensor module brings its own.
 
 The transceivers' `STBY` pins are tied to ground rather than driven. They have
 about 1.1 MΩ of pull-up inside, so a pin left floating is standby and not normal
@@ -652,6 +652,14 @@ beeping with a meter before ordering.**
 
 ## What is not settled
 
+- **Three wires have nowhere to land on this board.** The power switch board
+  added on 15 September 2026 — `docs/POWER_SWITCH.md` — wants a hold output from
+  the MCU, a button input back to it, and a ground, and this board is at a
+  checked fabrication release with no connector for them. Adding one is a change
+  to this board and to its release, and it has not been made. Until it is, that
+  switch is held closed by a shorting link on its own button connector, which is
+  a bench arrangement rather than the robot's. The MCU has spare pins for both
+  signals; what it has not got is a plug.
 - **Which IMU breakout.** The 7Semi BNO085 nano is listed at 3.6–5 V, so JP1
   defaults to 5 V, and the pin order on J6 follows the names its listing uses
   rather than a pinout anyone has read off the board. Confirm both against the

@@ -51,10 +51,21 @@ simulation/urdf/meshes/manifest.json
 electrical/kicad/gerber/
 electrical/kicad/carrier-fabrication.zip
 
+# What electrical/power_pcb.py hands to KiCad and reads back from it: the board
+# description it writes for the builder, the pad positions it checks against, and
+# KiCad's own DRC report. All three are a record of one run, where the board and
+# the project file beside them are the design and are tracked.
+electrical/kicad_power/power_board.json
+electrical/kicad_power/pads.json
+electrical/kicad_power/drc.json
+
 # KiCad's own per-user state, written beside the project whenever the GUI opens
 # it. carrier.kicad_prl is which layer you were last looking at, .history/ is
 # the editor's automatic snapshots, and the ~*.lck files say the project is open
 # on this machine right now. None of it is the design.
 electrical/kicad/*.kicad_prl
+electrical/kicad_power/*.kicad_prl
 electrical/kicad/.history/
 electrical/kicad/~*.lck
+electrical/kicad_power/.history/
+electrical/kicad_power/~*.lck

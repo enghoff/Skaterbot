@@ -57,12 +57,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="8.93791281e-05 0.00518431469 -0.0238169866" rpy="0 0 0"/>
-      <mass value="1.118729"/>
-      <inertia ixx="3.621712232e-03" ixy="1.776534992e-06" ixz="-9.092259729e-07"
-               iyy="1.692337493e-03" iyz="-6.585215176e-05" izz="2.564572621e-03"/>
+      <origin xyz="8.85823442e-05 0.00512640637 -0.0234112587" rpy="0 0 0"/>
+      <mass value="1.128213"/>
+      <inertia ixx="3.709467981e-03" ixy="1.160561453e-06" ixz="-8.589527783e-07"
+               iyy="1.720451053e-03" iyz="-6.275902134e-05" izz="2.625504971e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 150.7 g, measured: cad/torso.py:pelvisShell, twenty bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 160.2 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -188,12 +188,12 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="3.29199908e-05 -0.00161790891 -0.0951421067" rpy="0 0 0"/>
-      <mass value="0.205173"/>
-      <inertia ixx="2.045507064e-04" ixy="1.712752319e-07" ixz="2.748951530e-07"
-               iyy="1.872283359e-04" iyz="3.707859265e-05" izz="6.732291619e-05"/>
+      <origin xyz="3.28700245e-05 -0.00166441498 -0.0950983464" rpy="0 0 0"/>
+      <mass value="0.205620"/>
+      <inertia ixx="2.049116774e-04" ixy="1.708213028e-07" ixz="2.751262794e-07"
+               iyy="1.874273887e-04" iyz="3.727082788e-05" izz="6.751713040e-05"/>
     </inertial>
-    <!-- thigh limb plate, right — 38.8 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
+    <!-- thigh limb plate, right — 39.2 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -313,12 +313,12 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="3.29467418e-05 0.00161795568 -0.0951420759" rpy="0 0 0"/>
-      <mass value="0.205173"/>
-      <inertia ixx="2.045509959e-04" ixy="-1.713907613e-07" ixz="2.748191832e-07"
-               iyy="1.872284893e-04" iyz="-3.707872544e-05" izz="6.732318445e-05"/>
+      <origin xyz="3.28814539e-05 0.00166443551 -0.0950983333" rpy="0 0 0"/>
+      <mass value="0.205620"/>
+      <inertia ixx="2.049118070e-04" ixy="-1.708725034e-07" ixz="2.750935274e-07"
+               iyy="1.874274549e-04" iyz="-3.727088666e-05" izz="6.751725088e-05"/>
     </inertial>
-    <!-- thigh limb plate, left — 38.8 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
+    <!-- thigh limb plate, left — 39.2 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>

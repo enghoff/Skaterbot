@@ -166,6 +166,44 @@ RETIRED = {
 # a reason. If this list ever grows without one, the EXTRA rule has stopped
 # meaning anything.
 ADDED = {
+    # ---- THE POWER SWITCH BOARD, September 2026 -----------------------------
+    #
+    # A second board of our own, in the pack's positive lead between the loop key
+    # and the distribution board: the main fuse, the bus shunt, and a MOSFET
+    # switch that is the robot's on/off and its low-battery cutoff.
+    # electrical/power.py is the circuit and electrical/power_pcb.py is the
+    # board; these are the dimensions the CAD needs to pack it and to print the
+    # one feature that carries it.
+    #
+    # The outline and its height: an 8 mm spacer over the bought distribution
+    # board, and THE BOUGHT BOARD'S OWN 50 x 50 FOOTPRINT. It was a 54 x 32.5
+    # rectangle over the rear half of that board until the board went from
+    # surface mount to through-hole, which wants about half again the area; the
+    # rest came from the capacitor bank, which had reserved four positions of
+    # 16 x 25 for the two 10 x 16 cans docs/BOM.md buys. Landing on the bought
+    # board's outline also buys the mount: four screws where there were two and a
+    # printed pad on the wall, so powerSwitchPadScrewY, powerSwitchPadHeight and
+    # powerSwitchPadWidth are gone with it.
+    "powerSwitchSpacer": 8.0,
+    "powerSwitchSpacerDiameter": 6.0,
+    "powerSwitchBoardZ": -18.4,
+    "powerSwitchRightX": 71.55,
+    "powerSwitchRearY": -25.0,
+    "powerSwitchFrontY": 25.0,
+    "powerSwitchLeftX": 21.55,
+    # The bank's lead pitch, which is what places a can by its first lead the way
+    # every other footprint on that board is placed.
+    "capacitorPitch": 5.0,
+    # ---- THE SADDLE'S POWDER DRAIN, September 2026 -------------------------
+    #
+    # cad/joint.py's saddle is a closed box, and on the union of the finished
+    # bodies that box measured as a genuinely sealed cavity: 7.66 cm3 in each
+    # thigh and 7.53 cm3 in each of the pelvis's two hip clevises. In a sintered
+    # part that is un-fused powder with no way out -- about 14 g of it across
+    # the robot -- and it is the kind of thing an SLS house either refuses or
+    # fixes to suit itself. One Ø4 bore through both side walls opens each one.
+    # Nothing the KCL ever had, so it can only be declared here.
+    "saddleDrainDiameter": 4.0,
     # cad/finish.py: the 0.5 mm chamfer put on every printed part's outer edges.
     # About one and a half layers at this nozzle -- a deburr, not a feature.
     "CHAMFER": 0.5,
@@ -587,18 +625,25 @@ ADDED = {
     # 42.0 across, and a pelvis drilled at 29 is a 182 g part no screw goes into.
     # The XT60E-M below is measured the same way -- 27.00 tip to tip, ears 20.00
     # apart, 16.70 along its axis in three sections. Measure one even so.
-    "xt60PanelNoseWidth": 14.2,
-    "xt60PanelNoseHeight": 6.7,
-    "xt60PanelCutWidth": 14.7,
-    "xt60PanelCutHeight": 7.2,
-    "xt60PanelFixingPitch": 20.0,
-    "xt60PanelEarSpan": 27.0,
-    "xt60PanelEarWidth": 6.13,
-    "xt60PanelEarThickness": 3.2,
-    "xt60PanelBodyWidth": 15.5,
-    "xt60PanelBodyDepth": 5.1,
-    "xt60PanelOutboardDepth": 6.0,
-    "xt60PanelInboardDepth": 8.3,
+    # THE DISCONNECT'S TWELVE NAMES WENT WITH IT on 2026-09-16, when the loop
+    # key was replaced by a momentary button that commands the switch board
+    # instead of breaking the pack lead by hand. What is left is a bushing, a
+    # nut and a body -- the antenna's way of mounting rather than the
+    # disconnect's, and no screws at all.
+    #
+    # THE STATION IS THE INTERESTING NUMBER. It is x -44 and not the
+    # disconnect's 18, because the depth behind this wall decides it: a sweep
+    # at the station height found 11.2 mm of clear air behind x 18 before the
+    # actuator harness bank, which took a connector reaching 8.3 mm in and will
+    # take no panel switch at all. 21.4 is the most the wall offers anywhere,
+    # outboard of x -44, and buttonClearDepth carries it so that a deeper
+    # switch has something to be checked against.
+    "buttonHoleDiameter": 12.2,
+    "buttonNutDiameter": 17.5,
+    "buttonNutDepth": 3.0,
+    "buttonBodyDepth": 16.0,
+    "buttonOutboardDepth": 6.0,
+    "buttonClearDepth": 21.4,
     # The one M2 clearance on this robot, and the nuts it takes, in
     # cad/parameters.py with the M3 ones. Forced by the disconnect's nuts: they
     # sit 2.25 mm from its body, which an M2 clears by 0.25 and an M2.5 fouls by
@@ -633,7 +678,7 @@ ADDED = {
     "antennaBodyDepth": 15.0,
     "antennaOutboardDepth": 8.0,
     "panelHardwareZ": 22.0,
-    "disconnectPanelX": 18.0,
+    "buttonPanelX": -44.0,
     # BOTH OTHER STATIONS MOVED WITH THE CHARGE SOCKET, and were solved for:
     # swept across the wall against every solid in the cavity and each other.
     # The socket went outboard from 50.0 to where its flange still lands on the
@@ -807,6 +852,50 @@ ADDED = {
     # top edge swings. They drop 4 mm and the board stands 2.5 mm up inside them,
     # so it is still free to rise its 1.5 mm without leaving them.
     "bmsTopGuideDrop": 4.0,
+    # ---- THE ROBOT GETS SOMETHING TO BE HUNG FROM, September 2026 ---------
+    #
+    # cad/torso.py: a lug on each flank of the pelvis, near the top rim, with a
+    # Ø6 eye through it. The robot hangs from the two of them on an overhead
+    # rail while it is being developed, and a topple is caught before it
+    # reaches the floor. docs/NOTES.md puts the fall at 2.85 J and the limb
+    # that has to absorb it at 0.21 J, so this is protecting a failure the
+    # project has already measured rather than one it is guessing at.
+    #
+    # THE LID COULD NOT CARRY IT, which is why this is on the shell. The four
+    # cover bosses are the strongest anchorage on the box, each a corner column
+    # merged into two walls, but their screws stand 4 mm inboard of the cavity
+    # edge and cad/deck.py's electronics deck is 148.3 mm wide in a 149.1 mm
+    # opening with 0.4 mm of drop clearance. Anything reaching those screws
+    # overhangs the mouth and traps the deck, which is exactly the access that
+    # running with the lid off is meant to buy.
+    #
+    # LONG FORE-AFT AND FLUSH WITH THE RIM, because the lug hangs the wall
+    # rather than hanging off it: the load crosses into the wall and runs down
+    # it to the floor the hip clevises are rooted in, and 30 mm of length feeds
+    # it into 30 mm of the wall's width at once. The underside is relieved at
+    # 45 degrees so the wall does not meet a square step. Nothing here is near
+    # a limit -- at ten times the robot's weight the wall sees under 1 MPa
+    # against 30 across the layers -- so every number is about where the load
+    # goes and not how much of it there is.
+    #
+    # And the outboard face lands at +/-88.95 against wheels at +/-104, so the
+    # lug never touches the floor first in the topple it exists to catch. That
+    # is the test cad/limb.py's cable-tie arches were moved inboard to pass.
+    # gate B holds the volume as a pure addition and gate E counts the eyes.
+    "hoistLugLength": 30.0,
+    "hoistLugProud": 12.0,
+    "hoistLugHeight": 16.0,
+    "hoistLugLap": 1.0,
+    "hoistLugTaper": 5.0,
+    "hoistLugHoleDiameter": 6.0,
+    "hoistLugHoleInset": 6.0,
+    "hoistLugHoleDrop": 8.0,
+    # Both mouths of the eye, broken 45 degrees out to Ø8 IN THE PART rather
+    # than by cad/finish.py. That pass takes outer edges only, so it never
+    # sees the rim of a bore and left this one sharp; every other bore on the
+    # robot is a seat or a clearance hole and wants it that way. This is the
+    # one place a rope turns over a printed edge under load.
+    "hoistLugEyeChamfer": 1.0,
 }
 
 
@@ -919,9 +1008,23 @@ CHANGED = {
     ),
     "capacitorZ": (
         -18.9,
-        -26.4,
-        "the saddle plane, plus the 3 mm standoff the power-entry board now "
-        "stands on, plus the board's own thickness",
+        -16.8,
+        "the bank stands on the power switch board now, not on the bought one "
+        "under it: a 16 mm can on the bought board would be inside a board whose "
+        "underside is 8 mm above it",
+    ),
+    "capacitorDiameter": (
+        16.0,
+        10.0,
+        "the size of the cans the bill actually buys. 16 x 25 was a reservation "
+        "four times over, against two Panasonic EEU-FR1V471B that are 10 x 16, "
+        "and it was holding the whole front of the power bay -- which is the "
+        "power switch board now",
+    ),
+    "capacitorHeight": (
+        25.0,
+        16.0,
+        "the same two cans, in the other axis",
     ),
     "powerX": (
         39.1,
