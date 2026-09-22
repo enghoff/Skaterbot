@@ -245,7 +245,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             piece="pelvis-shell",
             at=(0.0, 0.0, 0.0),
             source="measured",
-            note="cad/torso.py:pelvisShell, twenty bodies",
+            note="cad/torso.py:pelvisShell, twenty-two bodies",
         ),
         Solid(
             label="torso cover",

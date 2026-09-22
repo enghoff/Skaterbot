@@ -2521,3 +2521,83 @@ See POWER_SWITCH.md for component sources and the regression's limits.
 
 The broader mechanical clearance suite also passes: gate F, 850 checks,
 including 741 body pairs with no shared volume.
+
+## The robot gets something to be hung from — 22 September 2026
+
+**Two hoist lugs on the pelvis flanks, 9.3 g, so a topple during development is
+caught before it reaches the floor.** This is the first thing printed into the
+robot that is there for the bench rather than for the machine, and the case for
+it is already measured in this file: a sideways topple releases 2.85 J and
+arrives at 1.65 m/s, the limb's worst section stores 0.21 J before it fails
+across the layers, and on a hard floor the margin is 0.44x. The robot survives
+falls because the floor gives, not because anything on it is tough. A balancing
+machine falls over as a matter of routine during bring-up, so the choice was a
+catch or a supply of spare limbs.
+
+**It is not on the lid, and that decision is the whole of the design.** The four
+cover bosses are the strongest anchorage on this box — each is a corner column
+merged into two walls, with 12 mm of thread-forming M3 — and they were the
+obvious answer until the electronics deck was measured against them. Their
+screws stand 4 mm inboard of the cavity edge, and `cad/deck.py`'s deck is
+148.3 mm wide in a 149.1 mm opening with 0.4 mm of drop clearance: it lifts
+straight out or not at all. Anything reaching those screws overhangs the mouth
+and seals the battery in, which is exactly the access that running with the lid
+off was meant to buy. So the attachment had to go outside the shell, and that
+meant changing the pelvis print rather than bolting a fixture to it.
+
+**The flank was free.** Each side wall is plain 2.4 mm shell from the top of the
+hip saddle at 286 mm up to the rim at 357.6 — the cable ports are in the floor
+and every connector is in the back — and the whole lug stands outside the
+153.9 mm the lid covers, so the lid still fits over it.
+
+**Long fore-aft rather than tall, and flush with the rim**, because the lug is
+hanging the wall rather than hanging off it: the load crosses into the wall and
+runs down it to the floor the hip clevises are rooted in, and 30 mm of length
+feeds it into 30 mm of the wall's width at once. The underside is relieved at
+45° so the wall does not meet a square step. None of it is near a limit — at ten
+times the robot's weight the wall sees under 1 MPa against the 30 this project
+assumes across the layers — so every number is about where the load goes and not
+how much of it there is.
+
+**And the outboard face lands at ±88.95 against wheels at ±104**, so the lug
+never touches the floor first in the topple it exists to catch. That is the same
+test the limbs' cable-tie arches were moved inboard to pass.
+
+**Both mouths of the eye are broken 45° out to Ø8, and that break is drawn into
+the part rather than left to the finish pass.** `cad/finish.py` takes outer
+edges only — an edge is chamfered when every face it touches is flat or the
+outside of a round — so by construction it never sees the rim of a bore, and the
+eye came off the printer with two sharp rims that the finish report counted
+among the 77 it skips. Every other bore on this robot is a bearing seat or a
+clearance hole and wants a sharp mouth; this is the only place on the machine
+where a rope turns over a printed edge under load. So it belongs in the geometry,
+where gate B holds it to 41.89 mm³ across the four mouths, rather than in a pass
+that could drop it silently.
+
+### How it is meant to be used
+
+The two lugs are a bridle, not a single hang point, and the kinematics are the
+reason. Hung from two cords to one ring with a swivel at the ring, the robot is
+free to pitch about the line joining the lugs — 148 mm above the centre of mass
+at 202 mm, so it hangs upright and rights itself — and free to yaw, so it can
+still steer; but roll is held rigidly by the triangle. That matters more here
+than it would on most robots: this branch has no hip roll at all, so sideways is
+the one direction the machine cannot recover in.
+
+Above it, a rigid bar rather than a wire. A 2 m wire loaded in the middle during
+a catch sags tens of millimetres, which is several times the whole slack budget,
+and the robot is past 30° before the line notices. Set about 10 mm of slack: the
+lugs are 350 mm up, so ten millimetres of droop lets the robot reach 13° of
+pitch before the cord takes any load, which is outside anything a working
+balance controller should do and inside the angle where it is committed to
+falling. Catching at 13° releases about 0.1 J, so the peak on the cord is under
+30 N — the forces are nothing, and the whole difficulty is keeping the slack
+small. Horizontal travel eats it: stay within about 100 mm either side of the
+bar's line.
+
+Two things belong with it and neither is CAD. Put 20–25 mm of foam down anyway —
+the table above puts the limb at 0.44x on a hard floor and 11x on foam, which is
+the cheapest protection available. And the tether catches the robot without
+stopping it, so a caught robot hangs there with its wheels still driving; that
+wants a torque cutoff past about 20° of tilt, which the IMU already seated in
+the pelvis can drive.

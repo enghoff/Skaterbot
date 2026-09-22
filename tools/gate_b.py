@@ -714,6 +714,37 @@ DEVIATIONS = {
         # rewritten. cad/electronics.py keeps the argument for the rear wall,
         # because it is the argument that has to be answered again if the
         # monitor ever comes back off the carrier.
+        {
+            "added_mm3": 9031.6520650,
+            "why": (
+                "THE TWO HOIST LUGS, September 2026, and they are a "
+                "development fitting rather than a part of the machine: a "
+                "block on each flank with a Ø6 eye through it, so the robot "
+                "can hang from an overhead rail and so a topple is caught "
+                "before it reaches the floor. docs/NOTES.md puts a sideways "
+                "topple at 2.85 J against a limb that stores 0.21 J before it "
+                "fails across the layers, so the catch is protecting a known "
+                "failure rather than a hypothetical one. It is on the flank "
+                "and not on the lid because the four cover bosses -- the "
+                "strongest anchorage on this box -- sit 4 mm inboard of the "
+                "cavity edge, and cad/deck.py's 148.3 mm deck lifts straight "
+                "out of a 149.1 mm opening, so anything bolted to them seals "
+                "the battery in. PURE ADDITION AND NOTHING REMOVED, which is "
+                "the whole of the check here: each lug laps 1 mm into a "
+                "2.4 mm wall and every millimetre of it outside that lap "
+                "stands in air the reference also has, so 12 x 30 x 16 less "
+                "the 375 mm3 of the corner relief and the 848.23 of the eye, "
+                "4 536.77 a side, less the 10.47 that each mouth of the eye "
+                "gives up to the 45 degree break on it. THAT BREAK IS DRAWN "
+                "INTO THE PART rather than left to cad/finish.py, which takes "
+                "OUTER edges only and so never sees the rim of a bore: every "
+                "other bore on this robot is a seat or a clearance hole and "
+                "wants a sharp mouth, and this is the one place on the machine "
+                "where a rope turns over a printed edge under load. "
+                "cad/parameters.py carries the shape's argument and "
+                "tools/gate_e.py counts the two eyes."
+            ),
+        },
     ],
     # The lid, and this is the cleanest example of what a resize does to this
     # test: the figures below are EXACTLY the new lid's volume and exactly the

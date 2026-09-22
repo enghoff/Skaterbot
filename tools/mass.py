@@ -186,7 +186,7 @@ EXPECTED_CHANGE_G = {
         "of runout on an Ø80 wheel is nothing.",
     ),
     "cad/torso.py": (
-        +68.1,
+        +78.7,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -259,7 +259,25 @@ EXPECTED_CHANGE_G = {
         "opening two sealed 7.53 cm3 cavities that between them held about "
         "6.8 g of powder this shell would have been weighed with and the CAD "
         "never counted. 120.6 mm3 of wall on the pair, and gate B holds it "
-        "exactly.",
+        "exactly. "
+        "AND IT NOW CARRIES TWO HOIST LUGS, 22 September 2026, which is 10.6 g "
+        "of this line at the baseline's density and 9.3 g on the robot's "
+        "total. They are the only thing on the printed robot that is there "
+        "for the bench rather than for the machine: a block on each flank, "
+        "12 mm proud of the wall with a O6 eye through it, so the robot hangs "
+        "from an overhead rail and a topple is caught before it lands. "
+        "docs/NOTES.md measures that fall at 2.85 J against a limb that "
+        "stores 0.21 J before it breaks across the layers, so nine grams buys "
+        "back a part the project would otherwise reprint. It is on the flank "
+        "because the four cover bosses sit 4 mm inboard of the cavity mouth "
+        "and the electronics deck is 148.3 mm wide in a 149.1 mm opening, so "
+        "a bracket on the lid's own screws would seal the battery in. "
+        "4 536.77 mm3 a side, less the 10.47 each mouth of the eye gives "
+        "up to the 45 degree break on it -- drawn into the part because "
+        "cad/finish.py takes outer edges only and never sees the rim of a "
+        "bore, and this is the one place on the robot where a rope turns "
+        "over a printed edge under load. Gate B holds the whole of it as a "
+        "pure addition.",
     ),
 }
 

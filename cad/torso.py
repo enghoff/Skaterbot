@@ -17,7 +17,7 @@ bosses, at 80.45, and the wheels at 104.
 
 from __future__ import annotations
 
-from build123d import Box, Cylinder, Plane, Pos, Rot
+from build123d import Box, Cone, Cylinder, Plane, Pos, Rot
 
 from cad.electronics import (
     batteryWidth,
@@ -50,6 +50,15 @@ from cad.geometry import mirrored
 from cad.joint import saddleHeight, statorClevis
 from cad.parameters import (
     hipCenterX,
+    hoistLugEyeChamfer,
+    hoistLugHeight,
+    hoistLugHoleDiameter,
+    hoistLugHoleDrop,
+    hoistLugHoleInset,
+    hoistLugLap,
+    hoistLugLength,
+    hoistLugProud,
+    hoistLugTaper,
     jointKeepOut,
     m2Clearance,
     shellWall,
@@ -320,6 +329,62 @@ def powerEntryPosts() -> list:
 # all. cad/electronics.py's power switch section says why the board grew.
 
 
+def hoistLugs() -> list:
+    """The two lugs the robot is hung and caught by, one on each flank.
+
+    A development fitting rather than a part of the machine, and printed in
+    anyway because there is nowhere else on this box to put it: everything a
+    bracket could bolt to is inside the cavity mouth, and the mouth has to stay
+    clear. cad/parameters.py carries the argument.
+
+    The relief under the outboard corner is cut from the LUG and not from the
+    finished list, which matters: the plane it lies on crosses the side wall
+    lower down, so a cutter taken out of the whole part would gouge the shell
+    35 mm below the lug. It is taken here, where the only body it can reach is
+    the one it belongs to.
+    """
+    flankX = torsoShellWidth / 2
+    lugCenterX = flankX + (hoistLugProud - hoistLugLap) / 2
+    lugWidth = hoistLugProud + hoistLugLap
+    lugCenterZ = shellTopZ - hoistLugHeight / 2
+
+    # The 45 degree plane, written as the corner it starts from: out at the
+    # outboard face, up by the taper, and in along the bottom face by the same.
+    cornerX = flankX + hoistLugProud
+    cornerZ = shellTopZ - hoistLugHeight
+    reliefX = (cornerX + (cornerX - hoistLugTaper)) / 2
+    reliefZ = (cornerZ + (cornerZ + hoistLugTaper)) / 2
+    reach = lugWidth + hoistLugHeight
+    step = reach / (2**0.5)
+
+    lug = Pos(lugCenterX, 0, lugCenterZ) * Box(lugWidth, hoistLugLength, hoistLugHeight)
+    lug -= (
+        Pos(reliefX + step / 2, 0, reliefZ - step / 2)
+        * Rot(0, 45, 0)
+        * Box(reach, hoistLugLength + 4.0, reach)
+    )
+    eyeX = flankX + hoistLugHoleInset
+    eyeZ = shellTopZ - hoistLugHoleDrop
+    eyeRadius = hoistLugHoleDiameter / 2
+    lug -= (
+        Pos(eyeX, 0, eyeZ) * Rot(90, 0, 0) * Cylinder(eyeRadius, hoistLugLength + 4.0)
+    )
+
+    # The two mouths, broken 45 degrees out to Ø8. Cut here and not by
+    # cad/finish.py, which takes outer edges only and so never sees the rim of a
+    # bore -- see cad/parameters.py. The cone's wide end sits in the end face and
+    # its narrow end meets the bore a millimetre in, so the two together are one
+    # continuous surface for a rope to turn over.
+    mouthRadius = eyeRadius + hoistLugEyeChamfer
+    for sy in (1, -1):
+        lug -= (
+            Pos(eyeX, sy * (hoistLugLength - hoistLugEyeChamfer) / 2, eyeZ)
+            * Rot(sy * 90, 0, 0)
+            * Cone(mouthRadius, eyeRadius, hoistLugEyeChamfer)
+        )
+    return [lug, mirrored(lug, Plane.YZ)]
+
+
 def deckLedges() -> list:
     """Four pads on the front and rear walls, carrying cad/deck.py's plate."""
     ledges = []
@@ -442,6 +507,7 @@ def pelvisShell() -> list:
         *powerEntryPosts(),
         *deckLedges(),
         *bmsGuides(),
+        *hoistLugs(),
         # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
         # printed feature in this cavity that stands inside its own reserved
         # volume, so that gate measures the IMU against the shell less this body.

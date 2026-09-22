@@ -128,6 +128,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         bearingSeatBossDiameter,
         bearingSeatDiameter,
         bearingSeatShoulderBore,
+        hoistLugHoleDiameter,
         journalScrewClearance,
         journalSeatDiameter,
         m2Clearance,
@@ -320,6 +321,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # switch mounts through a round hole on its own thread. One, for the
             # same reason the antenna's is one.
             ("Ø12.2 for the on/off button's bushing", buttonHoleDiameter / 2, 1),
+            # THE TWO HOIST LUGS' EYES, and TWO is the number that matters
+            # rather than the radius. Each eye is bored through 30 mm of solid
+            # lug and leaves one cylinder; the lug is a body of its own,
+            # interpenetrating the flank the way everything else on this part
+            # does, so a merge that swallowed one would read none here and
+            # nothing else on the robot would notice until it was hung from it.
+            ("Ø6 eyes through the two hoist lugs", hoistLugHoleDiameter / 2, 2),
         ],
         # THE ELECTRONICS DECK, which is the one piece on this robot with no
         # golden STEP behind it -- the KCL never had it, so gate B cannot say

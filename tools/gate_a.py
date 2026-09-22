@@ -852,6 +852,50 @@ ADDED = {
     # top edge swings. They drop 4 mm and the board stands 2.5 mm up inside them,
     # so it is still free to rise its 1.5 mm without leaving them.
     "bmsTopGuideDrop": 4.0,
+    # ---- THE ROBOT GETS SOMETHING TO BE HUNG FROM, September 2026 ---------
+    #
+    # cad/torso.py: a lug on each flank of the pelvis, near the top rim, with a
+    # Ø6 eye through it. The robot hangs from the two of them on an overhead
+    # rail while it is being developed, and a topple is caught before it
+    # reaches the floor. docs/NOTES.md puts the fall at 2.85 J and the limb
+    # that has to absorb it at 0.21 J, so this is protecting a failure the
+    # project has already measured rather than one it is guessing at.
+    #
+    # THE LID COULD NOT CARRY IT, which is why this is on the shell. The four
+    # cover bosses are the strongest anchorage on the box, each a corner column
+    # merged into two walls, but their screws stand 4 mm inboard of the cavity
+    # edge and cad/deck.py's electronics deck is 148.3 mm wide in a 149.1 mm
+    # opening with 0.4 mm of drop clearance. Anything reaching those screws
+    # overhangs the mouth and traps the deck, which is exactly the access that
+    # running with the lid off is meant to buy.
+    #
+    # LONG FORE-AFT AND FLUSH WITH THE RIM, because the lug hangs the wall
+    # rather than hanging off it: the load crosses into the wall and runs down
+    # it to the floor the hip clevises are rooted in, and 30 mm of length feeds
+    # it into 30 mm of the wall's width at once. The underside is relieved at
+    # 45 degrees so the wall does not meet a square step. Nothing here is near
+    # a limit -- at ten times the robot's weight the wall sees under 1 MPa
+    # against 30 across the layers -- so every number is about where the load
+    # goes and not how much of it there is.
+    #
+    # And the outboard face lands at +/-88.95 against wheels at +/-104, so the
+    # lug never touches the floor first in the topple it exists to catch. That
+    # is the test cad/limb.py's cable-tie arches were moved inboard to pass.
+    # gate B holds the volume as a pure addition and gate E counts the eyes.
+    "hoistLugLength": 30.0,
+    "hoistLugProud": 12.0,
+    "hoistLugHeight": 16.0,
+    "hoistLugLap": 1.0,
+    "hoistLugTaper": 5.0,
+    "hoistLugHoleDiameter": 6.0,
+    "hoistLugHoleInset": 6.0,
+    "hoistLugHoleDrop": 8.0,
+    # Both mouths of the eye, broken 45 degrees out to Ø8 IN THE PART rather
+    # than by cad/finish.py. That pass takes outer edges only, so it never
+    # sees the rim of a bore and left this one sharp; every other bore on the
+    # robot is a seat or a clearance hole and wants it that way. This is the
+    # one place a rope turns over a printed edge under load.
+    "hoistLugEyeChamfer": 1.0,
 }
 
 

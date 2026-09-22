@@ -185,6 +185,89 @@ torsoCoverThickness = 2.4
 # a boom that was never designed; docs/NOTES.md carries the decision.
 
 # ---------------------------------------------------------------------------
+# The hoist lugs -- a SAFETY tether, September 2026
+#
+# The power tether above is gone. What the pelvis carries now is a different
+# tether entirely, and the only thing the two share is the word: two lugs on the
+# flanks so the robot can be hung from an overhead rail while it is being
+# developed, and so a topple is caught before it reaches the floor.
+#
+# WHY IT IS WORTH 9.3 g. docs/NOTES.md puts the centre of mass at 202 mm and a
+# sideways topple at 2.85 J arriving at 1.65 m/s, and the table under it is the
+# argument: on a hard floor the limb's worst section fails at 0.44x across the
+# layers, and the leg can absorb 0.21 J of that 2.85 before it breaks. The robot
+# survives falls because the floor gives, not because anything on it is tough.
+# A balancing machine falls over as a matter of routine during bring-up, so the
+# choice is a catch or a supply of spare limbs.
+#
+# NOT THE LID, and that is the first decision. The four cover bosses are the
+# strongest anchorage on this box -- each is a corner column merged into two
+# walls -- but their screws stand 4 mm inboard of the cavity edge, so anything
+# reaching them overhangs the mouth. cad/deck.py's electronics deck is 148.3 mm
+# wide in a 149.1 mm opening with 0.4 mm of drop clearance and lifts straight
+# out or not at all, so a bracket on those bosses seals the battery in. Running
+# the robot with the lid off for access is exactly what the lugs are for, so the
+# attachment cannot be on the lid or on anything bolted through it.
+#
+# ON THE FLANK, WHICH IS FREE. Each side wall is plain 2.4 mm shell from the top
+# of the hip saddle at 286 mm up to the rim at 357.6 -- the cable ports are in
+# the floor and every connector is in the back -- and the whole lug stands
+# outside the 153.9 mm the lid covers, so the lid still fits over it.
+#
+# LONG FORE-AFT RATHER THAN TALL, which is the second decision. The lug is
+# loaded upwards and the box hangs below it, so the load leaves the lug, crosses
+# into the wall and runs DOWN the wall to the floor the hip clevises are rooted
+# in. 30 mm of length feeds it into 30 mm of the wall's width at once; the same
+# material stood on end would feed the same load into half of that. The top face
+# is flush with the shell's rim for the same reason -- the lug is hanging the
+# wall, not hanging off it -- and the underside is tapered back so the wall does
+# not meet a square step. None of it is close to a limit: at ten times the
+# robot's weight the wall sees under 1 MPa against the 30 this project assumes
+# across the layers, so the shape is about where the load goes and not how much
+# of it there is.
+#
+# INSIDE THE WHEELS, which is what stops it becoming the thing that breaks. The
+# outboard face lands at +/-88.95 against wheels at +/-104, so in the topple it
+# exists to catch the lug never touches the floor first. That is the same test
+# cad/limb.py's cable-tie arches were moved inboard to pass.
+#
+# THE HOLE IS NOT A SLOT. A slot would let the hang point slide to wherever the
+# robot balances fore-and-aft, which is what the lid-mounted version of this
+# wanted; on two lugs it is not worth the material, because the robot hangs from
+# the LINE between them and any fore-aft error in the centre of mass shows up as
+# a couple of degrees of hang rather than as a load. O6 takes a small shackle's
+# pin or a 4 mm screw-gate.
+hoistLugLength = 30.0
+hoistLugProud = 12.0
+hoistLugHeight = 16.0
+# How far the lug reaches INTO the wall, so the two shells merge in the slicer
+# the way every other overlap on this robot does. The same 1 mm the limb's tie
+# arches use, and it stops inside a 2.4 mm wall rather than breaking into the
+# cavity.
+hoistLugLap = 1.0
+# The 45 degree relief under the outboard corner. 5 mm leaves the bottom face
+# 8 mm wide, and its plane passes 6.4 mm from the eye's centre, so 3.4 mm clear
+# of the bore.
+hoistLugTaper = 5.0
+# The eye, and where it sits in the lug: 6 mm out from the flank and 8 mm below
+# the rim, which leaves 3 mm of material on each side of it, 5 mm above and
+# 5 mm below. tools/gate_e.py counts the two of them.
+hoistLugHoleDiameter = 6.0
+hoistLugHoleInset = 6.0
+hoistLugHoleDrop = 8.0
+# AND BOTH MOUTHS OF IT ARE BROKEN, 45 degrees to O8, WHICH IS DRAWN HERE RATHER
+# THAN LEFT TO cad/finish.py. That pass breaks OUTER edges only -- an edge is
+# taken when every face it touches is flat or the outside of a round, which by
+# construction excludes the mouth of a bore -- so the eye came off the printer
+# with two sharp rims on it and the finish report counted them among the 77 it
+# skips. Every other bore on this robot is a seat or a clearance hole and wants
+# them sharp. This one is the only place on the machine where a rope turns over
+# a printed edge under load, and the whole point of the lug is that it is the
+# thing that does not fail, so the relief is part of the part and gate B holds
+# it. 1 mm leaves 2 mm of material outboard of the mouth and 4 mm above it.
+hoistLugEyeChamfer = 1.0
+
+# ---------------------------------------------------------------------------
 # Stressed-shell limb architecture -- see PLAN.md
 #
 # The carbon tubes and their bonded sockets are gone. Each limb is now a closed
