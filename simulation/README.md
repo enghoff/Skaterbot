@@ -197,6 +197,6 @@ What it cannot check is whether the geometry itself is right. That is the job of
 | `check_model.py` | the checks above |
 | `plant.py` | the simulator-facing choices — actuator limits, contact, solver, where it starts. Both simulators read it, so neither states a number of its own |
 | `isaacsim/` | an Isaac Sim project: the URDF turned into a rigged USD, and the checks that say whether PhysX agrees. See its own README |
-| `isaaclab/wheeled_biped_cfg.py` | Isaac Lab articulation config, actuator model and contact settings |
+| `isaaclab/` | Isaac Lab 3.0: the articulation config, the balance-and-drive training task, the evaluation that scores a trained policy, and the scripts that stand it up on a RunPod GPU. See its own README |
 | `meshes/` | raw exporter output, untracked, regenerate with `/step --format stl` |
 | `urdf/meshes/` | binary copies, tracked, so a checkout can be simulated without rebuilding them |

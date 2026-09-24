@@ -2,12 +2,14 @@
 
 Import it from where it sits. It finds simulation/plant.py by walking up from
 its own path, so it has to stay next to the rest of the project rather than be
-copied into an extension -- point the extension at this file instead. It is
-written against the Isaac Lab 2.x namespace (`isaaclab.*`); before 2.0 the same
-classes lived under `omni.isaac.lab.*`.
+copied into an extension -- point the extension at this file instead.
 
     from wheeled_biped_cfg import WHEELED_BIPED_CFG
     robot = Articulation(WHEELED_BIPED_CFG.replace(prim_path="/World/Robot"))
+
+It is written against Isaac Lab 3.0 (v3.0.0-beta2.patch1) on Isaac Sim 6.0.1,
+which is what simulation/isaaclab/runpod/setup_pod.sh installs. It loads the
+USD simulation/isaacsim/import_urdf.py writes, so run that first.
 
 WHAT THIS FILE IS FOR. The URDF describes the mechanism: links, masses, inertia
 tensors, joint axes, travel. None of that is a choice. This file holds the
@@ -20,10 +22,10 @@ plain Isaac Sim scripts in simulation/isaacsim/ read as well, so that the two
 simulators cannot be given different robots by someone editing one of them.
 This file is the Isaac Lab SHAPE of those numbers; plant.py is the numbers.
 
-THIS FILE HAS NEVER BEEN EXECUTED. Isaac Lab is not installed in the
-environment it was written in, so it is checked for syntax and for agreement
-with plant.py, and nothing more. Expect to fix something the first time it
-loads, and see simulation/isaacsim/README.md for what was and was not verified.
+IT RUNS, BUT NOT HERE. Isaac Lab needs an NVIDIA RTX card and the development
+machine has none, so this file has been loaded and trained against on a RunPod
+GPU (September 2026) and is only syntax-checked locally. simulation/isaaclab/
+README.md says how to stand a pod up and what the first run showed.
 
 THE NUMBERS MARKED "UNMEASURED" ARE NOT PLACEHOLDERS YOU CAN IGNORE. Three of
 them decide whether a policy trained here has any chance of transferring: the
@@ -109,21 +111,16 @@ RESET_CLEARANCE_M = plant.RESET_CLEARANCE_M
 
 
 WHEELED_BIPED_CFG = ArticulationCfg(
-    spawn=sim_utils.UrdfFileCfg(
-        asset_path=URDF_PATH,
-        fix_base=False,
-        merge_fixed_joints=True,
-        # The URDF's joints are all actuated; none should come in as a fixed or
-        # a free joint.
-        joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
-            # Torque control, so the drive contributes nothing of its own.
-            # PDGainsCfg wants numbers rather than None, and target_type
-            # "none" is what makes a command a torque.
-            gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(
-                stiffness=0.0, damping=0.0
-            ),
-            target_type="none",
-        ),
+    # The rigged USD that simulation/isaacsim/import_urdf.py builds and checks,
+    # not a second conversion of the URDF. That script refuses to save a robot
+    # whose masses, inertia or travel disagree with the URDF, binds the wheel
+    # material and puts the armature on, and run.py --check then measures it
+    # rolling -- so training on that file is training on the robot that was
+    # checked. Isaac Lab's own URDF converter would be a second, unchecked
+    # import of the same thing.
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=str(plant.ROBOT_USD_PATH),
+        activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             retain_accelerations=False,
