@@ -69,11 +69,14 @@ ACTUATOR = {
     "gear_ratio": 7.0,  # docs/BOM.md
     "continuous_torque_nm": 0.8,  # docs/PLAN.md; a thermal limit, not a stop
     "peak_torque_nm": 3.0,  # docs/PLAN.md
-    # UNMEASURED. No published no-load speed has been recorded in this project.
-    # 20 rad/s at the output is a placeholder consistent with a 7:1 reduction on
-    # a 24 V 3507; it decides the robot's top speed -- 0.8 m/s on a 80 mm wheel
-    # -- and it must be replaced with the vendor figure.
-    "max_velocity_rad_s": 20.0,
+    # VENDOR FIGURE. 460 rpm no-load at the output shaft, 48.2 rad/s, from the
+    # DAMIAO user manual V1.0 as docs/NOTES.md records it (rated speed 150 rpm).
+    # It was a 20 rad/s placeholder until September 2026, which capped the
+    # robot at 0.8 m/s and any jump at about 5 cm. It sets 1.9 m/s on an 80 mm
+    # wheel now. What is still unmeasured is the curve below it: the simulators
+    # draw a straight line from the 3 Nm peak at standstill to nothing here,
+    # which is pessimistic, and a bench test should replace it.
+    "max_velocity_rad_s": 48.2,
     # UNMEASURED, AND THE ONE THAT MATTERS MOST. A 7:1 reduction multiplies the
     # rotor's own inertia by 49 at the joint. For a 3507 outrunner rotor of
     # roughly 30 g at a 15 mm radius, J_rotor is about 4.7e-6 kg m2, so the

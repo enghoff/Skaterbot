@@ -10,10 +10,14 @@ looked up. So nothing here is copied into Isaac Lab:
         --external_callback wheeled_biped_task.register \\
         --task Biped-Wheeled-Balance-v0
 
-simulation/isaaclab/runpod/train.sh does exactly that.
+simulation/isaaclab/runpod/train.sh does exactly that. Two tasks: the flat
+balance-and-drive task, and the same on rough ground at a commanded ride
+height (Biped-Wheeled-Rough-v0).
 """
 
 TASK_ID = "Biped-Wheeled-Balance-v0"
+ROUGH_TASK_ID = "Biped-Wheeled-Rough-v0"
+JUMP_TASK_ID = "Biped-Wheeled-Jump-v0"
 
 
 def register() -> list[str] | None:
@@ -32,6 +36,26 @@ def register() -> list[str] | None:
             kwargs={
                 "env_cfg_entry_point": f"{__name__}.env_cfg:WheeledBipedBalanceEnvCfg",
                 "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedPPORunnerCfg",
+            },
+        )
+    if ROUGH_TASK_ID not in gym.registry:
+        gym.register(
+            id=ROUGH_TASK_ID,
+            entry_point=f"{__name__}.rough_env:WheeledBipedRoughEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.rough_env_cfg:WheeledBipedRoughEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+            },
+        )
+    if JUMP_TASK_ID not in gym.registry:
+        gym.register(
+            id=JUMP_TASK_ID,
+            entry_point=f"{__name__}.jump_env:WheeledBipedJumpEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.jump_env_cfg:WheeledBipedJumpEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
             },
         )
     return None

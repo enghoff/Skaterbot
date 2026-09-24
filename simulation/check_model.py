@@ -382,8 +382,8 @@ def report_provenance(links) -> None:
     actuator = robot_model.ACTUATOR
     print("\n   And on the actuator, which is not geometry at all:")
     print(
-        f"     velocity limit    {actuator['max_velocity_rad_s']:.1f} rad/s   PLACEHOLDER. "
-        "No vendor figure has been recorded."
+        f"     velocity limit    {actuator['max_velocity_rad_s']:.1f} rad/s   VENDOR no-load "
+        "figure. The torque-speed curve below it is not measured."
     )
     print(
         f"     armature          {actuator['armature_kg_m2']:.1e} kg m2   ESTIMATED from a "

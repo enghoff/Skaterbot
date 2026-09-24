@@ -499,8 +499,8 @@ def check_rolling_radius(world, robot, wheel, problems: list[str]) -> None:
     # reports its position folded into [-pi, pi]: a wheel that has turned 11.5
     # radians reads as -1.1, and the rolling radius comes out negative and
     # absurd. Accumulate the per-step difference instead, folding each one into
-    # [-pi, pi] rather than the total. At the actuator's 20 rad/s a 2.5 ms step
-    # turns 0.05 rad, so a step can never be mistaken for a wrap.
+    # [-pi, pi] rather than the total. At the actuator's 48 rad/s a 2.5 ms step
+    # turns 0.12 rad, so a step can never be mistaken for a wrap.
     previous = float(robot.get_joint_positions()[index])
     turned = 0.0
 

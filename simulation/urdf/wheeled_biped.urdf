@@ -441,7 +441,7 @@
     <child link="thigh_right"/>
     <origin xyz="0 -0.048 -0.067" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
-    <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
+    <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- The commissioning hard stop, read out of cad/poses.py. It is MEASURED now rather than inherited: the thigh's knee clevis puts a saddle back in the plane the shin sweeps, and the two touch at 103.0 deg. tools/gate_f.py holds the 1 mm. -->
@@ -450,7 +450,7 @@
     <child link="shin_right"/>
     <origin xyz="0 -0.0027 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="0" upper="1.74532925" effort="3.0" velocity="20.0"/>
+    <limit lower="0" upper="1.74532925" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- Direct drive; no reduction beyond the actuator's own 7:1. -->
@@ -459,7 +459,7 @@
     <child link="wheel_right"/>
     <origin xyz="0 0 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit effort="3.0" velocity="20.0"/>
+    <limit effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- PROVISIONAL TRAVEL. No swept clearance check has ever been run on hip pitch; the knee's stop is the only joint limit this project has established, and that one is measured. -->
@@ -468,7 +468,7 @@
     <child link="thigh_left"/>
     <origin xyz="0 0.048 -0.067" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
-    <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="20.0"/>
+    <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- The commissioning hard stop, read out of cad/poses.py. It is MEASURED now rather than inherited: the thigh's knee clevis puts a saddle back in the plane the shin sweeps, and the two touch at 103.0 deg. tools/gate_f.py holds the 1 mm. -->
@@ -477,7 +477,7 @@
     <child link="shin_left"/>
     <origin xyz="0 0.0027 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="0" upper="1.74532925" effort="3.0" velocity="20.0"/>
+    <limit lower="0" upper="1.74532925" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <!-- Direct drive; no reduction beyond the actuator's own 7:1. -->
@@ -486,7 +486,7 @@
     <child link="wheel_left"/>
     <origin xyz="0 0 -0.105" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit effort="3.0" velocity="20.0"/>
+    <limit effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
 

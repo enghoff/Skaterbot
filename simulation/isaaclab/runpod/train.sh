@@ -5,6 +5,7 @@
 #     bash train.sh --play [extra play.py arguments]   # replay the latest run,
 #                                                       # export it, film it
 #     bash train.sh --evaluate --policy <policy.pt>    # score an exported policy
+#     bash train.sh --evaluate-jump --policy <policy.pt>   # score a jump policy
 #
 # Runs land in /workspace/runs/logs/rsl_rl/wheeled_biped_balance/<timestamp>/ on
 # the network volume, so they outlive the pod. setup_pod.sh must have run first,
@@ -15,7 +16,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ISAACLAB=/workspace/IsaacLab
-TASK=Biped-Wheeled-Balance-v0
+# TASK=Biped-Wheeled-Rough-v0 in the environment picks the rough-ground task.
+TASK=${TASK:-Biped-Wheeled-Balance-v0}
 
 # shellcheck disable=SC1091
 source /opt/isaac-venv/bin/activate
@@ -28,8 +30,16 @@ export PYTHONPATH="$HERE/..:${PYTHONPATH:-}"
 # thread means there is no pool to shut down.
 export OPENBLAS_NUM_THREADS=1
 
-mkdir -p /workspace/runs
-cd /workspace/runs
+# Where runs are logged. benchmark.sh points this elsewhere, so its short runs
+# never become the "latest run" that --play picks up.
+RUNS_DIR=${RUNS_DIR:-/workspace/runs}
+mkdir -p "$RUNS_DIR"
+cd "$RUNS_DIR"
+
+if [ "${1:-}" = "--evaluate-jump" ]; then
+    shift
+    exec python -u "$HERE/../evaluate_jump.py" --headless "$@"
+fi
 
 if [ "${1:-}" = "--evaluate" ]; then
     shift

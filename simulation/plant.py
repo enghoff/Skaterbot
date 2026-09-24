@@ -19,8 +19,9 @@ installing anything. numpy, trimesh and the rest stay on the build side.
 
 READ THE UNMEASURED MARKERS. Three numbers here decide whether a policy trained
 against this plant has any chance of transferring, and all three are currently
-guesses: the actuator's reflected rotor inertia, its velocity limit, and the
-friction of urethane on whatever the robot is driven on.
+guesses: the actuator's reflected rotor inertia, its torque-speed curve below
+the vendor's no-load speed, and the friction of urethane on whatever the robot
+is driven on.
 """
 
 from __future__ import annotations
@@ -221,9 +222,9 @@ DOMAIN_RANDOMISATION = {
 # --------------------------------------------------------------------------
 # The solver
 #
-# A 40 mm wheel at the actuator's 20 rad/s covers 2 mm of ground in a 2.5 ms
-# step, which is small against the wheel's own radius and is what a rolling
-# contact needs to stay a rolling contact. That is tighter than the 4 ms the
+# A 40 mm wheel at the actuator's 48 rad/s no-load speed covers 5 mm of ground
+# in a 2.5 ms step, which is still small against the wheel's own radius and is
+# what a rolling contact needs to stay a rolling contact. That is tighter than the 4 ms the
 # Isaac Lab config's CCD note assumes, and it is cheap on a robot with seven
 # links.
 #

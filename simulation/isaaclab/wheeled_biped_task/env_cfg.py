@@ -266,8 +266,8 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     # that limit without a unit action being a wheelspin.
     wheel_action_scale_nm = 0.6
 
-    # -- commands. 0.5 m/s is well inside the 0.8 m/s the unmeasured velocity
-    # limit allows; a fifth of the robots are told to stand still.
+    # -- commands. 0.5 m/s is well inside the 1.9 m/s the actuator's no-load
+    # speed allows; a fifth of the robots are told to stand still.
     command_lin_vel_x = (-0.5, 0.5)
     command_yaw_rate = (-1.5, 1.5)
     command_standing_fraction = 0.2
@@ -290,3 +290,6 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     rew_leg_posture = -1.0
     rew_leg_asymmetry = -0.5
     rew_terminated = -20.0
+    # Off here: the flat task's policy was trained with its actions clipped
+    # before it saw them. The rough task switches it on.
+    rew_action_bound = 0.0

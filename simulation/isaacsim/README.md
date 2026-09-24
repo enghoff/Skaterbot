@@ -181,7 +181,7 @@ A passing rig check makes this easy to forget, so it is worth repeating: the
 check proves the simulator is integrating the robot the CAD describes. It says
 nothing about whether that description is right where the CAD never knew.
 
-The actuator's rotor inertia and velocity limit have never been recorded, the
+The actuator's rotor inertia and torque-speed curve have never been measured, the
 wheels have never been weighed, and the friction of this urethane on any floor
 is a guess. Randomise over them — the ranges are in `plant.py` — rather than
 trusting them. Hip pitch also has no established travel: the ±60° in the URDF

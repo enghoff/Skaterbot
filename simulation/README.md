@@ -147,8 +147,10 @@ all and decide whether a policy trained here transfers:
   inertia. Leaving it out does not make the model slightly wrong, it makes the
   wheels a different plant. It is in as an estimate; get it from DAMIAO or from
   a spin-down test.
-- **The actuator's velocity limit.** No vendor figure has ever been recorded in
-  this project. The placeholder sets the robot's top speed.
+- **The actuator's torque-speed curve.** The no-load speed is the vendor's,
+  48.2 rad/s, but the simulators draw a straight line from the 3 Nm peak down to
+  it, and the real curve holds its peak further up the speed range. It decides
+  how fast the robot can accelerate and how high it can jump.
 - **The wheel's mass.** Catalogue-typical, never weighed, and its spin inertia
   is what the balance controller works against.
 - **Ground friction.** 85A urethane on a floor, with the crowned tread modelled

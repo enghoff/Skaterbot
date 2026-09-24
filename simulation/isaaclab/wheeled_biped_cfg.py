@@ -29,9 +29,9 @@ README.md says how to stand a pod up and what the first run showed.
 
 THE NUMBERS MARKED "UNMEASURED" ARE NOT PLACEHOLDERS YOU CAN IGNORE. Three of
 them decide whether a policy trained here has any chance of transferring: the
-actuator's rotor inertia reflected through its 7:1 reduction, its velocity
-limit, and the friction of urethane on whatever the robot is driven on. All
-three are currently guesses, and simulation/check_model.py says so every time
+actuator's rotor inertia reflected through its 7:1 reduction, its torque-speed
+curve below the vendor's no-load speed, and the friction of urethane on
+whatever the robot is driven on. All three are currently guesses, and simulation/check_model.py says so every time
 it runs.
 
 WHAT KIND OF ROBOT THIS IS. Six actuators: hip pitch, knee and a driven wheel
@@ -80,9 +80,10 @@ URDF_PATH = str(plant.URDF_PATH)
 PEAK_TORQUE_NM = plant.PEAK_TORQUE_NM
 CONTINUOUS_TORQUE_NM = plant.CONTINUOUS_TORQUE_NM
 
-# UNMEASURED. No vendor no-load speed has been recorded in this project. This
-# figure sets the robot's top speed -- 20 rad/s on a 40 mm wheel is 0.8 m/s --
-# so a policy will learn against whatever is written here. Replace it.
+# The vendor's no-load speed, 48.2 rad/s at the output -- 1.9 m/s on a 40 mm
+# wheel. The DC motor model below draws a straight line from the 3 Nm peak at
+# standstill to nothing at this speed, which is pessimistic and unmeasured; a
+# policy learns against that line, so a bench test of the real curve matters.
 MAX_VELOCITY_RAD_S = plant.MAX_VELOCITY_RAD_S
 
 # UNMEASURED, AND THE MOST IMPORTANT OF THE THREE. A 7:1 reduction reflects the
@@ -124,9 +125,9 @@ WHEELED_BIPED_CFG = ArticulationCfg(
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             retain_accelerations=False,
-            # This robot is small and light, and a wheel at 20 rad/s on a 4 ms
-            # step moves 3 mm at the contact patch. Leave CCD on until it is
-            # shown to be unnecessary.
+            # This robot is small and light, and a wheel at its 48 rad/s on a
+            # 2.5 ms step moves 5 mm at the contact patch. Leave CCD on until it
+            # is shown to be unnecessary.
             max_depenetration_velocity=plant.SOLVER["max_depenetration_velocity"],
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(

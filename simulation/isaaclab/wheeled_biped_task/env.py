@@ -37,7 +37,13 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             list(plant.WHEEL_JOINTS), preserve_order=True
         )
 
+        # A single number, or one per leg joint in plant.LEG_JOINTS order.
+        self._leg_scale = torch.as_tensor(
+            self.cfg.leg_action_scale_rad, dtype=torch.float, device=self.device
+        )
+
         self._actions = torch.zeros(self.num_envs, 6, device=self.device)
+        self._raw_actions = torch.zeros_like(self._actions)
         self._previous_actions = torch.zeros_like(self._actions)
         self._leg_targets = torch.zeros(self.num_envs, 4, device=self.device)
         self._wheel_torque = torch.zeros(self.num_envs, 2, device=self.device)
@@ -46,24 +52,11 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._commands = torch.zeros(self.num_envs, 2, device=self.device)
         self._command_timer = torch.zeros(self.num_envs, device=self.device)
 
-        self._reward_terms = [
-            "track_lin_vel",
-            "track_yaw_rate",
-            "alive",
-            "upright",
-            "lin_vel_z",
-            "ang_vel_xy",
-            "thermal",
-            "torque",
-            "action_rate",
-            "leg_posture",
-            "leg_asymmetry",
-            "terminated",
-        ]
-        self._episode_sums = {
-            name: torch.zeros(self.num_envs, device=self.device)
-            for name in self._reward_terms
-        }
+        # Filled on the first scoring pass, from whatever terms it returns, so
+        # a subclass that adds or drops a term is logged without registering it.
+        self._episode_sums: dict[str, torch.Tensor] = {}
+        # Terms paid once, on the step they happen, rather than as a rate.
+        self._one_off_terms = {"terminated"}
 
     # -- scene
 
@@ -82,24 +75,29 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
     # -- acting
 
     def _pre_physics_step(self, actions: torch.Tensor):
+        # Unclipped, for the cost on leaving the action range; the policy's
+        # training wrapper no longer clips, so this is the only place that does.
+        self._raw_actions = actions.clone()
         self._actions = actions.clone().clamp(-1.0, 1.0)
         default_legs = self.robot.data.default_joint_pos.torch[:, self._leg_ids]
         limits = self.robot.data.soft_joint_pos_limits.torch[:, self._leg_ids]
         self._leg_targets = (
-            default_legs + self.cfg.leg_action_scale_rad * self._actions[:, :4]
+            default_legs + self._leg_scale * self._actions[:, :4]
         ).clamp(limits[..., 0], limits[..., 1])
         self._wheel_torque = self.cfg.wheel_action_scale_nm * self._actions[:, 4:]
 
         # Commands are resampled on a timer as well as at reset, so an episode
-        # contains a change of mind and not just a steady state.
+        # contains a change of mind and not just a steady state. Done as a
+        # masked update over every robot rather than by gathering the ones
+        # that are due, because gathering them makes the CPU wait on the GPU
+        # every step, and the simulation here is limited by the CPU.
         self._command_timer += self.step_dt
-        due = (
-            (self._command_timer >= self.cfg.command_resample_s)
-            .nonzero(as_tuple=False)
-            .flatten()
+        due = self._command_timer >= self.cfg.command_resample_s
+        fresh = self._sample_commands(self.num_envs)
+        self._commands = torch.where(due.unsqueeze(1), fresh, self._commands)
+        self._command_timer = torch.where(
+            due, torch.zeros_like(self._command_timer), self._command_timer
         )
-        if len(due) > 0:
-            self._resample_commands(due)
 
     def _apply_action(self):
         self.robot.set_joint_position_target_index(
@@ -142,7 +140,12 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
     # -- scoring
 
-    def _get_rewards(self) -> torch.Tensor:
+    def _reward_terms(self) -> dict[str, torch.Tensor]:
+        """Each term's reward this step, before scaling by time.
+
+        "terminated" is a one-off on the step a robot falls; every other term
+        is a rate, and _get_rewards multiplies it by the step length.
+        """
         data = self.robot.data
         lin_vel_b = data.root_lin_vel_b.torch
         ang_vel_b = data.root_ang_vel_b.torch
@@ -177,16 +180,33 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             * torch.sum(torch.square(leg_offset), dim=1),
             "leg_asymmetry": c.rew_leg_asymmetry * asymmetry,
             "terminated": c.rew_terminated * terminated,
+            # Asking for more than the action range allows. Without it a policy
+            # clipped at +/-1 learns to shout: the first rough policy's wheel
+            # output swung +/-20, a bang-bang controller behind the clip.
+            "action_bound": c.rew_action_bound
+            * torch.sum(
+                torch.square((self._raw_actions.abs() - 1.0).clamp(min=0.0)), dim=1
+            ),
         }
+        return terms
+
+    def _get_rewards(self) -> torch.Tensor:
+        terms = self._reward_terms()
         # The termination penalty is a one-off, not a rate; everything else is
         # per second of simulated time.
-        reward = terms["terminated"].clone()
+        reward = torch.zeros(self.num_envs, device=self.device)
+        for name in self._one_off_terms & terms.keys():
+            reward += terms[name]
         for name, value in terms.items():
-            if name != "terminated":
+            if name not in self._one_off_terms:
                 value = value * self.step_dt
                 terms[name] = value
                 reward += value
         for name, value in terms.items():
+            if name not in self._episode_sums:
+                self._episode_sums[name] = torch.zeros(
+                    self.num_envs, device=self.device
+                )
             self._episode_sums[name] += value
         return reward
 
@@ -201,16 +221,21 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
     # -- resetting
 
-    def _resample_commands(self, env_ids: torch.Tensor):
-        n = len(env_ids)
+    def _sample_commands(self, n: int) -> torch.Tensor:
+        """A fresh command for each of n robots: speed, turn rate, and any more."""
+        commands = torch.zeros(n, self._commands.shape[1], device=self.device)
         lo, hi = self.cfg.command_lin_vel_x
-        self._commands[env_ids, 0] = torch.empty(n, device=self.device).uniform_(lo, hi)
+        commands[:, 0].uniform_(lo, hi)
         lo, hi = self.cfg.command_yaw_rate
-        self._commands[env_ids, 1] = torch.empty(n, device=self.device).uniform_(lo, hi)
+        commands[:, 1].uniform_(lo, hi)
         standing = (
             torch.rand(n, device=self.device) < self.cfg.command_standing_fraction
         )
-        self._commands[env_ids[standing]] = 0.0
+        commands[:, :2] *= (~standing).float().unsqueeze(1)
+        return commands
+
+    def _resample_commands(self, env_ids: torch.Tensor):
+        self._commands[env_ids] = self._sample_commands(len(env_ids))
         self._command_timer[env_ids] = 0.0
 
     def _reset_idx(self, env_ids: torch.Tensor | None):
@@ -253,16 +278,18 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         )
 
         log = {}
-        for name in self._reward_terms:
+        for name in self._episode_sums:
             log["Episode_Reward/" + name] = (
                 torch.mean(self._episode_sums[name][env_ids])
                 / self.max_episode_length_s
             )
             self._episode_sums[name][env_ids] = 0.0
+        # Tensors, not .item(): rsl_rl takes either, and .item() would make the
+        # CPU wait for the GPU on every step some robot resets -- most steps.
         log["Episode_Termination/fell"] = torch.count_nonzero(
             self.reset_terminated[env_ids]
-        ).item()
+        ).float()
         log["Episode_Termination/time_out"] = torch.count_nonzero(
             self.reset_time_outs[env_ids]
-        ).item()
+        ).float()
         self.extras["log"] = log
