@@ -47,7 +47,6 @@
 
   <!-- Colours are the CAD's own, read out of cad/parameters.py and cad/electronics.py by cad.dimensions.colors, so a part is the same colour here as it is in the CAD viewer. -->
   <material name="bearingSteel"><color rgba="0.788235294 0.815686275 0.835294118 1"/></material>
-  <material name="canSilver"><color rgba="0.549019608 0.576470588 0.611764706 1"/></material>
   <material name="cellGrey"><color rgba="0.290196078 0.309803922 0.341176471 1"/></material>
   <material name="motorGrey"><color rgba="0.349019608 0.388235294 0.423529412 1"/></material>
   <material name="pcbGreen"><color rgba="0.109803922 0.419607843 0.258823529 1"/></material>
@@ -57,10 +56,10 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="8.85823442e-05 0.00512640637 -0.0234112587" rpy="0 0 0"/>
-      <mass value="1.128213"/>
-      <inertia ixx="3.709467981e-03" ixy="1.160561453e-06" ixz="-8.589527783e-07"
-               iyy="1.720451053e-03" iyz="-6.275902134e-05" izz="2.625504971e-03"/>
+      <origin xyz="8.90242249e-05 0.00538418696 -0.0234631938" rpy="0 0 0"/>
+      <mass value="1.122613"/>
+      <inertia ixx="3.691962154e-03" ixy="1.186323984e-06" ixz="-8.641431620e-07"
+               iyy="1.717875373e-03" iyz="-6.578694277e-05" izz="2.607853136e-03"/>
     </inertial>
     <!-- pelvis shell, clevises and cover bosses — 160.2 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
@@ -158,13 +157,13 @@
       </geometry>
       <material name="pcbGreen"/>
     </visual>
-    <!-- power entry — 60.0 g, estimate: capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED – docs/BOM.md red line -->
-    <visual name="power_entry">
+    <!-- power switch board — 34.4 g, estimate: fuse, the four-FET on/off and low-battery switch, and its spacers, over the distribution board. Provisional allowance, never weighed -->
+    <visual name="power_switch_board">
       <origin xyz="0 -0.04655 -0.013" rpy="0 0 0"/>
       <geometry>
         <box size="0.054 0.052 0.036"/>
       </geometry>
-      <material name="canSilver"/>
+      <material name="pcbGreen"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>

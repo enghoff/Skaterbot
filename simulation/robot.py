@@ -308,11 +308,14 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
     #
-    # mass_budget.toml carries these as five lines now: 100 g of "electronics and
-    # wiring", 60 g of power entry, 45 g of BMS, 288 g of battery and 85 g of
-    # battery wiring,
-    # connectors and mounts. The 100 and the 85 are split below across the items
-    # that make them up. Each split is an assumption; the totals are not.
+    # mass_budget.toml carries these as seven lines now: 100 g of "electronics and
+    # wiring", 13 g of distribution board, 34.4 g of power switch board, 20 g of
+    # capacitor bank, 45 g of BMS, 288 g of battery and 65 g of battery wiring,
+    # connectors and mounts. The 100 is split below across the items that make it
+    # up. Each split is an assumption; the totals are not. The power line was one
+    # 60 g reservation until September 2026, when the switch board was designed
+    # and the bank was cut to its two cans; this model carried the 60 g for a
+    # week after the budget had moved, 5.6 g heavy.
     #
     # THE BATTERY IS THE HEAVIEST SINGLE THING IN THIS TORSO, at 288 g against
     # the pelvis print's own 216, and it sits in the bottom band. That is not
@@ -391,13 +394,26 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             "Daly 6S 24V 20A on the cell taps, wired charge-only. The vendor's own 45 g, beside its own 58 x 33 x 8.2",
         ),
         (
-            "power entry",
-            60.0,
+            "power switch board",
+            34.4,
+            "power",
+            "estimate",
+            "pcbGreen",
+            True,
+            "fuse, the four-FET on/off and low-battery switch, and its spacers, over the"
+            " distribution board. Provisional allowance, never weighed",
+        ),
+        (
+            # The cans stand on the switch board, so they share its envelope;
+            # not drawn, because two boxes filling one envelope is one box.
+            "power entry capacitor bank",
+            20.0,
             "power",
             "estimate",
             "canSilver",
-            True,
-            "capacitor bank, fuse and terminal. THE BANK HAS NOT BEEN SIZED -- docs/BOM.md red line",
+            False,
+            "two 10 x 16 mm cans off a data sheet. THE BANK HAS NOT BEEN SIZED -- docs/BOM.md"
+            " red line",
         ),
     ]
     envelopes = {

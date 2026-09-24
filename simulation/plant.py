@@ -273,7 +273,12 @@ def geometry() -> dict[str, float]:
     wheel_radius = d["prototypeWheelAxisHeight"] / 1000.0
     standing_base_height = d["wheeledTorsoCenterHeight"] / 1000.0
     standing_height = d["wheeledTorsoTop"] / 1000.0
-    track = (d["skateWheelCenterX"] * 2.0 + d["hipSpacing"]) / 1000.0
+    # Hip to hip, plus on each side the knee's step outboard -- the straddled
+    # knee puts the shin's joint kneeOutboardOffset further out than the
+    # thigh's (cad/limb.py) -- plus the wheel's centre plane beyond that.
+    track = (
+        2.0 * (d["kneeOutboardOffset"] + d["skateWheelCenterX"]) + d["hipSpacing"]
+    ) / 1000.0
 
     assert abs(wheel_radius - d["skateWheelDiameter"] / 2000.0) < 1e-9, (
         "the wheel axis is not at the wheel's own radius"
@@ -285,6 +290,10 @@ def geometry() -> dict[str, float]:
     return {
         "wheel_radius_m": wheel_radius,
         "wheel_width_m": d["skateWheelWidth"] / 1000.0,
+        # Hip to knee and knee to axle, which is all a crouched start needs to
+        # know where the torso ends up.
+        "upper_leg_m": d["upperLegLength"] / 1000.0,
+        "lower_leg_m": d["lowerLegLength"] / 1000.0,
         "standing_base_height_m": standing_base_height,
         "standing_height_m": standing_height,
         "track_m": track,
