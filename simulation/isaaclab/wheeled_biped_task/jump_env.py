@@ -46,7 +46,21 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
             "touchdown_speed",
             "touchdown_skew",
             "touchdown_scrub",
+            "jump_shortfall",
         }
+
+        # The ground's half-width each way: the tiles, from their centres,
+        # and the flat border beyond them. Measured from the tiles alone, the
+        # outermost robots started inside the margin and were reset on every
+        # step.
+        gen = self.cfg.terrain.terrain_generator
+        origins = self._terrain.terrain_origins
+        self._field_half = torch.stack(
+            (
+                origins[..., 0].abs().max() + gen.size[0] / 2 + gen.border_width,
+                origins[..., 1].abs().max() + gen.size[1] / 2 + gen.border_width,
+            )
+        ).to(dev)
 
     # -- acting
 
@@ -128,6 +142,15 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         terms["track_leg_height"] = terms["track_leg_height"] * idle
         terms["wheel_fore_aft"] = terms["wheel_fore_aft"] * idle
         terms["wheel_stagger"] = terms["wheel_stagger"] * idle
+        gravity_y = self.robot.data.projected_gravity_b.torch[:, 1]
+        terms["torso_roll"] = c.rew_torso_roll * torch.square(gravity_y)
+        data = self.robot.data
+        terms["lin_vel_error"] = c.rew_lin_vel_error * torch.abs(
+            self._commands[:, 0] - data.root_lin_vel_b.torch[:, 0]
+        )
+        terms["yaw_rate_error"] = c.rew_yaw_rate_error * torch.abs(
+            self._commands[:, 1] - data.root_ang_vel_b.torch[:, 2]
+        )
 
         # Where the wheels are.
         self._clearance = self._wheel_clearance()
@@ -177,6 +200,9 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
             * landed.float()
             * torch.exp(-error.square() / c.jump_clearance_sigma_m**2)
         )
+        terms["jump_shortfall"] = (
+            c.rew_jump_shortfall * landed.float() * (-error).clamp(min=0.0)
+        )
         skew = (self._touch_t[:, 0] - self._touch_t[:, 1]).abs()
         terms["touchdown_skew"] = c.rew_touchdown_skew * landed.float() * skew
 
@@ -197,6 +223,47 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         )
         self._jump_active &= ~(recovered | missed)
         return terms
+
+    # -- commands and endings
+
+    def _sample_commands(self, n: int) -> torch.Tensor:
+        commands = super()._sample_commands(n)
+        if not self.cfg.command_envelope:
+            return commands
+        # Evenly over the diamond |speed|/top + |turn|/top <= 1: a point in
+        # the square outside it is reflected into it.
+        a = torch.rand(n, device=self.device) * 2.0 - 1.0
+        b = torch.rand(n, device=self.device) * 2.0 - 1.0
+        outside = a.abs() + b.abs() > 1.0
+        a, b = (
+            torch.where(outside, a.sign() * (1.0 - b.abs()), a),
+            torch.where(outside, b.sign() * (1.0 - a.abs()), b),
+        )
+        # The standing robots' commands were zeroed; keep them so.
+        moving = (commands[:, :2] != 0.0).any(dim=1).float()
+        # The envelope, opened as far as the ramp has got.
+        c = self.cfg
+        opened = min(
+            1.0, self.common_step_counter / max(c.command_envelope_ramp_steps, 1)
+        )
+        scale = c.command_envelope_start + (1.0 - c.command_envelope_start) * opened
+        speed = a * c.command_lin_vel_x[1] * scale
+        turn = b * c.command_yaw_rate[1] * scale
+        # And a share of everyday commands, drawn evenly over their ranges.
+        everyday = torch.rand(n, device=self.device) < c.command_everyday_fraction
+        lo, hi = c.command_everyday_lin_vel_x
+        speed = torch.where(everyday, torch.rand_like(speed) * (hi - lo) + lo, speed)
+        lo, hi = c.command_everyday_yaw_rate
+        turn = torch.where(everyday, torch.rand_like(turn) * (hi - lo) + lo, turn)
+        commands[:, 0] = speed * moving
+        commands[:, 1] = turn * moving
+        return commands
+
+    def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
+        fallen, time_out = super()._get_dones()
+        xy = self.robot.data.root_pos_w.torch[:, :2]
+        near_edge = (xy.abs() > self._field_half - self.cfg.edge_margin_m).any(dim=1)
+        return fallen, time_out | near_edge
 
     # -- resetting
 

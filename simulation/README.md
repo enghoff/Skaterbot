@@ -71,6 +71,42 @@ inertia, its joints turn the way the CAD says, and it stands and rolls on a
 [`isaacsim/README.md`](isaacsim/README.md) for the numbers and for what a
 passing check still does not cover.
 
+### Driving a trained policy, on this machine
+
+```
+uv run simulation/mujoco/drive.py                       # a window; keyboard or game controller
+uv run simulation/mujoco/drive.py --check               # no window: the robot run to its limits
+uv run simulation/mujoco/drive.py --run exports/rl/<run>
+uv run simulation/mujoco/drive.py --rough 1             # the rough task's ground, at its hardest
+```
+
+Isaac Sim will not run here, so a trained policy is driven in MuJoCo instead,
+on the CPU, free. It takes a run directory from `exports/rl/` — the exported
+policy and the `params/env.yaml` Isaac Lab saved when it trained it — and reads
+from that file everything about how the policy was trained: its action scales,
+leg gains, the crouch it balances around, the motor's torque-speed line and the
+physics step. So nothing in it is a second copy of a task number. The robot is
+this directory's URDF. The keys are printed when it starts and listed at the top
+of the script; a jump policy gets a jump button.
+
+Full stick, or the last key press, is the most the policy was trained on, and
+for the jump task that is the motors' whole envelope — the wheels at their
+no-load speed, the highest jump target — so the robot can be driven to its
+mechanical limits and to the policy's. The overlay shows how near the motors
+are to theirs: wheel speed against the no-load speed, and peak torque against
+the 3 Nm peak. `--check` does the same without a window: top speed each way,
+the fastest spin, an arc, and jumps from the lowest target to the highest, with
+what was held against what was asked and the motors' peaks for each.
+
+It is also a test. MuJoCo's contact and friction are not PhysX's, so a policy
+that drives here as it did in training has not merely learned PhysX. The
+rough-ground balance policy passed first time, with no tuning: 20 s of standing,
+driving at ±0.3 m/s and turning, never tilting past 7.5°. The default policy
+is now the jump policy trained to the motors' envelope, which in `--check` holds
+1.5 m/s each way, spins at 19 rad/s, turns slowly to within a sixth of the
+command and jumps to 92 mm, with no falls. None of it says anything about the
+real robot's unmeasured numbers, which are the same guesses here.
+
 ## What it says the robot is
 
 | | |
@@ -200,5 +236,6 @@ What it cannot check is whether the geometry itself is right. That is the job of
 | `plant.py` | the simulator-facing choices — actuator limits, contact, solver, where it starts. Both simulators read it, so neither states a number of its own |
 | `isaacsim/` | an Isaac Sim project: the URDF turned into a rigged USD, and the checks that say whether PhysX agrees. See its own README |
 | `isaaclab/` | Isaac Lab 3.0: the articulation config, the balance-and-drive training task, the evaluation that scores a trained policy, and the scripts that stand it up on a RunPod GPU. See its own README |
+| `mujoco/drive.py` | drives a trained policy locally in MuJoCo, from the keyboard or a game controller |
 | `meshes/` | raw exporter output, untracked, regenerate with `/step --format stl` |
 | `urdf/meshes/` | binary copies, tracked, so a checkout can be simulated without rebuilding them |

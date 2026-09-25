@@ -156,6 +156,12 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
         lin_err = torch.square(self._commands[:, 0] - lin_vel_b[:, 0])
         yaw_err = torch.square(self._commands[:, 1] - ang_vel_b[:, 2])
+        # The tracking tolerance, widened in proportion to the command where
+        # the task asks for it: 0.2 m/s off at 1.9 m/s is a good attempt, and
+        # a kernel that scores it as nothing gives no reason to try.
+        rel = self.cfg.command_tracking_relative
+        lin_tol = 0.05 + torch.square(rel * self._commands[:, 0])
+        yaw_tol = 0.25 + torch.square(rel * self._commands[:, 1])
         leg_offset = joint_pos[:, self._leg_ids] - default[:, self._leg_ids]
         # right hip, right knee against left hip, left knee
         asymmetry = torch.sum(
@@ -165,8 +171,8 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
         c = self.cfg
         terms = {
-            "track_lin_vel": c.rew_track_lin_vel * torch.exp(-lin_err / 0.05),
-            "track_yaw_rate": c.rew_track_yaw_rate * torch.exp(-yaw_err / 0.25),
+            "track_lin_vel": c.rew_track_lin_vel * torch.exp(-lin_err / lin_tol),
+            "track_yaw_rate": c.rew_track_yaw_rate * torch.exp(-yaw_err / yaw_tol),
             "alive": c.rew_alive * (1.0 - terminated),
             "upright": c.rew_upright * torch.sum(torch.square(gravity_b[:, :2]), dim=1),
             "lin_vel_z": c.rew_lin_vel_z * torch.square(lin_vel_b[:, 2]),

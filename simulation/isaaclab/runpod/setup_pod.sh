@@ -41,13 +41,13 @@ export UV_HTTP_TIMEOUT=300
 export OMNI_KIT_ACCEPT_EULA=YES
 
 echo "== container packages"
-# Kit's runtime libraries that the slim image leaves out. Lost with the pod,
-# so this runs every time.
-if ! dpkg -s libglu1-mesa libvulkan1 zstd >/dev/null 2>&1; then
+# Kit's runtime libraries that the slim image leaves out, and nvtop for
+# watching the GPU during a run. Lost with the pod, so this runs every time.
+if ! dpkg -s libglu1-mesa libvulkan1 zstd nvtop >/dev/null 2>&1; then
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         libglu1-mesa libvulkan1 libxt6 libxrandr2 libxi6 libxkbcommon0 \
-        libsm6 libice6 libegl1 zstd >/dev/null
+        libsm6 libice6 libegl1 zstd nvtop >/dev/null
 fi
 
 if [ ! -x "$VENV/bin/python" ] && [ -f "$SNAPSHOT" ] && [ "${1:-}" != "--resnapshot" ]; then

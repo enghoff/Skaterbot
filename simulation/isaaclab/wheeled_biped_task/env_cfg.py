@@ -271,6 +271,9 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     command_lin_vel_x = (-0.5, 0.5)
     command_yaw_rate = (-1.5, 1.5)
     command_standing_fraction = 0.2
+    # Tracking tolerance as a fraction of the command, on top of the fixed
+    # one: off here, where every command is well inside what the robot can do.
+    command_tracking_relative = 0.0
     command_resample_s = 5.0
 
     # -- termination

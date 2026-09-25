@@ -56,7 +56,55 @@ Everything before it is superseded: the flat-ground policy of the first run
 policies that scored 99% by standing with their wheels staggered and one
 spinning -- kept on the volume for the record, not for use.
 
-**The jump is learning.** See `JUMPING.md` and the jump task below.
+**The jump policy drives and jumps to the motors' envelope, on flat ground.**
+`Biped-Wheeled-Jump-v0` started from the balance policy (widened by
+`widen_checkpoint.py`), learned to jump to 40 mm on the balance task's
+commands, and was then trained for 2 500 iterations more with its drive
+commands opened gradually out to the wheels' no-load speed -- 1.93 m/s, or
+22 rad/s spinning on the spot -- and its jump targets to 120 mm, so that the
+policy is never what limits the robot. 16 384 robots throughout, 24-25
+September 2026. On 64 robots a cell (`evaluate_jump.py`, `evaluate_envelope.py`):
+
+```
+  target   speed  took off     peak clearance    error  upright  lean
+    10mm   0.0m/s      100%      11.8 +/- 2.3mm    +1.8mm     100%   0.1 deg
+    40mm   1.0m/s      100%      40.1 +/- 2.1mm    +0.1mm     100%   0.1 deg
+    80mm   1.0m/s      100%      79.4 +/- 3.4mm    -0.6mm     100%   0.1 deg
+   100mm   0.0m/s      100%      98.7 +/- 2.8mm    -1.3mm     100%   0.1 deg
+   100mm   1.0m/s      100%      98.8 +/- 3.0mm    -1.2mm     100%   0.1 deg
+   120mm   0.0m/s      100%     101.2 +/- 2.4mm   -18.8mm     100%   0.1 deg
+   120mm   1.0m/s      100%     100.5 +/- 4.3mm   -19.5mm     100%   0.1 deg
+
+  asked                  held             upright
+  stand                  +0.03 m/s  0.0 rad/s   100%
+  +0.96 m/s              +0.94 m/s  0.0 rad/s   100%
+  +1.93 m/s              +1.44 m/s              98%
+  -1.93 m/s              -1.46 m/s              94%
+  spin 0.5 rad/s          0.3 rad/s            100%
+  spin 1.1 rad/s          1.0 rad/s            100%
+  spin 11.0 rad/s        10.8 rad/s            100%
+  spin 22.0 rad/s        18.6 rad/s             97%
+```
+
+It jumps to within a couple of millimetres of any target up to 100 mm,
+standing or at 1 m/s, and tops out near 100 mm. Top speed is about 1.45 m/s
+each way -- where the wheel is at three quarters of its no-load speed and the
+modelled torque-speed line has left a quarter of the peak torque, so that is
+the motor model's limit and not the policy's -- and it spins at up to about
+18 rad/s. It turns slowly as accurately as quickly, drives straight without
+drifting, and stands on level legs. In MuJoCo (`../mujoco/drive.py --check`,
+where this is the default policy) it does the same with no falls, and its
+highest jump is 92-94 mm.
+
+Getting there took four false starts, each recorded in `jump_env_cfg.py`
+where the cost that fixed it is set. A policy asked for the whole envelope at
+once learned to spin at 17 rad/s and stopped turning at all below about
+2.5 rad/s -- the rates a heading controller asks for most -- and fine-tuning
+never brought that back; opening the range gradually from the policy before it
+did. Earlier stages stood with one knee locked straight on its stop (holding the
+robot up for no motor torque) and the torso leaning up to 12 degrees, and drifted
+at 1 rad/s when told to drive straight. Checkpoint, exported policy, video and
+logs are in the untracked `exports/rl/jump-2026-09-25_01-32-22_ramp/`.
 
 ## What is here
 
@@ -69,7 +117,8 @@ spinning -- kept on the volume for the record, not for use.
 | `wheeled_biped_task/jump_env_cfg.py`, `jump_env.py` | the jump: a trigger, a target wheel clearance and a timer as inputs, leg stiffness and damping as outputs, on flat ground, while driving |
 | `wheeled_biped_task/agent.py` | PPO settings, in rsl_rl's terms |
 | `widen_checkpoint.py` | gives a trained policy the extra inputs and outputs a follow-on task needs, without changing what it does, so the jump starts from the balance policy |
-| `evaluate_jump.py` | one jump per robot across a grid of target clearances and speeds: take-off, peak clearance against target, landings |
+| `evaluate_jump.py` | one jump per robot across a grid of target clearances and speeds: take-off, peak clearance against target, landings, and the torso's sideways lean |
+| `evaluate_envelope.py` | the jump policy held at speeds and turn rates across the wheels' envelope: what it reaches against what was asked |
 | `runpod/benchmark.sh` | how many robots to simulate on this GPU; refuses results with PhysX errors |
 | `evaluate.py` | runs an exported policy through a fixed script of commands on hundreds of randomised robots and reports what happened; `--rough` spreads them over every kind of ground and difficulty |
 | `runpod/setup_pod.sh` | stands a pod up: Isaac Sim 6.0.1, Isaac Lab 3.0, rsl_rl, and the CAD's own dependencies |

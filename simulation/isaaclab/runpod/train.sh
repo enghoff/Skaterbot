@@ -41,6 +41,11 @@ if [ "${1:-}" = "--evaluate-jump" ]; then
     exec python -u "$HERE/../evaluate_jump.py" --headless "$@"
 fi
 
+if [ "${1:-}" = "--evaluate-envelope" ]; then
+    shift
+    exec python -u "$HERE/../evaluate_envelope.py" --headless "$@"
+fi
+
 if [ "${1:-}" = "--evaluate" ]; then
     shift
     exec python -u "$HERE/../evaluate.py" --headless "$@"
