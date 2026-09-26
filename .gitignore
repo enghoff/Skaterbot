@@ -69,3 +69,7 @@ electrical/kicad/.history/
 electrical/kicad/~*.lck
 electrical/kicad_power/.history/
 electrical/kicad_power/~*.lck
+
+# Firmware build output. cargo writes everything under target/, and flash.ps1
+# copies the ELF there with the extension the programmer needs.
+firmware/*/target/

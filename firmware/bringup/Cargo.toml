@@ -1,0 +1,26 @@
+[package]
+name = "bringup"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Released embassy crates, matched to each other by their 2026-03-10 releases.
+# The chip feature is the exact part on the WeAct board: STM32G474, 48 pins,
+# 512 KB of flash. Dual-bank is how the board's option bytes arrived (DBANK=1,
+# read over DFU on 2026-09-26), and this firmware leaves the option bytes alone.
+[dependencies]
+embassy-stm32 = { version = "0.6.0", features = ["stm32g474ce", "dual-bank", "memory-x", "time-driver-any", "exti", "unstable-pac"] }
+embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
+embassy-time = { version = "0.5.1", features = ["tick-hz-32_768"] }
+embassy-usb = "0.6.0"
+embassy-futures = "0.1.2"
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7.0"
+heapless = { version = "0.9", default-features = false }
+panic-halt = "1.0"
+
+[profile.release]
+debug = 2
+opt-level = "s"
+lto = true
+codegen-units = 1
