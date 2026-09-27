@@ -104,21 +104,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bringup"
-version = "0.1.0"
-dependencies = [
- "board",
- "cortex-m",
- "cortex-m-rt",
- "embassy-executor",
- "embassy-futures",
- "embassy-stm32",
- "embassy-time",
- "embassy-usb",
- "heapless 0.9.3",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

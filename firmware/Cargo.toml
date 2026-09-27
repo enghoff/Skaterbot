@@ -3,13 +3,12 @@
 #   board     what every image carries: the clocks, and every way back into ST's
 #             USB bootloader, which is how the board is reflashed without anyone
 #             at it
-#   bringup   the bring-up test: heartbeat, USB echo, the KEY button
 #   policy    the trained policy, run on the board for the host to check
 #
 # flash.ps1 builds one and writes it to the board.
 [workspace]
 resolver = "3"
-members = ["board", "bringup", "policy"]
+members = ["board", "policy"]
 
 # Released embassy crates, matched to each other by their 2026-03-10 releases.
 # The chip feature is the exact part on the WeAct board: STM32G474, 48 pins,
@@ -17,9 +16,12 @@ members = ["board", "bringup", "policy"]
 # read over DFU on 2026-09-26), and this firmware leaves the option bytes alone.
 [workspace.dependencies]
 board = { path = "board" }
-embassy-stm32 = { version = "0.6.0", features = ["stm32g474ce", "dual-bank", "memory-x", "time-driver-any", "exti", "unstable-pac"] }
+embassy-stm32 = { version = "0.6.0", features = ["stm32g474ce", "dual-bank", "memory-x", "time-driver-any", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
-embassy-time = { version = "0.5.1", features = ["tick-hz-32_768"] }
+# A tick that divides the timers' 170 MHz exactly. embassy rounds the divider
+# down, so the 32 768 Hz tick this had was 32 774 Hz and every timer ran 190 ppm
+# fast, which link.py's clock check found against the PC.
+embassy-time = { version = "0.5.1", features = ["tick-hz-1_000_000"] }
 embassy-usb = "0.6.0"
 embassy-futures = "0.1.2"
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }

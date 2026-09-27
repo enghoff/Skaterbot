@@ -1,9 +1,7 @@
-# Builds one of the firmware images and writes it to the WeAct board over USB
-# DFU, then starts it. Needs STM32CubeProgrammer, which also installs the DFU
-# driver.
+# Builds a firmware image and writes it to the WeAct board over USB DFU, then
+# starts it. Needs STM32CubeProgrammer, which also installs the DFU driver.
 #
-#   .\flash.ps1               the bring-up firmware
-#   .\flash.ps1 policy        the policy firmware
+#   .\flash.ps1               the policy firmware
 #   .\flash.ps1 -Start        start what is already on the board, from its bootloader
 #
 # If a firmware from this workspace is running, this asks it to reboot into the
@@ -11,8 +9,8 @@
 # the bootloader already. Otherwise put the board in its bootloader by hand
 # first: hold BOOT0, tap NRST, release BOOT0.
 param(
-    [ValidateSet('bringup', 'policy')]
-    [string]$Image = 'bringup',
+    # A binary crate of the workspace beside this script.
+    [string]$Image = 'policy',
     [switch]$Start
 )
 $ErrorActionPreference = 'Stop'

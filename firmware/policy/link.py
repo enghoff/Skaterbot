@@ -6,8 +6,14 @@
 
     uv run firmware/policy/link.py                  what the board holds
     uv run firmware/policy/link.py bench [COUNT]    time the network on the board
+    uv run firmware/policy/link.py clock            the board's clock against this one's
     uv run firmware/policy/link.py crash KIND       panic, fault, hang or interrupt
     uv run firmware/policy/link.py bootloader       reboot into the bootloader
+
+`clock` compares the board's uptime with this machine's over ten seconds. The
+board's clock is the 8 MHz crystal multiplied up, so a wrong crystal frequency
+or PLL setting shows as a ratio far from 1. The first board reads 1.000015,
+which is the crystal and this PC's clock together.
 
 `crash` is how the firmware's recovery is proven: every kind should leave the
 board in its USB bootloader, from which `flash.ps1 -Start` restarts it and
@@ -51,7 +57,7 @@ class Board:
     def __init__(self, port: str | None = None, timeout: float = 2.0):
         self.port = serial.Serial(port or find_port(), 115200, timeout=timeout)
         # Opening the port starts a session on the board. Anything a different
-        # firmware says on opening -- the bring-up one's banner -- is dropped.
+        # firmware says on opening is dropped.
         time.sleep(0.2)
         self.port.reset_input_buffer()
         try:
@@ -122,6 +128,20 @@ class Board:
             timer_s=micros / 1e6,
         )
 
+    def clock(self, gap_s: float = 10.0) -> tuple[float, float]:
+        """The span `gap_s` long by the board's uptime and by this machine's
+        clock, each read at the middle of the request that carried it."""
+
+        def read() -> tuple[float, float]:
+            before = time.perf_counter()
+            uptime = int(self.describe()["uptime_us"]) / 1e6
+            return uptime, (before + time.perf_counter()) / 2
+
+        board0, host0 = read()
+        time.sleep(gap_s)
+        board1, host1 = read()
+        return board1 - board0, host1 - host0
+
     def crash(self, kind: str):
         self.request(b"C", bytes([CRASHES[kind]]))
 
@@ -135,6 +155,7 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command")
     bench = sub.add_parser("bench", help="time the network on the board")
     bench.add_argument("count", type=int, nargs="?", default=1000)
+    sub.add_parser("clock", help="the board's clock against this machine's")
     crash = sub.add_parser("crash", help="crash the firmware, to prove recovery")
     crash.add_argument("kind", choices=CRASHES)
     sub.add_parser("bootloader", help="reboot into the bootloader")
@@ -161,6 +182,12 @@ def main() -> int:
             print(
                 f"the whole by the cycle counter {r['cycles_s'] * 1e3:.1f} ms,"
                 f" by the system timer {r['timer_s'] * 1e3:.1f} ms"
+            )
+        elif args.command == "clock":
+            board_s, host_s = board.clock()
+            print(
+                f"the board counted {board_s:.4f} s while this machine counted"
+                f" {host_s:.4f} s, a ratio of {board_s / host_s:.5f}"
             )
         elif args.command == "crash":
             board.crash(args.kind)

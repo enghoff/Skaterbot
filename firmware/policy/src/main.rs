@@ -40,7 +40,7 @@ use embassy_futures::join::join4;
 use embassy_futures::select::{Either, select};
 use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::usb::{self, Driver};
-use embassy_stm32::{bind_interrupts, peripherals};
+use embassy_stm32::{bind_interrupts, peripherals, uid};
 use embassy_time::{Instant, Timer};
 use embassy_usb::Builder;
 use embassy_usb::class::cdc_acm::{self, CdcAcmClass, ControlChanged, State};
@@ -92,8 +92,8 @@ async fn main(_spawner: Spawner) {
         CdcAcmClass::new(&mut builder, &mut state, MAX_PACKET as u16).split_with_control();
     let mut usb = builder.build();
 
-    // Three short flashes a second, where the bring-up firmware gives two, so
-    // the board shows which it is running.
+    // Three short flashes a second, because WeAct's factory firmware blinks
+    // this LED steadily and a plain blink would not show which is running.
     let blink = async {
         loop {
             for _ in 0..3 {
@@ -252,6 +252,10 @@ async fn handle(
 /// What the board holds, one `key=value` a line.
 fn describe(out: &mut impl Write) -> core::fmt::Result {
     writeln!(out, "firmware=policy")?;
+    writeln!(out, "uid={}", uid::uid_hex())?;
+    // For link.py's clock check, which holds two of these a known time apart
+    // against the host's clock.
+    writeln!(out, "uptime_us={}", Instant::now().as_micros())?;
     writeln!(out, "run={}", net::RUN)?;
     writeln!(out, "digest={}", net::DIGEST)?;
     writeln!(out, "obs={}", N_OBS)?;

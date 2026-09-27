@@ -71,10 +71,8 @@ electrical/kicad_power/.history/
 electrical/kicad_power/~*.lck
 
 # Firmware build output. cargo writes everything under target/, and flash.ps1
-# copies the ELF there with the extension the programmer needs. The firmware is
-# one workspace now; firmware/*/target/ is where each crate built before that.
+# copies the ELF there with the extension the programmer needs.
 firmware/target/
-firmware/*/target/
 
 # The policy's weights, which firmware/policy/export.py writes from a run in
 # exports/, and exports/ is not tracked either.
