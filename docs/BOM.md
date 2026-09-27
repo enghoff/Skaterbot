@@ -208,7 +208,7 @@ the section 1a logic converter needing to come from anywhere else.
 
 | Subsystem | Qty | Current part / specification | Indicative price | Purchase / source link | Risk | Notes |
 |---|---:|---|---:|:--|:--:|---|
-| Actuator | 6 | **DAMIAO DM-J3507-2EC, 24 V** | Foxtech **US$89–95** reference | [Foxtech](https://store.foxtech.com/dm-j3507-2ec-24v-mit-driven-brushless-servo-joint-motor/) | 🔴 | Buy two first, four after validation. Adapter board not included. Read each motor's termination switch; manuals disagree on its default |
+| Actuator | 6 | **DAMIAO DM-J3507-2EC, 24 V** | Foxtech **US$89–95** reference | [Foxtech](https://store.foxtech.com/dm-j3507-2ec-24v-mit-driven-brushless-servo-joint-motor/) | 🔴 | All six on one order; a second import is not worth its shipping and customs. Adapter board not included. Read each motor's termination switch; manuals disagree on its default |
 | **Drive wheels** | 2 + 2 spare | **80×24 mm inline-skate wheel, ~85A cast PU, bearings removed** | **₹1,026** for the 4-pack, checked 2026-09-14, **80 mm in stock** | [Cosco — inline skate wheels, 80 mm](https://store.cosco.in/products/skating-inline-skate-wheels) · Decathlon/Oxelo 80 mm 84A 4-pack | 🟠 | Discard the 608 bearings. Measure the bought wheel before printing the adapter. Only 80 mm was in stock on 2026-09-14 |
 | Support bearings | 4 + 2 spare | **6800-2RS — 10×19×5 mm** | **₹990** listed 2026-09-14, in stock — local bearing-shop pricing is preferred and much lower | [IndustryBuying — 6800-2RS reference](https://www.industrybuying.com/special-bearing-monotaro-BEA.SPE.238091927) | 🟢 | Hip pitch and knee; the wheel joint needs none. Prefer SKF, NTN, Koyo or NSK locally |
 | Retaining compound | 1 | **Loctite 638**, 50 ml or equivalent | **₹677** checked | [Amazon.in — Loctite 638 50 ml](https://www.amazon.in/Loctite-638-Strength-Retaining-Compound/dp/B0074NAX8A) | 🟢 | Bonds bearings into printed cheeks. Test polymer compatibility and retention on a coupon first |
@@ -225,7 +225,7 @@ the section 1a logic converter needing to come from anywhere else.
 
 ### A. DAMIAO DM-J3507-2EC actuators — highest priority
 
-**Recommended action:** source **two 24 V units now**, characterize them, and order the remaining four once actuator/knee validation is complete.
+**Recommended action:** buy **all six 24 V units on one order**. The plan until 2026-09-27 was two first and the other four after validation, and it was dropped because a second import costs a second round of shipping, customs and effort, which is more than the risk it hedged against: about US$356 of motors bought before any of them has been tested.
 
 - Product: [Foxtech DM-J3507-2EC](https://store.foxtech.com/dm-j3507-2ec-24v-mit-driven-brushless-servo-joint-motor/)
 - Reference price: **US$89–95** before shipping/import charges.
@@ -340,7 +340,7 @@ A sensible planning figure for the finished V0 robot and core development electr
 
 Buy now / very soon:
 
-1. **2 × DAMIAO DM-J3507-2EC 24 V**, plus 2 or more spare OEM 8-pin power/CAN pigtails asked for on the same order, plus **2 × adapter board** at US$2.30 from Foxtech's cable set page — the dropdown entry reading exactly `SH1.0 3Pin + 8Pin to XT30 + GH1.25 Adapter Cable`, which is section B's table row — and **2 × `GH1.25-3Pin Reverse Cable (300mm)`** at US$0.90 from the same page, the lead from that board out to the debug tool, which nothing else on this bill supplies. The board is not supplied with a bare motor, Foxtech offer no bundle that includes it, and without it the tuning assistant cannot be reached.
+1. **6 × DAMIAO DM-J3507-2EC 24 V**, all on one order, plus 2 or more spare OEM 8-pin power/CAN pigtails asked for on the same order, plus **2 × adapter board** at US$2.30 from Foxtech's cable set page — the dropdown entry reading exactly `SH1.0 3Pin + 8Pin to XT30 + GH1.25 Adapter Cable`, which is section B's table row — and **2 × `GH1.25-3Pin Reverse Cable (300mm)`** at US$0.90 from the same page, the lead from that board out to the debug tool, which nothing else on this bill supplies. The board is not supplied with a bare motor, Foxtech offer no bundle that includes it, and without it the tuning assistant cannot be reached.
 2. **1 × Waveshare USB-CAN-FD-B interface** — the -B, not the plain one, which has no Linux driver. ₹12,975 at Robocraze.
 3. **2 × WeAct STM32G474CEU6 core boards, the compact one**, one fitted and one spare — **from WeAct's own AliExpress store, because both Indian listings are the Long Type and that board does not fit the carrier**. An import on a long string, so this is the line most likely to hold the electronics up.
 4. **4 × MCP2562FD-E/P CAN-FD transceivers**, three fitted and one spare, through-hole, with DIP-8 sockets and decoupling capacitors, and **5 × the printed carrier board** from LionCircuits, which wants the Gerbers plotted out of KiCad first and nothing else done to them — every hole on the board is between 0.4 and 3.4 mm. **No termination resistors are needed on the carrier**: with two motors on each of the three buses, both ends of every bus are a motor, and all six of their switches stay ON.

@@ -759,7 +759,7 @@ Before accepting the wheel architecture, test the following explicitly.
 
 ### Phase W1 — bench wheel module
 
-Use one of the first two DM-J3507 actuators already planned for characterization.
+Use one of the six DM-J3507 actuators, before the rest are fitted to the legs.
 
 Build:
 
@@ -893,7 +893,7 @@ These are candidates for testing, not additions to the approved BOM.
 
 Do **not** buy a separate wheel motor.
 
-Use the two first DAMIAO DM-J3507-2EC units as a wheel-control test platform and design an 80 mm wheel adaptor around the existing output register/bolt pattern.
+Use two of the six DAMIAO DM-J3507-2EC units as a wheel-control test platform and design an 80 mm wheel adaptor around the existing output register/bolt pattern.
 
 ### First robot architecture
 
