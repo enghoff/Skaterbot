@@ -296,3 +296,36 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     # Off here: the flat task's policy was trained with its actions clipped
     # before it saw them. The rough task switches it on.
     rew_action_bound = 0.0
+    # Being still when told to stand: paid when the speed and turn commands
+    # are both zero, and falling off with the joints' and the torso's motion.
+    # Bounded, so a shove is recovered from rather than ridden out stiffly.
+    rew_stand_still = 0.0
+    stand_still_tolerance = 0.5
+
+    # -- the time between sensing and acting, in physics steps of 2.5 ms,
+    # drawn per episode from each range; off here. The IMU's reading and the
+    # encoders' are handed to the policy that many steps late, and a command
+    # takes effect that many steps into the policy step. Up to decimation.
+    imu_delay_steps = (0, 0)
+    joint_delay_steps = (0, 0)
+    action_delay_steps = (0, 0)
+    # The chance, each policy step, of each delay being one step off its
+    # episode's value, and of a command being lost altogether.
+    delay_jitter_prob = 0.0
+    command_drop_prob = 0.0
+
+    # -- the sensors: Gaussian noise each step and an offset drawn per
+    # episode, on the IMU's and the encoders' readings as the policy sees
+    # them (scaled). Off here.
+    sensor_noise_std = 0.0
+    sensor_bias_std = 0.0
+    # Whether the ride-height command reaches the policy as -1 to 1 over its
+    # range rather than in metres (a task with one says so).
+    scale_height_command = False
+
+    # -- the battery: the motors' no-load speed as a share of the rated
+    # figure's, drawn per episode. Off here.
+    battery_speed_scale = (1.0, 1.0)
+    # Whether the policy is told the pack's voltage (a task that appends it
+    # to its observations says where).
+    observe_battery = False

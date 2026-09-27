@@ -7,7 +7,8 @@ Every robot is asked for one jump, two seconds into its episode, at a fixed
 target clearance and a fixed forward speed -- a grid of both across the robots
 -- and is then watched for three seconds more. For each cell of the grid it
 reports the share that left the ground, the peak wheel clearance they reached
-against the target, the share still upright at the end, and how far the torso
+against the target, the share still upright at the end, how far the torso
+itself rose and how long the wheels were off the ground, and how far the torso
 leans sideways in the second before the jump and the last second of the run --
 because staying upright is not the same as standing straight, and one policy
 learned to stand on one locked leg with the torso rolled 12 degrees.
@@ -28,7 +29,13 @@ parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--policy", required=True, help="exported TorchScript policy.pt")
 parser.add_argument("--robots-per-cell", type=int, default=64)
 parser.add_argument(
-    "--targets-mm", default="10,20,40,60,80,100,120", help="target clearances"
+    "--no-delay", action="store_true", help="without the robot's sensing delays"
+)
+parser.add_argument(
+    "--battery", type=float, default=1.0, help="motor speed, as a share of rated"
+)
+parser.add_argument(
+    "--targets-mm", default="10,20,40,60,80,100,120,150", help="target clearances"
 )
 parser.add_argument("--speeds", default="0,1.0", help="forward speeds, m/s")
 add_launcher_args(parser)
@@ -43,11 +50,34 @@ TRIGGER_AT_S = 2.0
 WATCH_S = 3.0
 
 
+def policy_inputs(path: str) -> int:
+    """How many inputs an exported policy takes, found by trying."""
+    policy = torch.jit.load(path, map_location="cpu").eval()
+    for n in range(40, 0, -1):
+        try:
+            with torch.inference_mode():
+                policy(torch.zeros(1, n))
+            return n
+        except RuntimeError:
+            continue
+    raise SystemExit(f"{path}: no input width from 1 to 40 works")
+
+
 def main() -> int:
     cells = [(t, v) for t in TARGETS_M for v in SPEEDS_M_S]
     cfg = WheeledBipedJumpEnvCfg()
+    # On the flat field: training puts steps in a share of it.
+    cfg.steps_fraction = 0.0
+    # A policy trained before the battery was one of its inputs has one fewer.
+    if policy_inputs(args.policy) == cfg.observation_space - 1:
+        cfg.observe_battery = False
+        cfg.observation_space -= 1
     cfg.scene.num_envs = len(cells) * args.robots_per_cell
     cfg.events.push = None
+    cfg.battery_speed_scale = (args.battery, args.battery)
+    if args.no_delay:
+        cfg.imu_delay_steps = cfg.joint_delay_steps = cfg.action_delay_steps = (0, 0)
+        cfg.delay_jitter_prob = cfg.command_drop_prob = 0.0
     cfg.command_resample_s = 1.0e9
     # No random jumps: this script asks for exactly one.
     cfg.jump_interval_s = (1.0e9, 1.0e9)
@@ -80,6 +110,17 @@ def main() -> int:
         # the last second of the run.
         roll_before = torch.zeros(env.num_envs, device=dev)
         roll_after = torch.zeros(env.num_envs, device=dev)
+        # The torso's own rise above where it was at the trigger, and how long
+        # the wheels were off the ground: what a tuck of the legs alone lacks.
+        rise = torch.zeros(env.num_envs, device=dev)
+        air = torch.zeros(env.num_envs, device=dev)
+        # How far the torso pitches after the trigger, and how long apart the
+        # two wheels leave the ground: a tuck that swings the legs up turns
+        # the body the other way, and a hop off one wheel is a rock, not a jump.
+        pitch = torch.zeros(env.num_envs, device=dev)
+        # And the whole robot's centre of mass, which is what a jump raises.
+        com = torch.zeros(env.num_envs, device=dev)
+        lifted_at = torch.full((env.num_envs, 2), float("nan"), device=dev)
         dt = env.step_dt
         second = round(1.0 / dt)
         steps = round((TRIGGER_AT_S + WATCH_S) / dt)
@@ -96,34 +137,59 @@ def main() -> int:
             fallen |= terminated
             took_off |= env._took_off & ~fallen
             peak = torch.where(~fallen, torch.maximum(peak, env._peak), peak)
+            rise = torch.where(~fallen, torch.maximum(rise, env.rise()), rise)
+            air = torch.where(~fallen, torch.maximum(air, env._air_t), air)
+            com = torch.where(~fallen, torch.maximum(com, env.com_rise()), com)
             gravity_y = env.robot.data.projected_gravity_b.torch[:, 1]
             roll = torch.rad2deg(torch.asin(gravity_y.clamp(-1.0, 1.0))).abs()
             if round(TRIGGER_AT_S / dt) - second <= k < round(TRIGGER_AT_S / dt):
                 roll_before += roll / second
             if k >= steps - second:
                 roll_after += roll / second
+            if k >= round(TRIGGER_AT_S / dt):
+                gravity_x = env.robot.data.projected_gravity_b.torch[:, 0]
+                tilt = torch.rad2deg(torch.asin(gravity_x.clamp(-1.0, 1.0))).abs()
+                pitch = torch.where(~fallen, torch.maximum(pitch, tilt), pitch)
+                off = env._clearance > cfg.wheel_contact_tolerance_m
+                first = off & torch.isnan(lifted_at)
+                lifted_at = torch.where(first, k * dt, lifted_at)
 
         print(
             f"\n{env.num_envs} robots, {args.robots_per_cell} per cell, one jump each\n"
         )
         print(
             f"  {'target':>7} {'speed':>7} {'took off':>9} {'peak clearance':>18}"
-            f" {'error':>8} {'upright':>8} {'lean before/after':>18}"
+            f" {'error':>8} {'upright':>8} {'torso rise':>11} {'in the air':>11}"
+            f" {'lean before/after':>18} {'pitch peak':>11} {'lift skew':>10}"
+            f" {'CoM rise':>9}"
         )
         for i, (t, v) in enumerate(cells):
             sl = slice(i * args.robots_per_cell, (i + 1) * args.robots_per_cell)
             off = took_off[sl]
             reached = peak[sl][off]
+            rose = rise[sl][off].mean().item() * 1000 if off.any() else float("nan")
+            flew = air[sl][off].mean().item() if off.any() else float("nan")
             up = ~fallen[sl]
             before = roll_before[sl][up].mean().item() if up.any() else float("nan")
             after = roll_after[sl][up].mean().item() if up.any() else float("nan")
             mean = reached.mean().item() * 1000 if off.any() else float("nan")
             spread = reached.std().item() * 1000 if off.sum() > 1 else float("nan")
+            tipped = pitch[sl][up].mean().item() if up.any() else float("nan")
+            lifted = com[sl][off].mean().item() * 1000 if off.any() else float("nan")
+            both = off & ~torch.isnan(lifted_at[sl]).any(dim=1)
+            skew = (
+                (lifted_at[sl][both, 0] - lifted_at[sl][both, 1]).abs().mean().item()
+                * 1000
+                if both.any()
+                else float("nan")
+            )
             print(
                 f"  {t * 1000:5.0f}mm {v:5.1f}m/s {off.float().mean().item() * 100:8.0f}%"
                 f" {mean:9.1f} +/-{spread:4.1f}mm {mean - t * 1000:+7.1f}mm"
                 f" {(~fallen[sl]).float().mean().item() * 100:7.0f}%"
+                f" {rose:8.1f}mm {flew:9.2f}s"
                 f" {before:8.1f} / {after:4.1f} deg"
+                f" {tipped:8.1f}deg {skew:7.0f}ms {lifted:7.1f}mm"
             )
         env.close()
     return 0

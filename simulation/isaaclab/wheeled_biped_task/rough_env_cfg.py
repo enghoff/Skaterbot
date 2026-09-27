@@ -45,7 +45,6 @@ from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainGeneratorCfg, TerrainImporterCfg
 from isaaclab.utils.configclass import configclass
-from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 from isaaclab_physx.physics import PhysxCfg
 
 from .env_cfg import (
@@ -236,11 +235,11 @@ class WheeledBipedRoughEnvCfg(WheeledBipedBalanceEnvCfg):
     )
 
     # An IMU and encoders are noisy and a little off; so is what the policy
-    # sees here. The critic's observations are left clean.
-    observation_noise_model = NoiseModelWithAdditiveBiasCfg(
-        noise_cfg=GaussianNoiseCfg(std=0.02, operation="add"),
-        bias_noise_cfg=GaussianNoiseCfg(std=0.02, operation="abs"),
-    )
+    # sees here. The critic's observations are left clean. This was Isaac
+    # Lab's noise model over the policy's whole input, commands and all; it
+    # is now the environment's own, on the sensors alone (env.py).
+    sensor_noise_std = 0.02
+    sensor_bias_std = 0.02
 
     viewer: ViewerCfg = ViewerCfg(
         eye=(1.6, -1.6, 1.0),
@@ -268,6 +267,7 @@ class WheeledBipedRoughEnvCfg(WheeledBipedBalanceEnvCfg):
     # closer to speed.
     rew_track_yaw_rate = 1.5
     rew_track_leg_height = 1.0
+    rew_leg_height_error = 0.0
     # The wheel is allowed fore and aft of the hip -- it is a way to balance
     # -- but not for free.
     rew_wheel_fore_aft = -5.0

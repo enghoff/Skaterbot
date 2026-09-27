@@ -9,6 +9,7 @@
     uv run simulation/mujoco/drive.py --run exports/rl/<run>
     uv run simulation/mujoco/drive.py --rough 1
     uv run simulation/mujoco/drive.py --check
+    uv run simulation/mujoco/drive.py --delay-ms 5,2.5,2.5 --battery 0.8
 
 --rough lays the robot's ground out as the rough task trained it: 4 m tiles of
 bumps, waves, blocks, rails and pyramid slopes, around the flat tile it starts
@@ -31,7 +32,7 @@ the trigger among its inputs) gets a jump button.
 
 TO THE LIMITS. Commands run over everything the policy was trained on, which
 for the jump task is the wheels' whole envelope: full stick is the top speed or
-the fastest turn, and a jump at full trigger is the highest target. Speed and
+the fastest turn, and every jump is as high as it was trained to. Speed and
 turn share the wheels, so for a policy trained that way a command asking for
 more of both than the wheels have is scaled back into the envelope, as it was
 in training. The overlay shows how close the motors are to their own limits:
@@ -40,9 +41,8 @@ second against the 3 Nm peak.
 
 --check runs the same limits without a window: stand, half and full speed each
 way, half and fastest turn on the spot, an arc, and -- for a jump policy --
-jumps from the lowest target to the highest, standing and at speed. For each
-it reports what was held against what was asked, the motors' peaks, and
-whether the robot stayed up.
+a jump, standing and at speed. For each it reports what was held against
+what was asked, the motors' peaks, and whether the robot stayed up.
 
 KEYBOARD, with the viewer focused:
 
@@ -50,8 +50,7 @@ KEYBOARD, with the viewer focused:
     left / right       turn rate, a tenth of the trained range a press
     page up / down     ride height, 5 mm a press
     enter              stop: speed and turn to zero
-    insert             jump (jump policies), at the clearance below
-    - / =              jump clearance, 5 mm a press
+    shift or insert    jump (jump policies)
     delete             put the robot back on its wheels
 
 GAME CONTROLLER (an Xbox layout; anything SDL recognises):
@@ -59,8 +58,7 @@ GAME CONTROLLER (an Xbox layout; anything SDL recognises):
     left stick         forward speed
     right stick        turn rate
     d-pad up / down    ride height
-    A                  jump; how hard the right trigger is held sets the
-                       clearance, from the smallest trained to the largest
+    A                  jump
     B                  put the robot back on its wheels
 
 WHAT THIS IS WORTH. MuJoCo is not PhysX: its contact is soft where PhysX's is
@@ -91,7 +89,7 @@ import yaml
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 URDF_PATH = HERE.parent / "urdf" / "wheeled_biped.urdf"
-DEFAULT_RUN = ROOT / "exports" / "rl" / "jump-2026-09-25_01-32-22_ramp"
+DEFAULT_RUN = ROOT / "exports" / "rl" / "jump-2026-09-26_20-38-29_heightstepsfast"
 
 # The order the policy sees and commands the joints in: plant.LEG_JOINTS and
 # plant.WHEEL_JOINTS. Not imported, because plant.py reads the CAD, and this
@@ -114,6 +112,7 @@ ANG_VEL_SCALE = 0.25
 JOINT_VEL_SCALE = 0.05
 CLEARANCE_SCALE = 10.0
 TIMER_CLIP_S = 2.0
+BATTERY_SCALE = 5.0  # the pack's voltage: (V / 24 - 1) x 5
 
 # The rough ground at its hardest level, from the rough task's terrain
 # generator in env.yaml. Not read from it, because the flat and jump tasks'
@@ -228,7 +227,14 @@ def rough_ground(level: float, seed: int = 0) -> np.ndarray:
     return np.round(h / TERRAIN_STEP_M) * TERRAIN_STEP_M
 
 
-def build_model(cfg: dict, rough: float = 0.0) -> mujoco.MjModel:
+# A pyramid of steps to drive down (--steps), on the treads the jump task's
+# step tiles use: a 1 m platform at the top and 0.6 m treads falling away.
+STEPS_COUNT = 4
+STEPS_TREAD_M = 0.6
+STEPS_PLATFORM_M = 1.0
+
+
+def build_model(cfg: dict, rough: float = 0.0, steps: float = 0.0) -> mujoco.MjModel:
     spec = mujoco.MjSpec.from_file(str(URDF_PATH))
     spec.option.timestep = cfg["sim"]["dt"]
     spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
@@ -283,6 +289,12 @@ def build_model(cfg: dict, rough: float = 0.0) -> mujoco.MjModel:
         joint = spec.joint(name)
         joint.armature = group["armature"]
         joint.frictionloss = group["friction"]
+        # A hard stop, as PhysX's is. MuJoCo's default limit is a spring with a
+        # 20 ms time constant, and a jump that folded the knee fast drove it to
+        # 114 degrees against a 100 degree stop -- 14 degrees of travel the
+        # joint does not have, and wheel clearance that came with it.
+        joint.solref_limit = [2.0 * spec.option.timestep, 1.0]
+        joint.solimp_limit = [0.99, 0.999, 0.001, 0.5, 2.0]
         spec.add_actuator(
             name=name,
             target=name,
@@ -313,6 +325,16 @@ def build_model(cfg: dict, rough: float = 0.0) -> mujoco.MjModel:
         height=256,
     )
     friction = [FLOOR_FRICTION, 0.005, 0.0001]
+    for i in range(1, STEPS_COUNT + 1) if steps > 0 else ():
+        # Nested boxes, the lowest and widest first; the robot starts on top.
+        half = STEPS_PLATFORM_M / 2 + (STEPS_COUNT - i) * STEPS_TREAD_M
+        spec.worldbody.add_geom(
+            type=mujoco.mjtGeom.mjGEOM_BOX,
+            size=[half, half, i * steps / 2],
+            pos=[0, 0, i * steps / 2],
+            rgba=[0.45, 0.48, 0.52, 1] if i % 2 else [0.38, 0.41, 0.45, 1],
+            friction=friction,
+        )
     if rough > 0:
         h = rough_ground(rough)
         lo, span = h.min(), max(np.ptp(h), 1e-4)
@@ -429,7 +451,8 @@ class Controller:
         self.kp0, self.kd0 = legs["stiffness"], legs["damping"]
         self.peak = legs["effort_limit"]
         self.saturation = legs["saturation_effort"]
-        self.vmax = legs["velocity_limit"]
+        self.vmax_rated = legs["velocity_limit"]
+        self.vmax = self.vmax_rated
         assert wheels["stiffness"] == 0.0, "the wheels are torque-driven"
         self.leg_scale = np.asarray(cfg["leg_action_scale_rad"], dtype=float)
         self.wheel_scale = cfg["wheel_action_scale_nm"]
@@ -441,9 +464,32 @@ class Controller:
         # Trained on speed and turn sharing the wheels (jump_env_cfg.py).
         self.envelope = bool(cfg.get("command_envelope", False))
         if self.jumps:
-            self.clearance_range = cfg["jump_clearance_m"]
-            self.clearance = sum(self.clearance_range) / 2
+            # No height to choose: a policy scored on its highest jump sees
+            # one fixed target, and an older one trained to targets is asked
+            # for the highest of them.
+            self.clearance = cfg["jump_clearance_m"][1]
+        # The robot's delays, in physics steps: the IMU's reading, the
+        # encoders', and a command's taking effect (set_conditions).
+        self.delay = (0, 0, 0)
+        # The ground's height where the robot is placed (the top of --steps).
+        self.floor_z = 0.0
+        self.battery = 1.0
+        # Told the pack's voltage, as the last input (jump_env_cfg.py).
+        self.observes_battery = bool(cfg.get("observe_battery", False))
         self.reset_state()
+
+    def set_conditions(self, delay_ms=(0.0, 0.0, 0.0), battery: float = 1.0):
+        """The robot's delays, IMU, encoders and command, and its battery.
+
+        A delay is rounded to whole physics steps, up to one policy step. The
+        battery is the motors' no-load speed as a share of the rated one.
+        """
+        step_ms = self.m.opt.timestep * 1000.0
+        self.delay = tuple(
+            int(np.clip(round(ms / step_ms), 0, self.decimation)) for ms in delay_ms
+        )
+        self.vmax = self.vmax_rated * battery
+        self.battery = battery
 
     def reset_state(self):
         self.actions = np.zeros(self.n_act)
@@ -451,12 +497,21 @@ class Controller:
         self.wheel_torque = np.zeros(2)
         self.kp = np.full(4, self.kp0)
         self.kd = np.full(4, self.kd0)
+        self.held = (self.leg_targets, self.wheel_torque, self.kp, self.kd)
+        # What the sensors read after each physics step of the last policy
+        # step, by how many steps old; empty until the first look.
+        self.history = None
+        self.substep = 0
         self.jump_active = False
         self.jump_t = 0.0
         self.jump_target = 0.0
         self.took_off = False
         self.peak_clearance = 0.0
         self.last_peak = None
+        self.last_rise = self.last_air = 0.0
+        self.last_pitch = self.last_skew = 0.0
+        self.pitch_peak, self.lift_t = 0.0, [-1.0, -1.0]
+        self.start_z = self.apex_z = self.air_t = 0.0
         self.touch_t = [-1.0, -1.0]
         self.landed_t = -1.0
         # The motors against their limits: peak |torque| per joint and peak
@@ -484,7 +539,7 @@ class Controller:
     def place(self, d: mujoco.MjData):
         """On its wheels at the origin, in the crouch it was trained from."""
         mujoco.mj_resetData(self.m, d)
-        d.qpos[2] = self.spawn_z
+        d.qpos[2] = self.spawn_z + self.floor_z
         d.qpos[3:7] = [1, 0, 0, 0]
         d.qpos[self.leg_q] = self.default_legs
         mujoco.mj_forward(self.m, d)
@@ -495,19 +550,35 @@ class Controller:
     def clearance_now(self, d) -> np.ndarray:
         return d.xpos[self.wheels, 2] - self.wheel_radius
 
-    def observe(self, d) -> np.ndarray:
+    def reading(self, d) -> np.ndarray:
+        """What the robot's own sensors read now, scaled as the policy sees it:
+        the IMU's turn rate and gravity direction, then the encoders."""
         rot = d.xmat[self.base].reshape(3, 3)
         gravity_b = rot.T @ np.array([0.0, 0.0, -1.0])
         # A free joint's angular velocity is in the body's own frame already.
-        obs = [
-            d.qvel[3:6] * ANG_VEL_SCALE,
-            gravity_b,
-            self.command,
-            d.qpos[self.leg_q] - self.default_legs,
-            d.qvel[self.leg_v] * JOINT_VEL_SCALE,
-            d.qvel[self.wheel_v] * JOINT_VEL_SCALE,
-            self.actions[:6],
-        ]
+        return np.concatenate(
+            (
+                d.qvel[3:6] * ANG_VEL_SCALE,
+                gravity_b,
+                d.qpos[self.leg_q] - self.default_legs,
+                d.qvel[self.leg_v] * JOINT_VEL_SCALE,
+                d.qvel[self.wheel_v] * JOINT_VEL_SCALE,
+            )
+        )
+
+    def observe(self, d) -> np.ndarray:
+        now = self.reading(d)
+        if self.history is None:
+            self.history = np.tile(now, (self.decimation + 1, 1))
+        self.history[0] = now
+        imu = self.history[self.delay[0], :6]
+        encoders = self.history[self.delay[1], 6:]
+        command = self.command.copy()
+        if self.cfg.get("scale_height_command", False):
+            # The ride height as -1 to 1 over its range (env.py).
+            lo, hi = self.height_range
+            command[2] = (command[2] - (lo + hi) / 2) / ((hi - lo) / 2)
+        obs = [imu, command, encoders, self.actions[:6]]
         if self.jumps:
             a = float(self.jump_active)
             obs.append(
@@ -517,6 +588,8 @@ class Controller:
                     min(self.jump_t, TIMER_CLIP_S) * a,
                 ]
             )
+        if self.observes_battery:
+            obs.append([(self.battery - 1.0) * BATTERY_SCALE])
         obs = np.concatenate(obs).astype(np.float32)
         assert obs.shape == (self.n_obs,), obs.shape
         return obs
@@ -529,6 +602,9 @@ class Controller:
     def act(self, d):
         """One policy step: read the robot, run the policy, set the targets."""
         self.update_jump(d)
+        # What the motors run until this step's command reaches them.
+        self.held = (self.leg_targets, self.wheel_torque, self.kp, self.kd)
+        self.substep = 0
         raw = self.session.run(None, {"obs": self.observe(d)[None]})[0][0]
         self.actions = np.clip(raw, -1.0, 1.0)
         self.leg_targets = np.clip(
@@ -546,11 +622,20 @@ class Controller:
 
     def motor_torques(self, d):
         """Isaac Lab's DCMotor, every physics step: PD, then the torque-speed line."""
+        if self.history is not None:
+            self.history[self.decimation - self.substep] = self.reading(d)
+        late = self.substep < self.delay[2]
+        self.substep += 1
+        targets, wheel_torque, kp, kd = (
+            self.held
+            if late
+            else (self.leg_targets, self.wheel_torque, self.kp, self.kd)
+        )
         q, v = d.qpos[self.leg_q], d.qvel[self.leg_v]
-        legs = self.kp * (self.leg_targets - q) - self.kd * v
+        legs = kp * (targets - q) - kd * v
         d.ctrl[self.leg_act] = self._saturate(legs, v)
         wheel_v = d.qvel[self.wheel_v]
-        d.ctrl[self.wheel_act] = self._saturate(self.wheel_torque, wheel_v)
+        d.ctrl[self.wheel_act] = self._saturate(wheel_torque, wheel_v)
         tau = np.abs(np.concatenate((d.ctrl[self.leg_act], d.ctrl[self.wheel_act])))
         self.torque_peak = np.maximum(self.torque_peak, tau)
         self.wheel_speed_peak = max(self.wheel_speed_peak, np.abs(wheel_v).max())
@@ -565,19 +650,33 @@ class Controller:
     def trigger_jump(self, clearance: float):
         if self.jumps and not self.jump_active:
             self.jump_active, self.jump_t = True, 0.0
-            self.jump_target = float(np.clip(clearance, *self.clearance_range))
+            self.jump_target = float(clearance)
             self.took_off, self.peak_clearance = False, 0.0
             self.touch_t, self.landed_t = [-1.0, -1.0], -1.0
+            # How far the torso pitches, and when each wheel leaves the ground.
+            self.pitch_peak, self.lift_t = 0.0, [-1.0, -1.0]
 
     def update_jump(self, d):
         if not self.jump_active:
             return
         c = self.cfg
+        torso_z = d.xpos[self.base, 2]
+        if self.jump_t == 0.0:
+            # The torso's height at the trigger, to measure its rise from.
+            self.start_z = self.apex_z = torso_z
+            self.air_t = 0.0
         clear = self.clearance_now(d)
         on_ground = clear < c["wheel_contact_tolerance_m"]
+        forward = d.xmat[self.base].reshape(3, 3)[:, 0]
+        self.pitch_peak = max(self.pitch_peak, abs(math.asin(forward[2])))
+        for i in range(2):
+            if not on_ground[i] and self.lift_t[i] < 0:
+                self.lift_t[i] = self.jump_t
         if not on_ground.any():
             self.took_off = True
             self.peak_clearance = max(self.peak_clearance, clear.min())
+            self.apex_z = max(self.apex_z, torso_z)
+            self.air_t += self.dt
         if self.took_off:
             for i in range(2):
                 if on_ground[i] and self.touch_t[i] < 0:
@@ -585,14 +684,96 @@ class Controller:
             if min(self.touch_t) >= 0 and self.landed_t < 0:
                 self.landed_t = self.jump_t
                 self.last_peak = self.peak_clearance
+                self.last_rise = self.apex_z - self.start_z
+                self.last_air = self.air_t
+                self.last_pitch = self.pitch_peak
+                self.last_skew = abs(self.lift_t[0] - self.lift_t[1])
         missed = not self.took_off and self.jump_t > c["jump_takeoff_window_s"]
         recovered = (
             self.landed_t >= 0 and self.jump_t > self.landed_t + c["jump_recovery_s"]
         )
+        if c.get("jump_score_max", False):
+            # Held to a fixed window after the trigger, as it was trained.
+            recovered = self.jump_t >= c["jump_window_s"]
         if missed:
             self.last_peak = 0.0
+            self.last_rise = self.last_air = 0.0
+            self.last_pitch = self.last_skew = 0.0
         if missed or recovered:
             self.jump_active = False
+
+
+# --------------------------------------------------------------------------
+# Holding still: the loop outside the policy
+
+
+class Hold:
+    """Heading and place, held while the operator asks for no speed and no turn.
+
+    The policy sees only its turn rate, so a slow steady turn and a small creep
+    look to it like standing still, and it drifts: the jump policy turned 111
+    degrees and crept 36 cm in 25 s. This holds what the robot's own sensors
+    can -- the heading from the IMU's orientation, the distance rolled from the
+    wheels -- and asks for the speed and turn that take it back. Sideways it
+    cannot hold, having no way to move sideways.
+
+    Most of the time it asks for exactly nothing, which is the command the
+    policy is trained to stand still on: it steps in past an outer band and
+    lets go inside an inner one.
+    """
+
+    HEADING_BAND_RAD = (math.radians(0.5), math.radians(2.0))
+    PLACE_BAND_M = (0.005, 0.02)
+    HEADING_GAIN = 4.0  # rad/s per rad
+    # Gently: the policy's speed loop is slow, and at 3 m/s per metre the two
+    # together rocked 5 degrees at 1.4 Hz.
+    PLACE_GAIN = 1.0  # m/s per m
+    MAX_TURN_RAD_S = 0.5
+    MAX_SPEED_M_S = 0.2
+
+    def __init__(self, ctl: Controller):
+        self.ctl = ctl
+        self.holding = False
+
+    def ground_speed(self, d) -> float:
+        """Forward speed from the wheels: each wheel's spin against the ground
+        is its own joint's plus the leg's and the torso's pitching."""
+        c = self.ctl
+        pitch_rate = d.qvel[4]  # the free joint's angular velocity is body-frame
+        hips, knees = d.qvel[c.leg_v[[0, 2]]], d.qvel[c.leg_v[[1, 3]]]
+        spin = pitch_rate - hips + knees + d.qvel[c.wheel_v]
+        return float(c.wheel_radius * spin.mean())
+
+    @staticmethod
+    def heading(d, base) -> float:
+        rot = d.xmat[base].reshape(3, 3)
+        return math.atan2(rot[1, 0], rot[0, 0])
+
+    def command(self, d, asked: np.ndarray) -> np.ndarray:
+        """The speed and turn to send: the operator's, or the hold's."""
+        if asked.any():
+            self.holding = False
+            return asked
+        c = self.ctl
+        if not self.holding:
+            self.holding = True
+            self.target = self.heading(d, c.base)
+            self.rolled = 0.0
+            self.turning = self.moving = False
+        self.rolled += self.ground_speed(d) * c.dt
+        error = (self.target - self.heading(d, c.base) + math.pi) % (2 * math.pi)
+        error -= math.pi
+        lo, hi = self.HEADING_BAND_RAD
+        self.turning = abs(error) > (lo if self.turning else hi)
+        lo, hi = self.PLACE_BAND_M
+        self.moving = abs(self.rolled) > (lo if self.moving else hi)
+        turn = np.clip(
+            self.HEADING_GAIN * error, -self.MAX_TURN_RAD_S, self.MAX_TURN_RAD_S
+        )
+        speed = np.clip(
+            -self.PLACE_GAIN * self.rolled, -self.MAX_SPEED_M_S, self.MAX_SPEED_M_S
+        )
+        return np.array([speed * self.moving, turn * self.turning])
 
 
 # --------------------------------------------------------------------------
@@ -604,7 +785,8 @@ class Input:
 
     KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT = 265, 264, 263, 262
     KEY_PAGE_UP, KEY_PAGE_DOWN, KEY_ENTER = 266, 267, 257
-    KEY_INSERT, KEY_DELETE, KEY_MINUS, KEY_EQUAL = 260, 261, 45, 61
+    KEY_INSERT, KEY_DELETE = 260, 261
+    KEY_LEFT_SHIFT, KEY_RIGHT_SHIFT = 340, 344
 
     def __init__(self, ctl: Controller):
         self.ctl = ctl
@@ -650,11 +832,7 @@ class Input:
                 cmd[:2] = 0.0
             elif code == self.KEY_DELETE:
                 self.reset = True
-            elif c.jumps and code == self.KEY_EQUAL:
-                c.clearance = min(c.clearance + 0.005, c.clearance_range[1])
-            elif c.jumps and code == self.KEY_MINUS:
-                c.clearance = max(c.clearance - 0.005, c.clearance_range[0])
-            elif code == self.KEY_INSERT:
+            elif code in (self.KEY_LEFT_SHIFT, self.KEY_RIGHT_SHIFT, self.KEY_INSERT):
                 c.trigger_jump(c.clearance)
             c.limit_command()
 
@@ -678,10 +856,6 @@ class Input:
                 self.reset = True
             pressed = self.pad.get_button(0)
             if c.jumps and pressed and not self.jump_button_was:
-                # The trigger rests at -1 and is fully pulled at +1.
-                pull = (axis(5, 0.0) + 1) / 2 if self.pad.get_numaxes() > 5 else 0.5
-                lo, hi = c.clearance_range
-                c.clearance = lo + pull * (hi - lo)
                 c.trigger_jump(c.clearance)
             self.jump_button_was = pressed
             c.limit_command()
@@ -705,27 +879,57 @@ def main() -> int:
         metavar="LEVEL",
         help="rough ground: 1 is the hardest trained, 0 (the default) flat",
     )
+    parser.add_argument(
+        "--delay-ms",
+        default="0,0,0",
+        metavar="IMU,ENCODERS,COMMAND",
+        help="the robot's delays, rounded to physics steps; 5,2.5,2.5 is typical",
+    )
+    parser.add_argument(
+        "--battery",
+        type=float,
+        default=1.0,
+        metavar="SHARE",
+        help="motor no-load speed as a share of rated: 1.05 full, 0.8 at cutoff",
+    )
+    parser.add_argument(
+        "--no-hold",
+        action="store_true",
+        help="do not hold heading and place while no speed or turn is asked for",
+    )
+    parser.add_argument(
+        "--steps",
+        type=float,
+        default=0.0,
+        metavar="HEIGHT_M",
+        help=f"start on a pyramid of {STEPS_COUNT} steps this high, to drive down",
+    )
     args = parser.parse_args()
 
     cfg, policy = load_run(args.run)
-    model = build_model(cfg, args.rough)
+    model = build_model(cfg, args.rough, args.steps)
     data = mujoco.MjData(model)
     ctl = Controller(model, cfg, policy)
+    ctl.floor_z = STEPS_COUNT * args.steps
+    delay_ms = [float(v) for v in args.delay_ms.split(",")]
+    ctl.set_conditions(delay_ms, args.battery)
     ctl.place(data)
     print(
         f"{args.run.name}: {ctl.n_obs} inputs, {ctl.n_act} outputs,"
         f" {1 / ctl.dt:.0f} Hz policy, {1 / model.opt.timestep:.0f} Hz physics"
         + (", jumps" if ctl.jumps else "")
+        + f"; delays {args.delay_ms} ms, battery {args.battery:.2f} of rated speed"
     )
 
     if args.check:
         return check(model, data, ctl)
+    hold = None if args.no_hold else Hold(ctl)
 
     inp = Input(ctl)
     print(
         "keys: arrows speed and turn, page up/down ride height, enter stop,"
         " delete reset"
-        + (", insert jump, -/= jump clearance" if ctl.jumps else "")
+        + (", shift to jump" if ctl.jumps else "")
         + ("" if inp.pad else "  (no controller found: keyboard only)")
     )
     fallen_since = None
@@ -741,7 +945,13 @@ def main() -> int:
                 if inp.reset:
                     ctl.place(data)
                     inp.reset, fallen_since = False, None
+                    if hold is not None:
+                        hold.holding = False
+                asked = ctl.command[:2].copy()
+                if hold is not None:
+                    ctl.command[:2] = hold.command(data, asked)
                 ctl.act(data)
+                ctl.command[:2] = asked
             for _ in range(ctl.decimation):
                 ctl.motor_torques(data)
                 mujoco.mj_step(model, data)
@@ -758,7 +968,7 @@ def main() -> int:
             steps += 1
             if steps % round(0.5 / ctl.dt) == 0:
                 peaks = ctl.read_peaks()
-            show_status(viewer, data, ctl, peaks)
+            show_status(viewer, data, ctl, peaks, hold)
             viewer.sync()
             next_tick += ctl.dt
             lag = next_tick - time.perf_counter()
@@ -769,7 +979,7 @@ def main() -> int:
     return 0
 
 
-def show_status(viewer, d, ctl: Controller, peaks):
+def show_status(viewer, d, ctl: Controller, peaks, hold=None):
     speed = (d.xmat[ctl.base].reshape(3, 3).T @ d.qvel[:3])[0]
     torque, wheel_speed = peaks
     lines = [
@@ -793,8 +1003,19 @@ def show_status(viewer, d, ctl: Controller, peaks):
             if ctl.jump_active and ctl.took_off
             else ("jumping" if ctl.jump_active else "ready")
         )
-        last = "" if ctl.last_peak is None else f", last {ctl.last_peak * 1000:.0f} mm"
-        lines.append(("jump", f"{ctl.clearance * 1000:.0f} mm, {state}{last}"))
+        last = (
+            ""
+            if ctl.last_peak is None
+            else f", last {ctl.last_peak * 1000:.0f} mm (torso"
+            f" +{ctl.last_rise * 1000:.0f} mm, {ctl.last_air:.2f} s up)"
+        )
+        lines.append(("jump", f"{state}{last}"))
+    if hold is not None and hold.holding:
+        drift = math.degrees(hold.target - Hold.heading(d, ctl.base))
+        drift = (drift + 180.0) % 360.0 - 180.0
+        lines.append(
+            ("holding", f"heading {drift:+.1f} deg, place {hold.rolled * 1000:+.0f} mm")
+        )
     try:
         viewer.set_texts(
             (
@@ -824,12 +1045,8 @@ def check(model, data, ctl: Controller) -> int:
         ("stop", 2.0, 0.0, 0.0, None),
     ]
     if ctl.jumps:
-        lo, hi = ctl.clearance_range
-        script += [
-            (f"jump {c * 1000:.0f} mm", 2.5, 0.0, 0.0, c)
-            for c in np.linspace(lo, hi, 4)
-        ]
-        script.append((f"jump {hi * 1000:.0f} mm at speed", 3.0, v / 2, 0.0, hi))
+        script.append(("jump", 2.5, 0.0, 0.0, ctl.clearance))
+        script.append(("jump at speed", 3.0, v / 2, 0.0, ctl.clearance))
 
     print(
         f"  {'':<24} {'asked':>17} {'held, last second':>18}"
@@ -870,13 +1087,39 @@ def check(model, data, ctl: Controller) -> int:
         cleared = ""
         if jump is not None:
             got = ctl.last_peak
-            cleared = "  no take-off" if not got else f"  cleared {got * 1000:.0f} mm"
+            cleared = (
+                "  no take-off"
+                if not got
+                else f"  cleared {got * 1000:.0f} mm, torso"
+                f" +{ctl.last_rise * 1000:.0f} mm, {ctl.last_air:.2f} s up,"
+                f" pitched {math.degrees(ctl.last_pitch):.0f} deg,"
+                f" wheels off {ctl.last_skew * 1000:.0f} ms apart"
+            )
         print(
             f"  {name:<24} {asked:>17} {outcome:>18}"
             f" {wheel_speed / ctl.vmax * 100:9.0f} %"
             f"   {torque[[0, 2]].max():4.1f} / {torque[[1, 3]].max():4.1f}"
             f" / {torque[4:].max():4.1f} Nm{cleared}"
         )
+    # Standing, first on the policy alone and then with the hold around it.
+    for held in (False, True):
+        hold = Hold(ctl) if held else None
+        ctl.command[:2] = 0.0
+        start = data.xpos[ctl.base, :2].copy()
+        heading = Hold.heading(data, ctl.base)
+        for _ in range(round(20.0 / ctl.dt)):
+            if hold is not None:
+                ctl.command[:2] = hold.command(data, np.zeros(2))
+            ctl.act(data)
+            for _ in range(ctl.decimation):
+                ctl.motor_torques(data)
+                mujoco.mj_step(model, data)
+        simulated += 20.0
+        turned = math.degrees(Hold.heading(data, ctl.base) - heading)
+        turned = (turned + 180.0) % 360.0 - 180.0
+        moved = np.linalg.norm(data.xpos[ctl.base, :2] - start)
+        name = "stand 20 s, " + ("holding" if held else "policy alone")
+        print(f"  {name:<24} moved {moved * 1000:4.0f} mm, turned {turned:+6.1f} deg")
     print(
         f"{falls} falls. Wheel speed is against the {ctl.vmax:.1f} rad/s no-load"
         f" speed, torque against the {ctl.peak:.1f} Nm peak."

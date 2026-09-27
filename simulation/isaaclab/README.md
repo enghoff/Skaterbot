@@ -93,7 +93,7 @@ modelled torque-speed line has left a quarter of the peak torque, so that is
 the motor model's limit and not the policy's -- and it spins at up to about
 18 rad/s. It turns slowly as accurately as quickly, drives straight without
 drifting, and stands on level legs. In MuJoCo (`../mujoco/drive.py --check`,
-where this is the default policy) it does the same with no falls, and its
+where this was once the default policy) it does the same with no falls, and its
 highest jump is 92-94 mm.
 
 Getting there took four false starts, each recorded in `jump_env_cfg.py`
@@ -119,6 +119,8 @@ logs are in the untracked `exports/rl/jump-2026-09-25_01-32-22_ramp/`.
 | `widen_checkpoint.py` | gives a trained policy the extra inputs and outputs a follow-on task needs, without changing what it does, so the jump starts from the balance policy |
 | `evaluate_jump.py` | one jump per robot across a grid of target clearances and speeds: take-off, peak clearance against target, landings, and the torso's sideways lean |
 | `evaluate_envelope.py` | the jump policy held at speeds and turn rates across the wheels' envelope: what it reaches against what was asked |
+| `evaluate_push.py`, `evaluate_steps.py` | the jump policy shoved fore and aft by increasing amounts, and driven down steps of 20-80 mm at four speeds |
+| `TRAINING_HISTORY.md` | **every adopted policy, what it was fine-tuned from and what it changed, what it is trained across and what it never was, the experiments dropped, and what to measure before fine-tuning for the robot** |
 | `runpod/benchmark.sh` | how many robots to simulate on this GPU; refuses results with PhysX errors |
 | `evaluate.py` | runs an exported policy through a fixed script of commands on hundreds of randomised robots and reports what happened; `--rough` spreads them over every kind of ground and difficulty |
 | `runpod/setup_pod.sh` | stands a pod up: Isaac Sim 6.0.1, Isaac Lab 3.0, rsl_rl, and the CAD's own dependencies |
@@ -290,8 +292,32 @@ bus it runs. What would shorten it, largest first:
 - **Less physics per substep**: self-collision off, four position iterations
   rather than eight. Neither measured yet.
 - **Leaner task code**: the reward terms, the command writes and the resets
-  are over a quarter of the step.
+  are over a quarter of the step -- dozens of small tensor operations, each a
+  separate GPU launch, which `torch.compile` could fuse.
 - **A second training run on the same GPU**, which fills the gaps each leaves.
+  Two runs took the GPU from about half busy to 95%.
+- **Isaac Lab 3.0's Newton physics**, built on Warp, which records a whole
+  physics step and replays it as one GPU graph -- the launch overhead this is
+  bound by. A different engine, not yet tried on this robot; the MuJoCo check
+  in `../mujoco/` is how a change of engine would be tested.
+
+**So when there is more than one experiment, run them side by side on one
+pod.** A single run cannot be spread over more CPU threads: each step is a
+chain of GPU launches, each waiting on the last, and a second thread would have
+nothing of its own to do. A second process has its own chain, and the two fill
+each other's gaps. Watch the memory: the jump task at 16 384 robots takes 18 of
+the RTX PRO 4500's 32 GB, so two runs alongside each other take 8 192 each.
+
+**And write the run to the pod's own disk, not the network volume.** Wall
+time ran at twice the iteration time rsl_rl reports -- a 1 500-iteration run
+logged 63 minutes of iterations and took two hours. A stack sampler inside
+the process (py-spy is not allowed ptrace in the container) found it: 55 % of
+the time the main thread sat in TensorBoard's event writer, whose queue holds
+ten events, blocked behind a writer thread that was writing to the network
+volume. The same 40 iterations took 122 s with the run on local disk and 218 s
+with it on `/workspace`. `train.sh` still defaults `RUNS_DIR` to the volume, so
+that a run survives the pod; point it at local disk for anything long and copy
+the run directory across at the end.
 
 ## Traps, each of which cost a run
 

@@ -91,21 +91,57 @@ of the script; a jump policy gets a jump button.
 
 Full stick, or the last key press, is the most the policy was trained on, and
 for the jump task that is the motors' whole envelope — the wheels at their
-no-load speed, the highest jump target — so the robot can be driven to its
-mechanical limits and to the policy's. The overlay shows how near the motors
+no-load speed, and every jump as high as it was trained to — so the robot can
+be driven to its mechanical limits and to the policy's. The overlay shows how near the motors
 are to theirs: wheel speed against the no-load speed, and peak torque against
 the 3 Nm peak. `--check` does the same without a window: top speed each way,
-the fastest spin, an arc, and jumps from the lowest target to the highest, with
+the fastest spin, an arc, and a jump standing and one at speed, with
 what was held against what was asked and the motors' peaks for each.
 
 It is also a test. MuJoCo's contact and friction are not PhysX's, so a policy
 that drives here as it did in training has not merely learned PhysX. The
 rough-ground balance policy passed first time, with no tuning: 20 s of standing,
 driving at ±0.3 m/s and turning, never tilting past 7.5°. The default policy
-is now the jump policy trained to the motors' envelope, which in `--check` holds
-1.5 m/s each way, spins at 19 rad/s, turns slowly to within a sixth of the
-command and jumps to 92 mm, with no falls. None of it says anything about the
-real robot's unmeasured numbers, which are the same guesses here.
+is now nine fine-tunes on from it (`isaaclab/TRAINING_HISTORY.md`
+has the chain): the jump policy trained to the motors' envelope, then with
+the robot's delays, a battery it is told the voltage of, a reward for standing
+still, the jump scored on the whole robot's rise, a ride height it follows,
+and steps to drive down. In `--check` it holds any slow turn it is asked
+for, spins at 19 rad/s, and tops out at 0.99 m/s forward and 1.23 back, with
+no falls; top speed is its weak point, and stage 7 reached 1.33 m/s
+forward. `--steps 0.06` starts it on a pyramid of 60 mm steps.
+
+**Its jump is mostly a tuck.** The wheels clear about 80 mm, but the torso
+rises only 22-30 mm and the whole robot's centre of mass about 30: the rest
+is the shins pulled up. The policies before stage 7 cleared about 100 mm the
+same way, pitching about 50° as the legs swung up. `--check` reports the
+rise, the pitch and how far apart the wheels left the ground for each jump.
+`scripted_jump.py`, which holds the torso level through the jump, found a
+crouch first would not raise it much on the simulator's torque-speed line;
+but a policy that happened to ride at 160 mm (`steps`, in the training
+history) pushed off for real, its centre of mass up 68 mm and its wheels
+clearing 101-114 mm, pitching 39-44°. So a better jump is there, and that
+search was too narrow. None of
+it says anything about the real robot's unmeasured numbers, which are the same guesses here.
+
+```
+uv run simulation/mujoco/drive.py --delay-ms 5,2.5,2.5  # IMU, encoders, command
+uv run simulation/mujoco/drive.py --battery 0.8         # motors at the pack's cut-off
+uv run simulation/mujoco/drive.py --no-hold             # the policy alone when standing
+```
+
+Three things the robot will add that training once left out can be put back.
+**The delays** between a sensor reading and the policy seeing it, and between
+the policy's answer and the motors acting on it, rounded to 2.5 ms physics
+steps; the adopted policy, trained without any, rocks 1.5° at 5 / 2.5 / 2.5 ms
+and 13° at twice that. **The battery**, as the motors' no-load speed against
+the rated 24 V's. And **a hold** on heading and place while no speed or turn is
+asked for, on by default: the policy sees only its turn rate, so standing
+alone it creeps and turns — 557 mm and 93° in 20 s — and the hold, from the
+IMU's heading and the wheels' odometry alone, keeps that to 27 mm and 1.3°.
+It is the loop outside the policy the robot needs, and `--check` ends with a
+stand each way. [`docs/POLICY_INTERFACE.md`](../docs/POLICY_INTERFACE.md) is
+what the firmware has to reproduce.
 
 ## What it says the robot is
 

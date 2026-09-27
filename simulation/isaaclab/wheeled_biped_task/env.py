@@ -58,6 +58,34 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         # Terms paid once, on the step they happen, rather than as a rate.
         self._one_off_terms = {"terminated"}
 
+        # What the sensors read after each physics step of the last policy
+        # step, indexed by how many steps old the reading is, for the delays.
+        n, dev, d = self.num_envs, self.device, self.cfg.decimation
+        self._delays = (
+            max(self.cfg.imu_delay_steps[1], self.cfg.joint_delay_steps[1]) > 0
+        )
+        self._sensor_history = torch.zeros(n, d + 1, 16, device=dev)
+        self._history_stale = torch.ones(n, dtype=torch.bool, device=dev)
+        self._env_index = torch.arange(n, device=dev)
+        self._imu_delay = torch.zeros(n, dtype=torch.long, device=dev)
+        self._joint_delay = torch.zeros_like(self._imu_delay)
+        self._action_delay = torch.zeros_like(self._imu_delay)
+        # The physics steps this policy step still running the last command.
+        self._late_steps = torch.zeros_like(self._imu_delay)
+        self._substep = 0
+        self._held_leg_targets = torch.zeros(n, 4, device=dev)
+        self._held_wheel_torque = torch.zeros(n, 2, device=dev)
+
+        # The motors' no-load speeds at the rated voltage, for the battery, and
+        # each robot's battery as a share of that voltage.
+        self._battery = torch.ones(n, device=dev)
+        # Each robot's sensor offsets for the episode (cfg.sensor_bias_std).
+        self._sensor_bias = torch.zeros(n, 16, device=dev)
+        self._rated_speed = {
+            name: act.velocity_limit.clone()
+            for name, act in self.robot.actuators.items()
+        }
+
     # -- scene
 
     def _setup_scene(self):
@@ -75,6 +103,9 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
     # -- acting
 
     def _pre_physics_step(self, actions: torch.Tensor):
+        # What the motors ran by the end of the last step, which they keep
+        # running until this step's command reaches them.
+        self._hold_last_command()
         # Unclipped, for the cost on leaving the action range; the policy's
         # training wrapper no longer clips, so this is the only place that does.
         self._raw_actions = actions.clone()
@@ -100,33 +131,121 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         )
 
     def _apply_action(self):
-        self.robot.set_joint_position_target_index(
-            target=self._leg_targets, joint_ids=self._leg_ids
-        )
+        # Called before each physics step, so the state now is the reading
+        # decimation - substep physics steps before the policy's next look.
+        if self._delays:
+            self._sensor_history[:, self.cfg.decimation - self._substep] = (
+                self._sensor_reading()
+            )
+        late = self._command_late()
+        self._substep += 1
+        legs = torch.where(late, self._held_leg_targets, self._leg_targets)
+        wheels = torch.where(late, self._held_wheel_torque, self._wheel_torque)
+        self.robot.set_joint_position_target_index(target=legs, joint_ids=self._leg_ids)
         self.robot.set_joint_effort_target_index(
-            target=self._wheel_torque, joint_ids=self._wheel_ids
+            target=wheels, joint_ids=self._wheel_ids
         )
+
+    # -- the delays
+
+    def _command_late(self) -> torch.Tensor:
+        """(num_envs, 1): whether this physics step still runs the last command."""
+        return (self._substep < self._late_steps).unsqueeze(1)
+
+    def _hold_last_command(self):
+        """Start a policy step: keep what the motors ran last, pick the lateness."""
+        dropped = (self._late_steps >= self.cfg.decimation).unsqueeze(1)
+        self._held_leg_targets = torch.where(
+            dropped, self._held_leg_targets, self._leg_targets
+        )
+        self._held_wheel_torque = torch.where(
+            dropped, self._held_wheel_torque, self._wheel_torque
+        )
+        self._substep = 0
+        late = self._jittered(self._action_delay)
+        p = self.cfg.command_drop_prob
+        if p > 0.0:
+            lost = torch.rand(self.num_envs, device=self.device) < p
+            late = torch.where(lost, self.cfg.decimation, late)
+        self._late_steps = late
+
+    def _jittered(self, steps: torch.Tensor) -> torch.Tensor:
+        """An episode's delay, one step either way now and then."""
+        p = self.cfg.delay_jitter_prob
+        if p <= 0.0:
+            return steps
+        shift = torch.randint_like(steps, -1, 2) * (
+            torch.rand(steps.shape, device=self.device) < p
+        )
+        return (steps + shift).clamp(0, self.cfg.decimation)
+
+    def _sample_delays(self, env_ids: torch.Tensor):
+        c = self.cfg
+        for (lo, hi), delay in (
+            (c.imu_delay_steps, self._imu_delay),
+            (c.joint_delay_steps, self._joint_delay),
+            (c.action_delay_steps, self._action_delay),
+        ):
+            delay[env_ids] = torch.randint(
+                lo, hi + 1, (len(env_ids),), device=self.device
+            )
 
     # -- sensing
 
-    def _get_observations(self) -> dict:
-        self._previous_actions = self._actions.clone()
+    def _sensor_reading(self) -> torch.Tensor:
+        """What the robot's own sensors read now, scaled as the policy sees it.
+
+        The IMU's turn rate and gravity direction, 6, then the encoders' leg
+        angles from the crouch, leg speeds and wheel speeds, 10.
+        """
         data = self.robot.data
         joint_pos = data.joint_pos.torch
         joint_vel = data.joint_vel.torch
         default = data.default_joint_pos.torch
-        policy = torch.cat(
+        return torch.cat(
             (
                 data.root_ang_vel_b.torch * 0.25,
                 data.projected_gravity_b.torch,
-                self._commands,
                 joint_pos[:, self._leg_ids] - default[:, self._leg_ids],
                 joint_vel[:, self._leg_ids] * 0.05,
                 joint_vel[:, self._wheel_ids] * 0.05,
-                self._actions,
             ),
             dim=-1,
         )
+
+    def _get_observations(self) -> dict:
+        self._previous_actions = self._actions.clone()
+        data = self.robot.data
+        now = self._sensor_reading()
+        if self._delays:
+            history = self._sensor_history
+            history[:, 0] = now
+            # A robot just reset has no past: its readings are all this one.
+            stale = self._history_stale.view(-1, 1, 1)
+            history = torch.where(stale, now.unsqueeze(1).expand_as(history), history)
+            self._sensor_history = history
+            self._history_stale[:] = False
+            i = self._env_index
+            imu = history[i, self._jittered(self._imu_delay), :6]
+            encoders = history[i, self._jittered(self._joint_delay), 6:]
+        else:
+            imu, encoders = now[:, :6], now[:, 6:]
+        # Noise and a per-episode offset on what the sensors read -- and only
+        # on that: the commands and the policy's own last outputs are known
+        # exactly on the robot. Applied to the whole input, the noise buried
+        # the ride-height command, 0.02 on a range of 0.022 m, and no policy
+        # ever followed it.
+        sensed = torch.cat((imu, encoders), dim=-1) + self._sensor_bias
+        if self.cfg.sensor_noise_std > 0.0:
+            sensed = sensed + self.cfg.sensor_noise_std * torch.randn_like(sensed)
+        imu, encoders = sensed[:, :6], sensed[:, 6:]
+        commands = self._commands
+        if self.cfg.scale_height_command and commands.shape[1] > 2:
+            # The ride height as -1 to 1 over its range, like the other inputs.
+            lo, hi = self.cfg.command_leg_height_m
+            commands = commands.clone()
+            commands[:, 2] = (commands[:, 2] - (lo + hi) / 2) / ((hi - lo) / 2)
+        policy = torch.cat((imu, commands, encoders, self._actions), dim=-1)
         critic = torch.cat(
             (
                 data.root_lin_vel_b.torch,
@@ -168,6 +287,11 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             torch.square(leg_offset[:, :2] - leg_offset[:, 2:]), dim=1
         )
         terminated = self.reset_terminated.float()
+        standing = (self._commands[:, :2] == 0.0).all(dim=1).float()
+        joint_vel = data.joint_vel.torch[:, self._leg_ids + self._wheel_ids]
+        motion = torch.sum(torch.square(joint_vel), dim=1) + 10.0 * torch.sum(
+            torch.square(ang_vel_b), dim=1
+        )
 
         c = self.cfg
         terms = {
@@ -186,6 +310,9 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             * torch.sum(torch.square(leg_offset), dim=1),
             "leg_asymmetry": c.rew_leg_asymmetry * asymmetry,
             "terminated": c.rew_terminated * terminated,
+            "stand_still": c.rew_stand_still
+            * standing
+            * torch.exp(-motion / c.stand_still_tolerance),
             # Asking for more than the action range allows. Without it a policy
             # clipped at +/-1 learns to shout: the first rough policy's wheel
             # output swung +/-20, a bang-bang controller behind the clip.
@@ -259,6 +386,27 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
         self._resample_commands(env_ids)
+
+        # A new episode's delays and battery, and nothing held over from the
+        # last one's commands or readings.
+        self._sample_delays(env_ids)
+        self._history_stale[env_ids] = True
+        self._sensor_bias[env_ids] = self.cfg.sensor_bias_std * torch.randn(
+            len(env_ids), 16, device=self.device
+        )
+        default_legs = self.robot.data.default_joint_pos.torch[env_ids][
+            :, self._leg_ids
+        ]
+        self._leg_targets[env_ids] = default_legs
+        self._held_leg_targets[env_ids] = default_legs
+        self._wheel_torque[env_ids] = 0.0
+        self._held_wheel_torque[env_ids] = 0.0
+        lo, hi = self.cfg.battery_speed_scale
+        if (lo, hi) != (1.0, 1.0):
+            charge = torch.empty(len(env_ids), 1, device=self.device).uniform_(lo, hi)
+            self._battery[env_ids] = charge.squeeze(1)
+            for name, act in self.robot.actuators.items():
+                act.velocity_limit[env_ids] = self._rated_speed[name][env_ids] * charge
 
         joint_pos = self.robot.data.default_joint_pos.torch[env_ids].clone()
         joint_vel = self.robot.data.default_joint_vel.torch[env_ids].clone()

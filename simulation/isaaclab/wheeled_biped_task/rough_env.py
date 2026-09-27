@@ -141,6 +141,9 @@ class WheeledBipedRoughEnv(WheeledBipedBalanceEnv):
         terms["track_leg_height"] = c.rew_track_leg_height * torch.exp(
             -height_err / 0.01**2
         )
+        # And in proportion, per metre off: past 20 mm the kernel above pays
+        # nothing either way, so gives no direction back to the command.
+        terms["leg_height_error"] = c.rew_leg_height_error * height_err.sqrt()
         terms["wheel_fore_aft"] = c.rew_wheel_fore_aft * torch.sum(
             torch.square(ahead), dim=1
         )
