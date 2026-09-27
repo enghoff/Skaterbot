@@ -92,9 +92,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "board"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-time",
+ "embassy-usb",
+]
+
+[[package]]
 name = "bringup"
 version = "0.1.0"
 dependencies = [
+ "board",
  "cortex-m",
  "cortex-m-rt",
  "embassy-executor",
@@ -103,7 +116,6 @@ dependencies = [
  "embassy-time",
  "embassy-usb",
  "heapless 0.9.3",
- "panic-halt",
 ]
 
 [[package]]
@@ -683,6 +695,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "libm"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
+
+[[package]]
 name = "litrs"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,16 +780,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "panic-halt"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a513e167849a384b7f9b746e517604398518590a9142f4846a32e3c2a4de7b11"
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+
+[[package]]
+name = "policy"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "cortex-m",
+ "cortex-m-rt",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-time",
+ "embassy-usb",
+ "heapless 0.9.3",
+ "libm",
+]
 
 [[package]]
 name = "portable-atomic"

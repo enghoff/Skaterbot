@@ -1,3 +1,0 @@
-# The G474 is a Cortex-M4 with a single-precision FPU.
-[build]
-target = "thumbv7em-none-eabihf"
