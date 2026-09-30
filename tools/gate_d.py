@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9", "numpy", "trimesh"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1", "numpy", "trimesh"]
 # ///
 """Gate D -- the kinematic chain, unchanged by the migration.
 

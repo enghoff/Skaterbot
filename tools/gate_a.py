@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Gate A -- every ported dimension, against what the KCL said, to full precision.
 
@@ -204,6 +204,32 @@ ADDED = {
     # fixes to suit itself. One Ø4 bore through both side walls opens each one.
     # Nothing the KCL ever had, so it can only be declared here.
     "saddleDrainDiameter": 4.0,
+    # ---- THE LID FITS, September 2026 ---------------------------------------
+    #
+    # The lid's locating lip filled the cavity's whole mouth and the four cover
+    # bosses stood in its corners flush with the rim, so the lid rode on the
+    # bosses rather than sitting down. The first printed prototype found it;
+    # tools/gate_h.py is what finds the next one. The lid was already printed,
+    # so the bosses came down instead: the lip's height and this much air.
+    "coverLipBossClearance": 0.4,
+    "coverBossDrop": 2.8,
+    # ---- THE DECK'S FOUR SCREWS, September 2026 -----------------------------
+    #
+    # M3 on the ledges' centre line put every stock M3 head 0.25 mm into the
+    # wall and left 0.4 mm of deck between its clearance hole and the plate's
+    # edge. M2.5 now, placed by its 4.5 mm head with this much air to the wall,
+    # through an open slot in the deck and into a pilot run through the ledge.
+    "m25Clearance": 2.9,
+    "m25Pilot": 2.1,
+    "deckScrewHeadAir": 0.5,
+    "deckScrewY": 30.85,
+    # ---- THE WHEEL ADAPTER'S SEALED WAFER, September 2026 --------------------
+    #
+    # The plug stopped 0.2 mm short of the floor of the disc's old journal seat,
+    # which united into a closed 16 mm3 void -- powder kept for good. It now
+    # reaches this far past the floor, and tools/check.py counts shells so that
+    # the next closed void fails on the edit that makes it.
+    "plugSeatOverlap": 1.0,
     # cad/finish.py: the 0.5 mm chamfer put on every printed part's outer edges.
     # About one and a half layers at this nozzle -- a deburr, not a feature.
     "CHAMFER": 0.5,
@@ -377,17 +403,46 @@ ADDED = {
     "m25CapHeadDiameter": 4.5,
     "m25CapHeadHeight": 2.5,
     # cad/electronics.py: the pack, in TORSO axes rather than catalogue axes,
-    # because the packs are stood on edge and the two frames do not agree. A
-    # Gens Ace class 3S 2200 mAh brick is 76 x 33 x 25 and 144 g.
-    "batteryPackLength": 76.0,
-    "batteryPackThickness": 25.0,
-    "batteryPackWidth": 33.0,
+    # because the packs are stood on edge and the two frames do not agree. It was
+    # "a Gens Ace class 3S 2200 mAh brick, 76 x 33 x 25", which does not exist:
+    # real 2200 mAh 3S packs are 105 to 108 mm long. Since 2026-09-30 it is a
+    # Bonka 3S 1000 mAh 35C, 75 x 32 x 17 and 95 g as ElectronicsComp lists it,
+    # in a bay kept at the old size so nothing else moved.
+    "batteryPackLength": 75.0,
+    "batteryPackThickness": 17.0,
+    "batteryPackWidth": 32.0,
     "batteryPackGap": 2.0,
     "batteryWidth": 78.0,
     "batteryDepth": 54.0,
     "batteryHeight": 36.0,
     "batteryX": -33.55,
-    "batteryLeadZ": -14.5,
+    "batteryLeadZ": -15.0,
+    # THE BATTERY'S HOLD-DOWN, 2026-09-30, cad/electronics.py. There was none:
+    # the deck was said to hold the packs by 3 mm of squeeze that was air. A rail
+    # under each pack, a stop on its end, a fin between the two and fences down
+    # their outer faces place them; foam cut from one 5 mm sheet pushes them there
+    # and takes up whatever the bought pack differs from the drawn one by. The fin
+    # and fences hung from the deck for a day and stand on the pelvis now, 1.5
+    # thick to reach the actuator harness run and no further, and stopping 6 mm
+    # under the pack tops.
+    "batteryFoamFree": 5.0,
+    "batteryFoamSide": 3.0,
+    "batteryPackOuterY": 18.0,
+    "batteryFenceY": 21.0,
+    "batteryFenceThickness": 1.5,
+    "batteryPackTopZ": 1.0,
+    "batteryFenceShort": 6.0,
+    "batteryFenceTopZ": -5.0,
+    "batteryFoamTop": 4.0,
+    "batteryPackLeftX": -71.05,
+    "batteryPackRightX": 3.950000000000003,
+    "batteryFoamEnd": 3.5,
+    "batteryRailStopHeight": 5.0,
+    "batteryFoamLeadAir": 2.0,
+    # Where the balance leads lie over the packs, named so the foam can stop short
+    # of them; the numbers are the ones the drawing always used.
+    "balanceLeadLength": 10.0,
+    "balanceLeadX": 1.0,
     # THE BOUGHT DISTRIBUTION BOARD, September 2026, and the parts it displaced.
     # The power-entry PCB this project was going to lay out and have fabricated
     # is gone: a SwiftWing PDB-02-XT60 does the same job -- pack in through an
@@ -575,8 +630,14 @@ ADDED = {
     # packs, four posts under the power-entry board, and the service panel that
     # replaced the tether slot in the rear wall.
     "batteryRailThickness": 3.0,
-    "batteryRailY": 20.0,
+    # 20 until 2026-09-30, outside the thinner packs; now just outboard of the
+    # IMU's reservation, and starting at the left hip saddle's inboard face,
+    # because a rail through the saddle's hollow seals a void inside it.
+    "batteryRailY": 12.5,
+    "batteryRailStartX": -25.75,
     "batteryRailEndX": 5.450000000000003,
+    # The fin between the packs stops at the IMU's reservation.
+    "batteryFinEndX": -11.0,
     "boardPostSize": 8.0,
     "powerPostX": 22.5,
     "powerPostY": 22.5,
@@ -721,13 +782,9 @@ ADDED = {
     "imuSeatClearance": 0.2,
     "imuSeatWall": 1.5,
     "imuSeatHeight": 2.5,
-    # THE BATTERY STRAP SLOTS, cad/torso.py. docs/BOM.md buys two cinch straps
-    # for the packs and the shell gave them nothing to pass through, so they
-    # could only be wrapped and left to slide. One slot through each rail anchors
-    # a strap under the packs. They are not what holds the packs in flight --
-    # cad/deck.py bearing on 3 mm of squeeze is, and tools/gate_f.py measures it.
-    "strapSlotWidth": 16.0,
-    "strapSlotHeight": 3.0,
+    # THE BATTERY STRAP SLOTS -- strapSlotWidth 16.0, strapSlotHeight 3.0 -- went
+    # on 2026-09-30 with the straps. Neither strap route was ever open: one led
+    # into the hip saddle and the other into the CAN loom and the harness runs.
     # ---- THE PACK GETS A BMS, September 2026 -------------------------------
     #
     # The robot carries a 6S pack with NO protection of any kind: no cell
@@ -1071,6 +1128,18 @@ CHANGED = {
         "the connector relief is cut flush with the limb's flank rather than on "
         "the housing's connector flat, because widening the waist to 40 mm had "
         "left the limb standing a millimetre proud of the relief",
+    ),
+    "plugInnerX": (
+        22.95,
+        21.75,
+        "the plug reaches a millimetre past the floor of the disc's journal seat "
+        "instead of stopping 0.2 mm short of it, which sealed a 16 mm3 void into "
+        "every wheel adapter",
+    ),
+    "plugCenterX": (
+        25.95,
+        25.35,
+        "follows plugInnerX: the plug's outer end has not moved",
     ),
 }
 

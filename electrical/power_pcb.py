@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9", "numpy>=1.26", "matplotlib>=3.8", "shapely>=2.0"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1", "numpy>=1.26", "matplotlib>=3.8", "shapely>=2.0"]
 # ///
 """The power switch board as a printed circuit board, laid out and checked.
 

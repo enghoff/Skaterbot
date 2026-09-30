@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Gate B -- is the ported solid the same solid the Zoo engine built?
 
@@ -299,6 +299,17 @@ DEVIATIONS = {
                 "dimensions used to be declared."
             ),
         },
+        {
+            "added_mm3": 16.3425650,
+            "why": (
+                "A SEALED VOID FILLED. The plug stopped 0.2 mm short of the floor "
+                "of the Ø10.2 journal seat this disc still carries, and the golden "
+                "has the same closed wafer of air, pi x 5.1 x 5.1 x 0.2: powder kept "
+                "for good in a sintered part. The plug now reaches a millimetre "
+                "past the floor, and everything else it gains is inside the disc "
+                "already, so this is the whole of the change to the part."
+            ),
+        },
     ],
     "joint-stator-clevis": [
         {
@@ -460,6 +471,54 @@ DEVIATIONS = {
                 "6S BMS standing on edge in the gap between the two bays -- a "
                 "bare PCB with no mounting holes, so its bottom edge drops into "
                 "a 2.4 mm slot and the electronics deck over it stops it rising."
+            ),
+        },
+        # THE RAILS MOVED IN AND SHORTENED, 2026-09-30, and the strap slots went.
+        # The net is arithmetic and it checks: the old rails were two of
+        # 80 x 3 x 9 less four 16 x 3 x 3 slots, 3 744 mm3; the new ones are two of
+        # 31.2 x 3 x 9 from the hip saddle's inboard face, plus a 1.5 x 3 x 5 stop
+        # on each end, 1 729.8 -- a net of -2 014.2, and the gate measures
+        # -2 014.19999. Most of the old rails stood where the 125 mm golden box had
+        # no material, so taking them away reads as material UN-ADDED; the 325.6
+        # that reads as removed is where they stood on material the golden has.
+        {
+            "added_mm3": -1688.582551340427,
+            "removed_mm3": 325.6174426547077,
+            "why": (
+                "THE BATTERY'S RAILS FOLLOW THE PACK THAT IS BOUGHT. The packs "
+                "went from 25 mm thick to 17 when the 2200 mAh pack the bay was "
+                "drawn for turned out not to exist, and a rail at y = 20 stood "
+                "outside the pack it carried. Each rail now stands just outboard "
+                "of the IMU's reservation, under the middle of its pack, and starts "
+                "at the left hip saddle's inboard face -- the saddle's own top "
+                "carries the packs over its length, and a rail run through its "
+                "hollow sealed a void inside it. Each rail ends in a 5 mm stop "
+                "that catches the foot of the pack's end face. The four strap "
+                "slots are gone with the straps: neither strap route was ever "
+                "open."
+            ),
+        },
+        # THE FIN AND THE FENCES CAME DOWN OFF THE DECK, 2026-09-30. Pure
+        # addition, and the arithmetic checks: two fences of 1.5 mm, each 75 x 35
+        # standing on the floor, 7 875.0 mm3, and a 2 mm fin of 45.3 x 26 on the
+        # saddle's top and 14.75 x 35 on the floor, 3 388.1 -- 11 263.1, and the
+        # gate measures the pelvis 11 263.1 heavier. 1 351.7 of it stands where
+        # the 125 mm golden box has material, so it reads as that much LESS
+        # removed. The fences were first drawn on the saddle's top, which does not
+        # reach them, and 45 mm of each hung in the air; the check that found it
+        # is tools/gate_f.py's check_footings().
+        {
+            "added_mm3": 9911.39,
+            "removed_mm3": -1351.7099999999998,
+            "why": (
+                "THE PACKS STAND IN SLOTS OF THEIR OWN. A fin between the two "
+                "packs and a fence beside each, standing in the pelvis, where "
+                "for a day they hung "
+                "from the electronics deck and had to find the gap between two "
+                "unplaced packs blind as it came down. Each pack is pushed into "
+                "its slot by hand now, before anything goes in over it. The "
+                "fences stand on the shell floor end to end, the fin on the "
+                "saddle's top and then the floor."
             ),
         },
         # A NEGATIVE REMOVED FIGURE, which is the third odd sign in this register
@@ -701,6 +760,27 @@ DEVIATIONS = {
                 "saddles held about 14 g of un-fused PA12 that no figure in "
                 "tools/mass_budget.toml counted, because a cavity full of "
                 "powder weighs what it weighs whatever the CAD says."
+            ),
+        },
+        # BOTH FIGURES NEGATIVE, and the pair is the check. The ledges stand
+        # partly where the tethered pelvis's wall was -- its cavity was 4 mm
+        # shallower -- so a pilot moving inboard un-removes golden wall, and a
+        # pilot running deeper through the rest un-adds ledge. Their difference
+        # is the +9.27 mm3 the part gained, four times pi x (1.05^2 x 5 -
+        # 1.25^2 x 4); their sum is what the symmetric difference moved.
+        {
+            "added_mm3": -4.47885,
+            "removed_mm3": -13.74655,
+            "why": (
+                "THE DECK'S FOUR SCREWS ARE M2.5, and their pilots moved. An M3 "
+                "on the ledge's centre line put every stock M3 head 0.25 mm into "
+                "the wall and left 0.4 mm of deck outside its clearance hole, "
+                "which tools/gate_g.py fails. The pilot is now Ø2.1 for an M2.5, "
+                "0.25 mm nearer the cavity so the 4.5 mm head has half a "
+                "millimetre of air to the wall, and run through the whole 5 mm "
+                "ledge so an M2.5 x 8 through the deck has 5 mm of thread -- "
+                "the blind 4 mm pilot would have been punched through by the "
+                "M3 x 10 it was drawn for."
             ),
         },
         # THE BUS MONITOR'S TWO REAR-WALL PADS ARE GONE, September 2026, and

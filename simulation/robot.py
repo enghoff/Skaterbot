@@ -313,15 +313,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     #
     # mass_budget.toml carries these as seven lines now: 100 g of "electronics and
     # wiring", 13 g of distribution board, 34.4 g of power switch board, 20 g of
-    # capacitor bank, 45 g of BMS, 288 g of battery and 65 g of battery wiring,
+    # capacitor bank, 45 g of BMS, 190 g of battery and 68 g of battery wiring,
     # connectors and mounts. The 100 is split below across the items that make it
     # up. Each split is an assumption; the totals are not. The power line was one
     # 60 g reservation until September 2026, when the switch board was designed
     # and the bank was cut to its two cans; this model carried the 60 g for a
     # week after the budget had moved, 5.6 g heavy.
     #
-    # THE BATTERY IS THE HEAVIEST SINGLE THING IN THIS TORSO, at 288 g against
-    # the pelvis print's own 216, and it sits in the bottom band. That is not
+    # THE BATTERY IS THE HEAVIEST BOUGHT THING IN THIS TORSO, at 190 g against
+    # the pelvis print's own 215, and it sits in the bottom band. It was 288 g
+    # until 2026-09-30, for a 2200 mAh pack of a size nobody makes. That is not
     # incidental to the model: it is most of what decides where the standing
     # centre of mass ends up, and therefore the pendulum length the balance
     # section below reports.
@@ -334,21 +335,21 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     payload = [
         (
             "battery",
-            288.0,
+            190.0,
             "battery",
             "estimate",
             "cellGrey",
             True,
-            "two 3S 2200 mAh LiPo bricks in series, 144 g each. CATALOGUE FIGURE, NEVER WEIGHED",
+            "two Bonka 3S 1000 mAh LiPo packs in series, 95 g each. LISTED FIGURE, NEVER WEIGHED",
         ),
         (
             "battery wiring and mounts",
-            65.0,
+            68.0,
             "wiring",
             "assumption",
             "copperRed",
             False,
-            "pack leads, series link, panel connectors, bus monitor, the Matek BEC and the standoffs",
+            "pack leads, series link, panel connectors, bus monitor, the Matek BEC, the standoffs and the battery foam",
         ),
         (
             "distribution board",

@@ -127,10 +127,10 @@ def limbAssembly(limbLength: float, lowerEnd: str = "plate") -> list:
 
     Returns a LIST, not a single solid, because that is what the KCL returned
     and what the golden STEP contains: the waist plate occupies exactly the same
-    band in X as both discs, which is the union the Zoo engine refused. Every
-    overlap is millimetres of real material, so a slicer that merges coincident
-    shells prints this as the single plate it is -- verify that before printing.
-    Unioning them for real is a phase 3 change; see docs/BUILD123D_MIGRATION.md.
+    band in X as both discs, which is the union the Zoo engine refused. It is
+    tools/export.py that makes them the single plate they are, before the file
+    is written, and tools/check.py that fails an edit leaving a body that would
+    not unite with the rest.
     """
     if lowerEnd not in ("plate", "clevis"):
         raise ValueError(f"lowerEnd must be 'plate' or 'clevis', not {lowerEnd!r}")

@@ -25,12 +25,12 @@ from build123d import Axis, Pos
 
 from cad.actuator import actuatorAssembly
 from cad.deck import electronicsDeck
-from cad.electronics import torsoPayload
+from cad.electronics import torsoElectronicsGroups, torsoReservations
 from cad.hardware import jointHardware
 from cad.parameters import hipCenterX, kneeOutboardOffset
 from cad.shin import shinLeft, shinRight
 from cad.thigh import thighLeft, thighRight
-from cad.torso import torsoAssembly
+from cad.torso import pelvisShell, torsoCover
 from cad.wheel import wheelLeft, wheelRight
 from cad.wheeled_parameters import (
     prototypeWheelAxisHeight,
@@ -47,12 +47,18 @@ def _motor(x: float, z: float, spin: float) -> list:
     return [Pos(x, 0, z) * body.rotate(Axis.Y, spin) for body in actuatorAssembly()]
 
 
-def robotAssembly() -> list:
-    """Every body in the neutral standing pose, in the robot's own frame.
+def robotAssemblyGroups() -> dict[str, list]:
+    """Every body in the neutral standing pose, by the part it belongs to.
 
     +Y is forward, +Z is up, +X is the robot's right.
+
+    NAMED GROUPS FOR THE SAME REASON cad/scenes.py HAS THEM. A viewer wants one
+    flat list, and robotAssembly() below still gives it, in the same order it
+    always has. A fit check wants to know which bodies are one part, because a
+    part's own bodies overlap each other on purpose and two parts' bodies never
+    may -- tools/gate_h.py measures every group here against every other.
     """
-    bodies: list = []
+    groups: dict[str, list] = {}
 
     # Six actuators, all with their axes across the robot. The hip roll pair,
     # which were the only two turned fore-and-aft, are what this build deleted.
@@ -64,31 +70,39 @@ def robotAssembly() -> list:
     # the knee actuator and everything it carries -- shin, wheel motor, wheel --
     # share the offset and every printed part keeps its shape.
     kneeX = hipCenterX + kneeOutboardOffset
-    bodies += _motor(-hipCenterX, wheeledHipPitchAxisHeight, -90)
-    bodies += _motor(-kneeX, wheeledKneeAxisHeight, 90)
-    bodies += _motor(-kneeX, prototypeWheelAxisHeight, -90)
-    bodies += _motor(hipCenterX, wheeledHipPitchAxisHeight, 90)
-    bodies += _motor(kneeX, wheeledKneeAxisHeight, -90)
-    bodies += _motor(kneeX, prototypeWheelAxisHeight, 90)
+    groups["left hip motor"] = _motor(-hipCenterX, wheeledHipPitchAxisHeight, -90)
+    groups["left knee motor"] = _motor(-kneeX, wheeledKneeAxisHeight, 90)
+    groups["left wheel motor"] = _motor(-kneeX, prototypeWheelAxisHeight, -90)
+    groups["right hip motor"] = _motor(hipCenterX, wheeledHipPitchAxisHeight, 90)
+    groups["right knee motor"] = _motor(kneeX, wheeledKneeAxisHeight, -90)
+    groups["right wheel motor"] = _motor(kneeX, prototypeWheelAxisHeight, 90)
 
     # There is no hip carrier. The clevis that holds each hip pitch actuator is
     # part of the pelvis now, so the printed chain from torso to wheel is torso,
     # thigh, shin, wheel adapter.
-    bodies += [Pos(-hipCenterX, 0, wheeledThighCenterZ) * b for b in thighLeft()]
-    bodies += [Pos(hipCenterX, 0, wheeledThighCenterZ) * b for b in thighRight()]
-    bodies += [Pos(-kneeX, 0, wheeledShinCenterZ) * b for b in shinLeft()]
-    bodies += [Pos(kneeX, 0, wheeledShinCenterZ) * b for b in shinRight()]
-    bodies += [Pos(-kneeX, 0, prototypeWheelAxisHeight) * b for b in wheelLeft()]
-    bodies += [Pos(kneeX, 0, prototypeWheelAxisHeight) * b for b in wheelRight()]
+    groups["left thigh"] = [
+        Pos(-hipCenterX, 0, wheeledThighCenterZ) * b for b in thighLeft()
+    ]
+    groups["right thigh"] = [
+        Pos(hipCenterX, 0, wheeledThighCenterZ) * b for b in thighRight()
+    ]
+    groups["left shin"] = [Pos(-kneeX, 0, wheeledShinCenterZ) * b for b in shinLeft()]
+    groups["right shin"] = [Pos(kneeX, 0, wheeledShinCenterZ) * b for b in shinRight()]
+    groups["left wheel"] = [
+        Pos(-kneeX, 0, prototypeWheelAxisHeight) * b for b in wheelLeft()
+    ]
+    groups["right wheel"] = [
+        Pos(kneeX, 0, prototypeWheelAxisHeight) * b for b in wheelRight()
+    ]
 
     # The bearing, journal and carrier that close the two hip pitch joints. Each
     # hangs off the stationary side, in the clevis rooted in the pelvis floor, and
     # the left one is the right one turned round.
-    bodies += [
+    groups["left hip hardware"] = [
         Pos(-hipCenterX, 0, wheeledHipPitchAxisHeight) * body.rotate(Axis.Z, 180)
         for body in jointHardware()
     ]
-    bodies += [
+    groups["right hip hardware"] = [
         Pos(hipCenterX, 0, wheeledHipPitchAxisHeight) * body for body in jointHardware()
     ]
 
@@ -103,15 +117,31 @@ def robotAssembly() -> list:
     # being turned round rather than anything about the hardware: the right hip's
     # bearing is outboard at +x and the right knee's is inboard at -x, so it is
     # the LEFT knee that takes the set as drawn.
-    bodies += [Pos(-kneeX, 0, wheeledKneeAxisHeight) * body for body in jointHardware()]
-    bodies += [
+    groups["left knee hardware"] = [
+        Pos(-kneeX, 0, wheeledKneeAxisHeight) * body for body in jointHardware()
+    ]
+    groups["right knee hardware"] = [
         Pos(kneeX, 0, wheeledKneeAxisHeight) * body.rotate(Axis.Z, 180)
         for body in jointHardware()
     ]
 
-    bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in torsoAssembly()]
-    bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in electronicsDeck()]
+    def torso(bodies: list) -> list:
+        return [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in bodies]
+
+    groups["pelvis"] = torso(pelvisShell())
+    groups["cover"] = torso([torsoCover()])
+    groups["deck"] = torso(electronicsDeck())
     # The payload: each board, and the volume reserved around it that nothing may
     # be designed through. The torso's height is derived from these.
-    bodies += [Pos(0, 0, wheeledTorsoCenterHeight) * b for b in torsoPayload()]
-    return bodies
+    for name, bodies in torsoElectronicsGroups().items():
+        groups[name] = torso(bodies)
+    groups["reservations"] = torso(torsoReservations())
+    return groups
+
+
+def robotAssembly() -> list:
+    """Every body in the neutral standing pose, in the robot's own frame.
+
+    The groups above poured into one list, in the order this has always had.
+    """
+    return [body for group in robotAssemblyGroups().values() for body in group]

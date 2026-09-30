@@ -197,8 +197,11 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # level. Nothing reserved is narrow enough to use it except the IMU, which
 # goes there -- it is the stiffest spot in the pelvis, directly between the
 # two hip joints, which is where an IMU wants to be anyway.
-# * 36 mm for the battery, 78 x 54 x 36, which is two 3S 2200 mAh bricks ON
-# EDGE side by side. That orientation is the whole reason a pack fits at all:
+# * 36 mm for the battery, 78 x 54 x 36, which was drawn for two 3S 2200 mAh
+# bricks ON EDGE side by side -- a size of brick nobody makes, it turned out on
+# 2026-09-30, so the bay now holds two 1000 mAh packs and the foam round them,
+# and kept its size so that nothing here moved. That orientation is the whole
+# reason a pack fits at all:
 # laid flat the pair is 66 mm across the robot against 67.2 mm of interior
 # depth, and on edge it is 52. The power bay, 52 x 62 x 36, sits BESIDE it in
 # the same band and is now the same height, because the battery sets it and

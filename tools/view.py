@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9", "ocp_vscode"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1", "ocp_vscode"]
 # ///
 """Show a model in the OCP CAD Viewer -- the interactive half of what /views did.
 

@@ -64,6 +64,51 @@ Now the finished part is an object with faces, so the question is arithmetic:
 Say which of those you did when reporting a change. "It built" is not an answer,
 and neither is "it looks right".
 
+## A part that is right is not yet a part that prints, or fits
+
+The first printed prototype found two faults that gates A to F had passed. The
+pelvis was exported as twenty-two separate bodies, sixteen of which only touched
+the shell face to face, and the printer never joined them: it came back without
+all but one of its floor posts. And the lid could not be fitted, because its
+locating lip sat on its own four screw bosses. Every gate had asked OCCT, OCCT
+unites bodies that merely touch, and the clash check compared a hand-picked list
+the lid was not on. So:
+
+- **Every printed piece is one solid.** Pieces are still *drawn* as several
+  bodies, but `tools/export.py` unites them before writing anything and refuses a
+  piece that does not come out as one solid with one shell. `/check` enforces the
+  same rule on every edit, so a body that does not reach the rest of its piece,
+  or a pocket closed over into a sealed void, fails where it is made.
+- **Gate G** builds the file a printer would get for every piece, reads it back
+  with trimesh — which did not draw it — and holds the shape to the strictest of
+  FDM, nylon powder and resin: walls no thinner than 1.0 mm, gaps within a part
+  no narrower than 0.5 mm, and nothing starting in mid-air in the orientation the
+  piece declares as `print_up` in `tools/mass_budget.toml`. `tools/printable.py`
+  carries the limits and why.
+- **Gate H** measures every part against every other in every scene, with
+  nothing chosen by hand: no shared volume, and no air under 0.2 mm between
+  parts that do not touch. A new part is covered by being placed in a scene.
+- **Gate I** puts the torso together in build order. Each step names what goes
+  in and the path it comes in on, and the gate runs that path backwards, out to
+  free air, against everything already in: a part may slide on what it touches
+  and may not pass through anything. A part that fits where it ends up but
+  cannot get there is invisible to every other gate. It found that the rear
+  wall's three parts have to go in after the deck, into nuts held against the
+  inside of the wall, and that the deck cannot come out until they do. A new
+  torso part is covered by being given a step.
+- **What none of them can see is anything not drawn.** Screws are not in the
+  scenes, so a head that meets a wall passes, and neither are the looms and
+  leads, so a connector with no route to its mate passes too. Draw a fastener or
+  a lead before trusting its fit.
+- **A bought part is its listing until one is measured.** The battery bay was
+  drawn for a pack of a size nobody makes, and nothing could have caught that
+  but reading the listings. Where a part's size comes from, and whether it is in
+  stock, is recorded where the part is drawn; docs/BUILD_REVIEW.md lists what is
+  still a listing figure.
+
+Accepted exceptions go in each gate's register with the measured value and a
+reason, pinned both ends. The limits are never loosened to make a part pass.
+
 ## Tools in this repository
 
 Six commands, run with `uv run`, which fetches what they need on its own. **All
@@ -72,9 +117,9 @@ six are free and offline.**
 | | | |
 |---|---|---|
 | `/check` | `tools/check.py` | build every part and scene, then lint and format-check `cad/`, `tools/` and `simulation/`. A few seconds. |
-| `/gates` | `tools/gate_[a-f].py` | the six gates the CAD is held to: dimensions, solid identity, mass, kinematics, features, clearances. About a minute. |
+| `/gates` | `tools/gate_[a-i].py` | the nine gates the CAD is held to: dimensions, solid identity, mass, kinematics, features, clearances, printability, fit, assembly order. About seven minutes. |
 | `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. |
-| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads, checking each against its declared body count. Pieces come out as they would be printed, arrises broken; `--as-drawn` is the form the gates compare. |
+| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads. Each file is the piece united into one solid, read back and checked by OCCT and by trimesh, and refused if it is not. Pieces come out as they would be printed, arrises broken; `--as-drawn` is the form the gates compare. |
 | `/view` | `tools/view.py` | show a model in the OCP CAD Viewer, tessellated locally. |
 | `/urdf` | `simulation/build_urdf.py` | regenerate the simulation URDF from the CAD and check it against the pose scenes. |
 
@@ -94,7 +139,7 @@ printed piece, every named dimension to full precision, and every check scene's
 computed pose. The gates hold today's Python against it, so "the port is
 faithful" is a measured claim and not a hope.
 
-Six gates, in order of what they cost, all free:
+Nine gates, all free:
 
 | | |
 |---|---|
@@ -104,9 +149,12 @@ Six gates, in order of what they cost, all free:
 | D | the joint tree against the pose scenes, through `simulation/check_model.py` |
 | E | the holes and pockets that must exist, counted on the finished solid |
 | F | the check scenes' poses against the frozen reference, and their clearances measured |
+| G | every printed piece as the file a printer gets: one solid, walls, gaps, and its print orientation |
+| H | every part against every other in every scene: no shared volume, no gap under 0.2 mm |
+| I | the torso put together in build order: each part run out along its way in, clear of everything already in |
 
 Gates A and B mean the geometry has not drifted from what was built and printed.
-Gates E and F are written against the **drawing intent** instead, so they can
+Gates E to I are written against the **drawing intent** instead, so they can
 fail on a part that is a faithful translation — and when they do, the finding
 stands on its own: the geometry was always wrong.
 
@@ -170,7 +218,14 @@ for by calling functions.
 them, and the chamfer is added on the way out. Two things it records are worth
 knowing before you touch it — OCCT will not chamfer a crowded solid's edges in
 one pass, and a body chamfered this way **segfaults OCCT in any subsequent
-boolean**, which is why the finished pieces are left as interpenetrating bodies.
+boolean** unless it is first written to a STEP file and read back. That round
+trip is how `one_solid()` makes each finished piece a single solid, and
+`problems()` beside it is the rule every printed piece is held to.
+
+The CAD library is pinned — `build123d==0.11.1` on `cadquery-ocp-novtk==7.9.3.1.1`
+in every script header — because a fresh environment otherwise resolves a newer
+OCP that `finish.py` does not import on, and geometry is only reproducible on
+the kernel it was checked on.
 
 ## The scenes are the regression suite
 
@@ -199,7 +254,8 @@ something the neutral stance hides:
   own, for looking at a change narrowly
 
 A change to `cad/parameters.py` or to any shared module reaches all of them.
-`/check` builds every one, and gate F measures what each was drawn to show, so
+`/check` builds every one, gate F measures what each was drawn to show, and
+gate H measures every part in each against every other, so
 building the neutral assembly alone is not sufficient evidence and must not be
 reported as if it were.
 

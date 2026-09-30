@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Gate E -- the features that must exist, counted on the finished solid.
 
@@ -134,6 +134,8 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         m2Clearance,
         m3CapCounterbore,
         m3Clearance,
+        m25Clearance,
+        m25Pilot,
         rotorFilletRadius,
         saddleDrainDiameter,
     )
@@ -270,10 +272,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # now and takes all four of its screws, so the pad is gone and this
             # is twelve again.
             (
-                "pilots: four cover bosses, four power-entry posts, four deck ledges",
+                "pilots: four cover bosses, four power-entry posts",
                 bossHoleDiameter / 2,
-                12,
+                8,
             ),
+            # The deck ledges' four, which are for an M2.5 since September
+            # 2026: no M3 head fits between the ledge's screw and the wall.
+            ("Ø2.1 M2.5 pilots through the four deck ledges", m25Pilot / 2, 4),
             # Four, because the pelvis carries two hip clevises and the drain
             # is bored through both side walls of each one's saddle.
             (
@@ -333,7 +338,10 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         # golden STEP behind it -- the KCL never had it, so gate B cannot say
         # anything about it and this is the only arithmetic it answers to.
         "electronics-deck": [
-            ("M3 clearances onto the four wall ledges", m3Clearance / 2, 4),
+            # SLOTS OPEN TO THE PLATE'S EDGE since September 2026, so each is a
+            # half round at its inboard end and that half is what is counted.
+            # A hole here left 0.4 mm of plate outside it.
+            ("M2.5 slots onto the four wall ledges", m25Clearance / 2, 4),
             (
                 # Six since September 2026, where it was four: the carrier
                 # went to 140 mm and its screws are a table in

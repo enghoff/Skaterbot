@@ -30,7 +30,17 @@
 # did. The counts were read off the KCL -- the lists these parts are assembled
 # from -- and then confirmed against the 2026-08-31 STEP export, which agreed on
 # all eight. A count that comes out higher means a sibling part is inside the
-# file and it must not be printed.
+# file and it must not be printed. It counts the bodies the piece is DRAWN as;
+# the file it is exported to holds one solid, always -- tools/export.py unites
+# them, because handing a printer the bodies separately is how the first pelvis
+# lost its floor.
+#
+# Each piece also carries `print_up`: which of its own axes points away from the
+# bed when it is printed. tools/gate_g.py slices the piece in that orientation
+# and fails it if any feature starts in mid-air -- which FDM cannot print without
+# support, and which printed the pelvis rim-down would have done to nine of its
+# floor features. It is sent with the files so a vendor is told rather than left
+# to choose.
 #
 # Provenance for every fixed figure is in the note beside it. Follow that style
 # if a line changes: say where the new number came from.
@@ -108,6 +118,7 @@ name = "thigh-105-unmirrored"
 export = "thighRight"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, knee clevis, two tie ears
+print_up = "-X"  # lying on its outboard face, the tie arches' face uppermost
 note = "Right thigh -- limbAssembly as built, clevis rooted on +X, reaching -X."
 
 [[printed.piece]]
@@ -115,6 +126,7 @@ name = "thigh-105-mirrored"
 export = "thighLeft"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, knee clevis, two tie ears
+print_up = "+X"  # the mirror: lying on its outboard face, arches up
 note = "Left thigh -- the mirror."
 
 [[printed]]
@@ -132,6 +144,7 @@ name = "limb-105-unmirrored"
 export = "shinLeft"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
+print_up = "-X"  # lying on its outboard face, the tie arches' face uppermost
 note = "Left shin -- limbAssembly as built, stator plate on +X."
 
 [[printed.piece]]
@@ -139,6 +152,7 @@ name = "limb-105-mirrored"
 export = "shinRight"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
+print_up = "+X"  # the mirror: lying on its outboard face, arches up
 note = "Right shin -- the mirror, stator plate on -X."
 
 # There is no hip carrier. It was the orthogonal bracket between the hip roll
@@ -168,6 +182,7 @@ name = "journal-sleeve"
 export = "journalSleeve"
 prints = 4
 bodies = 1  # a plain tube
+print_up = "+X"  # standing on one end
 note = "Ø10 x Ø5.3 x 6. Print spares: it is the one piece here that gets fitted to a bearing bore."
 
 [[printed]]
@@ -193,6 +208,7 @@ name = "wheel-adapter"
 export = "wheelAdapterRight"
 prints = 2
 bodies = 3  # output disc, spigot, plug
+print_up = "+X"  # the disc on the bed, the spigot standing up from it
 note = "Slice it once and print two. The second one goes on the left wheel turned round; there is no handed version of this part."
 
 # Measured through cad/torso.py, which is the six-motor pelvis: 125 x 68 x 65,
@@ -211,14 +227,16 @@ count = 1
 name = "pelvis-shell"
 export = "pelvisShell"
 prints = 1
-bodies = 22  # shell, four cover bosses, two clevises, two battery rails, four board posts, four deck ledges, two BMS guides, IMU seat, two hoist lugs
-note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are. Two more bodies for a week of September 2026, the pads that carried the INA226 bus monitor on the rear wall; they went when the monitor moved onto the controller carrier. Two back again in September 2026, and these ones are not electronics: a hoist lug on each flank, so the robot can be hung from an overhead rail and caught when it topples during development."""
+bodies = 25  # shell, four cover bosses, two clevises, two battery rails, two battery fences and a fin, four board posts, four deck ledges, two BMS guides, IMU seat, two hoist lugs
+print_up = "+Z"  # upright, on its two hip saddles; rim-down starts nine floor features in mid-air
+note = """Shell, cover bosses, both hip pitch clevises, and the ten mounting features the battery brought with it -- two rails under the packs, four posts under the power-entry board and four ledges carrying the electronics deck. The box was 125 x 68 x 65 tethered and is 135 x 72 x 86 carrying a battery, and cad/wheeled_parameters.py derives every one of those numbers from what has to fit inside. Twelve bodies until hip roll was deleted: the keel and the four cheek gussets existed only to reach down between the roll actuators and to close the voids their cheeks left. The box then lost 41 mm of height and gained 7 of width, which is a further 32 g off; cad/wheeled_parameters.py says why both numbers are what they are. Two more bodies for a week of September 2026, the pads that carried the INA226 bus monitor on the rear wall; they went when the monitor moved onto the controller carrier. Two back again in September 2026, and these ones are not electronics: a hoist lug on each flank, so the robot can be hung from an overhead rail and caught when it topples during development. Three more on 2026-09-30: the fin between the battery packs and a fence beside each, which hung from the electronics deck for a day and moved here so each pack is pushed into a slot of its own, in sight, before the deck goes on. The fences stand on the shell floor end to end, the fin on the left hip saddle's top and then the floor."""
 
 [[printed.piece]]
 name = "torso-cover"
 export = "torsoCover"
 prints = 1
 bodies = 1  # the lid, one solid
+print_up = "-Z"  # the plate on the bed, the lip standing up from it
 
 # THE FIRST PRINTED PART ON THIS ROBOT THAT THE KCL NEVER HAD, so it is the one
 # piece with no golden STEP behind it and the one piece tools/gate_b.py does not
@@ -237,8 +255,9 @@ count = 1
 name = "electronics-deck"
 export = "electronicsDeck"
 prints = 1
-  bodies = 5  # one plate; each slotted BMS guide is two separate ribs
-note = "Carries the controller carrier and the SBC over the battery, and holds the packs down. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in. It printed the SBC's four posts until September 2026; the SBC stands on bought standoffs on the controller carrier now, so the deck carries it only at one remove."
+bodies = 5  # one plate; each slotted BMS guide is two separate ribs
+print_up = "-Z"  # the plate on the bed, the BMS guides standing up from it
+note = "Carries the controller carrier and the SBC over the battery, and holds the packs down: since 2026-09-30 through foam under the plate, where until then it was said to bear on a 3 mm gap that nothing filled. For a day it also hung two fences and a fin down beside and between the packs; they stand on the pelvis now, because from here they had to find the gap between two packs blind. Its underside is also the top half of the BMS's mount: two guides take the board's top edge in the same 9 mm slot the cavity floor takes its bottom edge in. It printed the SBC's four posts until September 2026; the SBC stands on bought standoffs on the controller carrier now, so the deck carries it only at one remove."
 
 # THE SECOND PIECE WITH NO GOLDEN STEP, and it exists for a plain finding rather
 # than a refinement: the rear wall was cut to pass three connectors and nothing
@@ -310,12 +329,12 @@ count = 1
 note = """SwiftWing PDB-02-XT60: 50 x 50 x 1.6 mm, 4-layer 2 oz copper, an XT60 socket and six pairs of solder tabs, 3S-6S. CATALOGUE FIGURE from the v1.2 datasheet, which is better than most lines here -- it is a published number for a specific part rather than an allowance. It replaces a PCB this project was going to lay out and have fabricated, and it is why the shell is 141 mm wide rather than 135: at 50 mm square it is 12 wider than the bay the custom board needed. Its stated 26 V maximum is the one figure on it that does not match this application and wants confirming -- there are no active parts on the board, so it should be a statement of scope."""
 
 [[fixed]]
-label = "Battery — 6S 2200 mAh, two 3S packs in series"
-each_g = 144.0
+label = "Battery — 6S 1000 mAh, two 3S packs in series"
+each_g = 95.0
 count = 2
-note = """Gens Ace class 3S 2200 mAh 35C soft-case LiPo, 76 x 33 x 25 mm and 144 g each, wired in series for 6S 2200 mAh: 48.8 Wh for 288 g, which is 169 Wh/kg. CATALOGUE FIGURE, NOT WEIGHED. Two 3S rather than one 6S is a mass decision as much as a packaging one -- the same 48.8 Wh in a single 6S brick is 374 g from the same maker and 420 g from GenX, and both are 108 to 125 mm long against a cavity 130 wide and 67 deep. docs/NOTES.md's old 190 g for 29 Wh was optimistic: no high-discharge 6S pack on the market reaches the 153 Wh/kg it assumed."""
+note = """Bonka 11.1 V 1000 mAh 35C 3S soft-case LiPo, 75 x 32 x 17 mm and 95 g each, wired in series for 6S 1000 mAh: 22.2 Wh for 190 g, 117 Wh/kg. The size and mass are ElectronicsComp's listing; neither Indian Hobby Center, which had it in stock on 2026-09-30, nor Bonka publishes either. LISTED, NOT WEIGHED. IT WAS 2 x 144 g UNTIL 2026-09-30, for "a Gens Ace class 3S 2200 mAh pack, 76 x 33 x 25 mm", and no such pack exists: every 3S 2200 mAh pack on sale in India is 105 to 108 mm long and 175 to 184 g, and would not have fitted the bay by 30 mm. The bay kept its size and the pack came down to it, which is -98 g here and 26.6 Wh less energy. Two 3S rather than one 6S is still a packaging decision: a 6S pack is one 35 mm-thick block, and the bay is laid out for two on edge."""
 
 [[fixed]]
 label = "Battery wiring, connectors and mounts"
-total_g = 65.0
-note = """ESTIMATE, nothing weighed, and a line the budget did not have at all while the robot was tethered. It is the pack harness plus everything that holds the payload down: the XT60 series harness and pack leads, the panel-mount momentary button that replaced the loop key on 2026-09-16, two JST-XH balance-lead extensions, the INA226 bus monitor, the Matek 12S Pro BEC and the board standoffs. DOWN FROM 85 g, and the 20 is one line: the logic converter was a generic buck module estimated at 25 g and it is a Matek BEC now, 35 x 24 x 5.5 mm and 5 g to catalogue. Nothing else in this lump has been re-estimated. docs/BOM.md section 1 lists them one by one."""
+total_g = 68.0
+note = """ESTIMATE, nothing weighed, and a line the budget did not have at all while the robot was tethered. UP 3 g ON 2026-09-30 for the battery's foam: five pieces cut from a 5 mm EVA sheet, about 28 cm3 before they are squeezed, at the 0.1 g/cm3 of dense craft EVA. It is the pack harness plus everything that holds the payload down: the XT60 series harness and pack leads, the panel-mount momentary button that replaced the loop key on 2026-09-16, two JST-XH balance-lead extensions, the INA226 bus monitor, the Matek 12S Pro BEC and the board standoffs. DOWN FROM 85 g, and the 20 is one line: the logic converter was a generic buck module estimated at 25 g and it is a Matek BEC now, 35 x 24 x 5.5 mm and 5 g to catalogue. Nothing else in this lump has been re-estimated. docs/BOM.md section 1 lists them one by one."""

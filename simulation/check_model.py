@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
 # dependencies = ["numpy>=1.26", "trimesh>=4.0", "scipy>=1.11",
-#                 "networkx>=3.0", "manifold3d>=2.3", "build123d>=0.9"]
+#                 "networkx>=3.0", "manifold3d>=2.3", "build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Check the simulation model against the CAD it came from.
 

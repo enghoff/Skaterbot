@@ -10,7 +10,8 @@ uv run tools/check.py $ARGUMENTS
 ```
 
 With no arguments it imports every module in `cad/`, builds every printed piece
-and every check scene, and then lints and format-checks `cad/`, `tools/` and
+and every check scene, requires every printed piece to unite into ONE solid with
+no sealed cavity, and then lints and format-checks `cad/`, `tools/` and
 `simulation/` against `ruff.toml`. Add `--fix` to apply what ruff can fix on its
 own, or `--no-lint` for the geometry alone while iterating.
 

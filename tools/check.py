@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9", "ruff>=0.16"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1", "ruff>=0.16"]
 # ///
 """Build every part and every scene, then lint and format-check the whole tree.
 
@@ -21,6 +21,10 @@ What it checks, in order of what it costs:
 2. every printed piece and every check scene builds, and no body of one measures
    zero volume -- the signature of a twice-mirrored solid, which keeps a correct
    bounding box and takes part in booleans while reporting no volume at all;
+   and every printed piece unites into ONE solid with no sealed cavity in it,
+   which is the rule cad/finish.py's problems() states. A body that does not
+   reach the rest of its piece, or a pocket closed over into a void, fails here
+   on the edit that caused it rather than at the printer;
 3. ruff lints and format-checks cad/, tools/ and simulation/, against the rules
    pinned in ruff.toml.
 
@@ -101,6 +105,15 @@ def build_all() -> tuple[list[tuple], int]:
                     "probably inverted by a double mirror"
                 )
             note = f"{len(bodies):3d} bodies"
+            if kind == "piece":
+                # A printed piece has to be ONE part, and this is where a design
+                # finds out, on every edit. See cad/finish.py's problems().
+                from cad.finish import one_solid, problems
+
+                found = problems(one_solid(bodies, finished=False)[0])
+                if found:
+                    raise ValueError("does not print as one piece: " + "; ".join(found))
+                note += " -> one solid"
             status = "ok"
         except Exception as exc:  # noqa: BLE001 - the OCCT diagnostic is the payload
             note = f"{type(exc).__name__}: {exc}"

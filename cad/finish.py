@@ -37,23 +37,37 @@ firmly) and not because any single edge is bad (every one of them chamfers
 alone), but because the chamfers interact once there are sixty of them on one
 crowded solid.
 
-Per body, every one of them succeeds. So that is what this does, and the piece is
-left as the interpenetrating bodies it already was -- which is the form the whole
-project ships in, the form mass_budget.toml counts and the STEP exports carry,
-and the form a slicer merges into the single part it really is.
+Per body, every one of them succeeds. So that is what this does, and the bodies
+are chamfered as the interpenetrating bodies they are drawn as.
 
-NOT UNIONING IS NOT LAZINESS, IT IS FORCED. A body whose chamfers were applied
-one group at a time comes back reporting itself VALID, and then segfaults OCCT
-the moment it takes part in any boolean -- even a union with a body it does not
-touch. clean() and fix() do not help. So a union here does not fail, it takes the
-process down, and no try/except can catch that. Pieces chamfered in a single pass
-union perfectly well; it is only the ones that needed the fallback below.
+A body whose chamfers were applied one group at a time comes back reporting
+itself VALID, and then segfaults OCCT the moment it takes part in any boolean --
+even a union with a body it does not touch. clean() and fix() do not help. So a
+union straight after this pass does not fail, it takes the process down, and no
+try/except can catch that. Chamfering the union first instead is no escape: it
+segfaults on the pelvis too, and on the thighs it leaves a quarter of the arrises
+sharp.
+
+WHICH IS WHY THE PIECES USED TO SHIP AS SEVERAL BODIES, AND WHY THEY NO LONGER DO.
+The argument was that a slicer merges them into the single part they really are.
+The first printed pelvis came back without all but one of its floor posts, both
+battery rails, the battery-board guides and the IMU seat: sixteen of its
+twenty-two bodies only rested face-to-face on the shell, sharing no material with
+it, and what a slicer does with that is not something this project gets to
+assume. So a piece now leaves as ONE solid, made by one_solid() below: the bodies
+are chamfered here as before, written to a STEP file and read back -- which is
+what rebuilds them into solids OCCT can take a boolean of; the round trip is the
+whole trick, and every piece here unions cleanly after it and none of the
+crowded ones does without it -- and then united. What comes out is checked by
+problems() rather than trusted, and tools/export.py does that union in a child
+process so that if the segfault ever returns it refuses the piece rather than
+dying.
 
 What is left un-chamfered by working per body is the edges the union WOULD have
 created where two bodies interpenetrate. Those are re-entrant corners, which is
 exactly where a chamfer does not belong, so nothing is lost. And a chamfer cut on
-an edge buried inside a neighbouring body is filled back in by the slicer's merge
-just as a union would have filled it, so nothing is gained there either.
+an edge buried inside a neighbouring body is filled back in by the union that
+makes the piece one solid, so nothing is gained there either.
 
 WHAT THAT ARGUMENT MISSED, AND IT MATTERED. It asked what the union would ADD and
 never what the union would TAKE AWAY. A body that is half buried in its
@@ -388,7 +402,8 @@ def united(bodies):
     """The single solid a piece would be if its bodies were merged.
 
     Safe on the FAITHFUL bodies -- gate B unions every piece this way. NOT safe on
-    the output of chamfered() below, where it segfaults; see the module docstring.
+    the output of chamfered() below, where it segfaults, unless they have been
+    through a STEP file first; see the module docstring and one_solid().
     """
     if not isinstance(bodies, (list, tuple)):
         return bodies
@@ -565,3 +580,87 @@ def chamfered_pieces(pieces, size: float = CHAMFER) -> tuple:
         done += d
         skipped += s
     return finished_pieces, done, skipped
+
+
+def _through_step(bodies: list) -> list:
+    """The same bodies, written to a STEP file and read back.
+
+    This is what makes a body chamfered by the fallback above safe to take a
+    boolean of. Whatever the writer and reader rebuild on the way -- tolerances,
+    p-curves, the shared edges the bisection left fragile -- every piece on this
+    robot unions cleanly after it, where the pelvis and the deck take OCCT down
+    without it. Found by trying, not derived, which is why problems() checks the
+    result and tools/export.py runs the union in a process it can lose.
+    """
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "piece.step"
+        shape = bodies[0] if len(bodies) == 1 else bd.Compound(children=bodies)
+        bd.export_step(shape, str(path))
+        return list(bd.import_step(str(path)).solids())
+
+
+def one_solid(bodies, size: float = CHAMFER, finished: bool = True) -> tuple:
+    """ONE printed piece as the single solid it is printed as.
+
+    Returns (solid, chamfered_edge_count, skipped_edge_count). Finished, the
+    bodies are chamfered by chamfered() above and taken through a STEP file
+    before they are united; as drawn, they are united as they are, which is
+    always safe. Either way the result can still be wrong -- two bodies that do
+    not touch unite into two solids, and a pocket closed over unites into a
+    sealed void -- so ask problems() about it before using it.
+    """
+    if not isinstance(bodies, (list, tuple)):
+        bodies = [bodies]
+    bodies = list(bodies)
+    if not finished:
+        return united(bodies), 0, 0
+    done_bodies, done, skipped = chamfered(bodies, size)
+    return united(_through_step(done_bodies)), done, skipped
+
+
+def problems(shape) -> list[str]:
+    """Why `shape` is not one printable solid, or nothing if it is.
+
+    THE RULE EVERY PRINTED PIECE IS HELD TO, whatever process prints it: exactly
+    one solid, bounded by exactly one closed shell, sound, and with positive
+    volume. Each clause is a failure this project has had or nearly had:
+
+    * MORE THAN ONE SOLID is a body that does not reach the rest of the piece. It
+      prints as a loose part, or not at all.
+    * MORE THAN ONE SHELL is a sealed cavity inside the part. A sintered or resin
+      part keeps its powder or its resin in there for good; the wheel adapter
+      carried a 16 mm3 one until September 2026, and the joint saddles about
+      14 g of powder across the robot until drains were cut in them.
+    * NOT SOUND is faces running through each other, which a tessellator turns
+      into a hole in the mesh -- see _sound().
+    * NO VOLUME is a solid turned inside out by a double mirror.
+
+    Touching faces are NOT a problem here, and that is deliberate: a post drawn
+    standing on a floor unites with it into one solid, and one solid is one print.
+    The failure was never that the post only touched the floor; it was that the
+    post was handed to the printer as a separate body and nobody could say what
+    would be done with it.
+    """
+    solids = list(shape.solids()) if hasattr(shape, "solids") else [shape]
+    found = []
+    if len(solids) != 1:
+        found.append(
+            f"{len(solids)} separate solids where there must be one -- a body that "
+            "does not reach the rest of the piece"
+        )
+    for i, solid in enumerate(solids):
+        shells = len(solid.shells())
+        where = f"solid {i}: " if len(solids) > 1 else ""
+        if shells != 1:
+            found.append(
+                f"{where}{shells - 1} sealed cavit{'y' if shells == 2 else 'ies'} "
+                "inside it, which trap powder or resin"
+            )
+        if solid.volume <= 0.0:
+            found.append(f"{where}no volume -- turned inside out")
+    if not _sound(shape):
+        found.append("faces running through one another")
+    return found

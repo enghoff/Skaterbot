@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """What the 0.5 mm chamfer costs, piece by piece, and how many arrises it missed.
 

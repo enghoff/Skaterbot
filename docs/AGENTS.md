@@ -120,11 +120,14 @@ sensibly rather than along them.
 
 ## Known defect — the pieces are still interpenetrating bodies
 
-Every printed piece is several overlapping shells rather than one solid, because
-the Zoo engine refused to union them: the pelvis shell is seven bodies, a limb
-five, a wheel adapter three. A slicer merges them, so the parts are printable,
-but an exported STEP is not a valid single solid and the mass roll-up counts
-every overlap twice.
+Every printed piece is DRAWN as several bodies rather than one solid, because
+the Zoo engine refused to union them: the pelvis shell is twenty-two bodies, a
+limb seven, a wheel adapter three. Do not assume a slicer merges them. The first
+printed pelvis came back without sixteen of its bodies, which only touched the
+shell face to face. `tools/export.py` now unites every piece into one solid
+before writing it, `/check` fails an edit that leaves a body which will not
+unite, and gate G reads back the file a printer would get. The mass roll-up
+still counts every overlap twice.
 
 OCCT will union them, so this is fixable now and it is phase 3 of
 [`BUILD123D_MIGRATION.md`](BUILD123D_MIGRATION.md) — with one obstacle recorded

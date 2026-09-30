@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Measure the printed parts and roll the whole robot's mass up against its ceiling.
 
@@ -173,7 +173,7 @@ EXPECTED_CHANGE_G = {
         "asserts the millimetre in front of the plate is empty.",
     ),
     "cad/wheel_adapter.py": (
-        +1.7,
+        +2.3,
         "THE Ø30.4 REGISTER POCKET IS RETIRED, and this is the first time this "
         "piece has been off the engine's figure at all. It shares "
         "cad/joint.py's output disc with the limbs, so it takes the correction "
@@ -183,10 +183,16 @@ EXPECTED_CHANGE_G = {
         "it is not cut at all. 806 mm3 an adapter, and gate B holds it exactly. "
         "Of the three pieces that share this disc it loses least by having no "
         "pilot: there is no far bearing on a wheel joint, and half a per cent "
-        "of runout on an Ø80 wheel is nothing.",
+        "of runout on an Ø80 wheel is nothing. "
+        "THE OTHER 0.6 g IS THE PLUG REACHING FURTHER BACK, September 2026: it "
+        "stopped 0.2 mm short of the floor of the disc's old journal seat and "
+        "sealed a 16 mm3 void into each adapter, so it now reaches a "
+        "millimetre past it. 272 mm3 more plug an adapter, nearly all of it "
+        "inside the disc already -- which this sum-of-bodies figure counts and "
+        "the union does not, so gate B sees only the 16.",
     ),
     "cad/torso.py": (
-        +78.7,
+        +88.5,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -277,7 +283,26 @@ EXPECTED_CHANGE_G = {
         "cad/finish.py takes outer edges only and never sees the rim of a "
         "bore, and this is the one place on the robot where a rope turns "
         "over a printed edge under load. Gate B holds the whole of it as a "
-        "pure addition.",
+        "pure addition. "
+        "AND THE LID FITS, September 2026, for no change on this line: the "
+        "four cover bosses came 2.8 mm down to stand under the lid's lip, "
+        "which had been landing on them, and moving a boss weighs nothing. "
+        "The deck ledges' pilots went from Ø2.5 x 4 to Ø2.1 through for an "
+        "M2.5, which is 9 mm3 of PA12 on the four and below this table's "
+        "tenth of a gram. "
+        "AND THE BATTERY RAILS SHORTENED, 2026-09-30, which is the 2.2 g this "
+        "line came DOWN by: the packs bought are 17 mm thick where the drawn "
+        "ones were 25, so each rail moved in under its pack and now starts at "
+        "the left hip saddle, whose own top carries the packs over its length. "
+        "3 744 mm3 of rail and slot became 1 730 of rail and end stop, and gate "
+        "B holds the difference exactly. AND THE BATTERY'S FIN AND FENCES CAME "
+        "DOWN OFF THE DECK the same day, which is 11.9 g of this line UP at the "
+        "baseline's density and 10.5 g on the robot, against 7.3 g the deck "
+        "lost: they hung from the deck and had to find the gap between two "
+        "unplaced packs blind, and they stand in the pelvis now, so each pack "
+        "is pushed into a slot of its own -- the fences on the shell floor end "
+        "to end, the fin on the saddle's top and then the floor. 11 263 mm3, "
+        "all of it new material, and gate B holds it exactly.",
     ),
 }
 

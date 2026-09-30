@@ -2601,3 +2601,85 @@ the cheapest protection available. And the tether catches the robot without
 stopping it, so a caught robot hangs there with its wheels still driving; that
 wants a torque cutoff past about 20° of tilt, which the IMU already seated in
 the pelvis can drive.
+
+---
+
+## The battery was drawn from a pack nobody makes — 30 September 2026
+
+The bay was sized for "a Gens Ace class 3S 2200 mAh brick, 76 x 33 x 25 mm and
+144 g", two of them on edge. No such pack exists. Every 3S 2200 mAh pack on sale
+in India is 105 to 108 mm long: GenX 105 x 34 x 25 and 184 g at Indian Hobby
+Center, the same pack listed 108 x 35 x 22 at Robokits, Bonka 105 x 34 x 25 and
+175 g. Seventy-six millimetres is the length of a 1000 to 1500 mAh pack. The
+2200 mAh pair would have missed the bay by 30 mm, and the power bay beside it
+leaves nowhere for the extra length to go.
+
+The bay stays and the pack comes down to it. What fits and was on a shelf on
+the day is a Bonka 11.1 V 1000 mAh 35C at Indian Hobby Center: 75 x 32 x 17 mm
+and 95 g by ElectronicsComp's listing, the only published figure for it. Bonka's
+1300 and 1500 mAh packs are the same 72 mm long and would give 60 to 68 % of the
+planned energy, but none of the shops that could be read had either in stock.
+
+| | Planned | Now |
+|---|---:|---:|
+| Pack | 2 x 3S 2200 mAh | 2 x 3S 1000 mAh |
+| Energy | 48.8 Wh | 22.2 Wh |
+| Cells | 288 g | 190 g |
+| Continuous current | 77 A | 35 A |
+
+35 A is still well over the 24 A the six actuators are estimated to draw at
+once, and the 20 A fuse is below both. What it costs is runtime, by a little
+more than half, and a harder sag under load: 24 A is 24C on this pack where it
+was 11C. The training's battery range, 0.75 to 1.05 of the rated voltage, still
+covers that sag.
+
+**Nothing held the packs, either.** The deck was said to bear on 3 mm of squeeze
+over them, and the 3 mm was air: a pack could lift 3 mm, slide 2.5 to 3 mm
+endwise and swing its foot 7 mm towards a wall. The two cinch straps meant to
+back it up had no route: one strap lane led into the left hip saddle, the other
+into the CAN loom and the actuator harnesses, and no 20 mm lane along the packs
+cleared everything by a millimetre. So each pack is now held on all six sides:
+
+- down, on a rail under it, moved inboard to stand under the thinner pack and
+  shortened to start at the left hip saddle, whose own top carries the packs
+  over its length. Run through the saddle's hollow, the rail sealed a void inside
+  it, and `tools/check.py` refused the pelvis for it;
+- to the right, on a 5 mm stop on the rail's end, which catches the foot of the
+  end face and leaves the top of it to the leads;
+- towards the other pack, on a 2 mm fin hanging from the deck between them;
+- outwards, up and to the left, through 5 mm EVA foam against a fence hanging
+  from the deck, the deck itself and the left wall.
+
+The foam is drawn squeezed and `tools/gate_f.py` checks every face touches and
+no piece is squeezed past half. It is also what takes up the difference between
+the pack drawn and the pack bought, which nobody has measured. Measure one first:
+the rails, the fences and the stops all follow the three pack dimensions in
+`cad/electronics.py`, so a measured pack is a change to three numbers.
+
+**Later the same day the fin and the fences came off the deck and onto the pelvis
+floor.** Hanging from the deck, they had to find the 2 mm between two packs that
+nothing had yet placed fore and aft, under a plate carrying both boards, and the
+side foam was dragged down each pack's face on the way. Standing in the pelvis
+instead, they make each pack a slot of its own that it
+is pushed into by hand and in sight, so both packs are held on five sides before
+their leads are plugged or the BMS goes in beside them, and the deck brings only
+the pads over them. The fin stops at the IMU's reservation, so it covers 60 mm of
+each pack's 75, and the fences are 1.5 mm rather than 1.6 because the rear one
+stands against the actuator harness run. It costs 3.2 g on the robot and a pull
+tab of polyimide tape under each pack, because the foam grips the pack and
+nothing leaves room for fingers beside it.
+
+**The fences were first drawn standing on nothing for most of their length, and
+no gate saw it.** They stood on the left hip saddle's top over the saddle's
+length, on the strength of its bounding box, which reaches 26 mm either side of
+the centre line. Its top reaches 15 and the fences stand at 21, so 45 mm of each
+hung 9 mm over the floor off the 30 mm that did reach it. It was one solid, so
+the export and `/check` passed it; every layer of it touched the layer below
+somewhere, so gate G found no island; and nothing was drawn where it should not
+be, so gates F and H had nothing to measure. It was seen in the viewer. The
+fences now stand on the floor end to end, and gate F has a new check,
+`check_footings()`, that measures the underside of every rail, fence, fin, post,
+guide and seat standing in the cavity and fails any that does not rest on the
+pelvis all the way along. Run against the first drawing it reads 40 % for each
+fence. `tools/gate_i.py` now puts the side
+foam in before the packs and pushes each pack down between the fin and its foam.

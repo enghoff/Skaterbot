@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1",
+#                 "trimesh==4.5.3", "numpy<2.3", "scipy", "networkx", "rtree",
+#                 "shapely"]
 # ///
 """Write one file per printable piece of the robot: STEP to print from, STL to simulate.
 
@@ -35,27 +37,43 @@ form was written, what the chamfer was set to and how many arrises it took. That
 is what `--verify` reads, and what anything downstream should read rather than
 assume.
 
-WHAT IS CHECKED ON THE WAY OUT, and why it is not ceremony. Four things, each of
-which has actually gone wrong here:
+EVERY FILE IS ONE SOLID. The pieces are still DRAWN as several interpenetrating
+bodies -- that is what the KCL engine forced, and the `bodies` counts in the
+budget are the register of them -- and until September 2026 they were exported
+that way too, on the argument that a slicer merges them. The first printed
+pelvis came back missing sixteen of its twenty-two bodies, which only rested
+face-to-face on the shell. So the bodies are united here, into the single part
+they are, before anything is written: cad/finish.py's one_solid() does it and
+says how. A printer is never again handed a question about which bodies belong
+together.
 
-* the body count against the `bodies` figure the budget declares, which catches a
-  piece that arrives with a sibling attached or a shell missing;
+THE UNION RUNS IN A CHILD PROCESS, and that is deliberate. OCCT has taken this
+project's process down more than once on chamfered bodies -- an access
+violation, which no try/except can catch -- and one_solid() avoids the known
+case rather than being provably immune to it. A child that dies is a piece
+refused with its exit code, where the same crash in-process would end the run
+with nothing written and nothing said.
+
+WHAT IS CHECKED ON THE WAY OUT, and why it is not ceremony. Each of these has
+actually gone wrong here:
+
+* the drawn body count against the `bodies` figure the budget declares, which
+  catches a piece that arrives with a sibling attached or a shell missing;
 * every body's volume, because a twice-mirrored solid comes back inverted and
   measures zero while keeping a correct bounding box and working booleans -- that
   is how the limb's rear gusset shipped wrong once;
-* the file re-read from disk, so the count that gets reported is the count that
-  landed rather than the count that was intended;
 * that the finish pass cut something at all, because a piece that comes back
   with no arris broken has silently skipped the whole pass and is a sharp part
   wearing a finished part's name. Which arrises were left sharp and why is
   tools/finish_report.py's subject; this only refuses to write the file that
-  missed the pass entirely.
-
-THE PIECES ARE STILL SEVERAL INTERPENETRATING SHELLS, not one solid. That is what
-the engine forced -- it refuses to union hollow boxes meeting at right angles, and
-the hip saddles are exactly that -- and it is what a slicer merges anyway. Phase 3
-of docs/BUILD123D_MIGRATION.md is where they become single solids; until then the
-`bodies` counts in the budget are the register of what is still to be unioned.
+  missed the pass entirely;
+* that the united piece is one solid with one shell -- no loose body, no sealed
+  cavity -- before it is written, which is cad/finish.py's problems();
+* and the FILE, re-read from disk and checked twice: by OCCT for one solid and
+  one shell, and by trimesh, on the triangles a slicer would get, for one closed
+  consistently wound surface enclosing the solid's volume. The second reader is
+  the one that matters, because it is not the kernel that drew the part --
+  tools/printable.py says why that distinction cost a print.
 """
 
 from __future__ import annotations
@@ -63,12 +81,15 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
+import subprocess
 import sys
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from build123d import Compound, export_step, export_stl
+from build123d import export_step, export_stl
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -94,28 +115,18 @@ def pieces_from_budget() -> list[dict]:
     return found
 
 
-def build(piece: dict, finished: bool) -> tuple[list, int, int]:
-    """The bodies of one piece, by calling the function the budget names.
+def build(piece: dict) -> list:
+    """The bodies of one piece as drawn, by calling the function the budget names.
 
     `file` is a module path under cad/ and `export` the function in it. A builder
     returns either one solid or the list of interpenetrating bodies the piece is
-    made of; both come back as a list here.
-
-    Returns the bodies with how many arrises the finish pass broke and how many
-    it left sharp. As drawn there is no such pass, and so nothing to count.
+    drawn as; both come back as a list here.
     """
     module = importlib.import_module(
         piece["file"].removesuffix(".py").replace("/", ".").replace("\\", ".")
     )
     built = getattr(module, piece["export"])()
-    bodies = list(built) if isinstance(built, (list, tuple)) else [built]
-
-    if not finished:
-        return bodies, 0, 0
-
-    from cad.finish import chamfered
-
-    return chamfered(bodies)
+    return list(built) if isinstance(built, (list, tuple)) else [built]
 
 
 def chamfer_size() -> float:
@@ -157,45 +168,129 @@ def zero_volume(bodies: list) -> list[int]:
     return [i for i, body in enumerate(bodies) if body.volume <= 0.0]
 
 
-def write(bodies: list, path: Path, fmt: str) -> None:
-    shape = bodies[0] if len(bodies) == 1 else Compound(children=bodies)
+def write(solid, path: Path, fmt: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if fmt == "step":
-        export_step(shape, str(path))
+        export_step(solid, str(path))
     else:
-        export_stl(shape, str(path))
+        export_stl(solid, str(path))
 
 
-def solids_in(path: Path, fmt: str) -> int | None:
-    """How many solid bodies the written file actually holds.
+def worker(name: str, fmt: str, path: Path, finished: bool) -> int:
+    """Build, finish, unite and write ONE piece. Runs in the child process.
 
-    Read back from the file rather than counted before writing it, so what gets
-    reported is what landed. STL has no notion of a body, only of triangles, so
-    it claims nothing.
+    Prints one line of JSON saying what happened, and exits 0 if the file was
+    written or 3 if the piece was refused. Any other exit is the process dying,
+    which produce() reports as exactly that.
     """
-    if fmt != "step":
-        return None
-    from build123d import import_step
+    from cad.finish import one_solid, problems
 
-    return len(import_step(str(path)).solids())
+    piece = next(p for p in pieces_from_budget() if p["name"] == name)
+    bodies = build(piece)
+    found = []
+    solid, broken, sharp = None, 0, 0
+    empty = zero_volume(bodies)
+    if empty:
+        found.append(
+            f"bodies {empty} measure zero volume -- malformed solids, probably "
+            "inverted by a double mirror"
+        )
+    else:
+        solid, broken, sharp = one_solid(bodies, finished=finished)
+        found += problems(solid)
+        # A finished piece that broke no arris did not run the pass at all, and
+        # writing it would put a sharp part under a finished part's name.
+        if finished and not broken:
+            found.append("the finish pass broke no arris at all")
+    if not found:
+        write(solid, path, fmt)
+    box = None
+    if solid is not None:
+        b = solid.bounding_box()
+        box = [b.min.X, b.max.X, b.min.Y, b.max.Y, b.min.Z, b.max.Z]
+    record = {
+        # Counted as SOLIDS, because one drawn item can be several: a block with
+        # a slot cut through its whole depth is two ribs.
+        "bodies": sum(len(body.solids()) for body in bodies),
+        "broken": broken,
+        "sharp": sharp,
+        "volume": solid.volume if solid is not None else None,
+        "box": box,
+        "problems": found,
+    }
+    print(json.dumps(record))
+    return 3 if found else 0
 
 
-def extents(bodies: list) -> str:
+def produce(piece: dict, path: Path, fmt: str, finished: bool) -> dict:
+    """Have a child process write one piece, and say what it did.
+
+    The result is worker()'s record, with `problems` naming the crash if the
+    child died rather than answering.
+    """
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--worker",
+        piece["name"],
+        "--format",
+        fmt,
+        "--out",
+        str(path),
+    ]
+    if not finished:
+        command.append("--as-drawn")
+    done = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
+    lines = [line for line in done.stdout.splitlines() if line.startswith("{")]
+    if done.returncode not in (0, 3) or not lines:
+        tail = (done.stderr or done.stdout).strip().splitlines()[-1:] or [""]
+        return {
+            "problems": [
+                f"the process uniting this piece died (exit {done.returncode}) "
+                f"and nothing was written. {tail[0]}"
+            ]
+        }
+    return json.loads(lines[-1])
+
+
+def verify(path: Path, fmt: str, volume: float | None = None) -> list[str]:
+    """Why the file on disk is not one printable solid, or nothing if it is.
+
+    Read back from disk rather than trusted from what was intended, and asked
+    twice: OCCT counts solids and shells in a STEP, and trimesh -- which did not
+    draw the part and has no opinion about which bodies touch -- checks the
+    triangles a slicer would get. An STL has only the second reader.
+    """
+    import printable
+
+    if not path.exists():
+        return [f"nothing written at {path}"]
+    if fmt == "step":
+        from build123d import import_step
+
+        from cad.finish import problems
+
+        shape = import_step(str(path))
+        found = problems(shape)
+        if found:
+            return found
+        return printable.integrity(printable.mesh_of(shape), volume or shape.volume)
+    import trimesh
+
+    return printable.integrity(trimesh.load_mesh(str(path)), volume)
+
+
+def extents(box: list | None) -> str:
     """The piece's bounding box, which is the cheap half of a sanity check.
 
     A part that should sit to one side of the robot and comes out symmetric about
     x = 0 has a sibling in it.
     """
-    box = bodies[0].bounding_box()
-    for body in bodies[1:]:
-        box = box.add(body.bounding_box())
+    if not box:
+        return ""
     return "  ".join(
         f"{low:7.1f}..{high:7.1f}"
-        for low, high in (
-            (box.min.X, box.max.X),
-            (box.min.Y, box.max.Y),
-            (box.min.Z, box.max.Z),
-        )
+        for low, high in ((box[0], box[1]), (box[2], box[3]), (box[4], box[5]))
     )
 
 
@@ -207,15 +302,15 @@ def report(rows: list[tuple]) -> None:
     file that was only read back and that nothing records the form of.
     """
     width = max(len(path.name) for path, *_ in rows)
-    head = f"{'file':<{width}}  {'KB':>8} {'solids':>7} {'broken':>7} {'sharp':>6}   "
-    head += f"{'x mm':^16}  {'y mm':^16}  {'z mm':^16}"
+    head = f"{'file':<{width}}  {'KB':>8} {'bodies':>7} {'broken':>7} {'sharp':>6}"
+    head += f"  {'file is':<10}  {'x mm':^16}  {'y mm':^16}  {'z mm':^16}"
     print(head)
     print("-" * len(head))
-    for path, size, solids, broken, sharp, note, box in rows:
-        shown = "     ?" if solids is None else f"{solids:6d}"
+    for path, size, bodies, broken, sharp, verdict, box in rows:
+        kb = f"{size / 1024:8.1f}" if size is not None else "       -"
         print(
-            f"{path.name:<{width}}  {size / 1024:8.1f}  {shown}"
-            f" {broken:>7} {sharp:>6}   {box}{note}"
+            f"{path.name:<{width}}  {kb} {bodies!s:>7} {broken!s:>7} {sharp!s:>6}"
+            f"  {verdict:<10}  {box}"
         )
 
 
@@ -260,10 +355,15 @@ def main() -> int:
     parser.add_argument(
         "--verify",
         action="store_true",
-        help="re-read the files already in the output directory and check them"
-        " against the declared body counts, without rebuilding",
+        help="re-read the files already in the output directory and check each"
+        " is one printable solid, without rebuilding",
     )
+    # The child process's entry point, with --out naming the FILE; see produce().
+    parser.add_argument("--worker", help=argparse.SUPPRESS)
     args = parser.parse_args()
+
+    if args.worker:
+        return worker(args.worker, args.format, args.out, not args.as_drawn)
 
     pieces = pieces_from_budget()
     if args.pieces:
@@ -279,7 +379,8 @@ def main() -> int:
             bodies = piece.get("bodies", "?")
             print(
                 f"{piece['name']:<24} {piece['file']}:{piece['export']:<20}"
-                f" {piece.get('prints', 1)} print(s), {bodies} bodies"
+                f" {piece.get('prints', 1)} print(s), {bodies} bodies drawn,"
+                f" prints {piece.get('print_up', '?')} up"
             )
         return 0
 
@@ -292,79 +393,112 @@ def main() -> int:
     written: dict = {}
     broke_total = sharp_total = 0
 
+    # Each piece is its own process, so they run side by side: most of a
+    # child's time is starting Python and OCCT, and none of it is shared.
+    produced = {}
+    shapes: dict = {}
+    if not args.verify:
+        print(f"building {len(pieces)} piece(s) ...", flush=True)
+        with ThreadPoolExecutor(max_workers=max(1, (os.cpu_count() or 2) // 2)) as pool:
+            futures = {
+                piece["name"]: pool.submit(
+                    produce,
+                    piece,
+                    args.out / f"{piece['name']}.{args.format}",
+                    args.format,
+                    finished,
+                )
+                for piece in pieces
+            }
+            # A STEP is what goes to a printer, so it is held to everything gate
+            # G holds a piece to -- walls, gaps, and nothing starting in mid-air
+            # -- and not only to being one solid. Asked here, while the children
+            # build the files. The STLs are the simulation's, and a part too
+            # thin to print still has a mass to simulate.
+            if args.format == "step" and finished:
+                import gate_g
+
+                shapes = {p["name"]: gate_g.check_shape(p) for p in pieces}
+            produced = {name: future.result() for name, future in futures.items()}
+
     for piece in pieces:
         path = args.out / f"{piece['name']}.{args.format}"
+        box = ""
+        found: list[str] = []
 
         if args.verify:
-            if not path.exists():
-                print(f"{piece['name']}: nothing written at {path}")
-                bad.append(piece["name"])
-                continue
-            box = ""
             known = recorded.get(path.name)
-            if known is None:
-                print(
-                    f"{piece['name']}: {path.name} is on disk and nothing says"
-                    " which form it is in. Export it again."
+            if not path.exists():
+                found.append(f"nothing written at {path}")
+            elif known is None:
+                found.append(
+                    "on disk, and nothing says which form it is in -- export it again"
                 )
-                bad.append(piece["name"])
+            bodies = known.get("bodies_drawn", "?") if known else "?"
+            if known is None:
                 broken = sharp = "?"
             elif known.get("form") == "as drawn":
                 broken = sharp = "-"
             else:
                 broken = known.get("arrises_broken", "?")
                 sharp = known.get("arrises_left_sharp", "?")
+            if path.exists():
+                found += verify(path, args.format)
         else:
-            bodies, broken, sharp = build(piece, finished)
-            empty = zero_volume(bodies)
-            if empty:
-                print(
-                    f"{piece['name']}: bodies {empty} measure zero volume -- "
-                    "malformed solids, probably inverted by a double mirror"
+            result = produced[piece["name"]]
+            found += result.get("problems", [])
+            bodies = result.get("bodies", "?")
+            expected = piece.get("bodies")
+            if expected is not None and bodies != expected:
+                found.append(
+                    f"{bodies} bodies drawn where the budget declares {expected} "
+                    "-- a sibling part inside, or a body missing"
                 )
-                bad.append(piece["name"])
-                continue
-            # A finished piece that broke no arris did not run the pass at all,
-            # and writing it would put a sharp part under a finished part's
-            # name -- which is the failure this default exists to stop.
-            if finished and not broken:
-                print(
-                    f"{piece['name']}: the finish pass broke no arris at all, so"
-                    " nothing was written -- this piece would have been sharp"
-                )
-                bad.append(piece["name"])
-                continue
-            write(bodies, path, args.format)
-            box = extents(bodies)
-            written[path.name] = {
-                "piece": piece["name"],
-                "form": "finished" if finished else "as drawn",
-                "chamfer_mm": size,
-                "arrises_broken": broken if finished else None,
-                "arrises_left_sharp": sharp if finished else None,
-                "bodies": len(bodies),
-                "written": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            }
-            if finished:
-                broke_total += broken
-                sharp_total += sharp
-            else:
-                broken = sharp = "-"
+            broken = result.get("broken", 0) if finished else "-"
+            sharp = result.get("sharp", 0) if finished else "-"
+            box = extents(result.get("box"))
+            if not result.get("problems"):
+                found += verify(path, args.format, result.get("volume"))
+            if piece["name"] in shapes and not found:
+                lines, wrong = shapes[piece["name"]]
+                if wrong:
+                    found += [
+                        "gate G: " + " ".join(text.split())
+                        for text in lines
+                        if "FAIL" in text or text.startswith("          ")
+                    ]
+            if not found:
+                written[path.name] = {
+                    "piece": piece["name"],
+                    "form": "finished" if finished else "as drawn",
+                    "chamfer_mm": size,
+                    "arrises_broken": broken if finished else None,
+                    "arrises_left_sharp": sharp if finished else None,
+                    "bodies_drawn": bodies,
+                    "solids": 1,
+                    "print_up": piece.get("print_up"),
+                    "written": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                }
+                if finished:
+                    broke_total += broken
+                    sharp_total += sharp
+            elif path.exists():
+                # Whatever is on disk under this name is not this piece as it now
+                # stands, and must not be mistaken for it.
+                path.unlink()
 
-        solids = solids_in(path, args.format)
-        expected = piece.get("bodies")
-        note = ""
-        if solids is not None and expected is not None and solids != expected:
-            note = f"  <-- expected {expected}"
+        verdict = "one solid" if not found else "REFUSED"
+        size_on_disk = path.stat().st_size if path.exists() else None
+        rows.append((path, size_on_disk, bodies, broken, sharp, verdict, box))
+        if found:
             bad.append(piece["name"])
-        elif solids == 0:
-            note = "  <-- EMPTY"
-            bad.append(piece["name"])
-        rows.append((path, path.stat().st_size, solids, broken, sharp, note, box))
+            for problem in found:
+                print(f"  {piece['name']}: {problem}")
 
     write_manifest(args.out, written)
 
     if rows:
+        print()
         report(rows)
         print()
         print(f"{len(rows)} file(s) in {args.out}")
@@ -385,7 +519,7 @@ def main() -> int:
             )
 
     if bad:
-        print(f"\nWRONG: {', '.join(sorted(set(bad)))}")
+        print(f"\nREFUSED: {', '.join(sorted(set(bad)))}")
         return 1
     return 0
 

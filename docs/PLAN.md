@@ -171,6 +171,9 @@ Two decisions were added that the plan had not anticipated:
    but two 3S bricks in series, stood on edge, do. The robot carries 48.8 Wh for
    288 g, the umbilical is deleted along with the boom nobody had designed, and
    the mass budget below assumes the pack.
+   **The pack was then corrected on 30 September 2026**: the 2200 mAh brick it
+   was drawn from is not a size anybody makes, and the pack that fits the bay is
+   1000 mAh -- 22.2 Wh for 190 g. docs/NOTES.md has the entry.
 7. **A limb is a flat plate, and the knee actuator is turned round to allow
    it.** This went in two steps. First the shell was shifted outboard so its
    outer wall lay in the output plane, which deleted the arm and the bridge.
@@ -508,6 +511,10 @@ this list -- sizing the bank against a measured excursion -- has moved to Phase
 **This reverses Phase 5a.** Both of the objections that removed the pack have
 been answered rather than waved away, and `docs/NOTES.md` carries the full
 record; what follows is the shape of it.
+
+**Corrected 30 September 2026: the pack is two 3S 1000 mAh packs, 22.2 Wh for
+190 g.** The 2200 mAh brick below was drawn 76 mm long, and every real one is
+105 to 108; docs/NOTES.md has the entry. What follows is the plan as it stood.
 
 The pack is two 3S 2200 mAh bricks in series, 48.8 Wh for 288 g, stood ON EDGE
 side by side in the bottom band of the pelvis. That orientation is the design:

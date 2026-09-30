@@ -145,10 +145,13 @@ plane makes that plane's face smaller without moving the plane.
 And a body chamfered that way **segfaults OCCT in any subsequent boolean**, even
 a union with a body it does not touch. It reports itself valid; `clean()` and
 `fix()` do not help; no try/except can catch it. That is why the finished pieces
-are left as the interpenetrating bodies they already were rather than unioned --
-which is the form the project already ships and a slicer already merges, so
-nothing is lost, but it does mean **phase 3's "union the pieces for real" cannot
-be combined with the chamfer** on this OCP build.
+were left as the interpenetrating bodies they already were rather than unioned,
+on the argument that a slicer merges them. **It does not reliably**: the first
+printed pelvis lost sixteen bodies that only touched the shell. Since September
+2026 `cad/finish.py`'s `one_solid()` writes the chamfered bodies to a STEP file
+and reads them back, which every piece on the robot then unions cleanly, and
+`tools/export.py` does that union in a child process so a crash refuses the
+piece rather than ending the run.
 
 The 59 sharp arrises on the pelvis are almost all in its two hip clevises, where
 two Ø52 discs, a neck and a hollow saddle meet within a few millimetres.

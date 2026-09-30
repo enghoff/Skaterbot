@@ -79,33 +79,51 @@ bandGap = 2.0
 
 # ---- the reserved volumes, which are the requirement ------------------------
 #
-# THE BATTERY, and the orientation is the whole design. A Gens Ace class 3S
-# 2200 mAh soft-case brick is 76 x 33 x 25 mm and 144 g; two of them in series
-# make 6S 2200 mAh, 48.8 Wh, 288 g. Laid FLAT and side by side the pair is
-# 33 + 33 = 66 mm across the robot against 63.2 mm of interior depth, and misses.
-# Stood ON EDGE -- the 25 mm catalogue height lying fore and aft, the 33 mm
-# catalogue width standing up -- the pair is 52 mm and fits with 11 to spare.
-# That is why the packs are on edge and why the robot can carry a battery at all.
+# THE BATTERY, and the orientation is the whole design: two 3S soft-case packs
+# in series for the 6S bus, stood ON EDGE side by side in the bottom band, the
+# catalogue length across the robot, the catalogue width standing up and the
+# catalogue height fore and aft. Laid flat, two packs are too wide for the cavity.
+#
+# THE PACK IS 1000 mAh SINCE 2026-09-30, AND THE 2200 mAh PACK THIS WAS DRAWN
+# FOR NEVER EXISTED. This block described "a Gens Ace class 3S 2200 mAh brick"
+# of 76 x 33 x 25 mm and 144 g, and nobody makes one. Every 3S 2200 mAh pack on
+# sale in India is 105 to 108 mm long -- GenX 105 x 34 x 25 at Indian Hobby
+# Center and 108 x 35 x 22 at Robokits, Bonka 105 x 34 x 25 -- and would have
+# missed this bay by 30 mm. 76 mm is the length of a 1000 to 1500 mAh pack. The
+# bay was kept and the pack came down to it, which costs more than half the
+# energy: 6S 1000 mAh is 22.2 Wh, where 48.8 was planned.
+#
+# WHAT IS BOUGHT is a Bonka 11.1 V 1000 mAh 35C 3S with an XT60, in stock at
+# Indian Hobby Center on 2026-09-30: the only 3S pack short enough for this bay
+# that any readable Indian shop had on the shelf that day. Neither that shop nor
+# Bonka publishes its size. The one figure published for it is ElectronicsComp's,
+# 7.5 x 3.2 x 1.7 cm and 95 g, and that is what is drawn. MEASURE ONE BEFORE
+# THE PELVIS IS PRINTED: the rails, the fences, the stops and the foam all follow
+# the three numbers below. A millimetre or so either way is foam. More is a
+# change to these numbers, and it has limits: Bonka's own figure for the next
+# size up, the 1300 mAh, is 72 x 34 x 22, and at 22 mm thick the side foam has
+# to come down to 2 mm for the rear fence to clear the CAN loom, while at 34 mm
+# tall the top pad is squeezed past half and wants a thinner sheet.
 #
 # The three names below are in TORSO axes, not catalogue axes, because that is
 # the only way to read them against anything else in this file. Each says which
 # catalogue dimension it is.
-batteryPackLength = 76.0  # catalogue length, across the robot
-batteryPackThickness = 25.0  # catalogue height, fore and aft: the packs are on edge
-batteryPackWidth = 33.0  # catalogue width, standing up
-# Between the two packs. They are soft-case cells and they swell in service, so
-# they are not laid against each other.
+batteryPackLength = 75.0  # catalogue length, across the robot
+batteryPackThickness = 17.0  # catalogue height, fore and aft: the packs are on edge
+batteryPackWidth = 32.0  # catalogue width, standing up
+# Between the two packs, and it is a printed fin now rather than air: cad/torso.py
+# stands one up between them. They are soft-case cells that swell in service,
+# so what they are pressed against is foam on their outer faces, not each other.
 batteryPackGap = 2.0
-# The reservation around them: a millimetre at each end of the 76, one at each
-# side of the 52, and three above. The packs sit ON cad/torso.py's two rails,
-# whose top faces are this band's own floor, so nothing is reserved beneath them;
-# the three millimetres over them are the squeeze, and the squeeze is what holds
-# them down, because cad/deck.py's plate lands on it.
+# The reservation around them is the bay the 2200 mAh packs were meant to fill,
+# kept at its size so that nothing else in this torso moved when the pack
+# shrank. The packs sit ON cad/torso.py's two rails, whose top faces are this
+# band's own floor, so nothing is reserved beneath them. What the smaller packs
+# leave inside it is the hold-down's: the fences, the fin and the foam.
 #
-# THE ONE MILLIMETRE AT EACH SIDE IS THE TIGHTEST FIGURE IN THIS TORSO, and it
-# is what set the shell's depth: the deck's ledges stand 5 mm proud of the front
-# and rear walls right beside these packs. cad/torso_shell.py says why the shell
-# went from 68 mm deep to 72. Measure a pack before printing the pelvis.
+# The bay's 1 mm to the deck ledges at each side is still what set the shell's
+# depth: the ledges stand 5 mm proud of the front and rear walls beside it.
+# cad/torso_shell.py says why the shell went from 68 mm deep to 72.
 batteryWidth = 78.0
 batteryDepth = 54.0
 batteryHeight = 36.0
@@ -169,7 +187,7 @@ imuBoardDepth = 10.0
 
 # The deck is a printed plate, so its thickness is a structural number and not a
 # reservation. 3 mm of PA12-CF spanning 130 mm and carrying two boards and the
-# battery's hold-down; cad/deck.py is the part.
+# foam over the battery; cad/deck.py is the part.
 deckThickness = 3.0
 
 batteryX = -interiorHalfWidth + wallClearance + (batteryWidth / 2)
@@ -217,6 +235,74 @@ deckLedgeDepth = 5.0
 deckLedgeHeight = 5.0
 deckLedgeX = 52.0
 deckLedgeY = interiorHalfDepth - (deckLedgeDepth / 2)
+
+# THE SCREW IS NOT ON THE LEDGE'S CENTRE LINE ANY MORE, September 2026. It is
+# placed by its head: an M2.5 cap head with half a millimetre of air to the
+# wall, which lands it 0.25 mm inboard of the centre line and leaves 1.2 mm of
+# ledge round its pilot on the open side. cad/parameters.py's m25Clearance says
+# why the size came down from M3. The pilot runs the ledge's whole height, so an
+# M2.5 x 8 through the 3 mm deck has 5 mm of thread -- twice its diameter, and
+# the tip ends flush with the ledge's underside. The M3 x 10 it replaces would
+# have wanted 7 mm of a ledge 5 mm tall.
+deckScrewHeadAir = 0.5
+deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
+
+# THE BATTERY'S HOLD-DOWN, 2026-09-30, and until then there was none. This file
+# said the deck held the packs down by landing on 3 mm of squeeze over them, and a
+# gap is not a squeeze: nothing filled it, so a pack could lift 3 mm, slide
+# 2.5 to 3 mm endwise and swing its foot 7 mm towards a wall, and what stopped it
+# was whatever happened to be in the way.
+#
+# THREE PRINTED FACES AND THREE PIECES OF FOAM, and each pack is held in all six
+# directions:
+#   - down, on cad/torso.py's two rails, which stand under the packs' centre lines;
+#   - to the right, on a stop at each rail's end, which catches the foot of the
+#     end face and leaves the top of it, where the leads come out, clear;
+#   - towards each other, on the fin cad/torso.py stands up between them;
+#   - outwards, through foam, on the fence cad/torso.py stands up beside each;
+#   - up, through foam, on the deck's underside;
+#   - to the left, through foam, on the left wall.
+# The printed faces say where each pack is and the foam pushes it there. The foam
+# also takes up what the drawn pack and the bought one differ by, which nobody has
+# measured yet: everything here follows the three pack dimensions above, so a
+# measured pack moves the rails, the fences and the stops with it.
+#
+# THE FIN AND THE FENCES STAND ON THE PELVIS, and for their first day they hung
+# from the deck. From there they came down blind: the fin had to find the 2 mm
+# between two packs that nothing had yet placed fore and aft, under a plate
+# carrying both boards, and each side strip was dragged 16 mm down its pack's
+# face on the way. Standing on the pelvis they make each pack a slot of its own,
+# open at the top, that it is pushed into by hand and in sight -- so both packs
+# are held on five sides before their leads are plugged or the BMS goes in
+# beside them, and all the deck brings is the pads over them, which land
+# anywhere on the pack tops. Each pack wants a pull tab under it to come out
+# again: squeezed foam grips it and nothing leaves room for fingers beside it.
+#
+# All of it is cut from one 5 mm sheet of closed-cell foam, docs/BOM.md's.
+# Squeezed to 3 mm at the sides, 3.5 at the end and 4 on top: 40, 30 and 20 %,
+# so none of it has been squeezed flat and every piece still pushes.
+batteryFoamFree = 5.0
+batteryFoamSide = 3.0
+batteryPackOuterY = (batteryPackGap / 2) + batteryPackThickness
+batteryFenceY = batteryPackOuterY + batteryFoamSide
+# 1.5 AND NOT MORE: the rear fence stands on the shell floor beside the actuator
+# harness run for its last 12 mm, and 1.5 is what reaches that run's face and no
+# further. The front fence matches it.
+batteryFenceThickness = 1.5
+batteryPackTopZ = lowerBandZ + batteryPackWidth
+# How far below the pack tops the fences and the fin stop: they hold each pack
+# by 26 mm of its 32, and stay well clear of the pads the deck brings down, so
+# nothing on the deck has anything to find on its way in.
+batteryFenceShort = 6.0
+batteryFenceTopZ = batteryPackTopZ - batteryFenceShort
+batteryFoamTop = deckZ - batteryPackTopZ
+batteryPackLeftX = batteryX - (batteryPackLength / 2)
+batteryPackRightX = batteryX + (batteryPackLength / 2)
+batteryFoamEnd = batteryPackLeftX + interiorHalfWidth
+# The stop on each rail's end stands this far over the rail, into the foot of the
+# pack's end face and no higher: a pack's leads leave its end face, and the packs
+# go in with their leads UP.
+batteryRailStopHeight = 5.0
 
 # Standoffs. Every board is held off what it sits on, and these are the gaps.
 # 3 mm is a stock M3 brass standoff and clears the leads that have to pass under
@@ -435,6 +521,10 @@ busWireDiameter = 3.5
 canWireDiameter = 2.6
 balanceLeadWidth = 6.0
 balanceLeadThickness = 2.0
+# The stretch of each lead that lies over its pack before it turns down into the
+# bay gap, and where it is centred.
+balanceLeadLength = 10.0
+balanceLeadX = 1.0
 harnessBundleWidth = 9.0
 harnessBundleHeight = 7.0
 harnessRunY = -27.0
@@ -1389,8 +1479,7 @@ def batteryPacks() -> list:
     """The two 3S bricks, on edge, side by side.
 
     Drawn as two bodies and not as one block, because the gap between them is
-    real: soft-case cells swell, and a pair laid against each other has nowhere
-    to do it.
+    real: cad/torso.py's fin stands in it.
     """
     offset = (batteryPackGap + batteryPackThickness) / 2
     return [
@@ -1404,6 +1493,59 @@ def batteryPacks() -> list:
         )
         for sy in (-1, 1)
     ]
+
+
+# How far the top pads stop short of the balance leads, which lie over the
+# packs' right-hand ends and are dressed flat there rather than squeezed.
+batteryFoamLeadAir = 2.0
+
+
+def batteryFoam() -> list:
+    """The foam round the packs, drawn SQUEEZED, as it is with the deck down.
+
+    Five pieces cut from one sheet: a pad over each pack under the deck, a strip
+    down each pack's outer face against its fence, and one pad across both
+    packs' left ends against the wall. The strips and the end pad go into the
+    pelvis before the packs do, and each strip stands from the pack's foot to
+    its fence's top. Drawn at the thickness each is squeezed
+    to, touching what it is squeezed between, so tools/gate_h.py sees every
+    face it bears on as a contact and anything else as a clash; tools/gate_f.py
+    holds each thickness to the free sheet, which is what says it still pushes.
+    """
+    topLength = (
+        balanceLeadX - balanceLeadLength / 2 - batteryFoamLeadAir - batteryPackLeftX
+    )
+    pads = [
+        slab(
+            topLength,
+            batteryFenceY - batteryPackGap / 2,
+            batteryFoamTop,
+            batteryPackLeftX + topLength / 2,
+            sy * (batteryFenceY + batteryPackGap / 2) / 2,
+            batteryPackTopZ,
+        )
+        for sy in (1, -1)
+    ]
+    strips = [
+        slab(
+            batteryPackLength,
+            batteryFoamSide,
+            batteryFenceTopZ - lowerBandZ,
+            batteryX,
+            sy * (batteryPackOuterY + batteryFoamSide / 2),
+            lowerBandZ,
+        )
+        for sy in (1, -1)
+    ]
+    endPad = slab(
+        batteryFoamEnd,
+        batteryPackOuterY * 2,
+        batteryPackWidth - 12.0,
+        -interiorHalfWidth + batteryFoamEnd / 2,
+        0.0,
+        lowerBandZ + 6.0,
+    )
+    return [*pads, *strips, endPad]
 
 
 # ---- what each group is, as a thing you can buy ------------------------------
@@ -1426,9 +1568,10 @@ def batteryPacks() -> list:
 #   SwiftWing PDB-02-XT60, Matek BEC12S-PRO, Banana Pi BPI-M4 Zero;
 #
 #   a specification, where the BOM deliberately does NOT pin a brand because the
-#   part is a commodity -- a 3S 2200 mAh pack, an M3 brass standoff. The BOM
-#   says to buy a matched pair of packs from one batch and names no maker, and a
-#   maker invented here would be a decision this project has not taken;
+#   part is a commodity -- an M3 brass standoff, a foam sheet. The battery was
+#   one until 2026-09-30, when it turned out that no pack of the capacity named
+#   was the size drawn: it is a named pack now, because the bay is only right
+#   for one whose size is known;
 #
 #   an open question, said plainly. The capacitor bank has never been sized and
 #   the fuse's rating waits on a measured bus current, so those two say so. A
@@ -1438,7 +1581,8 @@ def batteryPacks() -> list:
 # The chases, the looms and the features of a board that is already named -- the
 # SBC's header, its ports, its microSD slot -- are not parts and are not here.
 partNumbers = {
-    "battery packs": "2 x 3S 2200 mAh 35-40C LiPo, XT60",
+    "battery packs": "2 x Bonka 3S 1000 mAh 35C LiPo, XT60",
+    "battery foam": "5 mm anti-static EVA sheet, cut to fit",
     "battery balance leads": "JST-XH 3S, 4-pin",
     "battery series link": "XT60 2-into-1 series harness",
     "battery pack connectors": "AMASS XT60",
@@ -1499,6 +1643,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
     groups = {
         # ---- the battery ----------------------------------------------------
         "battery packs": batteryPacks(),
+        "battery foam": batteryFoam(),
         # Two 4-way balance leads, one per pack, joined into the single seven-way
         # tail the BMS wants. THEY USED TO RUN TO A PORT IN THE REAR WALL and
         # they run to the board in the bay gap instead, which is the whole of
@@ -1506,20 +1651,22 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # the same merge, made in the same place, and it ends on a connector
         # rather than in one.
         #
-        # WHERE THEY GO IS THE 3 mm OF AIR OVER THE PACKS, and it is worth
-        # knowing before the harness is made up, because it is the only way from
-        # the battery bay into the bay gap. The packs top out at z = 2 and the
-        # deck's underside is at 5; the bays themselves are 1.5 mm apart, which
-        # no wire lies in. So the tails come off the packs, lie FLAT over them --
-        # half a millimetre clear above and below, which is a lead dressed down
-        # and taped, not one left proud -- and turn down into the gap at the
-        # BMS's inboard face. They stop there: past x = 7 the bay is the board's.
+        # WHERE THEY GO IS THE AIR OVER THE PACKS' RIGHT-HAND ENDS, and it is
+        # worth knowing before the harness is made up, because it is the only
+        # way from the battery bay into the bay gap. The packs top out at z = 1
+        # and the deck's underside is at 5; the bays themselves are 1.5 mm
+        # apart, which no wire lies in. So the tails come off the packs, lie
+        # FLAT over their last few millimetres -- a millimetre clear above and
+        # below, which is a lead dressed down and taped, not one left proud --
+        # and turn down into the gap at the BMS's inboard face. The foam pads
+        # over the packs stop 2 mm short of them. Past x = 7 the bay is the
+        # board's.
         "battery balance leads": [
             slab(
-                10.0,
+                balanceLeadLength,
                 balanceLeadWidth,
                 balanceLeadThickness,
-                1.0,
+                balanceLeadX,
                 dy,
                 packTopZ + ((deckZ - packTopZ - balanceLeadThickness) / 2),
             )

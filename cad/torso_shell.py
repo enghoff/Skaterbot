@@ -50,6 +50,24 @@ bossHeight = 12.0
 bossHoleDiameter = 2.5
 coverLipHeight = 2.4
 
+# THE BOSSES STAND BELOW THE LID'S LIP, September 2026, and until then the lid
+# could not be fitted at all. They stood down from the shell's top face flush
+# with it, and the lip drops 2.4 mm into the cavity across its whole plan -- so
+# each corner of the lip landed on a boss's top, 124 mm3 of them sharing space,
+# and the lid rode on the four bosses instead of sitting on the rim. The first
+# printed prototype is what found it. Nothing measured it: gate F compared a
+# hand-picked list of the torso's contents and the lid was never on it, which
+# is why tools/gate_h.py now sweeps every part against every other.
+#
+# The bosses came down rather than the lip being notched, because the lid had
+# already been printed and the pelvis was being reprinted anyway. Each keeps its
+# full 12 mm and stops this far under the lip, the same air the electronics
+# deck's corner notches pass the same bosses with. The lid sits on the rim and
+# its screws pull it down onto it across that gap: an M3 x 10 through the lid's
+# 4.8 mm and the 0.4 of air has 4.8 mm of boss to cut its thread in.
+coverLipBossClearance = 0.4
+coverBossDrop = coverLipHeight + coverLipBossClearance
+
 
 def coverBossInset(innerSpan: float) -> float:
     """Where the four cover screws land, as an inset from the cavity's corners.
@@ -61,12 +79,13 @@ def coverBossInset(innerSpan: float) -> float:
 
 
 def coverBoss(x: float, y: float, topZ: float):
-    """One tapped boss standing down from the shell's top face.
+    """One tapped boss hanging in a corner of the cavity, under the lid's lip.
 
     Four of these carry the lid, and they are part of whichever pelvis calls for
-    them rather than parts in their own right.
+    them rather than parts in their own right. `topZ` is the shell's top face;
+    the boss's own top is coverBossDrop below it.
     """
-    bossCenterZ = topZ - (bossHeight / 2)
+    bossCenterZ = topZ - coverBossDrop - (bossHeight / 2)
 
     bossBlank = Pos(x, y, bossCenterZ) * Box(bossSize, bossSize, bossHeight)
     bossHole = Pos(x, y, bossCenterZ) * Cylinder(bossHoleDiameter / 2, bossHeight + 2.0)

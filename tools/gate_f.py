@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11,<3.13"
-# dependencies = ["build123d>=0.9"]
+# dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
 """Gate F -- the check scenes, as numbers instead of pictures.
 
@@ -563,6 +563,15 @@ def check_packing() -> tuple[int, int]:
     definition. Its row is measured against the shell less that pad, and the fit
     that matters -- the board sitting on it -- is asserted in FITS below.
 
+    THE BATTERY'S RAILS ARE THE THIRD, 2026-09-30. The packs shrank inside a
+    bay that did not, so the stop on each rail's end, which catches the foot of
+    a pack's end face, stands in the bay's own reserved volume by definition --
+    and so do the fin and the two fences the packs stand between, which the
+    pelvis carries too. The battery's row is measured against the shell less its
+    rails and those three, and what they have to do -- carry the packs, stop
+    them and hold them -- is asserted face by face in
+    check_battery_hold_down().
+
     WHAT THIS GIVES UP is worth writing down. The 22 x 22 reservation used to say
     that any breakout up to that size would fit, and the seat is cut to 11 x 10.
     The reservation still holds the headroom, but spending it now means
@@ -582,6 +591,11 @@ def check_packing() -> tuple[int, int]:
     # out of this check as well.
     shellLessImuSeat = shell[:-1]
     shellLessPowerSwitchPad = shell[:-2] + shell[-1:]
+    # The rails and then the cradle come straight after the shell, its four
+    # cover bosses and its two hip clevises -- the seven check_no_clashes()
+    # calls the pelvis proper.
+    rails = len(torso.batteryRails()) + len(torso.batteryCradle())
+    shellLessRails = shell[:7] + shell[7 + rails :]
 
     # The cavity, in the robot's frame: the shell's inner walls, its cavity floor
     # and the underside of the lid.
@@ -594,7 +608,11 @@ def check_packing() -> tuple[int, int]:
     # simulation/robot.py places a mass in each.
     items = ("battery", "power entry", "controller carrier", "SBC", "IMU", "BMS")
     checked = failed = 0
-    without = {"IMU": shellLessImuSeat, "power entry": shellLessPowerSwitchPad}
+    without = {
+        "IMU": shellLessImuSeat,
+        "power entry": shellLessPowerSwitchPad,
+        "battery": shellLessRails,
+    }
     for name, item in zip(items, groups["reservations"]):
         against = without.get(name, shell)
         distance, shared = measure([item], against)
@@ -656,16 +674,11 @@ FITS = [
         0.0,
         "the packs SIT ON the rails, so any gap here means they are floating",
     ),
-    (
-        "battery packs vs the deck above",
-        "packs",
-        "deck plate",
-        3.0,
-        "the squeeze that holds the packs down, and the only thing that does. "
-        "Against the PLATE and not the whole deck, because the deck grew two "
-        "guides that hang down beside the BMS and one of them is 2.55 mm off the "
-        "nearer pack -- a real clearance, but not this one",
-    ),
+    # THE ROW THAT STOOD HERE, "battery packs vs the deck above, 3.0 mm", called
+    # that gap "the squeeze that holds the packs down". It was air: nothing filled
+    # it, so it held nothing, and the gate passed it for as long as the gap was the
+    # size drawn. What holds the packs since 2026-09-30 is measured by
+    # check_battery_hold_down() below, face by face.
     (
         "battery bay vs the power bay",
         "battery",
@@ -965,6 +978,167 @@ def check_fits(items: tuple) -> tuple[int, int]:
     return checked, failed
 
 
+def check_battery_hold_down() -> tuple[int, int]:
+    """Each pack held on every side, and every piece of foam squeezed but not flat.
+
+    cad/electronics.py's hold-down block says what holds a pack in each of six
+    directions: a rail under it, a stop on the rail's end, a fin between the
+    two packs, and foam between it and a fence, the deck and the left wall. The
+    fin and the fences stand on the pelvis, so every face but the top pads' is
+    made before the deck goes on. Each
+    of those is a pair of drawn bodies that has to TOUCH -- distance zero and no
+    shared volume -- and a pair that has come apart by any amount is a pack free
+    to move by that amount. The rail's stop is the rail itself, so its contact
+    is the rail's.
+
+    The foam is drawn at the thickness it is squeezed to, so the other half of
+    the test is that each piece is thinner than the sheet it is cut from, and not
+    so much thinner that it has been squeezed flat and stopped pushing. Half the
+    sheet is the floor for that: closed-cell EVA takes a set beyond it.
+    """
+    from cad import deck, torso
+    from cad import electronics as e
+
+    packs = {"rear": e.batteryPacks()[0], "front": e.batteryPacks()[1]}
+    rails = {"front": torso.batteryRails()[0], "rear": torso.batteryRails()[1]}
+    foam = e.batteryFoam()
+    pads = {"front": foam[0], "rear": foam[1]}
+    strips = {"front": foam[2], "rear": foam[3]}
+    endPad = foam[4]
+    cradle = torso.batteryCradle()
+    fences = {"front": cradle[0], "rear": cradle[1]}
+    fin = cradle[2]
+    plate = deck.electronicsDeck()[0]
+    wall = torso.pelvisShell()[0]
+
+    print()
+    print("WHAT HOLDS EACH BATTERY PACK, FACE BY FACE")
+    checked = failed = 0
+    rows = []
+    for side in ("front", "rear"):
+        pack = packs[side]
+        rows += [
+            (f"{side} pack on its rail", pack, rails[side]),
+            (f"{side} pack against the fin", pack, fin),
+            (f"{side} pack under its top pad", pack, pads[side]),
+            (f"{side} top pad under the deck", pads[side], plate),
+            (f"{side} pack against its side strip", pack, strips[side]),
+            (f"{side} side strip against its fence", strips[side], fences[side]),
+            (f"{side} pack against the end pad", pack, endPad),
+        ]
+    rows.append(("end pad against the left wall", endPad, wall))
+    for what, left, right in rows:
+        distance, shared = measure([left], [right])
+        ok = distance <= 0.001 and shared <= CONTACT_MM3
+        checked += 1
+        failed += 0 if ok else 1
+        mark = "  ok  " if ok else " FAIL "
+        print(
+            f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
+            "  wants contact"
+        )
+
+    for what, squeezed in (
+        ("top pads", e.batteryFoamTop),
+        ("side strips", e.batteryFoamSide),
+        ("end pad", e.batteryFoamEnd),
+    ):
+        ratio = squeezed / e.batteryFoamFree
+        ok = 0.5 <= ratio < 1.0
+        checked += 1
+        failed += 0 if ok else 1
+        mark = "  ok  " if ok else " FAIL "
+        print(
+            f" {mark} {what:<38} {squeezed:5.2f} of {e.batteryFoamFree:4.1f} mm, "
+            f"squeezed {100 * (1 - ratio):4.1f} %   wants 0 to 50 %"
+        )
+    return checked, failed
+
+
+# How far under a feature's underside the ground is looked for. A face resting
+# on another reads as touching to machine precision; a tenth of a millimetre is
+# far below any gap that could be printed and far above that noise.
+FOOTING_PROBE_MM = 0.1
+
+
+def footing(body, ground) -> tuple[float, float]:
+    """(underside area, the part of it resting on the ground), in mm2.
+
+    Every face of the body that points straight down is pushed FOOTING_PROBE_MM
+    further down, and what of that slab lies inside the ground is the part of
+    the face that is carried.
+    """
+    from build123d import GeomType, extrude
+
+    total = carried = 0.0
+    for face in body.faces():
+        if face.geom_type != GeomType.PLANE or face.normal_at().Z > -0.999:
+            continue
+        slab = extrude(face, amount=FOOTING_PROBE_MM, dir=(0, 0, -1))
+        common = slab & ground
+        try:
+            inside = abs(common.volume) if common is not None else 0.0
+        except (ValueError, AttributeError, TypeError):
+            inside = 0.0
+        total += face.area
+        carried += inside / FOOTING_PROBE_MM
+    return total, carried
+
+
+def check_footings() -> tuple[int, int]:
+    """Everything that stands in the cavity stands on something, all along.
+
+    WHY THIS EXISTS. The battery's two fences were drawn standing on the left hip
+    saddle's top over the saddle's length, because the saddle's bounding box
+    reaches 26 mm either side of the centre line. Its top reaches 15, and the
+    fences stand at 21: for 45 mm of their 75 each hung 9 mm over the floor from
+    the 30 mm that did reach it. Every gate passed that. It was one solid, so the
+    export and tools/check.py were content; each layer of it touched the layer
+    below somewhere, so tools/gate_g.py found no island; and nothing it was meant
+    to hold was drawn anywhere it was not. It was seen by eye.
+
+    So each feature that stands up from the floor or the saddle top has every
+    downward face measured against the shell and the two hip clevises, and all
+    of each face has to rest on them. The wall-hung features -- the cover bosses,
+    the deck ledges and the hoist lugs -- hang on purpose and are not here.
+    """
+    from cad import torso
+
+    print()
+    print("WHAT EACH FEATURE IN THE CAVITY STANDS ON")
+    pelvis = torso.pelvisShell()
+    ground = union([pelvis[0], pelvis[5], pelvis[6]])
+    features = [
+        ("front battery rail", torso.batteryRails()[0]),
+        ("rear battery rail", torso.batteryRails()[1]),
+        ("front battery fence", torso.batteryCradle()[0]),
+        ("rear battery fence", torso.batteryCradle()[1]),
+        ("battery fin", torso.batteryCradle()[2]),
+        *(
+            (f"distribution board post {i + 1}", post)
+            for i, post in enumerate(torso.powerEntryPosts())
+        ),
+        *(
+            (f"BMS floor guide {i + 1}", guide)
+            for i, guide in enumerate(torso.bmsGuides())
+        ),
+        ("IMU seat", torso.imuSeat()[0]),
+    ]
+    checked = failed = 0
+    for what, body in features:
+        total, carried = footing(body, ground)
+        share = carried / total if total else 0.0
+        ok = share >= 0.999
+        checked += 1
+        failed += 0 if ok else 1
+        mark = "  ok  " if ok else " FAIL "
+        print(
+            f" {mark} {what:<38} {carried:7.1f} of {total:7.1f} mm2 underneath "
+            f"rests on the pelvis ({100 * share:5.1f} %)"
+        )
+    return checked, failed
+
+
 def check_no_clashes() -> tuple[int, int]:
     """Every drawn thing in the torso against every other, pair by pair.
 
@@ -985,6 +1159,7 @@ def check_no_clashes() -> tuple[int, int]:
     groups = dict(electronics.torsoElectronicsGroups())
     groups["deck"] = deck.electronicsDeck()
     groups["battery rails"] = torso.batteryRails()
+    groups["battery cradle"] = torso.batteryCradle()
     groups["board posts"] = torso.powerEntryPosts()
     groups["deck ledges"] = torso.deckLedges()
     groups["IMU seat"] = torso.imuSeat()
@@ -1058,6 +1233,8 @@ def main() -> int:
         for stage in (
             check_clearances,
             check_packing,
+            check_battery_hold_down,
+            check_footings,
             check_no_clashes,
             check_journal_fastening,
         ):

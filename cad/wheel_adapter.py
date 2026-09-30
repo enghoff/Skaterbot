@@ -18,7 +18,7 @@ from __future__ import annotations
 from build123d import Axis, Cylinder, Pos, Rot
 
 from cad.joint import outputDisc
-from cad.parameters import actuatorOutputBoltCircle, rotorHubOuterX
+from cad.parameters import actuatorOutputBoltCircle, journalSeatDepth, rotorHubOuterX
 from cad.wheeled_parameters import (
     wheelKeyAccessDiameter,
     wheelSpigotDiameter,
@@ -32,9 +32,20 @@ spigotInnerX = rotorHubOuterX
 spigotOuterX = rotorHubOuterX + wheelSpigotLength
 spigotCenterX = (spigotInnerX + spigotOuterX) / 2
 
-# The plug reaches 2 mm back into the disc and 4 mm out past the spigot's root,
-# so both joints in the chain are a real overlap rather than a butted face.
-plugInnerX = rotorHubOuterX - 2.0
+# The plug reaches back PAST THE FLOOR OF THE DISC'S JOURNAL SEAT and 4 mm out
+# past the spigot's root, so both joints in the chain are a real overlap rather
+# than a butted face.
+#
+# IT USED TO REACH 2 mm BACK, AND THAT SEALED A VOID INTO EVERY ADAPTER. The disc
+# is the limbs' output disc, and it keeps the Ø10.2 x 2.2 blind seat a journal
+# was once bonded into; the plug covered the seat's mouth and stopped 0.2 mm
+# short of its floor. Merged, that is a closed wafer of air 16 mm3 in volume that
+# no gate asked about, because nothing merged the piece and counted its shells --
+# powder trapped for good in a sintered part. tools/check.py asks now. Reaching a
+# millimetre past the floor fills the seat solid, and the plug stays inside r9.25
+# as it has to.
+plugSeatOverlap = 1.0
+plugInnerX = rotorHubOuterX - journalSeatDepth - plugSeatOverlap
 plugOuterX = rotorHubOuterX + 4.0
 plugCenterX = (plugInnerX + plugOuterX) / 2
 

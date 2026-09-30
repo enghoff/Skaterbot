@@ -240,8 +240,8 @@ torsoCoverThickness = 2.4
 hoistLugLength = 30.0
 hoistLugProud = 12.0
 hoistLugHeight = 16.0
-# How far the lug reaches INTO the wall, so the two shells merge in the slicer
-# the way every other overlap on this robot does. The same 1 mm the limb's tie
+# How far the lug reaches INTO the wall, so the two bodies share real material
+# and unite into one solid when tools/export.py makes the piece one. The same 1 mm the limb's tie
 # arches use, and it stops inside a 2.4 mm wall rather than breaking into the
 # cavity.
 hoistLugLap = 1.0
@@ -596,8 +596,8 @@ limbTieArchHeight = 4.0
 limbTieArchLength = 10.0
 limbTieArchWidth = 6.0
 limbTieArchTunnel = 2.0
-# How far the arch's root runs INTO the plate, so the two shells merge in the
-# slicer the way every other overlap on this piece does.
+# How far the arch's root runs INTO the plate, so the two bodies share real
+# material and unite into one solid when tools/export.py makes the piece one.
 limbTieArchLap = 1.0
 # Where the two arches sit. 10 mm aft of the limb's centre line keeps the
 # bundle beside them inside the flank and off the rear bolt heads; and each
@@ -891,6 +891,23 @@ m2Clearance = 2.4
 # 0.06 mm clash with the part that is the reason it cannot turn.
 m2NutAcrossFlats = 4.0
 m2NutThickness = 1.6
+
+# M2.5, at the four screws that hold the electronics deck down onto its wall
+# ledges, September 2026. THEY WERE M3 AND THEY DID NOT FIT: the ledges are 5 mm
+# deep off the front and rear walls, so a screw on the ledge's centre line is
+# 2.5 mm from the wall, and every stock M3 head -- 5.5 mm socket cap, 5.6 pan,
+# 5.7 button -- reaches 0.25 mm into it. The deck's M3 clearance hole also left
+# 0.4 mm of plate between itself and the plate's edge, which tools/gate_g.py
+# fails and no process prints. An M2.5 socket cap is 4.5 across --
+# m25CapHeadDiameter below, the same screw the SBC's standoffs already take --
+# and it is driven into a printed pilot the way every M3 here is: a socket-head
+# machine screw that cuts its own thread, not a thread-forming screw for
+# plastic, whose pan head is too wide for this corner.
+#
+# Clearance 0.4 over nominal like m3Clearance and m2Clearance, for the same
+# reason; pilot in the same proportion to the thread as the Ø2.5 an M3 taps.
+m25Clearance = 2.9
+m25Pilot = 2.1
 
 # HEAT-SET INSERTS, for the board mounts and the electronics deck -- AND THERE ARE
 # NONE LEFT IN THIS FILE. The only one on the robot is the wheel clamp's M5, in
