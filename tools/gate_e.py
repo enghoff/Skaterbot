@@ -393,6 +393,26 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ("Ø4 powder drain through the knee saddle", saddleDrainDiameter / 2, 2),
     ]
     rows["thigh-105-mirrored"] = rows["thigh-105-unmirrored"]
+
+    # THE SHIN'S FOUR SPOT FACES, 2026-09-30, and the thigh does not carry them:
+    # they are on the wheel motor's stator plate, and the knee is a clevis. They
+    # are what lets an M3 x 12 do an M3 x 14's job, so a union over the plate that
+    # filled them would put the screws back on MISUMI's shelf.
+    from cad.parameters import statorScrewSpotFaceDiameter
+
+    spotFaces = (
+        "washer spot faces over the wheel motor's four rear screws",
+        statorScrewSpotFaceDiameter / 2,
+        4,
+    )
+    rows["limb-105-unmirrored"] = [*rows["limb-105-unmirrored"], spotFaces]
+    rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
+
+    # THE POWER SWITCH SPACER, printed since 2026-09-30: a tube, and the bore is
+    # the whole of what it is for.
+    rows["power-switch-spacer"] = [
+        ("M3 clearance bore for the M3 x 20", m3Clearance / 2, 1),
+    ]
     return rows
 
 
@@ -447,13 +467,19 @@ def panel_openings() -> dict[str, list[tuple]]:
     without leaving an arc for cylinder_radii() to find.
     """
     from cad.deck import cable_notches, deckChaseDepth, deckThickness
-    from cad.electronics import deckZ, interiorHalfDepth, panelWallY, rearWallCutouts
+    from cad.electronics import (
+        deckZ,
+        interiorHalfDepth,
+        panelWallY,
+        powerSwitchSpacer,
+        rearWallCutouts,
+    )
     from cad.hardware import journalInnerX
     from cad.parameters import (
         actuatorOutputProjection,
         actuatorOutputRegister,
-        journalLength,
         journalNutPocketDepth,
+        journalSleeveLength,
         limbTieArchTunnel,
         limbTieArchWidth,
         limbTieArchY,
@@ -587,14 +613,25 @@ def panel_openings() -> dict[str, list[tuple]]:
     sleeve = [
         (
             "the journal sleeve's bore, open end to end for its screw",
-            (journalInnerX + journalLength / 2, 0.0, 0.0),
-            (journalLength, 3.4, 3.4),
+            (journalInnerX + journalSleeveLength / 2, 0.0, 0.0),
+            (journalSleeveLength, 3.4, 3.4),
             "X",
+        )
+    ]
+    # And the printed spacer's, for the same reason: a tube whose bore closed
+    # over would still leave one cylindrical face to count.
+    spacer = [
+        (
+            "the power switch spacer's bore, open end to end for its M3 x 20",
+            (0.0, 0.0, powerSwitchSpacer / 2),
+            (2.2, 2.2, powerSwitchSpacer),
+            "Z",
         )
     ]
 
     return {
         "journal-sleeve": sleeve,
+        "power-switch-spacer": spacer,
         "pelvis-shell": pelvis,
         "electronics-deck": deck,
         "joint-rotor-hub": seatingFace(1, 0.0),
@@ -650,6 +687,7 @@ def registry() -> dict[str, callable]:
         # Not a printed piece, and the only bought one here. See the note beside
         # its row in panel_openings().
         "journal-sleeve": hardware.journalSleeve,
+        "power-switch-spacer": electronics.powerSwitchSpacerPrint,
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
         "limb-105-unmirrored": shin.shinLeft,

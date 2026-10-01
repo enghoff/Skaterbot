@@ -56,12 +56,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="9.58946391e-05 0.00291434395 -0.0243551776" rpy="0 0 0"/>
-      <mass value="1.036088"/>
-      <inertia ixx="3.553655448e-03" ixy="9.408212726e-07" ixz="-9.352854525e-07"
-               iyy="1.678272990e-03" iyz="-3.610211551e-05" izz="2.468295223e-03"/>
+      <origin xyz="9.58783747e-05 0.00291589729 -0.0243549701" rpy="0 0 0"/>
+      <mass value="1.036263"/>
+      <inertia ixx="3.554316860e-03" ixy="9.409756054e-07" ixz="-9.352648384e-07"
+               iyy="1.678607952e-03" iyz="-3.636817926e-05" izz="2.469245912e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 168.7 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 168.9 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -82,6 +82,38 @@
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/electronics-deck.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
+    <visual name="power_switch_spacer">
+      <origin xyz="-0.0225 -0.02405 -0.0264" rpy="0 0 -1.57079633"/>
+      <geometry>
+        <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
+    <visual name="power_switch_spacer">
+      <origin xyz="0.0225 -0.02405 -0.0264" rpy="0 0 -1.57079633"/>
+      <geometry>
+        <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
+    <visual name="power_switch_spacer">
+      <origin xyz="-0.0225 -0.06905 -0.0264" rpy="0 0 -1.57079633"/>
+      <geometry>
+        <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
+    <visual name="power_switch_spacer">
+      <origin xyz="0.0225 -0.06905 -0.0264" rpy="0 0 -1.57079633"/>
+      <geometry>
+        <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="printedOrange"/>
     </visual>
@@ -157,7 +189,7 @@
       </geometry>
       <material name="pcbGreen"/>
     </visual>
-    <!-- power switch board — 34.4 g, estimate: fuse, the four-FET on/off and low-battery switch, and its spacers, over the distribution board. Provisional allowance, never weighed -->
+    <!-- power switch board — 33.8 g, estimate: fuse, the four-FET on/off and low-battery switch and its screws, over the distribution board; the spacers are prints. Provisional, never weighed -->
     <visual name="power_switch_board">
       <origin xyz="0 -0.04655 -0.013" rpy="0 0 0"/>
       <geometry>
@@ -187,10 +219,10 @@
 
   <link name="thigh_right">
     <inertial>
-      <origin xyz="3.28700205e-05 -0.00166441743 -0.0950983344" rpy="0 0 0"/>
-      <mass value="0.205620"/>
-      <inertia ixx="2.049119355e-04" ixy="1.708212859e-07" ixz="2.751263591e-07"
-               iyy="1.874276411e-04" iyz="3.727087785e-05" izz="6.751714534e-05"/>
+      <origin xyz="3.28616297e-05 -0.0016807555 -0.0950740583" rpy="0 0 0"/>
+      <mass value="0.205672"/>
+      <inertia ixx="2.055289007e-04" ixy="1.707108614e-07" ixz="2.752904347e-07"
+               iyy="1.879031791e-04" iyz="3.759035391e-05" izz="6.765941293e-05"/>
     </inertial>
     <!-- thigh limb plate, right — 39.2 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__right">
@@ -216,7 +248,7 @@
       </geometry>
       <material name="bearingSteel"/>
     </visual>
-    <!-- hip pitch journal sleeve, right — 0.3 g, measured: Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal -->
+    <!-- hip pitch journal sleeve, right — 0.4 g, measured: Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal -->
     <visual name="hip_pitch_journal_sleeve__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -234,12 +266,12 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="6.97086706e-05 0.00411116701 -0.0956412716" rpy="0 0 0"/>
-      <mass value="0.192602"/>
-      <inertia ixx="1.910249907e-04" ixy="-2.580400780e-07" ixz="3.133161756e-07"
-               iyy="1.822902757e-04" iyz="-3.449206857e-05" izz="5.684996814e-05"/>
+      <origin xyz="6.97368521e-05 0.00411369834 -0.0956086307" rpy="0 0 0"/>
+      <mass value="0.192519"/>
+      <inertia ixx="1.915346493e-04" ixy="-2.580013075e-07" ixz="3.137572305e-07"
+               iyy="1.827014705e-04" iyz="-3.482682874e-05" izz="5.689138865e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
+    <!-- shin limb plate, right — 31.1 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -255,9 +287,9 @@
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- knee journal sleeve, right — 0.3 g, measured: Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal -->
+    <!-- knee journal sleeve, right — 0.4 g, measured: Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal -->
     <visual name="knee_journal_sleeve__right">
-      <origin xyz="0 0.0559 0" rpy="0 0 -1.57079633"/>
+      <origin xyz="0 0.0569 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/journal-sleeve.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -312,10 +344,10 @@
 
   <link name="thigh_left">
     <inertial>
-      <origin xyz="3.28814499e-05 0.00166443795 -0.0950983213" rpy="0 0 0"/>
-      <mass value="0.205620"/>
-      <inertia ixx="2.049120651e-04" ixy="-1.708724882e-07" ixz="2.750936069e-07"
-               iyy="1.874277073e-04" iyz="-3.727093663e-05" izz="6.751726582e-05"/>
+      <origin xyz="3.28730561e-05 0.001680776 -0.0950740452" rpy="0 0 0"/>
+      <mass value="0.205672"/>
+      <inertia ixx="2.055290300e-04" ixy="-1.707620254e-07" ixz="2.752577396e-07"
+               iyy="1.879032451e-04" iyz="-3.759041254e-05" izz="6.765953328e-05"/>
     </inertial>
     <!-- thigh limb plate, left — 39.2 g, measured: cad/thigh.py, 105 mm, seven bodies, clevis at the knee -->
     <visual name="thigh_limb_plate__left">
@@ -341,9 +373,9 @@
       </geometry>
       <material name="bearingSteel"/>
     </visual>
-    <!-- hip pitch journal sleeve, left — 0.3 g, measured: Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal -->
+    <!-- hip pitch journal sleeve, left — 0.4 g, measured: Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal -->
     <visual name="hip_pitch_journal_sleeve__left">
-      <origin xyz="0 0.0559 0" rpy="0 0 -1.57079633"/>
+      <origin xyz="0 0.0569 0" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/journal-sleeve.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -359,12 +391,12 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="6.97086706e-05 -0.00411116702 -0.0956412716" rpy="0 0 0"/>
-      <mass value="0.192602"/>
-      <inertia ixx="1.910249907e-04" ixy="2.580400765e-07" ixz="3.133161757e-07"
-               iyy="1.822902757e-04" iyz="3.449206861e-05" izz="5.684996816e-05"/>
+      <origin xyz="6.97368521e-05 -0.00411369834 -0.0956086307" rpy="0 0 0"/>
+      <mass value="0.192519"/>
+      <inertia ixx="1.915346494e-04" ixy="2.580013059e-07" ixz="3.137572306e-07"
+               iyy="1.827014705e-04" iyz="3.482682880e-05" izz="5.689138868e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
+    <!-- shin limb plate, left — 31.1 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -380,7 +412,7 @@
       </geometry>
       <material name="motorGrey"/>
     </visual>
-    <!-- knee journal sleeve, left — 0.3 g, measured: Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal -->
+    <!-- knee journal sleeve, left — 0.4 g, measured: Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal -->
     <visual name="knee_journal_sleeve__left">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>

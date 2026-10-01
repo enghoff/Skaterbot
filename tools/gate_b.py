@@ -264,6 +264,21 @@ DEVIATIONS = {
                 "and found the same way -- by looking at the finished part."
             ),
         },
+        # THE STATOR PLATE'S FOUR WASHER SPOT FACES, 2026-09-30. Pure removal and
+        # the arithmetic checks: four of Ø7.6 x 1.0 less the Ø3.4 bolt hole each
+        # already takes, pi x (3.8^2 - 1.7^2) x 4 = 145.1416 mm3, all of it plate
+        # the golden has. The waist is cut with the plate, so none is filled back.
+        {
+            "removed_mm3": 145.14158059584832,
+            "why": (
+                "AN M3 x 12 IN PLACE OF MISUMI'S M3 x 14. The wheel motor's four "
+                "rear screws sit in spot faces a millimetre deep, sized for a "
+                "0.5 mm DIN 125 washer, so washer, 5 mm of plate and 3.2 of rear "
+                "cover leave an M3 x 12 the same 3.3 mm of thread the M3 x 14 "
+                "had -- and an M3 x 12 in 12.9 is on a hobby shop's shelf, where "
+                "the M3 x 14 was Rs 38 a screw from MISUMI alone."
+            ),
+        },
     ],
     "wheel-adapter-right": [
         {
@@ -496,6 +511,19 @@ DEVIATIONS = {
                 "that catches the foot of the pack's end face. The four strap "
                 "slots are gone with the straps: neither strap route was ever "
                 "open."
+            ),
+        },
+        # THE DECK LEDGES WENT A MILLIMETRE DEEPER, 2026-09-30. Pure addition:
+        # four strips of 12 x 1 x 5 on the ledges' open faces, 240.0 mm3, none
+        # of it where the golden has material.
+        {
+            "added_mm3": 240.0,
+            "why": (
+                "PLASTIC ROUND THE DECK SCREWS. Each M2.5 is placed by its head, "
+                "half a millimetre off the wall, and cuts its own thread into the "
+                "ledge's pilot; at 5 mm deep the ledge's open face was 1.0 mm "
+                "outside that thread, and a firm tightening could split it. At 6 "
+                "it is 2.0."
             ),
         },
         # THE FIN AND THE FENCES CAME DOWN OFF THE DECK, 2026-09-30. Pure

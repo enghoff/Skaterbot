@@ -41,7 +41,6 @@ from cad.parameters import (
     cheekThickness,
     frontCheekX,
     journalDiameter,
-    journalLength,
     journalNutAcrossFlats,
     journalNutPocketDepth,
     journalNutThickness,
@@ -51,9 +50,7 @@ from cad.parameters import (
     journalScrewHeadHeight,
     journalScrewLength,
     journalSleeveBore,
-    journalWasherBore,
-    journalWasherDiameter,
-    journalWasherThickness,
+    journalSleeveLength,
     rotorHubInnerX,
     rotorHubOuterX,
 )
@@ -70,11 +67,12 @@ def _disc(diameter: float, thickness: float, x: float = 0.0):
 
 
 # The journal's own two stations. The sleeve lands on the rotor disc's outer face
-# and ends flush with the bearing's outer face, which is exactly where the
-# printed stub ended and where the dowel before it ended: the bearing runs on the
-# same 5 mm of Ø10 it always did.
+# and runs through the bearing, which is exactly where the printed stub and the
+# dowel before it ran: the bearing turns on the same 5 mm of Ø10 it always did.
+# It ends a millimetre past the bearing's outer face since 2026-09-30, where a
+# washer used to end -- cad/parameters.py's journalSleeveProud says why.
 journalInnerX = rotorHubOuterX
-journalOuterX = rotorHubOuterX + journalLength
+journalOuterX = rotorHubOuterX + journalSleeveLength
 # Where the nut sits: pulled up against the outboard end of its pocket, which is
 # the face the sleeve clamps the disc's web against. The pocket's mouth is the
 # plate's own seating face, so the actuator's Ø30 output register lands across
@@ -109,14 +107,14 @@ def journalSleeve():
     tools/gate_e.py now asks this bore to be open, which is the check that was
     missing rather than a check of this one mistake.
     """
-    centre = journalInnerX + journalLength / 2
-    blank = _disc(journalDiameter, journalLength, centre)
-    bore = _disc(journalSleeveBore, journalLength + 4.0, centre)
+    centre = journalInnerX + journalSleeveLength / 2
+    blank = _disc(journalDiameter, journalSleeveLength, centre)
+    bore = _disc(journalSleeveBore, journalSleeveLength + 4.0, centre)
     return blank - bore
 
 
 def journalScrew():
-    """The M5 x 12 button head, seated on a small-series 1 mm washer.
+    """The M5 x 12 button head, seated on the sleeve's end.
 
     The head is drawn as a plain cylinder rather than as the dome it is, which
     overstates it -- so what tools/gate_f.py measures off it is the pessimistic
@@ -125,22 +123,14 @@ def journalScrew():
     head = _disc(
         journalScrewHeadDiameter,
         journalScrewHeadHeight,
-        journalOuterX + journalWasherThickness + journalScrewHeadHeight / 2,
+        journalOuterX + journalScrewHeadHeight / 2,
     )
     shank = _disc(
         journalScrewDiameter,
         journalScrewLength,
-        journalOuterX + journalWasherThickness - journalScrewLength / 2,
+        journalOuterX - journalScrewLength / 2,
     )
     return head + shank
-
-
-def journalWasher():
-    """DIN 433 M5 washer: stays inside the bearing's 10 mm bore."""
-    centre = journalOuterX + journalWasherThickness / 2
-    return _disc(journalWasherDiameter, journalWasherThickness, centre) - _disc(
-        journalWasherBore, journalWasherThickness + 2.0, centre
-    )
 
 
 def journalNut():
@@ -165,7 +155,9 @@ def journalNut():
 def jointHardware() -> list:
     """One straddled joint's worth of bought metal.
 
-    Five pieces: the bearing in the stationary cheek, and the journal that
-    closes the joint -- sleeve, screw, nut and washer -- which turns with the limb.
+    Four pieces: the bearing in the stationary cheek, and the journal that
+    closes the joint -- sleeve, screw and nut -- which turns with the limb. There
+    was a washer under the screw's head until 2026-09-30; the sleeve took its
+    millimetre.
     """
-    return [bearing(), journalSleeve(), journalScrew(), journalNut(), journalWasher()]
+    return [bearing(), journalSleeve(), journalScrew(), journalNut()]

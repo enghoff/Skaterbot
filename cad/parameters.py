@@ -415,7 +415,18 @@ limbPlateThickness = rotorHubThickness
 statorPlateDiameter = cheekDiameter
 # The plate lands flat on the rear cover; there is no clearance to give, this
 # is a mating face. Screws cross 3.2 mm of cover into 4 mm of thread, so a
-# 6 mm plate wants M3 x 14 where the old 3 mm cheek wanted M3 x 12.
+# 6 mm plate wanted M3 x 14 where the old 3 mm cheek wanted M3 x 12.
+#
+# IT TAKES AN M3 x 12 NOW, 2026-09-30, because nobody sells an M3 x 14 in 12.9
+# on a hobby shop's shelf: fastdep stocks every length but that one, and the
+# only source was MISUMI at Rs 38 a screw. Each of the four rear screws sits in
+# a spot face a millimetre deep, sized for a standard 0.5 mm DIN 125 washer, so
+# washer, 5 mm of plate and 3.2 of cover leave an M3 x 12 the same 3.3 mm of
+# thread the M3 x 14 had, and 1.7 mm of plate to the connector flat and to the
+# rim. Only the wheel motors' plates carry these: the knee is a straddled clevis now
+# and its screws pass a 3 mm cheek like the hip's.
+statorScrewSpotFaceDiameter = 7.6  # a DIN 125 M3 washer, Ø7.0, and 0.3 round it
+statorScrewSpotFaceDepth = 1.0
 statorPlateInnerX = -(actuatorDepth / 2)
 statorPlateOuterX = statorPlateInnerX - limbPlateThickness
 statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)
@@ -699,6 +710,17 @@ journalSeatDepth = 2.2
 # the dowel before it was 8 long, seated 2.2 mm into the disc, so the sleeve runs
 # in the same race in the same place as both.
 journalLength = 6.0
+# THE SLEEVE STANDS A MILLIMETRE PAST THE BEARING, 2026-09-30, where a washer
+# used to. The screw's head needed a millimetre off the sleeve's end to keep its
+# tip off the motor, and what filled it was a DIN 433 5.3 x 9 x 1 washer -- the
+# small series, because an ordinary Ø10 one reaches the bearing -- which no
+# Indian shop stocks: it was an import at Rs 2 538 for thirty. A printed sleeve
+# a millimetre longer puts the head in exactly the same place, clamps the same
+# sleeve, and leaves the bearing's inner race the same millimetre of air on
+# that side. It still passes the boss's Ø17.5 shoulder bore with 3.75 mm to
+# spare.
+journalSleeveProud = 1.0
+journalSleeveLength = journalLength + journalSleeveProud
 # The sleeve's bore, and the disc's clearance hole under it. The screw is an M5
 # and this is its close clearance: the sleeve is what the bearing runs on, so the
 # screw must not decide where it sits.
@@ -706,18 +728,13 @@ journalSleeveBore = 5.3
 journalScrewClearance = 5.5
 journalScrewDiameter = 5.0
 # Revised 2026-09-15: the retired register pocket left a 2.7 mm web, not
-# 1.5 mm, so M5 x 10 reached only 1.3 mm into the nut. M5 x 12 with a
-# DIN 433 / ISO 7092 M5 washer (5.3 x 9 x 1) reaches 2.3 mm and stops
-# 1 mm short of the motor. A normal 10 mm OD washer can touch the bearing;
-# the small-series washer stays inside its bore. Manufacturer drawing:
-# https://belmetric.com/content/A-PDF_Drawings/WF5X9SS.pdf
-# Allow +/-0.2 mm each on the printed sleeve and web, +/-0.3 on screw length,
-# and +/-0.1 on the washer: at least 1.5 mm engagement and 0.2 mm tip air.
-# This is a prototype clamp, not a full-strength M5 bolted connection.
+# 1.5 mm, so M5 x 10 reached only 1.3 mm into the nut. M5 x 12 with a 1 mm
+# washer under its head reaches 2.3 mm and stops 1 mm short of the motor, and
+# since 2026-09-30 that millimetre is the sleeve's own -- journalSleeveProud
+# above -- so there is no washer. Allow +/-0.2 mm each on the printed sleeve
+# and web and +/-0.3 on screw length: at least 1.5 mm engagement and 0.2 mm
+# tip air. This is a prototype clamp, not a full-strength M5 bolted connection.
 journalScrewLength = 12.0
-journalWasherBore = 5.3
-journalWasherDiameter = 9.0
-journalWasherThickness = 1.0
 # An ISO 7380 button head rather than a cap head, and the head diameter is why:
 # Ø9.5 lands wholly on the Ø10 sleeve and touches neither the bearing's inner
 # race nor its seal, and 2.75 mm of head stands 1.25 mm proud of the bearing
@@ -725,7 +742,9 @@ journalWasherThickness = 1.0
 journalScrewHeadDiameter = 9.5
 journalScrewHeadHeight = 2.75
 # The nut is an ISO 4035 thin hex, captive in a pocket in the disc's motor-side
-# face. It had to be a thin one when the register pocket took 1.2 mm of the
+# face -- AND IT IS BOUGHT AS AN ORDINARY M5 NUT AND FILED, since 2026-09-30.
+# Nobody on an Indian shelf sells the thin one in less than a fifty-pack, so an
+# ISO 4032 / DIN 934 M5 nut, 4 to 4.7 mm, is filed flat on one face to 2.7. It had to be a thin one when the register pocket took 1.2 mm of the
 # disc's 6: the 4.8 that was left had to hold the nut AND leave a web for the
 # sleeve to clamp against, which was 2.7 of nut and 1.5 of web. The pocket is a
 # rim outboard of nothing now -- it is cut inboard of the seating face -- so the

@@ -143,7 +143,7 @@ EXPECTED_CHANGE_G = {
         "much and was never on the bill to lose.",
     ),
     "cad/shin.py": (
-        +2.9,
+        +2.6,
         "the same changes on the same shared limb geometry, which now includes "
         "the journal's anchor: a shin carries one at its knee end exactly as a "
         "thigh does at its hip, and the sleeve itself is a print of its own, "
@@ -170,7 +170,10 @@ EXPECTED_CHANGE_G = {
         "housing and stops the plate seating at all. What the plate gives up is "
         "its pilot, which cad/parameters.py argues is worth less than the "
         "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
-        "asserts the millimetre in front of the plate is empty.",
+        "asserts the millimetre in front of the plate is empty. AND THE WHEEL MOTOR'S FOUR REAR SCREWS SIT IN WASHER SPOT FACES, "
+        "2026-09-30, which is the 0.3 g this line came DOWN by: four of Ø7.6 x 1 "
+        "less the bolt hole, 145.1 mm3 a shin, so an M3 x 12 off any shelf does "
+        "what MISUMI's M3 x 14 did. Gate B holds it exactly.",
     ),
     "cad/wheel_adapter.py": (
         +2.3,
@@ -192,7 +195,7 @@ EXPECTED_CHANGE_G = {
         "the union does not, so gate B sees only the 16.",
     ),
     "cad/torso.py": (
-        +88.5,
+        +88.7,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -302,7 +305,10 @@ EXPECTED_CHANGE_G = {
         "unplaced packs blind, and they stand in the pelvis now, so each pack "
         "is pushed into a slot of its own -- the fences on the shell floor end "
         "to end, the fin on the saddle's top and then the floor. 11 263 mm3, "
-        "all of it new material, and gate B holds it exactly.",
+        "all of it new material, and gate B holds it exactly. AND THE DECK "
+        "LEDGES WENT A MILLIMETRE DEEPER, 0.2 g on the robot: 240 mm3 on their "
+        "open faces, so the plastic outside each deck screw's thread is 2.0 mm "
+        "rather than 1.0.",
     ),
 }
 

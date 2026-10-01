@@ -227,19 +227,28 @@ deckBandZ = deckZ + deckThickness
 #
 # They are at the only height in this cavity where a wall is not behind
 # something: below the deck the battery and the power block fill it, above the
-# deck the boards do. 5 mm proud of the wall clears the packs by 1.6 mm and
+# deck the boards do. 5 mm proud of the wall cleared the packs by 1.6 mm and
 # 5 mm tall clears the power block by 1 -- cad/torso_shell.py records that those
 # two numbers are what set the shell's depth.
+#
+# SIX MILLIMETRES PROUD SINCE 2026-09-30, where they were five. The screw is
+# placed by its head, half a millimetre off the wall, so the only way to put more
+# ledge round its thread is to bring the open face further out -- and at five
+# that face was 1.0 mm outside the thread, under the 1.25 or so a screw cutting
+# its own thread into plastic wants, and the face a firm tightening would split.
+# At six it is 2.0. The bays beside the ledges are 0.6 mm off them now rather
+# than 1.6, and nothing drawn in either comes within 5.5 mm, so the shell's depth
+# stands.
 deckLedgeWidth = 12.0
-deckLedgeDepth = 5.0
+deckLedgeDepth = 6.0
 deckLedgeHeight = 5.0
 deckLedgeX = 52.0
 deckLedgeY = interiorHalfDepth - (deckLedgeDepth / 2)
 
 # THE SCREW IS NOT ON THE LEDGE'S CENTRE LINE ANY MORE, September 2026. It is
 # placed by its head: an M2.5 cap head with half a millimetre of air to the
-# wall, which lands it 0.25 mm inboard of the centre line and leaves 1.2 mm of
-# ledge round its pilot on the open side. cad/parameters.py's m25Clearance says
+# wall, which leaves 2.2 mm of ledge round its pilot on the open side -- 2.0
+# outside the thread the screw cuts. cad/parameters.py's m25Clearance says
 # why the size came down from M3. The pilot runs the ledge's whole height, so an
 # M2.5 x 8 through the 3 mm deck has 5 mm of thread -- twice its diameter, and
 # the tip ends flush with the ledge's underside. The M3 x 10 it replaces would
@@ -1124,6 +1133,11 @@ harnessHeight = 12.8
 # its rectangle from bus_input_socket_box() below.
 powerSwitchSpacer = 8.0
 powerSwitchSpacerDiameter = 6.0
+# AND THE SPACERS ARE PRINTED, 2026-09-30. An unthreaded Ø6 x 8 spacer is in
+# nobody's stock: Robu's 8 mm nylon ones are sold out, fastdep's aluminium ones
+# come in 5, 10, 15 and 20, and 10 was ruled out above. A PA12 tube bored for
+# the M3 clearance prints with the rest -- 1.3 mm of wall -- and is what the
+# screw slides through, as the bought one was to be.
 powerSwitchBoardZ = pdbTopZ + powerSwitchSpacer
 # The bank stands on THIS board now, not on the bought one: a can on the bought
 # board would be 16 mm tall under a board whose underside is 8 mm above it.
@@ -1281,6 +1295,22 @@ def standoff(diameter, height, atX, atY, atZ):
     return Pos(atX, atY, atZ) * Cylinder(
         diameter / 2, height, align=(Align.CENTER, Align.CENTER, Align.MIN)
     )
+
+
+def powerSwitchSpacerPrint():
+    """One of the power switch board's four spacers, as printed: a tube bored for
+    the M3 x 20 that clamps the stack, standing on the origin."""
+    tube = Cylinder(
+        powerSwitchSpacerDiameter / 2,
+        powerSwitchSpacer,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
+    bore = Pos(0, 0, -1.0) * Cylinder(
+        m3Clearance / 2,
+        powerSwitchSpacer + 2.0,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
+    return tube - bore
 
 
 def distributionBoard():
@@ -1592,7 +1622,7 @@ partNumbers = {
     "capacitor bank": "2 x Panasonic EEU-FR1V471B, 470 uF 35 V -- bank not sized",
     "power switch board": "ours -- 50 x 50 mm two-layer PCB, electrical/power_pcb.py",
     "power switch parts": "the fuse, the shunt and the switch -- electrical/power.py",
-    "power switch spacers": "M3 nylon spacer, 6 mm across x 8 mm, on M3 x 20 self-tapping",
+    "power switch spacers": "printed PA12 tube, 6 x 3.4 x 8 mm, on M3 x 20 self-tapping",
     "bus monitor": "INA226, bus voltage only -- no external shunt",
     "logic BEC": "Matek BEC12S-PRO",
     "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
@@ -1751,7 +1781,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # all, and the MOSFET switch, which had no home in the CAD because the
         # bill had never bought one.
         "power switch spacers": [
-            standoff(powerSwitchSpacerDiameter, powerSwitchSpacer, atX, atY, pdbTopZ)
+            Pos(atX, atY, pdbTopZ) * powerSwitchSpacerPrint()
             for atX, atY in power_switch_screw_xy()
         ],
         "power switch board": [powerSwitchBoard()],

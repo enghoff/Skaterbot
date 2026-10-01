@@ -12,9 +12,10 @@ WHAT CARRIES IT. Four ledges on the front and rear inner walls, cad/torso.py's
 they are because they are the only places in this cavity that are free: the
 battery fills the bottom band from the left wall to past the centre line, the
 power-entry block fills the rest of it, and between them is the lead chase,
-which is not free either. The ledges clear the packs by 1.6 mm and the power
-block by 1 mm, and that pair of numbers is what set the shell's depth --
-cad/torso_shell.py records it.
+which is not free either. The ledges cleared the battery's bay by 1.6 mm and
+the power block by 1 mm, and that pair of numbers is what set the shell's depth --
+cad/torso_shell.py records it. They are a millimetre deeper since 2026-09-30,
+for plastic round the screws, and clear both bays by 0.6.
 
 WHAT IT CARRIES. The controller carrier on six standoffs, and the foam pads
 that hold the battery down. Until 2026-09-30 this said the plate landed on 2 mm

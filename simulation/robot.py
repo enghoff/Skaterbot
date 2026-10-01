@@ -219,7 +219,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # Where a journal sleeve sits on its joint axis: the middle of the 6 mm of
     # Ø10 that stands proud of the limb's output disc, which is also where the
     # exported mesh arrives centred in its own frame.
-    journal_centre = d["journalInnerX"] + d["journalLength"] / 2
+    journal_centre = d["journalInnerX"] + d["journalSleeveLength"] / 2
 
     # These relationships are what make a silent parse failure loud. They are
     # relations rather than constants, so a real design change does not trip
@@ -271,6 +271,26 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             note="cad/deck.py:electronicsDeck, plate and four SBC posts",
         ),
     ]
+    # THE POWER SWITCH BOARD'S FOUR SPACERS ARE PRINTS, one mesh placed four
+    # times on the bought board's own 45 mm square, as cad/electronics.py's
+    # power_switch_screw_xy() places them.
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            base.solids.append(
+                Solid(
+                    label="power switch spacer",
+                    grams=0.0,  # measured from the mesh
+                    shape="mesh",
+                    piece="power-switch-spacer",
+                    at=(
+                        d["powerX"] + sx * d["pdbHolePitch"] / 2,
+                        d["pdbY"] + sy * d["pdbHolePitch"] / 2,
+                        d["pdbTopZ"],
+                    ),
+                    source="measured",
+                    note="cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8",
+                )
+            )
 
     # The two hip pitch actuators. Their housings are held by the pelvis
     # clevises, so their mass is the pelvis's even though their output drives
@@ -399,13 +419,13 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         ),
         (
             "power switch board",
-            34.4,
+            33.8,
             "power",
             "estimate",
             "pcbGreen",
             True,
-            "fuse, the four-FET on/off and low-battery switch, and its spacers, over the"
-            " distribution board. Provisional allowance, never weighed",
+            "fuse, the four-FET on/off and low-battery switch and its screws, over the"
+            " distribution board; the spacers are prints. Provisional, never weighed",
         ),
         (
             # The cans stand on the switch board, so they share its envelope;
@@ -626,15 +646,19 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece="journal-sleeve",
                 at=((sign - 1) * journal_centre, 0.0, 0.0),
                 source="measured",
-                note="Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal",
+                note="Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal",
             ),
             Solid(
                 label=f"hip pitch journal screw and nut, {side}",
                 grams=journal_fastener_g,
                 shape="point",
-                at=(sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
+                at=(
+                    sign * (d["journalInnerX"] + d["journalSleeveLength"] / 2),
+                    0.0,
+                    0.0,
+                ),
                 source="bom",
-                note="M5 x 12 button head, DIN 433 washer and an M5 thin nut, docs/BOM.md section C",
+                note="M5 x 12 button head and an M5 nut filed thin, docs/BOM.md section C",
             ),
         ]
         # THE PROXY HAS TO REACH ROUND THE MOTOR NOW. The shin's box below is the
@@ -718,15 +742,19 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 piece="journal-sleeve",
                 at=((-sign - 1) * journal_centre, 0.0, 0.0),
                 source="measured",
-                note="Ø10 x Ø5.3 x 6 printed tube, the far bearing's journal",
+                note="Ø10 x Ø5.3 x 7 printed tube, the far bearing's journal",
             ),
             Solid(
                 label=f"knee journal screw and nut, {side}",
                 grams=journal_fastener_g,
                 shape="point",
-                at=(-sign * (d["journalInnerX"] + d["journalLength"] / 2), 0.0, 0.0),
+                at=(
+                    -sign * (d["journalInnerX"] + d["journalSleeveLength"] / 2),
+                    0.0,
+                    0.0,
+                ),
                 source="bom",
-                note="M5 x 12 button head, DIN 433 washer and an M5 thin nut, docs/BOM.md section C",
+                note="M5 x 12 button head and an M5 nut filed thin, docs/BOM.md section C",
             ),
         ]
         shin.collisions.append(

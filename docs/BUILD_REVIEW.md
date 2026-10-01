@@ -83,6 +83,40 @@ clamping before its head is down. One standard 0.5 mm washer under each of the
 holes drilled 6.5 mm deep. An M3 × 8 would engage 5.2 mm and stop 1.3 mm short.
 The BOM had been waiting on a measurement to choose between ×6 and ×8.
 
+**The deck ledges were a millimetre too shallow for their screws.** Each M2.5
+is placed by its head, 0.5 mm off the wall, and cuts its own thread into the
+ledge. At 5 mm deep the ledge's cavity-side face was 1.0 mm outside that thread,
+under the 1.25 mm or so a screw cutting its own thread into plastic wants, so a
+firm tightening could split it. The ledges are 6 mm deep now, which leaves
+2.0 mm, and they still clear the battery and power bays by 0.6 mm. Drawn in
+place, each screw's head clears the wall by 0.5 mm, 5 mm of thread is engaged,
+and a hex key has a straight path down to it. The head rests on only 41 % of its
+underside, because the deck's hole has to run out to the plate edge as a slot,
+and no washer fits in the half millimetre to the wall, so tighten them gently.
+
+**Every fastener now comes off a shelf, and one set was wrong.** The M3 × 14
+the motors' rear screws needed is not stocked in 12.9 by any hobby shop, so it
+came from MISUMI at ₹38 a screw. Working out a replacement found that the bill
+had the knees wrong. It listed sixteen M3 × 14 for "knee and wheel" through a
+6 mm plate, but the knees are straddled clevises with a 3 mm cheek, like the
+hips. There, an M3 × 14 would have bottomed about 2.5 mm before it clamped.
+The hips and knees now take an M3 × 10 on one 0.5 mm washer. The wheel motors'
+6 mm plate has a 1 mm washer spot face at each rear screw, so an M3 × 12 on
+one 0.5 mm washer gets the same 3.3 mm of thread. The first version of the spot
+faces was partly filled back in by the shin's waist, 1.8 mm³ of it, which gate
+B's arithmetic caught. The waist now takes the same cuts. The output screws
+default to M3 × 8, because the vendor STEP shows 6.5 mm of thread. The two
+fasteners nobody stocks are designed out:
+
+- **The journal's 5.3 × 9 × 1 washer** was an import only. It was a 1 mm spacer
+  under the screw head, so the printed sleeve is now 1 mm longer and does the
+  same job.
+- **The power switch board's Ø6 × 8 unthreaded spacers** were in nobody's stock.
+  They are printed now, four PA12 tubes.
+
+The M5 thin nut is an ordinary M5 nut filed to 2.7 mm. MISUMI is off the bill,
+and the fastdep and Robu carts match it.
+
 **The wheel's heat-set insert was the wrong size.** The bore is drawn Ø6.4 × 12,
 which is the melt-in hole for a 7 mm knurl. The BOM named an 8 mm insert, 1.5 mm
 short of the drawing. It now names a 10 mm insert on a 7 mm knurl, in stock.
@@ -143,26 +177,23 @@ listing:
 - **The legs are not in gate I.** Their joints were worked through for assembly
   by hand in `docs/NOTES.md` on 14 September, but no gate repeats it.
 
-**Could not be checked from here.** These shops refuse automated reads, so their
-stock was not seen today. Open each in a browser, or connect the Chrome extension
-and ask again.
+**The distribution board is out of stock.** Robu, its only seller, showed the
+SwiftWing PDB-02-XT60 out of stock at ₹450 when read in a browser later on
+30 September. The pelvis posts and the power switch board are drawn to it. A
+generic "100 A multirotor PDB" is in stock at three readable shops for ₹86–120,
+with the same 50 × 50 mm outline and 45 mm hole square, but no factory-fitted
+XT60, so the bus input would be soldered on. **This needs a decision.** Robu's
+motor pigtails and thermal pad were in stock the same day, and are in its cart.
 
-- **The SwiftWing PDB-02-XT60 distribution board** is sold only by Robu, and the
-  pelvis posts and the power switch board are drawn to it. If Robu is out, a
-  generic "100 A multirotor PDB" is in stock at three readable shops for ₹86–120.
-  It has the same 50 × 50 mm outline and 45 mm hole square, but no factory-fitted
-  XT60, so the bus input would be soldered on.
-- **The motor lead pigtails and the BEC thermal pad** are also Robu only.
+**Could not be checked from here.** These shops refuse automated reads, so their
+stock was not seen today.
+
 - **Five power switch board parts** are element14 India only: the BAT46, the
   BZX79-C15, the Keystone 3568 holder, the RXEF185 and the 0204 resistors. They
   were in stock in quantity when read on 22 September. The C7 capacitor is TME
   only.
 - **The INA226 bus monitor**: Indian Hobby Center is sold out and Techtonics
   cannot be read.
-
-**Available, but not easily.** The journal's 5 × 9 × 1 mm washer is only listed
-as an import: ₹2,538 for 30, arriving about 20 October. The ordinary 10 mm M5
-washer is too wide, because it touches the bearing.
 
 **Decisions this review did not take.**
 
@@ -172,9 +203,11 @@ washer is too wide, because it touches the bearing.
   72 mm long and would give 59 % of the planned energy, but no readable shop has
   it, and at 22 mm thick it fits only with the side foam cut to 2 mm. The 1500 mAh
   is 26 mm thick and would not fit without moving the CAN loom.
-- **Servicing.** Opening the battery bay now means undoing the rear wall. A notch
-  in the controller carrier's rear edge, or moving the three parts along the
-  wall, could let the deck pass them.
+- **Servicing.** Opening the battery bay now means undoing the rear wall. The
+  two rear deck screws sit directly under the on/off button and the charge
+  socket, so a notch in the controller carrier's rear edge would not be enough on
+  its own: the parts themselves would have to move along the wall, clear of the
+  screws and of the carrier's path.
 - **The motors' torque envelope** has still not been re-derived for the wheeled
   robot.
 
@@ -182,8 +215,9 @@ washer is too wide, because it touches the bearing.
 
 - `/check`: clean. Every piece builds as one solid.
 - Gates A to I: all pass.
-- `/mass`: 2,004.9 g against the 2,300 g ceiling, 295.1 g of headroom.
-  - Pelvis: +8.3 g (−2.2 g of rail, +10.5 g of fin and fences).
+- `/mass`: 2,005.1 g against the 2,300 g ceiling, 294.9 g of headroom.
+  - Pelvis: +8.5 g (−2.2 g of rail, +10.5 g of fin and fences, +0.2 g of deck
+    ledge).
   - Deck: +0.7 g.
   - Battery: −98 g.
 - `/step`: all nine pieces exported and verified as one solid each.

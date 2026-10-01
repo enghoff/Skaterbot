@@ -654,18 +654,21 @@ FITS = [
         "battery bay vs the four deck ledges",
         "battery",
         "ledges",
-        1.6,
-        "the tightest clearance in this torso, and what set the shell's depth: "
-        "a 68 mm shell leaves a tenth of a millimetre here",
+        0.6,
+        "what set the shell's depth at 1.6: a 68 mm shell left a tenth of a "
+        "millimetre here. 0.6 since 2026-09-30, when the ledges went a "
+        "millimetre deeper for plastic round their screws' threads; the bay is "
+        "sized for packs that do not exist, and the packs in it are 7.6 mm away",
     ),
     (
         "power bay vs the four deck ledges",
         "power entry",
         "ledges",
-        1.6,
-        "the same 1.6 mm the battery clears them by, and it is why the bay is "
-        "54 deep rather than the 62 the old power block was: at 62 it runs "
-        "270 mm3 straight through two of them",
+        0.6,
+        "the same clearance the battery bay has, and it is why the bay is 54 "
+        "deep rather than the 62 the old power block was: at 62 it runs 270 mm3 "
+        "straight through two of them. 1.6 until the ledges went a millimetre "
+        "deeper; nothing drawn in the bay comes within 5.5 mm",
     ),
     (
         "battery packs vs their rails",
@@ -1186,33 +1189,41 @@ def check_no_clashes() -> tuple[int, int]:
 
 
 def check_journal_fastening() -> tuple[int, int]:
-    """Check thread reach and the real washer, which collision tests miss."""
+    """Check thread reach and what the screw's head lands on, which collision
+    tests miss.
+
+    THE WASHER IS GONE, 2026-09-30. A DIN 433 5.3 x 9 x 1 sat under the head to
+    keep the tip off the motor, small-series because an ordinary Ø10 one reaches
+    the bearing, and nobody in India stocks it. The printed sleeve is a
+    millimetre longer instead, so the head lands on the sleeve's own end, in the
+    same place, and what has to be checked is that it touches the sleeve and
+    keeps clear of the bearing.
+    """
     from cad import hardware as h
     from cad.parameters import rotorHubInnerX
 
     screw = h.journalScrew()
     nut = h.journalNut()
-    washer = h.journalWasher()
     tip = screw.bounding_box().min.X
     nut_box = nut.bounding_box()
     engaged = nut_box.max.X - max(nut_box.min.X, tip)
     tip_air = tip - rotorHubInnerX
-    radial_air, clash = measure([washer], [h.bearing()])
+    bearing_air, clash = measure([screw], [h.bearing()])
+    seat_gap, seat_shared = measure([screw], [h.journalSleeve()])
     checks = [
         ("nut engagement >= 2 mm", engaged >= 2.0 - 1e-6, engaged),
         ("screw tip air >= 0.8 mm", tip_air >= 0.8 - 1e-6, tip_air),
         (
-            "washer clears bearing by 0.5 mm",
-            radial_air >= 0.5 - 1e-6 and clash < 1e-6,
-            radial_air,
+            "screw clears bearing by 0.5 mm",
+            bearing_air >= 0.5 - 1e-6 and clash < 1e-6,
+            bearing_air,
+        ),
+        (
+            "screw head on the sleeve's end",
+            seat_gap < 1e-6 and seat_shared < 1e-6,
+            seat_gap,
         ),
     ]
-    for label, neighbour in (
-        ("washer on sleeve", h.journalSleeve()),
-        ("screw on washer", screw),
-    ):
-        gap, shared = measure([washer], [neighbour])
-        checks.append((label, gap < 1e-6 and shared < 1e-6, gap))
     print("\nJOURNAL FASTENING")
     for label, passed, value in checks:
         print(f"  {'ok' if passed else 'FAIL'}  {label}: {value:.3f} mm")

@@ -2683,3 +2683,66 @@ guide and seat standing in the cavity and fails any that does not rest on the
 pelvis all the way along. Run against the first drawing it reads 40 % for each
 fence. `tools/gate_i.py` now puts the side
 foam in before the packs and pushes each pack down between the fin and its foam.
+
+## The deck ledges were a millimetre too shallow for their screws — 30 September 2026
+
+The four M2.5s that hold the electronics deck down were drawn in place for the
+first time, against the shell, the ledges, the deck and everything standing in
+the torso. The heads fit: a 4.5 mm socket cap clears the wall by 0.5 mm, which is
+what the ledges were drawn to leave, and 5 mm of thread is engaged, twice the
+screw's diameter. What did not hold up was the plastic round the thread. The
+screw is placed by its head, so it sits 2.75 mm off the wall, and a ledge 5 mm
+deep left its cavity-side face 1.0 mm outside the thread the screw cuts, under
+the 1.25 mm or so a self-cut thread in plastic wants. A firm tightening would
+have split that face.
+
+The ledges are 6 mm deep now, which leaves 2.0 mm, for 0.2 g on the four. They
+come 0.6 mm from the battery and power bays' reserved space rather than 1.6, and
+nothing drawn in either bay is within 5.5 mm. The head bears on only 41 % of its
+underside, because the deck's clearance hole has to run out to the plate edge
+as a slot, and no washer fits in the half millimetre beside the wall, so these
+four are tightened gently.
+
+The same drawing showed the two rear screws sitting directly under the on/off
+button and the charge socket. That is why those parts come out before the deck,
+and it means a notch in the controller carrier would not free the deck on its
+own.
+
+## Every fastener comes off a shelf — 30 September 2026
+
+The robot's fasteners were sourced from three carts, and one of them was MISUMI,
+for a single length: the M3 × 14 the motors' rear screws took through a 6 mm
+plate, which no hobby shop stocks in 12.9. Working out how to lose it found that
+the bill had those screws wrong for half the joints. It listed sixteen M3 × 14
+for "knee and wheel", but the knees have been straddled clevises since
+13 September, and a clevis's rear cheek is 3 mm, like the hips'. There, an
+M3 × 14 on the 1.5 mm of washers the bill gave it would have bottomed about
+2.5 mm before it clamped, and no gate could see it, because screws are not drawn.
+
+So the hips and knees take an M3 × 10 on one 0.5 mm DIN 125 washer, which leaves
+the 3.3 mm of thread the M3 × 12 on 2.5 mm of washers did. The wheel motors' 6 mm
+plate carries a 1 mm spot face at each of its four rear screws, so an M3 × 12 on
+the same washer takes the 3.3 mm the M3 × 14 did. The first cut of those spot
+faces lost 1.8 mm³ to the shin's waist, whose end stops a cap head short of the
+two nearest bolts and so 0.4 mm inside their spot faces. Gate B's figure came out
+143.3 mm³ removed against 145.1 of arithmetic, which is how it was found, and the
+waist now takes the same four cuts from `cad/joint.py`'s `statorPlateSpotFaces()`.
+The output screws default to M3 × 8, because the vendor STEP shows 6.5 mm of
+thread, with 40 M3 × 6 bought as the fallback.
+
+The two fasteners nobody stocks are designed out rather than imported:
+
+- **The journal's DIN 433 5.3 × 9 × 1 washer**, an import at ₹2,538 for thirty,
+  was a 1 mm spacer under the screw head that kept the tip off the motor. The
+  printed sleeve is 1 mm longer now and stands that far past the bearing, so the
+  head sits exactly where it did, clamping the same sleeve. Gate F checks that
+  the head lands on the sleeve and clears the bearing by 1.0 mm.
+- **The power switch board's four Ø6 × 8 unthreaded spacers** were in nobody's
+  stock: Robu's 8 mm nylon ones were sold out, and fastdep's aluminium ones come
+  in 5, 10, 15 and 20. They are printed PA12 tubes now, `power-switch-spacer`,
+  with their bore asserted open by gate E.
+
+The M5 thin nut is an ordinary M5 nut filed to 2.7 mm, which is the height the
+pocket was drawn for. Every M3 is a fastdep 12.9 in a pack of ten, and every M3
+washer is the ordinary 0.5 mm one. The robot is 0.1 g lighter for all of it.
+

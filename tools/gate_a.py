@@ -272,17 +272,16 @@ ADDED = {
     # beside journalDiameter, and says plainly what the new anchor is worth.
     #
     # These are the sleeve, the screw that holds it and the nut it pulls against.
-    # The sleeve's own length is journalLength, which the golden already holds and
-    # which has not moved since the stub: it still ends flush with the bearing's
-    # outer face.
+    # The journal's length is journalLength, which the golden already holds and
+    # which has not moved since the stub. THE SLEEVE IS A MILLIMETRE LONGER since
+    # 2026-09-30 and stands that far past the bearing's outer face, where the
+    # DIN 433 washer used to sit: nobody in India stocks that washer.
+    "journalSleeveProud": 1.0,
+    "journalSleeveLength": 7.0,
     "journalSleeveBore": 5.3,
     "journalScrewClearance": 5.5,
     "journalScrewDiameter": 5.0,
     "journalScrewLength": 12.0,
-    # M5 DIN 433 washer restores thread reach without bottoming the screw.
-    "journalWasherBore": 5.3,
-    "journalWasherDiameter": 9.0,
-    "journalWasherThickness": 1.0,
     "journalScrewHeadDiameter": 9.5,
     "journalScrewHeadHeight": 2.75,
     "journalNutAcrossFlats": 8.0,
@@ -307,7 +306,8 @@ ADDED = {
     # either way -- that is what makes the nut captive -- but it is closed
     # against the nut now instead of across 1.2 mm of air.
     "journalInnerX": 24.95,
-    "journalOuterX": 30.95,
+    # A millimetre further out since the sleeve took the washer's place.
+    "journalOuterX": 31.95,
     "journalNutOuterX": 22.25,
     # cad/poses.py: how far the knee may fold. It was 110 degrees, inherited from
     # the walking robot and never disputed by the geometry because the flat limbs
@@ -479,10 +479,11 @@ ADDED = {
     "deckBandZ": 8.0,
     "interiorHalfDepth": 33.6,
     "deckLedgeWidth": 12.0,
-    "deckLedgeDepth": 5.0,
+    # 6 since 2026-09-30, for 2 mm of ledge outside each screw's thread.
+    "deckLedgeDepth": 6.0,
     "deckLedgeHeight": 5.0,
     "deckLedgeX": 52.0,
-    "deckLedgeY": 31.1,
+    "deckLedgeY": 30.6,
     "deckWidth": 148.29999999999998,
     "deckDepth": 66.4,
     "deckDropClearance": 0.4,
@@ -629,6 +630,11 @@ ADDED = {
     # cad/torso.py: what the pelvis grew to hold all of that. Two rails under the
     # packs, four posts under the power-entry board, and the service panel that
     # replaced the tether slot in the rear wall.
+    # THE WHEEL MOTOR'S FOUR REAR SCREWS SIT IN SPOT FACES, 2026-09-30, a
+    # millimetre deep for a 0.5 mm DIN 125 washer, so an M3 x 12 from any shelf
+    # takes the thread MISUMI's M3 x 14 did.
+    "statorScrewSpotFaceDiameter": 7.6,
+    "statorScrewSpotFaceDepth": 1.0,
     "batteryRailThickness": 3.0,
     # 20 until 2026-09-30, outside the thinner packs; now just outboard of the
     # IMU's reservation, and starting at the left hip saddle's inboard face,

@@ -183,7 +183,24 @@ export = "journalSleeve"
 prints = 4
 bodies = 1  # a plain tube
 print_up = "+X"  # standing on one end
-note = "Ø10 x Ø5.3 x 6. Print spares: it is the one piece here that gets fitted to a bearing bore."
+note = "Ø10 x Ø5.3 x 7. Print spares: it is the one piece here that gets fitted to a bearing bore. A millimetre longer since 2026-09-30, which is the washer it replaced: it stands that far past the bearing so the screw's head sits where it did."
+
+# THE POWER SWITCH BOARD'S FOUR SPACERS, printed since 2026-09-30 because the
+# unthreaded Ø6 x 8 spacer they are is in nobody's stock. cad/electronics.py
+# says what was tried. A tube bored for the M3 clearance, printed standing up.
+[[printed]]
+file = "cad/electronics.py"
+label = "Power switch spacers, four"
+measure = ["powerSwitchSpacerPrint"]
+count = 4
+
+[[printed.piece]]
+name = "power-switch-spacer"
+export = "powerSwitchSpacerPrint"
+prints = 4
+bodies = 1  # a plain tube
+print_up = "+Z"  # standing on one end
+note = "Ø6 x Ø3.4 x 8, between the distribution board and the power switch board on each of the four M3 x 20. Print spares."
 
 [[printed]]
 file = "cad/wheel_adapter.py"
@@ -288,7 +305,7 @@ note = """6800-2RS, from cad/hardware.py. THE JOURNAL IS ON THE ROW BELOW, not o
 label = "Journal screws and nuts"
 each_g = 3.6
 count = 4
-note = """What holds one journal in: an M5 x 12 ISO 7380 button head, a 5.3 x 9 x 1 DIN 433 washer and an M5 ISO 4035 thin nut, the nut captive in a pocket in the limb's output disc. Estimated 2.5 g of screw, 0.3 of washer and 0.8 of nut, steel, so neither can be weighed off the CAD at PA12 density. THE SLEEVE THEY HOLD IS PRINTED and is on the printed table above; it was 2.7 g of steel here until it was, and docs/BOM.md carries steel as the upgrade the fit coupon may force. WHY THERE IS A JOURNAL TO HOLD AT ALL. It was 4.9 g of dowel, then nothing at all when the disc grew its own printed stub -- and a journal that is part of the moving side before the joint is closed cannot be got into the far bearing, whichever of those two it is: the clevis is a single print whose cheeks stand 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm to the journal's tip. This is 22.8 g of steel back on the robot to make the four straddled joints assemble at all. cad/parameters.py carries the arithmetic, and says plainly that the anchor in the disc is weaker than the stub was."""
+note = """What holds one journal in: an M5 x 12 ISO 7380 button head and an ordinary M5 nut filed to the 2.7 mm of an ISO 4035 thin one, the nut captive in a pocket in the limb's output disc. Estimated 2.5 g of screw and 0.8 of nut, steel, so neither can be weighed off the CAD at PA12 density; the 3.6 still carries the 0.3 g DIN 433 washer that went on 2026-09-30, when the printed sleeve grew a millimetre to take its place, and is left high rather than trimmed to an estimate. THE SLEEVE THEY HOLD IS PRINTED and is on the printed table above; it was 2.7 g of steel here until it was, and docs/BOM.md carries steel as the upgrade the fit coupon may force. WHY THERE IS A JOURNAL TO HOLD AT ALL. It was 4.9 g of dowel, then nothing at all when the disc grew its own printed stub -- and a journal that is part of the moving side before the joint is closed cannot be got into the far bearing, whichever of those two it is: the clevis is a single print whose cheeks stand 45.2 mm apart, and an actuator with its limb's disc bolted on measures 49.9 mm to the journal's tip. This is 22.8 g of steel back on the robot to make the four straddled joints assemble at all. cad/parameters.py carries the arithmetic, and says plainly that the anchor in the disc is weaker than the stub was."""
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"
@@ -313,8 +330,8 @@ note = """TWO CANS, WEIGHED OFF A DATA SHEET RATHER THAN ALLOWED FOR, September 
 
 [[fixed]]
 label = "Power switch board"
-total_g = 34.4
-note = """The second board this project designs for itself, September 2026: the bought distribution board's own 50 x 50 footprint in 1.6 mm two-layer FR-4, standing 8 mm over it in the pack's positive lead, carrying the main fuse, a MOSFET switch that is the robot's on/off and its low-battery cutoff, and the bulk bank. electrical/power.py is the circuit, electrical/power_pcb.py the board and electrical/power_sch.py the drawing. 34.4 g is a provisional assembly allowance, including 2 g for the active C1 reset parts added on 2026-09-21 (Q5, C7, R25, R26, less R24; unweighed): about 10 for the bare board in 2 oz copper, 8.8 for the four TO-220 switches, 3 for the mini blade holder and its fuse, 3 for thirty-eight through-hole parts and two JST headers, and 7 for the four 8 mm spacers and the four screws that hold it down. IT WAS 22 g AND 54 x 32.5 while the board was surface mount and covered half the bought one; going through-hole so that it can be built by hand is what grew it, and the room came from the capacitor bank's reservation. The bank's own two cans are on that line, not this one. The four long screws REPLACE the distribution board's own rather than adding to them. IT WAS 36 g UNTIL 2026-09-16, when the current measurement came off the design: the 8 g reserved for the PBV-R001-F1-1.0 Kelvin shunt is the whole of the difference, and its sense plug J1 went with it. IT WAS 30 g UNTIL 2026-09-22, and the 4.4 g is two more TO-220s: the Vishay SQP120P06-6m7L the switch was drawn around went obsolete, and the commodity IRF4905 that replaced it is 20 mOhm where that was 6.7, so it takes four devices sharing 6 A each to do what two did. Both are 2.2 g. Nothing here has been weighed."""
+total_g = 33.8
+note = """The second board this project designs for itself, September 2026: the bought distribution board's own 50 x 50 footprint in 1.6 mm two-layer FR-4, standing 8 mm over it in the pack's positive lead, carrying the main fuse, a MOSFET switch that is the robot's on/off and its low-battery cutoff, and the bulk bank. electrical/power.py is the circuit, electrical/power_pcb.py the board and electrical/power_sch.py the drawing. 34.4 g is a provisional assembly allowance, including 2 g for the active C1 reset parts added on 2026-09-21 (Q5, C7, R25, R26, less R24; unweighed): about 10 for the bare board in 2 oz copper, 8.8 for the four TO-220 switches, 3 for the mini blade holder and its fuse, 3 for thirty-eight through-hole parts and two JST headers, and 7 for the four 8 mm spacers and the four screws that hold it down -- 6.4 since 2026-09-30, when the spacers became prints and moved to the printed table. IT WAS 22 g AND 54 x 32.5 while the board was surface mount and covered half the bought one; going through-hole so that it can be built by hand is what grew it, and the room came from the capacitor bank's reservation. The bank's own two cans are on that line, not this one. The four long screws REPLACE the distribution board's own rather than adding to them. IT WAS 36 g UNTIL 2026-09-16, when the current measurement came off the design: the 8 g reserved for the PBV-R001-F1-1.0 Kelvin shunt is the whole of the difference, and its sense plug J1 went with it. IT WAS 30 g UNTIL 2026-09-22, and the 4.4 g is two more TO-220s: the Vishay SQP120P06-6m7L the switch was drawn around went obsolete, and the commodity IRF4905 that replaced it is 20 mOhm where that was 6.7, so it takes four devices sharing 6 A each to do what two did. Both are 2.2 g. Nothing here has been weighed."""
 
 [[fixed]]
 label = "Battery management system"
