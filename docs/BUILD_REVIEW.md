@@ -185,15 +185,14 @@ with the same 50 × 50 mm outline and 45 mm hole square, but no factory-fitted
 XT60, so the bus input would be soldered on. **This needs a decision.** Robu's
 motor pigtails and thermal pad were in stock the same day, and are in its cart.
 
-**Could not be checked from here.** These shops refuse automated reads, so their
-stock was not seen today.
-
-- **Five power switch board parts** are element14 India only: the BAT46, the
-  BZX79-C15, the Keystone 3568 holder, the RXEF185 and the 0204 resistors. They
-  were in stock in quantity when read on 22 September. The C7 capacitor is TME
-  only.
-- **The INA226 bus monitor**: Indian Hobby Center is sold out and Techtonics
-  cannot be read.
+**Read in a browser on 1 October, and three parts did not exist.** element14 and
+Techtonics, which refuse automated reads, were read in a browser instead. The
+INA226 was in stock at Techtonics and is ordered. But the power switch board's
+through-hole BAT46 is no longer made, and nor is its WIMA C7, and its 14.7 kΩ
+1 % and 680 kΩ are not stocked in the 0204 body the board is drawn around. The
+board was changed the same day to 1N4148s, a KEMET C7 of the same size, 15 kΩ and
+1 MΩ, and still passes every check it is held to, with less margin in the
+switch-off transient: docs/POWER_SWITCH.md has the figures.
 
 **Decisions this review did not take.**
 

@@ -55,10 +55,10 @@ controller or by the board itself when the pack falls too far.
    as well: either is enough. That is what lets the SBC reflash the
    microcontroller — a reset of one does not drop the power to the other.
 4. **The board takes over from the button after about half a second.** A
-   comparator watches the switched bus through a 0.28 s filter, and the switch
+   comparator watches the switched bus through a 0.29 s filter, and the switch
    is held on only while the bus is above the cutoff AND a hold is present.
 5. **It turns off** when both holds have been gone for about a second — which is
-   what rides through a reset — or when the filtered bus falls below 19.2 V,
+   what rides through a reset — or when the filtered bus falls below 18.9 V,
    whichever comes first. It is then latched off, because everything that could
    hold it on has just lost its supply. Only the button starts it again.
 
@@ -128,14 +128,17 @@ than described beside them**, so changing a resistor changes the answer:
 
 | | |
 |---|---|
-| cutoff | 19.18 V falling, 19.53 V rising: 3.20 V per cell, filtered over 0.28 s |
-| with tolerances | 18.61 to 19.76 V at the ends of the reference's and the divider's |
-| button | held about 0.4 s from a full pack, 0.8 s from a tired one |
-| hold | 0.97 s after the last hold input drops |
-| gate drive | −10.3 V at an 18 V bus, clamped to −15 at 30 |
-| soft start | 193 V/s, 130 ms, about 0.30 A into the bank |
+| cutoff | 18.85 V falling, 19.19 V rising: 3.14 V per cell, filtered over 0.29 s |
+| with tolerances | 18.28 to 19.41 V at the ends of the reference's and the divider's |
+| button | held about 0.4 s from a full pack, 0.7 s from a tired one |
+| hold | 0.90 s after the last hold input drops |
+| gate drive | −12.2 V at an 18 V bus, clamped to −15 at 30 |
+| soft start | 199 V/s, 127 ms, about 0.31 A into the bank |
 | switch off | See the C1 reset transient results below; loaded MOSFET SOA unverified |
-| the switch | 1.58 W per MOSFET at a sustained 24 A; 21 A continuous at 50 °C ambient |
+| the switch | 1.26 W per MOSFET at a sustained 24 A; 24 A continuous at 50 °C ambient |
+
+Those are the figures since the parts change of 2026-10-01 at the end of this
+file, which moved the cutoff down by a third of a volt.
 
 The run fails if the cutoff leaves 3.05–3.35 V per cell, if the hold is outside
 0.5–2 s, if the gate drive falls under the −10 V the MOSFET's on-resistance is
@@ -442,3 +445,43 @@ clearance checks pass; minimum reported lead clearance is 0.60 mm.
 
 The broader mechanical clearance suite also passes: gate F, 850 checks,
 including 741 body pairs with no shared volume.
+
+## Five parts changed for sourcing — 2026-10-01
+
+**Three of this board's parts could not be bought when the bill went into carts,
+so the board was changed to parts that can, and kept through-hole.**
+
+- **The six BAT46 are 1N4148.** ST no longer makes the BAT46, the BAT41 or the
+  BAT48 in DO-35, and every BAT46 still stocked is surface mount; through-hole
+  small-signal Schottkys have gone the way of the old switch. The 1N4148 was
+  already on the board as D3, uses the same DO-35 footprint, and is rated 75 V
+  against the 45 V D8 sees. It costs about 0.2 V more forward drop. The hold
+  time is computed with it, at 0.45 V, and `power_reset.py` now models D2 and
+  D8 as the silicon diode it had always carried for the old circuit.
+- **R12, the bottom of the cutoff divider, is 15 kΩ 1 %.** Nobody stocks the
+  14.7 kΩ in the 0204 body, only in the 0207, which does not fit. The cutoff
+  falls from 3.20 to 3.14 V a cell, inside the 3.05–3.35 V the check allows.
+- **R2, the gate's pull to its source, is 1 MΩ** where it was 680 kΩ, for the
+  same reason. It raises the gate drive at an 18 V bus from −10.6 to −12.2 V.
+- **C7 is KEMET's MMK5225K63J06L4BULK.** The WIMA MKS2 is discontinued; the
+  KEMET part is the same 2.2 µF 63 V in the same 7.2 × 7.2 × 13 mm on the same
+  5 mm pitch, and element14 marks it as its last stock.
+- **C1 and C2 name the parts bought.** C1 is a KEMET R82, 220 nF 63 V,
+  7.2 × 2.5 × 6.5 mm, so its footprint is KiCad's 7.2 mm film footprint where
+  it was a generic 7.0. C2 is the carrier's dipped KEMET C320 100 nF X7R on
+  2.54 mm, rated 50 V where the disc was 100, which the ratings check now
+  covers at a 30 V bus.
+
+**What it costs is margin in the switch-off transient**, and nothing else the
+checks measure. `power_reset.py` still passes all 26 cases, but its worst
+capacitor peak rises from 1.85 to 1.97 A against the 2 A it allows, and the
+adverse turn-off from 5.6 to 8.1 ms against 10. Most of that is the diodes: the
+same run with 1N4148s and the old 680 kΩ gives 1.91 A and 8.0 ms. These are
+the same simplified models as before, not a qualification.
+
+Verification, all run on 2026-10-01: `power.py` passes its netlist and every
+arithmetic limit; `power_sch.py` matches the netlist and KiCad's ERC is clean
+(54 parts, 121 pins, 26 nets); `power_pcb.py` places and routes all 54 parts,
+103 tracks and 57 vias, with zero DRC errors, zero unconnected nets and the
+same 13 silkscreen warnings as before, and every body and lead clearance check
+passes, the closest at 0.60 mm.

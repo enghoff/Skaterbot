@@ -363,7 +363,7 @@ NET_DRAW: dict[str, dict] = {
 # nearly right leaves one part mislabelled and nothing to catch it. Every
 # specification power.py uses has to appear here or build() stops.
 VALUE_ON_SHEET = {
-    "WIMA MKS2C042201K00KSSD, 2.2 uF 63 V 10 %, 5 mm pitch": "2.2u 63V",
+    "KEMET MMK5225K63J06L4BULK, 2.2 uF 63 V 10 %, 5 mm pitch": "2.2u 63V",
     "10 kOhm, 0204 metal film": "10k",
     "1 kOhm 1 W, PR01 axial": "1k 1W",
     "wire pad, 3.0 mm hole": "14 AWG pad",
@@ -373,11 +373,10 @@ VALUE_ON_SHEET = {
     "470 uF 35 V low-ESR aluminium, 10 x 16 radial": "470u 35V",
     "22 uF 16 V solid tantalum, radial": "22u 16V",
     "10 uF 16 V solid tantalum, radial": "10u 16V",
-    "220 nF 63 V metallised film, 5 mm pitch": "220n 63V",
-    "100 nF 100 V ceramic disc, 2.5 mm pitch": "100n 100V",
+    "KEMET R82DC3220AA60K, 220 nF 63 V film, 5 mm pitch": "220n 63V",
+    "KEMET C320C104K5R5TA, 100 nF 50 V X7R, 2.54 mm": "100n 50V",
     "BZX79-C15, 15 V 0.5 W zener, DO-35": "BZX79-C15",
     "1N4148, DO-35": "1N4148",
-    "BAT46 Schottky 100 V, DO-35": "BAT46",
     "BC546B NPN 65 V, TO-92": "BC546B",
     "LM393P, DIP-8": "LM393P",
     "TL431ACLP, TO-92": "TL431ACLP",
@@ -386,13 +385,12 @@ VALUE_ON_SHEET = {
     "10 Ohm, 0204 metal film": "10R",
     "1 kOhm, 0204 metal film": "1k",
     "15 kOhm, 0204 metal film": "15k",
-    "14.7 kOhm 1 %, 0204 metal film": "14k7 1%",
+    "15 kOhm 1 %, 0204 metal film": "15k 1%",
     "22 kOhm, 0204 metal film": "22k",
     "47 kOhm, 0204 metal film": "47k",
     "100 kOhm, 0204 metal film": "100k",
     "100 kOhm 1 %, 0204 metal film": "100k 1%",
     "470 kOhm, 0204 metal film": "470k",
-    "680 kOhm, 0204 metal film": "680k",
     "1 MOhm, 0204 metal film": "1M",
     "10 MOhm, 0204 metal film": "10M",
 }
@@ -413,10 +411,7 @@ TEXT_CLEARANCE = {
 # of a 1N4148 data sheet would be a link, not a provenance.
 DATASHEETS = {
     "Q5": "https://www.onsemi.com/pdf/datasheet/bc546-d.pdf",
-    "C7": "https://wima.de/wp-content/uploads/media/e_WIMA_MKS_2.pdf",
     "R26": "https://www.vishay.com/docs/28729/pr010203.pdf",
-    "D2": "https://www.vishay.com/docs/85662/bat46.pdf",
-    "D8": "https://www.vishay.com/docs/85662/bat46.pdf",
     "Q1": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
     "Q2": "https://www.infineon.com/dgdl/irf4905pbf.pdf",
     "Q6": "https://www.infineon.com/dgdl/irf4905pbf.pdf",

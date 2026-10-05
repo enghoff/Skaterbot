@@ -289,7 +289,9 @@ FOOTPRINT_OF = {
     "Q5": ("Package_TO_SOT_THT", "TO-92", 6.5),
     "C7": ("Capacitor_THT", "C_Rect_L7.2mm_W7.2mm_P5.00mm", 13.5),
     "R26": ("Resistor_THT", "R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical", 9.0),
-    "C1": ("Capacitor_THT", "C_Rect_L7.0mm_W2.5mm_P5.00mm", 8.0),
+    # KEMET's R82 since 2026-10-01, 7.2 x 2.5 x 6.5 mm: the generic 7.0 mm body
+    # this was drawn on was a footprint and not a part anybody sells.
+    "C1": ("Capacitor_THT", "C_Rect_L7.2mm_W2.5mm_P5.00mm", 6.5),
     "C2": ("Capacitor_THT", "C_Disc_D5.0mm_W2.5mm_P2.50mm", 7.0),
     "C3": ("Capacitor_THT", "CP_Radial_Tantal_D6.0mm_P2.50mm", 9.0),
     "C4": ("Capacitor_THT", "CP_Radial_Tantal_D5.0mm_P2.50mm", 8.0),

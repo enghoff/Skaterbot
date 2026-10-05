@@ -43,7 +43,7 @@ WHAT THE SWITCH DOES, in the order a user meets it:
      board itself, so the button can be let go. That takes about half a second.
   5. The robot turns OFF when both holds go away (after about a second, which is
      what rides through a reset) or when the filtered bus falls below about
-     19.2 V, whichever comes first. It is then latched off, because everything
+     18.9 V, whichever comes first. It is then latched off, because everything
      that could hold it on has just lost its supply. Only the button restarts it.
 
 The cutoff is in hardware on purpose. The MCU should see the pack sagging long
@@ -108,6 +108,22 @@ data sheet.
 The fuse holder is Keystone's 3568 for mini blade fuses; its pad pattern is
 KiCad's own library footprint and its height is KiCad's 3D model of the part.
 Everything else is a commodity part named by its generic number.
+
+FIVE PARTS CHANGED ON 2026-10-01, ALL FOR SOURCING, when the bill was put into
+carts and three of them turned out not to exist any more. Through-hole small-
+signal Schottkys have gone the way of the old switch: ST has stopped making the
+BAT46, the BAT41 and the BAT48 in DO-35, and every BAT46 still on a shelf is
+surface mount. So the six BAT46 are 1N4148, the silicon diode this board already
+used for D3, on the same DO-35 footprint and rated 75 V against the 45 V D8 sees;
+what it costs is about 0.2 V more forward drop, and the hold time below is
+computed with it. The 14.7 kOhm 1 % and the 680 kOhm are not stocked in the 0204
+body this board is drawn around -- only in the 0207, which does not fit -- so the
+divider's bottom is 15 kOhm, moving the cutoff from 3.20 to 3.14 V a cell, and
+the gate's pull to its source is 1 MOhm, which raises the gate drive at the
+bottom of the bus. The WIMA MKS2 for C7 is discontinued, and KEMET's MMK5 is
+the same 7.2 x 7.2 x 13 mm on the same pitch. C1 and C2 name the parts bought:
+a KEMET R82, which is 7.2 mm long where the footprint was 7.0, and a dipped
+KEMET C320, 50 V where the disc was 100, which the ratings below now check.
 """
 
 from __future__ import annotations
@@ -136,7 +152,7 @@ MOSFET_RTH_JA = 62.0  # C/W, a TO-220 standing in free air -- the data sheet's o
 MOSFETS = 4  # four, since the IRF4905 is 20 mOhm where the obsolete part was 6.7
 GATE_CLAMP = 15.0  # BZT52C15, nominal: a clamp for transients, idle in normal use
 GATE_CLAMP_RANGE = (14.3, 15.8)
-R_GATE_SOURCE = 680e3
+R_GATE_SOURCE = 1e6  # 680 kOhm until 2026-10-01, which nobody stocks in 0204
 R_GATE_PULL = 470e3
 C_MILLER = 220e-9
 C_GATE_SOURCE = 2.2e-6
@@ -152,14 +168,17 @@ TL431_MIN_CATHODE_CURRENT = 1e-3
 
 # Under-voltage: a divider, a filter, and hysteresis fed back from the output.
 R_UV_TOP = 100e3
-R_UV_BOTTOM = 14.7e3
+R_UV_BOTTOM = 15e3  # 14.7 kOhm until 2026-10-01, which nobody stocks in 0204
 C_UV_FILTER = 22e-6
 R_UV_INPUT = 22e3
 R_UV_HYSTERESIS = 10e6
 
 # Hold: two diodes into a capacitor, compared against half the reference.
 V_GPIO_HIGH = 3.3
-V_SCHOTTKY = 0.25  # BAT46W at tens of microamps
+# A 1N4148 at the 30 uA the bleed draws from a held capacitor: 0.42 V on the
+# silicon model power_reset.py uses, rounded up, since more drop is less hold.
+# It was 0.25 V for the BAT46 until 2026-10-01.
+V_HOLD_DIODE = 0.45
 R_HOLD_CHARGE = 1e3
 C_HOLD = 10e-6
 R_HOLD_BLEED = 100e3
@@ -264,7 +283,7 @@ PARTS = [
     Part(
         "R2",
         "gate to source: off by default, and half of the gate divider",
-        "680 kOhm, 0204 metal film",
+        "1 MOhm, 0204 metal film",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -303,13 +322,13 @@ PARTS = [
     Part(
         "C1",
         "Miller capacitor, drain to gate through D8: the soft-start",
-        "220 nF 63 V metallised film, 5 mm pitch",
+        "KEMET R82DC3220AA60K, 220 nF 63 V film, 5 mm pitch",
         {"1": "1", "2": "2"},
     ),
     Part(
         "D8",
         "lets C1 slow the drain rising and not the switch opening",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
@@ -321,7 +340,7 @@ PARTS = [
     Part(
         "C7",
         "holds the gates off while C1 resets",
-        "WIMA MKS2C042201K00KSSD, 2.2 uF 63 V 10 %, 5 mm pitch",
+        "KEMET MMK5225K63J06L4BULK, 2.2 uF 63 V 10 %, 5 mm pitch",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -368,7 +387,7 @@ PARTS = [
     Part(
         "D2",
         "Q4's emitter to the gate, one way only",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
@@ -396,7 +415,7 @@ PARTS = [
     Part(
         "C2",
         "U1 supply",
-        "100 nF 100 V ceramic disc, 2.5 mm pitch",
+        "KEMET C320C104K5R5TA, 100 nF 50 V X7R, 2.54 mm",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -412,7 +431,7 @@ PARTS = [
     Part(
         "R12",
         "bus divider, bottom",
-        "14.7 kOhm 1 %, 0204 metal film",
+        "15 kOhm 1 %, 0204 metal film",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -432,13 +451,13 @@ PARTS = [
     Part(
         "D4",
         "MCU hold in",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
         "D5",
         "SBC hold in",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
@@ -481,13 +500,13 @@ PARTS = [
     Part(
         "D6",
         "the button pulls the gates down through this",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     Part(
         "D7",
         "and the MCU reads the same button through this",
-        "BAT46 Schottky 100 V, DO-35",
+        "1N4148, DO-35",
         {"1": "K", "2": "A"},
     ),
     # ---- what plugs in -------------------------------------------------------
@@ -709,7 +728,7 @@ def enable_level(bus: float) -> float:
 
 def hold_time() -> float:
     """How long the switch stays on after the last hold input lets go."""
-    start = V_GPIO_HIGH - V_SCHOTTKY
+    start = V_GPIO_HIGH - V_HOLD_DIODE
     start -= start * R_HOLD_CHARGE / (R_HOLD_CHARGE + R_HOLD_BLEED)
     threshold = V_REF * R_HOLD_REF_BOTTOM / (R_HOLD_REF_TOP + R_HOLD_REF_BOTTOM)
     enabled = enable_level(PACK_FULL)
@@ -864,12 +883,13 @@ def check_arithmetic() -> tuple[list[str], list[str]]:
         "U1 supply (LM393, 36 V)": (36.0, top),
         "Q3/Q4 VCE (BC546B, 65 V)": (65.0, top),
         "Q5 VCE (BC546B, 65 V)": (65.0, top + gate_drive(top)),
-        "D2/D4-D7 reverse (BAT46, 100 V)": (100.0, top),
+        "D2/D4-D7 reverse (1N4148, 75 V)": (75.0, top),
         "D3 reverse (1N4148, 75 V)": (75.0, top),
         # Off, with the drain discharged: the gate is at the source and C1's
         # far end has been pulled a clamp's worth below ground.
-        "D8 reverse (BAT46, 100 V)": (100.0, top + gate_drive(top)),
+        "D8 reverse (1N4148, 75 V)": (75.0, top + gate_drive(top)),
         "C1 (63 V)": (63.0, top),
+        "C2 (50 V)": (50.0, top),
         "C7 (63 V)": (63.0, GATE_CLAMP_RANGE[1]),
     }
     for what, (rating, seen) in ratings.items():

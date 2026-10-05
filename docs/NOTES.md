@@ -2746,3 +2746,24 @@ The M5 thin nut is an ordinary M5 nut filed to 2.7 mm, which is the height the
 pocket was drawn for. Every M3 is a fastdep 12.9 in a pack of ten, and every M3
 washer is the ordinary 0.5 mm one. The robot is 0.1 g lighter for all of it.
 
+## The power switch board's parts are ones that exist — 1 October 2026
+
+Putting the bill into carts found three of the power switch board's parts gone.
+ST no longer makes the BAT46 in DO-35, nor the BAT41 or BAT48, and every BAT46
+still stocked is surface mount; the WIMA MKS2 that was C7 is discontinued; and
+the 14.7 kΩ 1 % and 680 kΩ are stocked only in the 0207 body, where the board is
+drawn around the 0204. The board stays through-hole: the six BAT46 are 1N4148,
+the part already at D3; C7 is KEMET's MMK5, the same 7.2 × 7.2 × 13 mm; R12 is
+15 kΩ 1 % and R2 is 1 MΩ. C1 and C2 now name the parts bought, and C1's
+footprint is KiCad's 7.2 mm film footprint, because the 7.0 it had is a size
+nobody sells.
+
+`electrical/power.py` computes what that does: the cutoff falls from 3.20 to
+3.14 V a cell, the hold-through from 0.97 to 0.90 s, and the gate drive at an
+18 V bus rises from −10.6 to −12.2 V. All inside the limits it holds them to.
+The cost is in `power_reset.py`, whose switch-off cases all still pass with a
+worst capacitor peak of 1.97 A against 2 and an adverse turn-off of 8.1 ms
+against 10, where they were 1.85 A and 5.6 ms; the diodes' extra drop is most of
+it. The schematic matches the netlist with a clean ERC, and the board routes with
+zero DRC errors.
+

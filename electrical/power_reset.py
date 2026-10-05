@@ -106,13 +106,12 @@ R8 s fb {power.R_FAST_OFF_BASE}
 R9 fb fe 1meg
 D3 fb pull si
 Q4 s fb fe fast
-D2 fe g {"sch" if new else "si"}
-D8 m g {"sch" if new else "si"}
+D2 fe g si
+D8 m g si
 C1 m d {power.C_MILLER * cscale}
 {"" if new else "R24 s m 10meg"}
 {extra}
 .model si d(is=2.5n n=1.75 rs=.6 cjo=4p tt=4n bv=100)
-.model sch d(is=200n n=1.05 rs=2 cjo=10p bv=100)
 .model fast npn(is=1e-14 bf={beta} vaf=100 ikf=.1 cje=12p cjc=4p tf=.5n)
 .model reset npn(is=1e-14 bf={beta} vaf=100 ikf=.1 cje=12p cjc=4p tf=.5n)
 R3 g g1 10
@@ -163,7 +162,9 @@ def check_connections():
         assert tuple(actual[(ref, str(i + 1))] for i in range(len(nets))) == nets, ref
     assert not any(p.refdes == "R24" for p in power.PARTS)
     specs = {p.refdes: p.partNumber for p in power.PARTS}
-    assert all("BAT46" in specs[r] for r in ("D2", "D8"))
+    # The silicon model above stands for both, since the BAT46 they were went
+    # out of production in DO-35 and both became 1N4148 on 2026-10-01.
+    assert all("1N4148" in specs[r] for r in ("D2", "D8"))
 
 
 def measure(settings, legacy=False):
