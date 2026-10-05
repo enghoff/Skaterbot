@@ -128,10 +128,25 @@ batteryPackWidth = 35.0  # catalogue width, standing up, the body
 batteryPackBodyLength = 65.0
 batteryPackLeadThickness = 19.0
 batteryPackLeadWidth = 38.0
-# Between the two packs, and it is a printed fin now rather than air: cad/torso.py
-# stands one up between them. They are soft-case cells that swell in service,
-# so what they are pressed against is foam on their outer faces, not each other.
-batteryPackGap = 2.0
+# THE BMS, because it stands between the two packs since 2026-10-05 and its
+# thickness is the gap between them. The Daly 6S 24V 20A, whose vendor table
+# gives length 58, width 33 and height 8.2 mm; those are the three numbers drawn,
+# in torso axes: its length across the robot, its width standing up and its
+# height fore and aft. The board's own section further down says why this board.
+bmsBoardLength = 58.0
+bmsBoardHeight = 33.0
+bmsBoardThickness = 8.2
+# THE TWO PACKS AND THE BOARD ARE ONE BLOCK, 45 mm across, assembled securely
+# before it goes in: pack, board, pack. 45 is the owner's figure for the block as
+# it is built, 2026-10-05, and it is what the torso is laid out to; how the board
+# and the two packs share it inside is the builder's, and what is drawn is the
+# board at its catalogue thickness in the middle of the 11 mm the packs leave.
+# They are soft-case cells that swell in service, so what they are pressed
+# against is foam on their outer faces and a flat, rigid board between them,
+# never each other. The block is what the foam and the wall pads hold.
+batteryBlockWidth = 45.0
+# Between the two packs, and it is the BMS now, where it was a 2 mm printed fin.
+batteryPackGap = batteryBlockWidth - 2 * batteryPackThickness
 # The reservation around them is the bay the 2200 mAh packs were meant to fill,
 # kept at its size so that nothing else in this torso moved when the pack
 # shrank. The packs sit ON cad/torso.py's two rails, whose top faces are this
@@ -234,9 +249,15 @@ controllerX = -interiorHalfWidth + wallClearance + (controllerWidth / 2)
 # Then the shell's width stopped being anybody's choice: it is derived from the
 # hip clevises now, and it comes out 12.9 mm wider than the payload needs. None
 # of the slack is spent on either bay -- both stay 2 mm off their own wall -- so
-# all of it lands here, and the gap is 15.1 mm. It is a chase again by accident
-# rather than by design, and that is the honest way to describe it: nothing is
-# routed through it on purpose, and there is room if anything needs to be.
+# all of it lands here, and the gap is 15.1 mm.
+#
+# AND IT IS THE BATTERY'S WIRING SPACE, since 2026-10-05, and nothing else's. The
+# BMS stood across the whole of it for three weeks, which made it a wall between
+# the packs and the power board: the packs' own leads come out of their end faces
+# straight into it, and the board's leads come out of its two ends, which faced
+# the shell walls 4.6 mm away. The BMS went in between the packs and the gap was
+# cleared, so that each pack's 14 AWG leads have the room to turn into the strip
+# beside it. The battery harness further down is drawn through it.
 bayGap = (powerX - powerWidth / 2) - (batteryX + batteryWidth / 2)
 
 # THE BANDS. Four of them now where there were three, and the deck is what makes
@@ -292,60 +313,55 @@ deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
 # 2.5 to 3 mm endwise and swing its foot 7 mm towards a wall, and what stopped it
 # was whatever happened to be in the way.
 #
-# THREE PRINTED FACES AND THREE PIECES OF FOAM, and each pack is held in all six
-# directions:
+# THE PACKS AND THE BMS ARE ONE BLOCK, since 2026-10-05, and the block is held
+# in all six directions:
 #   - down, on cad/torso.py's two rails, which stand under the packs' centre lines;
 #   - to the right, on a stop at each rail's end, which catches the foot of the
 #     end face and leaves the top of it, where the leads come out, clear;
-#   - towards each other, on the fin cad/torso.py stands up between them;
-#   - outwards, through foam, on the fence cad/torso.py stands up beside each;
+#   - outwards, through foam, on the pads cad/torso.py stands off each long wall;
 #   - up, through foam, on the deck's underside;
 #   - to the left, through foam, on the left wall.
-# The printed faces say where each pack is and the foam pushes it there. The foam
+# Towards each other is no longer a direction anything has to hold: the packs and
+# the board between them are assembled into one piece, and the foam on the two
+# outer faces squeezes the block from both sides. The
+# printed faces say where the block is and the foam pushes it there. The foam
 # also takes up what one pack differs from another by: everything here follows
-# the pack dimensions above, so a different pack moves the rails, the fences and
+# the pack dimensions above, so a different pack moves the rails, the pads and
 # the stops with it.
 #
 # ALL OF IT BEARS ON THE BODY, since the packs were measured on 2026-10-05: the
-# rails, the fin, the fences and every piece of foam stop at the 65 mm the
-# body's 17 x 35 is good for, and past it the lead end has air on every side but
-# one. The one is the stop, which it bears on end-on rather than beside -- the
-# stop stands past the 77 mm, so however the lead end is shaped it is never
-# alongside it -- and the rails drop away under the lead end on their way to it,
-# so the stop is braced without anything coming under the part of the pack that
-# is not a promise.
+# rails, the pads, the board between the packs and every piece of foam stop at
+# the 65 mm the body's 17 x 35 is good for, and past it the lead end has air on
+# every side but one. The one is the stop, which it bears on end-on rather than
+# beside -- the stop stands past the 77 mm, so however the lead end is shaped it
+# is never alongside it -- and the rails drop away under the lead end on their
+# way to it, so the stop is braced without anything coming under the part of
+# the pack that is not a promise.
 #
-# THE FIN AND THE FENCES STAND ON THE PELVIS, and for their first day they hung
-# from the deck. From there they came down blind: the fin had to find the 2 mm
-# between two packs that nothing had yet placed fore and aft, under a plate
-# carrying both boards, and each side strip was dragged 16 mm down its pack's
-# face on the way. Standing on the pelvis they make each pack a slot of its own,
-# open at the top, that it is pushed into by hand and in sight -- so both packs
-# are held on five sides before their leads are plugged or the BMS goes in
-# beside them, and all the deck brings is the pads over them, which land
-# anywhere on the pack tops. Each pack wants a pull tab under it to come out
-# again: squeezed foam grips it and nothing leaves room for fingers beside it.
+# THE FIN AND THE TWO FENCES ARE GONE, 2026-10-05. The fin is the BMS now, and
+# the fences were what stood between the packs and the two strips along the long
+# walls -- which is where each pack's XT60 has to lie, and where the actuator
+# harness runs along the back of the floor. A fence standing on the floor along
+# the whole of a pack took both. Four pads off each wall bear on the foam
+# instead, lifted clear of the harness and placed round the connector -- and the
+# side foam is cut to the pads too, one strip under the connector and one short
+# one at the left, so at the connector's height the strip runs clear from the
+# block's face to the wall, 11.1 mm.
 #
 # All of it is cut from one 5 mm sheet of closed-cell foam, docs/BOM.md's.
 # Squeezed to 3 mm at the sides, 3 at the end and 4 on top: 40, 40 and 20 %,
 # so none of it has been squeezed flat and every piece still pushes. The end
 # pad was 3.5 until the measured pack came 2 mm longer than the listing, and it
 # is 3 rather than less because the pack grew towards the left wall and not
-# into the bay gap -- see where its ends are placed below.
+# into the bay gap -- see where its ends are placed below. The side strips go
+# onto the block's two outer faces before it goes in, and the block goes down
+# past the pads, whose top edges are chamfered for it.
 batteryFoamFree = 5.0
 batteryFoamSide = 3.0
 batteryPackOuterY = (batteryPackGap / 2) + batteryPackThickness
-batteryFenceY = batteryPackOuterY + batteryFoamSide
-# 1.5 AND NOT MORE: the rear fence stands on the shell floor beside the actuator
-# harness run for its last 12 mm, and 1.5 is what reaches that run's face and no
-# further. The front fence matches it.
-batteryFenceThickness = 1.5
+# The outer face of each side strip, which is where the wall pads bear.
+batteryFoamFaceY = batteryPackOuterY + batteryFoamSide
 batteryPackTopZ = lowerBandZ + batteryPackWidth
-# How far below the pack tops the fences and the fin stop: they hold each pack
-# by 29 mm of its 35, and stay well clear of the pads the deck brings down, so
-# nothing on the deck has anything to find on its way in.
-batteryFenceShort = 6.0
-batteryFenceTopZ = batteryPackTopZ - batteryFenceShort
 batteryFoamTop = deckZ - batteryPackTopZ
 # THE LEAD END IS FLUSH WITH THE BAY'S INBOARD END, and the pack is laid off
 # leftwards from there. Centred in the bay as it used to be, a 77 mm pack leaves
@@ -360,9 +376,11 @@ batteryPackLeftX = batteryPackRightX - batteryPackLength
 batteryPackBodyEndX = batteryPackLeftX + batteryPackBodyLength
 batteryFoamEnd = batteryPackLeftX + interiorHalfWidth
 # The stop on each rail's end stands this far over the rail, into the foot of the
-# pack's end face and no higher: a pack's leads leave its end face, and the packs
-# go in with their leads UP.
-batteryRailStopHeight = 5.0
+# pack's end face and no higher. 3 mm SINCE THE PACKS WERE MEASURED, where it was
+# 5: a pack's two main leads come out of its end face about 7 mm in from its
+# bottom and top edges, at mid-thickness, which is right over the rail, and at 5
+# the stop came within a quarter of a millimetre of the bottom lead.
+batteryRailStopHeight = 3.0
 # What is kept clear round the lead end's worst case, wherever its extra falls:
 # the deck over it, and the rails where they drop away under it.
 batteryLeadEndAir = 1.0
@@ -584,12 +602,6 @@ busSenseHoleInset = 2.5
 # runs of three that come up through the two floor cable ports.
 busWireDiameter = 3.5
 canWireDiameter = 2.6
-balanceLeadWidth = 6.0
-balanceLeadThickness = 2.0
-# The stretch of each lead that runs down the bay gap from its pack's end. It
-# lay over the pack's last few millimetres until 2026-10-05, and the measured
-# lead end took that air: see balanceLeadX, after the BMS, which places it.
-balanceLeadLength = 10.0
 harnessBundleWidth = 9.0
 harnessBundleHeight = 7.0
 harnessRunY = -27.0
@@ -598,7 +610,78 @@ harnessRunY = -27.0
 # battery's rear face and the shell wall. It is enough for a sleeved pair and it
 # is where the CAN loom runs -- and it is worth knowing that it is now the ONLY
 # such path, so anything else crossing the deck plane has to share it.
+#
+# IT RISES AT THE BACK OF THE BAY GAP SINCE 2026-10-05, at the power bay's
+# inboard end, where it stood 40 mm further left until the rear pack's XT60 took
+# the strip it stood in. That is what its own comment further down always said it
+# did, and the deck's rear notch is already open over it.
 loomRunY = -30.3
+loomRunX = 18.5
+
+# ---- the battery's wiring, which is the reason this layout exists ------------
+#
+# WHAT HAS TO FIT, from the parts in hand on 2026-10-05. Each pack's two main
+# leads are 14 AWG silicone, 3.5 mm over the insulation, about 76 mm from its end
+# face to the back of its own female XT60, and they leave the end face at
+# mid-thickness about 7 mm in from its bottom and top edges. A 14 AWG lead is
+# stiff, so every turn below is drawn at a radius of about 8 mm and none tighter.
+# The BMS's leads leave its two short ends, not its faces: B-, the NTC pair and
+# P- at one end, its 7-way balance socket at the other. Its B- and P- are about
+# 16 AWG and nearly as stiff as the packs'; the balance and NTC wires are thin and
+# go where they are put.
+#
+# WHAT IS BULKY IS NOT THE WIRE BUT THE CONNECTOR. Each pack's female XT60 mates
+# with one male of the series harness, and the mated pair is a rigid block about
+# 30 mm long and 15.6 x 8.1 across, with a stiff, heat-shrunk joint at each end.
+# There are two of them and they are the most awkward things in this torso.
+# There is no third: the harness's own female output is cut off, docs/BOM.md
+# says so, and its two loose legs are soldered to the power switch board's pack
+# input and the distribution board's negative.
+#
+# EACH PACK'S CONNECTOR LIES IN THE STRIP BESIDE IT, along the long wall, above
+# the lower wall pads. Its leads come out of the end face, turn through the bay
+# gap in one U of about 8 mm radius and run back into the connector, and the
+# harness's legs come out of the other end, turn up over it and run back along
+# the top of the strip to the bay gap, which they cross to the power bay.
+xt60Span = 15.6  # AMASS XT60, the long side of its mating face
+batteryConnectorLength = 30.0
+batteryLeadReach = 10.0
+batteryLegReach = 10.0
+# What every chase below keeps clear of the faces it runs beside.
+harnessAir = 0.5
+
+# THE WALL PADS, which replaced the battery's two fences on 2026-10-05: four on
+# each long wall, bearing on the side strips at batteryFoamFaceY. Three low and
+# one high. The low ones are as low as the actuator harness along the back of the
+# floor lets them be -- each has a 45 degree underside running down to the wall,
+# because it prints upright, and that underside has to clear the harness's top
+# by harnessAir where the harness comes nearest the wall -- and the connector
+# lies over them. The high one is at the left, where the connector and its legs
+# are not. Placed by the pack's own length rather than typed stations, so a
+# different pack moves them.
+batteryPadWidth = 6.0
+batteryPadHeight = 5.0
+batteryPadLowZ = (
+    floorZ
+    + harnessBundleHeight
+    + harnessAir
+    + (abs(harnessRunY) + harnessBundleWidth / 2 - batteryFoamFaceY)
+)
+batteryPadHighZ = batteryPackTopZ - 7.5 - batteryPadHeight
+batteryPadLowX = tuple(
+    batteryPackLeftX + batteryPackBodyLength * share for share in (0.12, 0.43, 0.74)
+)
+batteryPadHighX = batteryPackLeftX + batteryPackBodyLength * 0.24
+
+# Where each connector lies: in the middle of the strip between the block's face
+# and the wall, which is clear at its height; a millimetre over the low pads;
+# and wholly beside the pack's body, ending a millimetre short of its lead end.
+batteryConnectorY = (batteryPackOuterY + interiorHalfDepth) / 2
+batteryConnectorZ = batteryPadLowZ + batteryPadHeight + 1.0
+batteryConnectorRightX = batteryPackBodyEndX - 1.0
+batteryConnectorLeftX = batteryConnectorRightX - batteryConnectorLength
+# And the lane the harness's legs come back along, a millimetre over it.
+batteryLegLaneZ = batteryConnectorZ + xt60Span + 1.0
 
 # WHERE THE BOUGHT BOARD SITS IN THE POWER BAY. It fills the floor of the bay and
 # reaches 50 mm forward of a wall that is only 67.2 from the other one, which is
@@ -617,15 +700,12 @@ pdbTopZ = pdbBoardZ + pdbThickness
 # cad/finish.py cannot chamfer, and the panel's mesh came out unclosed. Bought
 # bushings carry their own clearances now, but the arithmetic is the same
 # wherever two holes are cut near each other.
-batteryLeadZ = saddleTopZ + (batteryPackWidth / 2)
+#
 # Both cutouts sit over the board's REAR six millimetres, which is the strip of
 # it nothing stands on: the board is pushed 6 mm forward in the bay for exactly
 # that, and the connectors straddle the wall rather than hanging off its inside
 # face, so each reaches about 10 mm in rather than its full body length.
 panelX = powerX - 10.0
-# Where the pack's own connectors sit: above the fuse and the monitor, clear of
-# the disconnect that reaches in over the board's rear edge.
-packLeadZ = pdbTopZ + 17.0
 
 
 # ---- what the rear wall carries, and how it is held --------------------------
@@ -932,7 +1012,7 @@ def chargeInletFixings() -> list[tuple[float, float]]:
     ]
 
 
-# ---- the BMS bay, in the gap nothing was using ------------------------------
+# ---- the BMS, between the two packs -------------------------------------------
 #
 # THE PACK HAS NO PROTECTION AT ALL TODAY, and that is the hole this fills. Two
 # 3S bricks are wired in series and taken straight to a distribution board: no
@@ -954,16 +1034,34 @@ def chargeInletFixings() -> list[tuple[float, float]]:
 # PACK-level cutoff, where this board sees each cell and cannot act on the
 # discharge path at all. A single weak cell falls between the two of them.
 #
-# WHERE IT GOES, AND IT IS THE LAST FREE COLUMN IN THIS TORSO. The gap between
-# the battery bay and the power bay is 15.1 mm of slack nobody chose -- the shell
-# is as wide as the hip clevises make it, which is 12.9 mm more than the payload
-# needs, and all of it lands here. The drawing has called it "a chase again by
-# accident rather than by design"; this is the thing that needed the room.
+# WHERE IT GOES IS BETWEEN THE TWO PACKS, since 2026-10-05, taped into one block
+# with them. For three weeks it stood on edge in the gap between the battery and
+# the power bay, in four card guides, and the first board in hand showed what
+# that cost: its leads leave its two SHORT ends -- B-, the NTC pair and P- at one,
+# the 7-way balance socket at the other -- and stood across the gap those ends
+# faced the shell walls 4.6 mm away, while the board itself was a wall across the
+# only path the packs' main leads had to the power bay.
+#
+# Between the packs, its length runs across the robot like theirs and both ends
+# have somewhere to go. ITS POWER END IS AT THE PACKS' 65 mm BODY LINE and no
+# further: past it the lead ends may be 19 mm thick, and the gap between the two
+# lead ends is then 7 mm at worst, which is the lane its three leads pass out
+# through, B- at the top and P- at the bottom, into the bay gap.
+# ITS BALANCE END IS THEN 10 mm OFF THE LEFT WALL, which takes the 7-way plug and
+# the fold of its thin wires up over the board's top edge, where they run back to
+# the packs' own balance leads at the other end. It stands on the same plane the
+# packs do, on the left hip saddle's top, and is held by being in the block.
+#
+# THE BOARD IN HAND HAS FOUR HOLES that its vendor table never mentioned. Nothing
+# here uses them, because nothing has to: tape and the squeeze of the foam on the
+# block hold it, and screws through a board that the packs press on from both
+# sides would only be four more things to undo.
 #
 # THE BOARD IS THE DALY Li-ion NMC 6S 24V 20A, chosen 2026-09-13, and everything
-# below is drawn to it. Its vendor specification table gives length 58, width 33,
-# height 8.2 mm and 45 g, and the first three are the numbers this file uses; the
-# board in hand weighed 40 g on 2026-10-05. It was
+# here is drawn to it. Its vendor specification table gives length 58, width 33,
+# height 8.2 mm and 45 g, and the first three are the numbers this file uses --
+# up in the battery block, because the board's thickness is the gap between the
+# packs; the board in hand weighed 40 g on 2026-10-05. It was
 # chosen on two counts and neither of them is its current rating, which is very
 # nearly irrelevant on a charge-only board seeing 2.2 A: it BALANCES -- 30 mA
 # passive, from 4.18 V per cell -- and it is the only balancing 6S board found
@@ -971,97 +1069,13 @@ def chargeInletFixings() -> list[tuple[float, float]]:
 # generic protection boards that would fit balance nothing at all, which is the
 # one job this board is here to do.
 #
-# THE BAY WAS SWEPT AND RESERVED BEFORE THE BOARD EXISTED, and the board lands in
-# it with 0.1 mm to spare at each end. That is a fit, not a clearance, which is
-# why docs/BOM.md still says to put calipers on one before the pelvis is printed.
-bmsBoardLength = 58.0
-bmsBoardHeight = 33.0
-bmsBoardThickness = 8.2
-
-# THE CARD SLOT, which is the cross-section of the whole mount. It is cut to the
-# WHOLE BOARD and not to its PCB, and that is the change a chosen board bought:
-# a 2.4 mm slot takes a bare 1.6 mm PCB edge and assumes nothing is soldered
-# within a guide's width of it -- an assumption about a board nobody had, and a
-# way to find out only after printing. 9 mm takes the board's whole 8.2 mm
-# envelope however the components fall on it, and the 0.8 mm left over is the
-# strip of foam tape that stops it rattling. Two guides off the cavity floor and
-# two off the deck's underside are all cut to this one number.
-bmsGuideShim = 0.8
-bmsGuideWall = 1.5
-bmsGuideSlot = bmsBoardThickness + bmsGuideShim
-bmsGuideWidth = bmsGuideSlot + (bmsGuideWall * 2)
-bmsGuideDepth = 6.0
-
-# EVERY BOUND BELOW IS SOMETHING ELSE'S FACE, which is why none of them is typed:
-#
-#   across the robot   the slot the board is held in, top and bottom
-#   fore and aft       the connector panel's front face behind, the shell wall in
-#                      front, less 1.5 mm each
-#   above              the electronics deck, less the air the board hangs under
-#   underneath         the tops of the two card guides, which the board's own
-#                      height puts where they are
-#
-# THE RESERVATION IS THE SLOT RATHER THAN THE COLUMN, and it stopped being the
-# column when a board was chosen. It was 12.1 mm wide -- the 15.1 mm of slack
-# between the two bays, less 1.5 each side -- because nothing had been chosen and
-# the whole gap was being held. It is 9 mm now, which is what the board actually
-# occupies, and the three millimetres left either side are where its own leads
-# go: the balance tail on one flank and the charge pair on the other. That gap
-# exists because the shell is as wide as the hip clevises make it, which is
-# 12.9 mm more than the payload asks for, and all of it lands here.
-bmsBayClearance = 1.5
-bmsWidth = bmsGuideSlot
-bmsX = ((batteryX + (batteryWidth / 2)) + (powerX - (powerWidth / 2))) / 2
-bmsDepth = (interiorHalfDepth * 2) - (bmsBayClearance * 2)
+# ITS THICKNESS NO LONGER MOVES ANYTHING, as long as the block it is built into
+# is the 45 mm the torso is laid out to: what the board does not take of the
+# 11 mm between the packs is tape and padding, and is the builder's.
+bmsX = batteryPackBodyEndX - bmsBoardLength / 2
 bmsY = 0.0
-# WHERE THE BALANCE TAILS COME DOWN: the board's battery-side flank, halfway
-# between the packs' lead ends and its slot. That is 3.05 mm, which takes a lead
-# dressed flat and taped with half a millimetre either side, and it was 4.55
-# until the measured pack's lead end came 1.5 mm closer.
-balanceLeadX = (batteryPackRightX + (bmsX - bmsWidth / 2)) / 2
-
-# THE BOARD HANGS FROM THE DECK RATHER THAN STANDING ON THE FLOOR, and it is the
-# only thing in this torso that does. The reason is the retention: what stops a
-# card lifting out of a slot is the deck over its top edge, so the board has to
-# be able to rise by LESS than the slot is deep. Stood on the cavity floor a
-# 33 mm board leaves 8.5 mm of air under a 4 mm slot and simply falls out of its
-# guides -- which is what the sweep found when a real board replaced the
-# full-height stand-in drawn here before one was chosen. So the top edge is set
-# first, 1.5 mm under the deck, and the slot floor follows it down the board's
-# own height. The board can then rise 1.5 mm and is still 2.5 mm into its slot.
-bmsDeckGap = 1.5
-bmsGuideSlotDepth = 4.0
-bmsBoardTopZ = deckZ - bmsDeckGap
-bmsBoardBottomZ = bmsBoardTopZ - bmsBoardHeight
-bmsZ = bmsBoardBottomZ + bmsGuideSlotDepth
-bmsHeight = bmsBoardTopZ - bmsZ
-
-# WHERE THE FOUR GUIDES STAND. Set in from each END OF THE BOARD rather than
-# placed on the floor, which is what they were when the board was still a guess:
-# 6 mm in from each end puts them 46 mm apart under a 58 mm card, and symmetric
-# about it. Both are then well clear of the IMU's reservation on the centre line,
-# which used to be what decided them and pushed them 35 mm apart and off centre.
-bmsGuideInset = 6.0
-bmsGuideY = tuple(
-    bmsY + (side * ((bmsBoardLength / 2) - bmsGuideInset)) for side in (-1, 1)
-)
-
-# AND TWO MORE OF THEM HANGING OFF THE DECK, directly over the first two. The
-# board has no mounting holes, like most of its class, so it is not screwed to
-# anything and everything holding it is a slot: cad/torso.py's two off the cavity
-# floor take its bottom edge, and cad/deck.py's two off the plate's underside
-# take its top. What that buys is not hold-down -- the plate 1.5 mm over the top
-# edge was already doing that -- but LATERAL SUPPORT AT THE FAR END. Held only at
-# the bottom, a 33 mm card standing on 4 mm of engagement is a cantilever and its
-# top edge swings; held at both ends it is a card in a cage, and 40 g of board
-# stops depending on how stiff a 4 mm slot is.
-#
-# They drop 4 mm below the plate and the top edge stands 2.5 mm up inside them,
-# so the board is still free to rise its 1.5 mm without leaving them either. The
-# deck goes on last and comes straight down, so the guides swallow the top edge
-# as it lands -- and if the board is not standing where it should, the deck will
-# not sit down, which is a better way to find out than closing the lid on it.
-bmsTopGuideDrop = 4.0
+bmsBoardBottomZ = lowerBandZ
+bmsBoardTopZ = bmsBoardBottomZ + bmsBoardHeight
 
 
 # ---- where the screws go ----------------------------------------------------
@@ -1332,8 +1346,12 @@ def power_switch_screw_xy() -> list[tuple[float, float]]:
 #   J3  the button, J1 the shunt's sense pair and J2 both holds, along the front
 #
 # NOTHING TALLER THAN 7.4 mm GOES INBOARD OF x 29.6 below y 4, because that is
-# where the pack's own XT60s hang over this board. electrical/power_pcb.py
-# measures every part against the drawn torso rather than trusting this note.
+# where the pack's own XT60s hung over this board until 2026-10-05. They lie in
+# the strips beside the packs now, and what passes over this corner is the pack
+# positive on its way to P1, 14 mm up, so the rule is stricter than it has to
+# be and has been left as it is rather than move parts on a routed board.
+# electrical/power_pcb.py measures every part against the drawn torso rather
+# than trusting this note.
 powerSwitchStations = {
     "P1": (33.0, -21.5, 0),
     "F1": (41.0, -19.5, 0),
@@ -1665,49 +1683,217 @@ batteryFoamLeadAir = 2.0
 
 
 def batteryFoam() -> list:
-    """The foam round the packs, drawn SQUEEZED, as it is with the deck down.
+    """The foam round the block, drawn SQUEEZED, as it is with the deck down.
 
-    Five pieces cut from one sheet: a pad over each pack under the deck, a strip
-    down each pack's outer face against its fence, and one pad across both
-    packs' left ends against the wall. The strips and the end pad go into the
-    pelvis before the packs do, and each strip stands from the pack's foot to
-    its fence's top. Drawn at the thickness each is squeezed
-    to, touching what it is squeezed between, so tools/gate_h.py sees every
-    face it bears on as a contact and anything else as a clash; tools/gate_f.py
-    holds each thickness to the free sheet, which is what says it still pushes.
+    Eight pieces cut from one sheet, each pair front then rear: a pad over each
+    pack under the deck; a low strip down each pack's outer face, under its
+    connector, against the three low wall pads; a short high strip at the left
+    of each outer face against the high wall pad; and a pad on each pack's left
+    end against the wall -- two where there was one across both, because the
+    BMS's balance plug sits between them. The side strips were one tall strip a
+    side until 2026-10-05; cut to the pads, they leave the strip beside the
+    block clear from its face to the wall at the height the connector lies.
+
+    The side strips go onto the block before it goes in and the end pads onto
+    the left wall. Drawn at the thickness each is squeezed to, touching what it
+    is squeezed between, so tools/gate_h.py sees every face it bears on as a
+    contact and anything else as a clash; tools/gate_f.py holds each thickness
+    to the free sheet, which is what says it still pushes.
     """
     topLength = batteryPackBodyEndX - batteryFoamLeadAir - batteryPackLeftX
+    highLength = (
+        batteryConnectorLeftX - batteryLegReach - batteryFoamLeadAir - batteryPackLeftX
+    )
+    lowTopZ = batteryConnectorZ - 1.0
+    highZ = batteryPadHighZ - 1.0
+    highHeight = batteryPadHeight + 2.0
     pads = [
         slab(
             topLength,
-            batteryFenceY - batteryPackGap / 2,
+            batteryPackThickness,
             batteryFoamTop,
             batteryPackLeftX + topLength / 2,
-            sy * (batteryFenceY + batteryPackGap / 2) / 2,
+            sy * (batteryPackGap / 2 + batteryPackThickness / 2),
             batteryPackTopZ,
         )
         for sy in (1, -1)
     ]
-    strips = [
+    low = [
         slab(
             topLength,
             batteryFoamSide,
-            batteryFenceTopZ - lowerBandZ,
+            lowTopZ - lowerBandZ,
             batteryPackLeftX + topLength / 2,
             sy * (batteryPackOuterY + batteryFoamSide / 2),
             lowerBandZ,
         )
         for sy in (1, -1)
     ]
-    endPad = slab(
-        batteryFoamEnd,
-        batteryPackOuterY * 2,
-        batteryPackWidth - 12.0,
-        -interiorHalfWidth + batteryFoamEnd / 2,
-        0.0,
-        lowerBandZ + 6.0,
-    )
-    return [*pads, *strips, endPad]
+    high = [
+        slab(
+            highLength,
+            batteryFoamSide,
+            highHeight,
+            batteryPackLeftX + highLength / 2,
+            sy * (batteryPackOuterY + batteryFoamSide / 2),
+            highZ,
+        )
+        for sy in (1, -1)
+    ]
+    endPads = [
+        slab(
+            batteryFoamEnd,
+            batteryPackThickness,
+            batteryPackWidth - 12.0,
+            -interiorHalfWidth + batteryFoamEnd / 2,
+            sy * (batteryPackGap / 2 + batteryPackThickness / 2),
+            lowerBandZ + 6.0,
+        )
+        for sy in (1, -1)
+    ]
+    return [*pads, *low, *high, *endPads]
+
+
+# Where each pack's two main leads leave its end face: at mid-thickness, this far
+# in from the body's bottom and top edges. Read off the packs in hand.
+batteryLeadInset = 7.0
+
+
+def batteryHarness() -> list:
+    """The space the battery's wiring needs, as chases: one group of solids.
+
+    NOT A ROUTED HARNESS. Every body here is a volume a set of leads has to pass
+    through, sized by the leads' own diameter and the radius a stiff lead turns
+    at, so that tools/gate_h.py and tools/gate_f.py can show nothing else was
+    designed through it. Where two chases overlap, the leads in them cross.
+
+    For each pack, front then rear: its two main leads turning in the bay gap
+    into the strip beside it, the stiff joint into its connector, and the series
+    harness's legs turning up off the far end and running back along the top of
+    the strip. Then, shared: the top of the bay gap, which the legs cross to the
+    power bay and the balance and P- leads use too; the pack positive's run over
+    the power switch board's inboard rear corner to its input, P1; the BMS's
+    lane out between the packs' lead ends and on to the distribution board's
+    inboard edge, which carries B-, P- and the NTC pair; P- up through the deck's
+    rear notch to the charge inlet; and the 7-way balance lead, from its plug at
+    the BMS's left end, over the board's top and out through the same lane.
+    """
+    laneHalf = xt60Width / 2
+    laneOuterY = batteryConnectorY + laneHalf
+    leadMidY = batteryPackGap / 2 + batteryPackThickness / 2
+    gapRight = batteryPackRightX + batteryLeadReach
+    legsTopZ = batteryLegLaneZ + busWireDiameter
+    connectorTopZ = batteryConnectorZ + xt60Span
+    uTurnLeftX = batteryConnectorLeftX - batteryLegReach
+    leadLow = lowerBandZ + batteryLeadInset - busWireDiameter / 2
+    leadHigh = batteryPackTopZ - batteryLeadInset + busWireDiameter / 2
+    # The lane between the two lead ends, at their worst, less the air.
+    lane = batteryPackGap / 2 - (batteryPackLeadThickness - batteryPackThickness)
+    lane -= harnessAir
+    bmsLeftX = bmsX - bmsBoardLength / 2
+
+    def box(x0, x1, y0, y1, z0, z1):
+        return slab(x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, z0)
+
+    chases = []
+    for sy in (1, -1):
+
+        def ys(a, b):
+            return (min(sy * a, sy * b), max(sy * a, sy * b))
+
+        chases += [
+            # the U from the end face into the strip
+            box(
+                batteryPackRightX,
+                gapRight,
+                *ys(leadMidY - busWireDiameter, laneOuterY),
+                leadLow,
+                leadHigh,
+            ),
+            # the stiff joint into the pack's own female
+            box(
+                batteryConnectorRightX,
+                batteryPackRightX,
+                *ys(batteryConnectorY - laneHalf, laneOuterY),
+                batteryConnectorZ,
+                connectorTopZ,
+            ),
+            # the harness's legs, up off the male's far end
+            box(
+                uTurnLeftX,
+                batteryConnectorLeftX,
+                *ys(batteryConnectorY - laneHalf, laneOuterY),
+                batteryConnectorZ,
+                legsTopZ,
+            ),
+            # and back along the top of the strip to the bay gap
+            box(
+                uTurnLeftX,
+                batteryPackRightX,
+                *ys(batteryConnectorY - laneHalf, laneOuterY),
+                batteryLegLaneZ,
+                legsTopZ,
+            ),
+        ]
+
+    p1X, p1Y, _ = powerSwitchStations["P1"]
+    chases += [
+        # the top of the bay gap, wall to wall
+        box(
+            batteryPackRightX,
+            gapRight,
+            -laneOuterY,
+            laneOuterY,
+            batteryLegLaneZ,
+            deckZ - harnessAir,
+        ),
+        # the pack positive, over the power switch board's rear inboard corner
+        box(
+            gapRight,
+            p1X + busWireDiameter / 2,
+            p1Y - busWireDiameter / 2,
+            p1Y + busWireDiameter / 2,
+            batteryLegLaneZ,
+            legsTopZ,
+        ),
+        # the BMS's lane: out between the lead ends and on to the bought board
+        box(
+            batteryPackBodyEndX,
+            powerSwitchLeftX - harnessAir,
+            -lane,
+            lane,
+            bmsBoardBottomZ + 1.0,
+            bmsBoardTopZ + 3.5,
+        ),
+        # P- up through the deck's rear notch, towards the charge inlet
+        box(
+            gapRight - busWireDiameter / 2 - 1.0,
+            gapRight,
+            -(interiorHalfDepth - 1.0),
+            -(interiorHalfDepth - 5.0),
+            deckZ - harnessAir,
+            deckBandZ,
+        ),
+        # the 7-way balance lead, over the BMS's top edge
+        box(
+            bmsLeftX,
+            batteryPackBodyEndX,
+            -3.0,
+            3.0,
+            bmsBoardTopZ + harnessAir,
+            bmsBoardTopZ + 3.5,
+        ),
+        # and its plug, and the fold of its wires, at the board's left end
+        box(
+            -interiorHalfWidth + harnessAir,
+            bmsLeftX,
+            -3.0,
+            3.0,
+            bmsBoardBottomZ + 8.0,
+            bmsBoardTopZ + 3.5,
+        ),
+    ]
+    return chases
 
 
 # ---- what each group is, as a thing you can buy ------------------------------
@@ -1745,9 +1931,8 @@ def batteryFoam() -> list:
 partNumbers = {
     "battery packs": "2 x Bonka 3S 1000 mAh 35C LiPo, XT60",
     "battery foam": "5 mm anti-static EVA sheet, cut to fit",
-    "battery balance leads": "JST-XH 3S, 4-pin",
-    "battery series link": "XT60 2-into-1 series harness",
-    "battery pack connectors": "AMASS XT60",
+    "battery pack connectors": "2 x AMASS XT60, each pack's female mated with a male of the series harness",
+    "battery leads": "XT60 2M1F series harness, its female cut off; the packs' and the BMS's own leads",
     "distribution board": "SwiftWing PDB-02-XT60",
     "distribution board standoffs": "M3 brass, 6 mm A/F x 3 mm",
     "bus input socket": "AMASS XT60, factory-fitted",
@@ -1805,34 +1990,26 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # ---- the battery ----------------------------------------------------
         "battery packs": batteryPacks(),
         "battery foam": batteryFoam(),
-        # Two 4-way balance leads, one per pack, joined into the single seven-way
-        # tail the BMS wants. THEY USED TO RUN TO A PORT IN THE REAR WALL and
-        # they run to the board in the bay gap instead, which is the whole of
-        # what removing that port did to the inside of this robot: the merge is
-        # the same merge, made in the same place, and it ends on a connector
-        # rather than in one.
-        #
-        # WHERE THEY GO IS STRAIGHT DOWN FROM THE PACKS' LEAD ENDS, into the
-        # 3.05 mm between those ends and the BMS's slot, and it is worth knowing
-        # before the harness is made up, because it is the only way from the
-        # battery bay into the bay gap. Until 2026-10-05 the tails lay flat over
-        # the packs' last few millimetres before they turned down; the measured
-        # lead end is up to 38 mm tall where the body is 35, and it took that
-        # air. So each tail leaves its pack's end face near the top, turns down
-        # at once and is dressed flat against the board's flank -- half a
-        # millimetre clear either side, which is a lead taped down, not one
-        # left proud. Drawn is the 10 mm of it under the deck.
-        "battery balance leads": [
+        # EACH PACK'S XT60, mated with one male of the series harness, lying in
+        # the strip between that pack's side strip and the long wall, over the
+        # low wall pads. Drawn as the mated pair of housings; the stiff joint at
+        # each end and everything that bends are battery leads, below.
+        "battery pack connectors": [
             slab(
-                balanceLeadThickness,
-                balanceLeadWidth,
-                balanceLeadLength,
-                balanceLeadX,
-                dy,
-                deckZ - batteryLeadEndAir - balanceLeadLength,
+                batteryConnectorLength,
+                xt60Width,
+                xt60Span,
+                (batteryConnectorLeftX + batteryConnectorRightX) / 2,
+                sy * batteryConnectorY,
+                batteryConnectorZ,
             )
-            for dy in (-8.0, 8.0)
+            for sy in (1, -1)
         ],
+        # THE BATTERY'S WIRING, as chases rather than wires: the space the leads
+        # need to turn in, kept clear of everything else, because a 14 AWG lead
+        # cannot be bent into a gap that was never left for it. One group, so the
+        # leads may cross one another as real ones do. See batteryHarness().
+        "battery leads": batteryHarness(),
         # ---- power entry: a bought board and what stands on it ---------------
         # THERE IS NO BUS TERMINAL HERE ANY MORE. It was a 24 x 10 x 12 block
         # standing in for the strip the six motor branches landed on, and the
@@ -1853,40 +2030,6 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # The pack's own socket, on the board's inboard edge where the leads from
         # the battery reach it.
         "bus input socket": [slab(*_bus_input_socket_slab())],
-        # The pack's own two XT60s and the link between them. They used to stand
-        # in the lead chase beside the battery; the bought board took that width,
-        # so they live here instead, in the air above the fuse and the monitor.
-        "battery pack connectors": [
-            slab(xt60Width, xt60Length, xt60Height, powerX - 21.0, dy, packLeadZ)
-            for dy in (-4.0, -18.0)
-        ],
-        "battery series link": [
-            slab(
-                busWireDiameter,
-                14.0,
-                busWireDiameter,
-                powerX - 21.0,
-                -11.0,
-                packLeadZ + xt60Height + 0.5,
-            )
-        ],
-        # THE PACK'S MAIN LEAD, and where it goes changed twice in September
-        # 2026. It used to run across this bay to the fuse; the fuse moved onto
-        # the power switch board, and the positive then rose through the deck's
-        # rear notch to the loop key above and came back down to that board's
-        # input pad. WITH THE LOOP KEY GONE IT DOES NOT LEAVE THIS BAY AT ALL:
-        # it runs from the pack's own XT60 straight to the board's input pad,
-        # and this chase is the part of it that crosses the bay in free air.
-        "battery main leads": [
-            slab(
-                abs(31.0 - (powerX - 21.0)) + busWireDiameter,
-                busWireDiameter,
-                busWireDiameter,
-                (31.0 + powerX - 21.0) / 2,
-                -24.0,
-                packLeadZ + xt60Height + 1.0,
-            )
-        ],
         # The two cans the bill buys, standing on the power switch board. THIS
         # WAS FOUR RESERVED POSITIONS OF 16 x 25 until September 2026, against a
         # bill that has specified two 10 x 16 cans since the day it named a part.
@@ -2215,10 +2358,11 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # Its position is not a choice. cad/torso.py's two card guides put it on
         # the bay's centre line and stand its bottom edge on their slot floor,
         # which the deck 1.5 mm over its top edge is what decided.
+        # Between the two packs, its length across the robot since 2026-10-05.
         "BMS board": [
             slab(
-                bmsBoardThickness,
                 bmsBoardLength,
+                bmsBoardThickness,
                 bmsBoardHeight,
                 bmsX,
                 bmsY,
@@ -2256,9 +2400,12 @@ def torsoElectronicsGroups() -> dict[str, list]:
             for sx in (1, -1)
         ],
         # Up the inboard end of the power bay with the rest of the harness,
-        # rather than up the back of it where the disconnect reaches in.
+        # rather than up the back of it where the charge inlet reaches in --
+        # which since 2026-10-05 is where it actually is, at the back of the bay
+        # gap. It stood under the battery's rear strip until the rear pack's
+        # connector needed that strip.
         "CAN loom": [
-            Pos(-20.0, loomRunY, floorZ)
+            Pos(loomRunX, loomRunY, floorZ)
             * Box(
                 canWireDiameter * 2,
                 canWireDiameter * 2,
@@ -2310,7 +2457,17 @@ def torsoReservations() -> list:
         # deliberately: tools/gate_f.py and simulation/robot.py both read this
         # list positionally, so a new envelope goes on the end where it cannot
         # silently re-label the five that were already here.
-        slab(bmsWidth, bmsDepth, bmsHeight, bmsX, bmsY, bmsZ),
+        # THE BOARD ITSELF since it went between the packs, 2026-10-05, inside
+        # the battery's own reservation: a bay of its own is a bay nothing else
+        # may use, and the board needs none.
+        slab(
+            bmsBoardLength,
+            bmsBoardThickness,
+            bmsBoardHeight,
+            bmsX,
+            bmsY,
+            bmsBoardBottomZ,
+        ),
     ]
 
 

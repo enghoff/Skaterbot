@@ -487,19 +487,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["upperBandZ"],
         ),
         "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, 0.0, d["floorZ"]),
-        # THE ONE ENVELOPE THAT IS NOT ON THE CENTRE LINE, which is why every
-        # tuple here carries a y at all. The board stands on edge in the gap
-        # between the two bays, and that gap is off the middle of the robot.
-        #
-        # THE BOARD RATHER THAN ITS BAY, unlike every other line here, and that
+        # THE BOARD RATHER THAN A BAY, unlike every other line here, and that
         # is what a chosen part buys. The other five are reserved volumes with a
         # mass assumed spread through them because nobody knows the outline yet.
         # This one has a catalogue outline, so the 40 g sits where the 40 g
-        # actually is -- 8.2 mm of board in a 12.1 mm bay, and 2 mm lower than
-        # the bay's own centroid, because it hangs from the deck.
+        # actually is: between the two battery packs since 2026-10-05, its
+        # length across the robot, where it stood on edge in the gap between the
+        # two bays before that.
         "bms": (
-            d["bmsBoardThickness"],
             d["bmsBoardLength"],
+            d["bmsBoardThickness"],
             d["bmsBoardHeight"],
             d["bmsX"],
             d["bmsY"],

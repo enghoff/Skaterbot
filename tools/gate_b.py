@@ -919,6 +919,33 @@ DEVIATIONS = {
                 "figures and cad/wheeled_parameters.py the height."
             ),
         },
+        # ROOM FOR THE WIRING, 2026-10-05, and the added figure is negative for
+        # the reason the panel entry's is: nearly everything taken out is
+        # material this register had counted as ADDED -- the fin, the fences and
+        # the BMS's floor guides all stood where the 125 mm box had nothing -- so
+        # against the golden it is material un-added rather than removed. Two
+        # figures computed from the built part, pinned as the resize entries are.
+        # The net, -9840.76 mm3, adds up: -7410 of fence, -3777 of fin, -2087 of
+        # BMS floor guide and -30 of end stop lowered 2 mm, against +3466 for
+        # the eight wall pads.
+        {
+            "added_mm3": -9126.6492639001,
+            "removed_mm3": 714.1107361070,
+            "why": (
+                "THE BMS WENT BETWEEN THE PACKS AND THE GAP BESIDE THEM WAS "
+                "CLEARED FOR THE WIRING. The first board in hand showed that its "
+                "leads leave its two short ends, which stood 4.6 mm off the "
+                "shell walls, and that standing across the gap between the "
+                "bays it was a wall across the packs' only path to the power "
+                "board. It is between the packs now, in one 45 mm block with "
+                "them, so its two floor guides and the fin went; and the two "
+                "fences, which filled the strips beside the packs from the floor "
+                "up, went for eight pads off the long walls that hold the foam "
+                "from above the actuator harness and leave each strip clear for "
+                "its pack's XT60. The end stops came down 2 mm, clear of the "
+                "pack's bottom lead. cad/electronics.py carries the figures."
+            ),
+        },
     ],
     # The lid, and this is the cleanest example of what a resize does to this
     # test: the figures below are EXACTLY the new lid's volume and exactly the

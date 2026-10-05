@@ -31,11 +31,10 @@ They cost the carrier two walls of bare laminate its tracks had to be routed
 round, and a drill bigger than the board house owns; cad/electronics.py says what
 replaced them. 2.5 g of PA12 came off this part with them.
 
-AND IT IS THE TOP HALF OF THE BMS's MOUNT, which is what the two guides on its
-underside are. The board stands on edge in a slot in the cavity floor and the
-plate over it stops it lifting; these take its TOP edge in the same 9 mm slot, so
-a card that was held at one end only is held at both. The deck goes on last and
-comes straight down, so they swallow the top edge as it lands.
+IT WAS THE TOP HALF OF THE BMS's MOUNT until 2026-10-05: two slotted guides on
+its underside took the board's top edge while two off the cavity floor took its
+bottom. The board went between the two battery packs that day, into one block
+with them, and the guides came off this plate with nothing to replace them.
 
 THE BUS MONITOR IS NOT ON THIS PLATE, and it was for one revision. Two posts on
 this underside held it, and they were the wrong answer for a reason no gate can
@@ -46,11 +45,10 @@ September 2026 it rides on the controller carrier, with every lead it takes down
 into the bay on a plug. This plate still lifts off with nothing of its own
 attached below it.
 
-Three groups containing five solids: the plate and two ribs per BMS guide,
-drawn as separate bodies like every other printed piece here. The ribs only
-touch the plate's underside, and a piece handed to a printer that way is not
-one part -- the first printed pelvis lost its floor to exactly that -- so
-tools/export.py unites them into one solid before anything is written, and
+One solid, the plate, since the guides went. It was three groups containing
+five solids -- the plate and two ribs per guide that only touched its
+underside -- and a piece handed to a printer that way is not one part, which is
+why tools/export.py unites every piece before anything is written and
 tools/check.py fails the edit that leaves a body that would not unite.
 
 It has no golden STEP and it never will: the KCL had no such part, so gate B has
@@ -63,12 +61,6 @@ from __future__ import annotations
 from build123d import Align, Box, Cylinder, Pos
 
 from cad.electronics import (
-    bmsGuideDepth,
-    bmsGuideSlot,
-    bmsGuideWidth,
-    bmsGuideY,
-    bmsTopGuideDrop,
-    bmsX,
     boardHoleInset,
     carrier_screw_xy,
     controllerDepth,
@@ -201,30 +193,7 @@ def _plate():
     return blank
 
 
-def _bmsGuide(atY: float):
-    """One pair of ribs off the plate's underside, straddling the board's top.
-
-    A block with the slot taken straight out of it, and the slot runs the block's
-    WHOLE drop so that what is left is two ribs with the plate itself closing the
-    top. The 1.5 mm of air between that face and the board's top edge is the
-    hold-down, and cutting the slot any shallower would take it away.
-
-    The slot is subtracted from the block it belongs to and nothing is unioned on
-    afterwards, which is the rule on every printed piece here: a body unioned
-    over a slot closes it with nothing to report it.
-    """
-    block = Pos(bmsX, atY, deckZ - (bmsTopGuideDrop / 2)) * Box(
-        bmsGuideWidth, bmsGuideDepth, bmsTopGuideDrop
-    )
-    slot = Pos(bmsX, atY, deckZ - (bmsTopGuideDrop / 2)) * Box(
-        bmsGuideSlot, bmsGuideDepth + 2.0, bmsTopGuideDrop
-    )
-    return block - slot
-
-
 def electronicsDeck() -> list:
-    """The deck as printed: one plate and the two BMS guides."""
-    return [
-        _plate(),
-        *(_bmsGuide(atY) for atY in bmsGuideY),
-    ]
+    """The deck as printed: one plate. It carried the BMS's two top guides until
+    2026-10-05, when the board went between the battery packs."""
+    return [_plate()]

@@ -2862,3 +2862,49 @@ only the two female sockets, is to be emptied. Neither change is made: the
 browser could not be reached. The charge lead is a female XT60 pigtail and a
 pair of 4 mm banana plugs from QuartzComponents, or QuartzComponents' ready-made
 female-XT60-to-banana lead; docs/BOM.md has both.
+
+## Room for the battery's wiring — 5 October 2026
+
+With the BMS and a pack in hand it was plain that the torso had no real room for
+the battery's wiring. Two things were wrong. The BMS's leads leave its two short
+ends — B-, the NTC pair and P- at one, the 7-way balance socket at the other —
+and standing on edge in the gap between the battery and the power board, those
+ends faced the shell walls 4.6 mm away. And that same board was a wall across the
+only path the packs' main leads had to the power board. The leads are 14 AWG and
+stiff, they leave the pack's end face, and they had 3.5 mm before they met it.
+
+The BMS now goes between the two packs. The packs and the board are one block,
+45 mm across, which the builder assembles and the torso is laid out to. The
+board's power end sits at the packs' 65 mm body line, so its three leads leave
+through the 7 mm between the two lead ends. Its balance plug end is 10 mm off
+the left wall, and the thin balance wires fold up over its top edge from there.
+The board's floor guides and the deck's top guides are gone, and so is the fin
+the board replaces.
+
+The gap between the battery and the power board is cleared, and it is the
+battery's wiring space now. Each pack's XT60, mated with one male of the series
+harness, is a rigid block about 30 mm long and 15.6 × 8.1 across. That block,
+not the wire, was what had nowhere to go. It now lies in the strip between the
+block of packs and the long wall beside it. The pack's leads turn into it
+through the gap at about an 8 mm radius. The harness's legs leave its far end,
+turn up over it and run back along the top of the strip to the gap, which they
+cross to the power board. There is no third XT60 pair, because the harness's
+own female output is cut off and its two legs are soldered to the power switch
+board's input and the distribution board's negative.
+
+For the strips to be clear, the battery's two fences had to go. They stood on
+the floor the whole length of each pack, which took the strip from the bottom
+up, and the rear one sat on the actuator harness that runs along the back of
+the floor. Eight small pads off the two long walls bear on the side foam
+instead. The low ones sit just clear of the harness, on 45-degree undersides so
+they print upright, and the connector lies over them. The high ones are at the
+left, where the connector isn't. The side foam is cut to the pads, so at the
+connector's height the strip is clear from the block's face to the wall. The
+CAN loom moved from that strip to the back of the gap, and the rail end stops
+came down 2 mm, clear of the pack's bottom lead.
+
+All of the wiring is drawn as space for it rather than as wire, as one group
+the gates hold everything else out of. None of it is proven against the real
+leads yet: the layout asks about 50 mm of each pack's 76 mm and about 100 mm of
+each harness leg. The pelvis is 9.1 g lighter and the deck 0.2 g, for
+1 976.2 g against the 2 300 g ceiling.

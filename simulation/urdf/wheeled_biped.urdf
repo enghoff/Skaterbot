@@ -56,12 +56,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="8.7997427e-05 0.00140605956 -0.0251036968" rpy="0 0 0"/>
-      <mass value="1.016741"/>
-      <inertia ixx="3.618582379e-03" ixy="3.096476980e-07" ixz="-5.426847832e-07"
-               iyy="1.736038311e-03" iyz="-1.816087488e-05" izz="2.464784210e-03"/>
+      <origin xyz="8.87986531e-05 0.00312736 -0.0253005792" rpy="0 0 0"/>
+      <mass value="1.007567"/>
+      <inertia ixx="3.648909376e-03" ixy="7.480252347e-07" ixz="-5.603000838e-07"
+               iyy="1.718170034e-03" iyz="-3.743322102e-05" izz="2.488166149e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 172.4 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 163.4 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -77,7 +77,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 25.3 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 25.2 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -183,9 +183,9 @@
     </visual>
     <!-- battery management system — 40.0 g, weighed: Daly 6S 24V 20A on the cell taps, wired charge-only. 40 g weighed, at the vendor's own 58 x 33 x 8.2 -->
     <visual name="battery_management_system">
-      <origin xyz="0 -0.013 -0.0115" rpy="0 0 0"/>
+      <origin xyz="0 0.03555 -0.016" rpy="0 0 0"/>
       <geometry>
-        <box size="0.058 0.0082 0.033"/>
+        <box size="0.0082 0.058 0.033"/>
       </geometry>
       <material name="pcbGreen"/>
     </visual>

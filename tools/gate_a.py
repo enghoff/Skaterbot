@@ -421,13 +421,14 @@ ADDED = {
     "batteryPackBodyLength": 65.0,
     "batteryPackLeadThickness": 19.0,
     "batteryPackLeadWidth": 38.0,
-    "batteryPackGap": 2.0,
+    "batteryPackGap": 11.0,
     "batteryWidth": 78.0,
     "batteryDepth": 54.0,
     "batteryHeight": 39.0,
     "batteryX": -33.55,
-    "batteryLeadZ": -15.0,
-    # THE BATTERY'S HOLD-DOWN, 2026-09-30, cad/electronics.py. There was none:
+    # THE BATTERY'S HOLD-DOWN, 2026-09-30, cad/electronics.py -- and its fin,
+    # fences and their four names went on 2026-10-05; see the block after next.
+    # There was none:
     # the deck was said to hold the packs by 3 mm of squeeze that was air. A rail
     # under each pack, a stop on its end, a fin between the two and fences down
     # their outer faces place them; foam cut from one 5 mm sheet pushes them there
@@ -437,17 +438,13 @@ ADDED = {
     # under the pack tops.
     "batteryFoamFree": 5.0,
     "batteryFoamSide": 3.0,
-    "batteryPackOuterY": 18.0,
-    "batteryFenceY": 21.0,
-    "batteryFenceThickness": 1.5,
+    "batteryPackOuterY": 22.5,
     "batteryPackTopZ": 2.5,
-    "batteryFenceShort": 6.0,
-    "batteryFenceTopZ": -3.5,
     "batteryFoamTop": 4.0,
     "batteryPackLeftX": -71.55,
     "batteryPackRightX": 5.450000000000003,
     "batteryFoamEnd": 3.0,
-    "batteryRailStopHeight": 5.0,
+    "batteryRailStopHeight": 3.0,
     "batteryFoamLeadAir": 2.0,
     # Since the packs were measured, 2026-10-05: where each body ends and every
     # face and every piece of foam beside it stops; the air kept round the lead
@@ -457,11 +454,33 @@ ADDED = {
     "batteryLeadEndAir": 1.0,
     "batteryRailStopLength": 2.5,
     "batteryRailSillTopZ": -36.5,
-    # Where the balance leads come down from the packs to the BMS, named so it is
-    # placed rather than typed. They lay over the packs' ends at x = 1 until the
-    # measured lead end took that air; they run down the BMS's flank now.
-    "balanceLeadLength": 10.0,
-    "balanceLeadX": 6.975000000000001,
+    # THE BATTERY'S WIRING SPACE, 2026-10-05, cad/electronics.py. The BMS went
+    # between the two packs and the three are one block, 45 mm across by the
+    # owner's figure; the fin and the two fences went, and eight pads off the
+    # long walls bear on the side foam instead, so that the strip beside each
+    # pack is clear at the height its XT60 lies at. The connectors and the
+    # chases the leads turn in are placed from these, and the CAN loom moved to
+    # the back of the bay gap to give the rear connector its strip.
+    "batteryBlockWidth": 45.0,
+    "batteryFoamFaceY": 25.5,
+    "xt60Span": 15.6,
+    "batteryConnectorLength": 30.0,
+    "batteryConnectorY": 28.05,
+    "batteryConnectorZ": -22.0,
+    "batteryConnectorRightX": -7.549999999999997,
+    "batteryConnectorLeftX": -37.55,
+    "batteryLegLaneZ": -5.4,
+    "batteryLeadInset": 7.0,
+    "batteryLeadReach": 10.0,
+    "batteryLegReach": 10.0,
+    "harnessAir": 0.5,
+    "batteryPadWidth": 6.0,
+    "batteryPadHeight": 5.0,
+    "batteryPadLowZ": -28.0,
+    "batteryPadHighZ": -10.0,
+    "batteryPadHighX": -55.949999999999996,
+    "batteryPadLeadIn": 1.5,
+    "loomRunX": 18.5,
     # THE BOUGHT DISTRIBUTION BOARD, September 2026, and the parts it displaced.
     # The power-entry PCB this project was going to lay out and have fabricated
     # is gone: a SwiftWing PDB-02-XT60 does the same job -- pack in through an
@@ -479,7 +498,6 @@ ADDED = {
     "pdbTopZ": -27.9,
     "bayGap": 15.099999999999994,
     "panelX": 36.55,
-    "packLeadZ": -10.899999999999999,
     # The Matek 12S Pro BEC, which replaced the generic buck module this file
     # used to reserve 26 x 42 x 14 for on the deck. 9-55 V in, 5 V at 5 A out,
     # and a fifth of the volume -- so it moved down into the power bay, where its
@@ -641,8 +659,6 @@ ADDED = {
     # The looms, reserved as chases rather than drawn as routed wire.
     "busWireDiameter": 3.5,
     "canWireDiameter": 2.6,
-    "balanceLeadWidth": 6.0,
-    "balanceLeadThickness": 2.0,
     "harnessBundleWidth": 9.0,
     "harnessBundleHeight": 7.0,
     "harnessRunY": -27.0,
@@ -662,7 +678,6 @@ ADDED = {
     "batteryRailStartX": -25.75,
     "batteryRailEndX": 7.950000000000003,
     # The fin between the packs stops at the IMU's reservation.
-    "batteryFinEndX": -11.0,
     "boardPostSize": 8.0,
     "powerPostX": 22.5,
     "powerPostY": 22.5,
@@ -851,17 +866,16 @@ ADDED = {
     # column when a board was chosen: 12.1 held the whole gap because nothing had
     # been picked, and 9 is what the board occupies. The three millimetres either
     # side are where its own leads go.
-    "bmsBayClearance": 1.5,
-    "bmsWidth": 9.0,
     # THE BAY GOT 6 mm DEEPER when the connector panel went: its rear limit was
     # that panel's front face, and it is the shell wall itself now, less the same
     # 1.5 mm everything in this bay is held off its neighbours by. Nothing was
     # retyped -- both figures are derived, and both moved on their own.
-    "bmsDepth": 64.2,
-    "bmsHeight": 29.0,
-    "bmsX": 13.0,
+    #
+    # AND THE BAY IS GONE, 2026-10-05, with its guides and every name that sized
+    # it: the board stands between the two battery packs, its power end at their
+    # 65 mm body line, in one block with them. What is left is where it is.
+    "bmsX": -35.55,
     "bmsY": 0.0,
-    "bmsZ": -24.0,
     # ---- AND THE BOARD THAT WAS CHOSEN FOR IT, 2026-09-13 ------------------
     #
     # The Daly Li-ion NMC 6S 24V 20A, at its vendor specification table's own
@@ -883,9 +897,8 @@ ADDED = {
     # found the moment a real board replaced the full-height stand-in that was
     # drawn here while none had been chosen. So the top edge is set 1.5 mm under
     # the deck and the slot floor follows it down the board's own height.
-    "bmsDeckGap": 1.5,
-    "bmsBoardTopZ": 5.0,
-    "bmsBoardBottomZ": -28.0,
+    "bmsBoardTopZ": 0.5,
+    "bmsBoardBottomZ": -32.5,
     # The two guides that hold it. THE SLOT IS NOW CUT TO THE WHOLE BOARD AND NOT
     # TO ITS PCB, which is the change a chosen board bought: 2.4 mm took a bare
     # 1.6 mm PCB edge and assumed nothing was soldered within a guide's width of
@@ -894,17 +907,10 @@ ADDED = {
     # fall, and the 0.8 left over is the foam shim that stops it rattling. They
     # stand BELOW the reserved bay, so nothing is designed through a payload
     # volume; the deck 1.5 mm over the board's top is what stops it lifting out.
-    "bmsGuideWidth": 12.0,
-    "bmsGuideDepth": 6.0,
-    "bmsGuideSlot": 9.0,
-    "bmsGuideSlotDepth": 4.0,
-    "bmsGuideShim": 0.8,
-    "bmsGuideWall": 1.5,
     # Set in from each END OF THE BOARD rather than placed on the floor, which is
     # what they were while the board was a guess: 6 mm in from each end puts them
     # 46 mm apart under a 58 mm card and symmetric about it, where the IMU's
     # reservation had previously decided them at 35 mm apart and off centre.
-    "bmsGuideInset": 6.0,
     # ---- THE HARNESS GETS SOMETHING TO BE TIED TO, September 2026 ----------
     #
     # cad/limb.py: two arches on each limb's inboard face, one at each end of
@@ -945,7 +951,6 @@ ADDED = {
     # at the bottom, a 33 mm card on 4 mm of engagement is a cantilever and its
     # top edge swings. They drop 4 mm and the board stands 2.5 mm up inside them,
     # so it is still free to rise its 1.5 mm without leaving them.
-    "bmsTopGuideDrop": 4.0,
     # ---- THE ROBOT GETS SOMETHING TO BE HUNG FROM, September 2026 ---------
     #
     # cad/torso.py: a lug on each flank of the pelvis, near the top rim, with a

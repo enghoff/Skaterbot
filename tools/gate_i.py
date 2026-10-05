@@ -17,7 +17,7 @@ the path it comes in on, and the gate runs that path BACKWARDS -- from where
 the part ends up, out to free air -- in steps of STEP_MM, measuring the moving
 part against everything that went in before it. A path is clear if the moving
 part never shares volume with any of it. Touching is allowed at every point,
-so a pack sliding up between the fin and its foam, or the deck's pads lifting
+so the battery block sliding up past the wall pads, or the deck's pads lifting
 off the packs, is fine; passing through anything is not.
 
 STEP_MM is small enough that nothing slips through between samples: two solids
@@ -26,9 +26,9 @@ path crosses the other.
 
 WHAT IT DOES NOT CHECK:
 
-* The looms and leads. The CAN loom, the actuator harness runs, the balance
-  leads and the pack's main leads are chases for flexible wire, dressed in
-  after the parts they connect, and are left out of every step.
+* The looms and leads. The CAN loom, the actuator harness runs and the
+  battery's leads are chases for flexible wire, dressed in after the parts they
+  connect, and are left out of every step.
 * The legs, and the hip actuators under the pelvis floor. Those joints were
   worked through for assembly one at a time in docs/NOTES.md (see "The joint
   could not be assembled, so the journal is bought again").
@@ -122,23 +122,33 @@ def steps() -> list[tuple[str, list, list, bool]]:
             [(UP, None)],
             False,
         ),
-        # The side strips go onto the fences and the end pad onto the left wall
-        # before the packs, which are then pushed down between fin and foam.
+        # The end pads go onto the left wall first. Then the battery goes in as
+        # ONE BLOCK, since 2026-10-05: both packs and the BMS between them,
+        # assembled beforehand, with the four side strips already on its outer
+        # faces, straight down past the wall pads.
         (
-            "foam onto the fences and the left wall",
-            [("battery foam", 2), ("battery foam", 3), ("battery foam", 4)],
+            "end pads onto the left wall",
+            [("battery foam", 6), ("battery foam", 7)],
             [(UP, None)],
             False,
         ),
-        ("rear battery pack", [("battery packs", 0)], [(UP, None)], False),
-        ("front battery pack", [("battery packs", 1)], [(UP, None)], False),
         (
-            "the packs' XT60s and series link",
-            ["battery pack connectors", "battery series link"],
+            "the battery block, with its side strips on",
+            [
+                ("battery packs", 0),
+                ("battery packs", 1),
+                "BMS board",
+                ("battery foam", 2),
+                ("battery foam", 3),
+                ("battery foam", 4),
+                ("battery foam", 5),
+            ],
             [(UP, None)],
             False,
         ),
-        ("BMS into its floor guides", ["BMS board"], [(UP, None)], False),
+        # Each pack's XT60 mated with its male of the series harness, laid into
+        # the strip beside it from above.
+        ("the packs' two XT60s", ["battery pack connectors"], [(UP, None)], False),
         ("the deck, with everything on it", DECK, [(UP, None)], False),
         # THE REAR WALL'S NUTS GO IN FIRST, straight down against the wall, and
         # are held there while what they fasten is threaded into them from

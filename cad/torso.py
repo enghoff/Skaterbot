@@ -17,27 +17,22 @@ bosses, at 80.45, and the wheels at 104.
 
 from __future__ import annotations
 
-from build123d import Box, Cone, Cylinder, Plane, Pos, Rot
+from build123d import Box, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude
 
 from cad.electronics import (
-    batteryFenceThickness,
-    batteryFenceTopZ,
-    batteryFenceY,
+    batteryFoamFaceY,
     batteryLeadEndAir,
     batteryPackBodyEndX,
-    batteryPackGap,
     batteryPackLeadWidth,
-    batteryPackLeftX,
     batteryPackRightX,
     batteryPackWidth,
+    batteryPadHeight,
+    batteryPadHighX,
+    batteryPadHighZ,
+    batteryPadLowX,
+    batteryPadLowZ,
+    batteryPadWidth,
     batteryRailStopHeight,
-    bmsGuideDepth,
-    bmsGuideSlot,
-    bmsGuideSlotDepth,
-    bmsGuideWidth,
-    bmsGuideY,
-    bmsX,
-    bmsZ,
     chargeInletFixings,
     deckLedgeDepth,
     deckLedgeHeight,
@@ -49,7 +44,6 @@ from cad.electronics import (
     imuBoardDepth,
     imuBoardWidth,
     imuDepth,
-    imuWidth,
     lowerBandZ,
     panelWallY,
     pdbHolePitch,
@@ -180,6 +174,8 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # outside the pack it carries. At the packs' own centre lines the rails would
 # have run 3 mm into the 22 x 22 the IMU is reserved; touching that reservation
 # from outside, they are under the middle of any pack from 13 mm thick to 22.
+# Since the BMS went between the packs on 2026-10-05 they are under the packs'
+# own centre lines to a tenth of a millimetre.
 #
 # AND THEY START AT THE LEFT HIP SADDLE'S INBOARD FACE, not at the left wall. The
 # saddle's top is the band's floor for its whole length and carries the packs
@@ -199,7 +195,7 @@ batteryRailY = (imuDepth + batteryRailThickness) / 2
 batteryRailStartX = -(hipCenterX + rearCheekX - cheekThickness / 2)
 # The stop's own length along the pack. It was whatever the pack left of the
 # bay, 1.5 mm, until the measured pack's lead end came out to the bay's end; it
-# stands in the bay gap now, and 2.5 leaves it 0.55 mm short of the BMS's slot.
+# stands in the bay gap now, under the packs' leads where they turn.
 batteryRailStopLength = 2.5
 batteryRailEndX = batteryPackRightX + batteryRailStopLength
 batteryRailSillTopZ = (
@@ -222,28 +218,24 @@ batteryRailSillTopZ = (
 # end-on, past the pack's 77 mm, and is the one printed face that touches the
 # lead end at all; whatever the end's shape, it never comes alongside it.
 
-# THE BATTERY'S FIN AND FENCES, which make each pack a slot of its own that it is
-# pushed down into by hand before anything else goes in over it. They hung from
-# the deck for a day, 2026-09-30, and cad/electronics.py's hold-down block says
-# why they came down here.
+# THE WALL PADS, four off each long wall, which replaced the battery's fin and
+# its two fences on 2026-10-05. cad/electronics.py's hold-down block says why and
+# places them; this is how they are made.
 #
-# THE FENCES STAND ON THE SHELL FLOOR FOR THEIR WHOLE LENGTH. The left hip
-# saddle's top is only 30 mm wide -- its bounding box reaches 26 mm either side
-# of the centre line, and its top reaches 15 -- so at y = 21 there is 9 mm of air
-# over the floor all along the saddle. They were first drawn standing on that
-# top, and for 45 mm of their 75 they stood on nothing: each hung off the 30 mm
-# that did reach the floor, and every gate passed it. tools/gate_f.py now
-# checks that everything standing in this cavity rests on the pelvis under the
-# whole of its underside.
+# THE FIN WENT BECAUSE THE BMS IS THE FIN NOW: it stands between the packs and the
+# three are taped into one block. The fences went because each stood on the floor
+# along the whole of its pack, which took the strip between the pack and the wall
+# from top to bottom -- and that strip is where each pack's XT60 has to lie, and
+# the back one is where the actuator harness runs along the floor. A pad bears on
+# the foam where a fence did and takes the strip only where it stands.
 #
-# THE FIN STANDS ON THE SADDLE'S TOP over the saddle's length, which is solid
-# at the centre line, and on the floor from the saddle's inboard face on, as the
-# rails do -- never down through the saddle, whose hollow a body run through it
-# would wall off into a sealed void. It stops where the IMU's reservation
-# begins, so it covers the packs' first 60 mm and leaves the square of floor the
-# IMU stands in as it was -- and so it ends inside the 65 mm of each pack's body
-# with no change, though it was never placed for that.
-batteryFinEndX = -(imuWidth / 2)
+# EACH HAS A 45 DEGREE UNDERSIDE, from the foam face down to the wall, because the
+# pelvis prints upright and a flat shelf 9.5 mm deep would print as a bridge into
+# nothing. The low pads are set by that underside: where it comes nearest the
+# wall, over the actuator harness, it clears the harness by half a millimetre.
+# AND A 1.5 mm CHAMFER ON THE TOP OF THE BEARING FACE, because the block goes in
+# from above with its side strips already on, and a square edge would catch them.
+batteryPadLeadIn = 1.5
 
 # THE IMU SEAT. The one board in this torso small enough that no screw will fit
 # it -- a BNO085 Nano breakout is 11 x 10 -- and the one board whose ORIENTATION
@@ -344,63 +336,43 @@ def batteryRails() -> list:
     return rails
 
 
-def batteryCradle() -> list:
-    """The two fences and the fin the packs stand between: front fence, rear
-    fence, fin.
-
-    Each fence is one box standing on the shell floor along the packs' bodies,
-    from their left ends to the 65 mm where the lead ends begin. The fin
-    is one body drawn as two lengths that meet at the saddle's inboard face --
-    one standing on the saddle's top, one on the shell floor -- so it is as tall
-    as what it stands on allows and no taller.
-    """
-    fenceHeight = batteryFenceTopZ - cavityBottomZ
-    fences = [
-        Pos(
-            (batteryPackLeftX + batteryPackBodyEndX) / 2,
-            sy * (batteryFenceY + batteryFenceThickness / 2),
-            cavityBottomZ + fenceHeight / 2,
-        )
-        * Box(
-            batteryPackBodyEndX - batteryPackLeftX, batteryFenceThickness, fenceHeight
-        )
-        for sy in (1, -1)
+def _wallPad(atX: float, faceZ: float, sy: int):
+    """One pad off a long wall: a bearing face on the foam, a 45 degree underside
+    down to the wall and a lead-in chamfer on top. It meets the wall's inner face
+    face to face, as the deck ledges and cover bosses do, and is one body with
+    the shell once the piece is united for export."""
+    wall = torsoInnerDepth / 2
+    face = batteryFoamFaceY
+    topZ = faceZ + batteryPadHeight
+    profile = [
+        (wall, topZ),
+        (face + batteryPadLeadIn, topZ),
+        (face, topZ - batteryPadLeadIn),
+        (face, faceZ),
+        (wall, faceZ - (wall - face)),
     ]
-    finOnSaddle = Pos(
-        (batteryPackLeftX + batteryRailStartX) / 2,
-        0.0,
-        (lowerBandZ + batteryFenceTopZ) / 2,
-    ) * Box(
-        batteryRailStartX - batteryPackLeftX,
-        batteryPackGap,
-        batteryFenceTopZ - lowerBandZ,
+    pad = extrude(
+        Plane.YZ * Polygon(*[(sy * y, z) for y, z in profile], align=None),
+        amount=batteryPadWidth,
     )
-    finOnFloor = Pos(
-        (batteryRailStartX + batteryFinEndX) / 2,
-        0.0,
-        cavityBottomZ + fenceHeight / 2,
-    ) * Box(batteryFinEndX - batteryRailStartX, batteryPackGap, fenceHeight)
-    return [*fences, finOnSaddle + finOnFloor]
+    return Pos(atX - batteryPadWidth / 2, 0, 0) * pad
 
 
-def bmsGuides() -> list:
-    """Two slotted guides the battery management board's lower edge drops into.
+def batteryPads() -> list:
+    """The pads off the two long walls that the block's side foam bears on.
 
-    The slot is taken out of the guide it belongs to and NOTHING IS UNIONED ON
-    afterwards, which is this part's rule everywhere: a body unioned over a slot
-    would close it with nothing to report it.
+    Front wall then rear, and on each the three low pads from left to right and
+    then the high one. They hang off the wall and stand on nothing, on purpose:
+    the rear ones are over the actuator harness, which is the reason they exist.
     """
-    guideHeight = bmsZ - cavityBottomZ
-    guides = []
-    for atY in bmsGuideY:
-        block = Pos(bmsX, atY, cavityBottomZ + (guideHeight / 2)) * Box(
-            bmsGuideWidth, bmsGuideDepth, guideHeight
+    return [
+        _wallPad(atX, faceZ, sy)
+        for sy in (1, -1)
+        for atX, faceZ in (
+            *((x, batteryPadLowZ) for x in batteryPadLowX),
+            (batteryPadHighX, batteryPadHighZ),
         )
-        slot = Pos(bmsX, atY, bmsZ - (bmsGuideSlotDepth / 2)) * Box(
-            bmsGuideSlot, bmsGuideDepth + 2.0, bmsGuideSlotDepth
-        )
-        guides.append(block - slot)
-    return guides
+    ]
 
 
 def imuSeat() -> list:
@@ -643,10 +615,9 @@ def pelvisShell() -> list:
         rightHipPitchJoint,
         leftHipPitchJoint,
         *batteryRails(),
-        *batteryCradle(),
+        *batteryPads(),
         *powerEntryPosts(),
         *deckLedges(),
-        *bmsGuides(),
         *hoistLugs(),
         # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
         # printed feature in this cavity that stands inside its own reserved

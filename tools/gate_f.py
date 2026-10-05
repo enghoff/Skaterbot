@@ -567,8 +567,8 @@ def check_packing() -> tuple[int, int]:
     THE BATTERY'S RAILS ARE THE THIRD, 2026-09-30. The packs shrank inside a
     bay that did not, so the stop on each rail's end, which catches the foot of
     a pack's end face, stands in the bay's own reserved volume by definition --
-    and so do the fin and the two fences the packs stand between, which the
-    pelvis carries too. The battery's row is measured against the shell less its
+    and so do the wall pads the block's side foam bears on, which reach in from
+    the long walls to it and which the pelvis carries too. The battery's row is measured against the shell less its
     rails and those three, and what they have to do -- carry the packs, stop
     them and hold them -- is asserted face by face in
     check_battery_hold_down().
@@ -592,10 +592,10 @@ def check_packing() -> tuple[int, int]:
     # out of this check as well.
     shellLessImuSeat = shell[:-1]
     shellLessPowerSwitchPad = shell[:-2] + shell[-1:]
-    # The rails and then the cradle come straight after the shell, its four
+    # The rails and then the wall pads come straight after the shell, its four
     # cover bosses and its two hip clevises -- the seven check_no_clashes()
     # calls the pelvis proper.
-    rails = len(torso.batteryRails()) + len(torso.batteryCradle())
+    rails = len(torso.batteryRails()) + len(torso.batteryPads())
     shellLessRails = shell[:7] + shell[7 + rails :]
 
     # The cavity, in the robot's frame: the shell's inner walls, its cavity floor
@@ -769,59 +769,11 @@ FITS = [
         "opposite ends of the free stretch of it: the button went outboard for "
         "the depth behind it, which took it 36 mm away from the antenna",
     ),
-    # THE BMS BAY, and all three of its bounds are somebody else's face. It is the
-    # last free column in this torso -- 15.1 mm of slack between the two bays that
-    # nobody chose, because the shell is as wide as the hip clevises make it -- so
-    # every one of these is what stops the bay being bigger.
-    (
-        "BMS bay vs the deck that closes it",
-        "BMS",
-        "deck",
-        0.0,
-        "the deck's two guides come down the bay's own SIDES to take the board's "
-        "top edge, so they touch it -- which they must, because the bay is the "
-        "slot. The 1.5 mm over the bay's top face is the plate, and it is the "
-        "row two below",
-    ),
-    (
-        "BMS bay vs the guides that hold it",
-        "BMS",
-        "BMS guides",
-        0.0,
-        "the board SITS ON the guides, so any gap here means it is floating -- "
-        "the same test the packs on their rails get",
-    ),
-    # AND THE BOARD ITSELF, not only the volume reserved for it. These two are the
-    # whole of the hold-down and they are a pair: 4 mm of slot under it and 1.5 mm
-    # of air over it, so it can rise 1.5 and is still 2.5 mm engaged. Get them the
-    # wrong way round -- which is what a full-height stand-in hid until a real
-    # board was chosen -- and the card lifts clear of its guides.
-    (
-        "BMS board vs the deck plate over it",
-        "BMS board",
-        "deck plate",
-        1.5,
-        "the board can rise by THIS before the plate stops it, and the slot under "
-        "it is 4 mm deep, so it cannot leave its guides. 8.5 mm here with the "
-        "board stood on the bay floor is the defect this pair was added to catch",
-    ),
-    (
-        "BMS board vs the deck's top guides",
-        "BMS board",
-        "deck",
-        0.4,
-        "the running fit at the card's top edge, and half the shim: 9 mm of slot "
-        "on an 8.2 mm board. The board is held at BOTH ends because of it -- at "
-        "the bottom alone it is a cantilever 33 mm long on 4 mm of engagement",
-    ),
-    (
-        "BMS board vs its card guides",
-        "BMS board",
-        "BMS guides",
-        0.0,
-        "its bottom edge SITS ON the slot floor, so any gap here means the board "
-        "is hanging on nothing -- the same test the packs on their rails get",
-    ),
+    # THE BMS HAD FIVE ROWS HERE while it stood on edge in the gap between the
+    # two bays: its bay against the deck and its guides, and the board against
+    # the plate over it, the deck's top guides and its card guides. It went
+    # between the battery packs on 2026-10-05, into one block with them, and the
+    # guides went with the bay; check_battery_hold_down() measures the block.
     # THE BUS MONITOR HAD TWO ROWS HERE while it stood on two pads off the
     # pelvis's rear wall. It rides on the controller carrier now, and
     # electrical/carrier_pcb.py measures it there against everything in this
@@ -940,7 +892,6 @@ def check_fits(items: tuple) -> tuple[int, int]:
         # measuring the air OVER it has to ignore them.
         "deck plate": [deck.electronicsDeck()[0]],
         "IMU seat": torso.imuSeat(),
-        "BMS guides": torso.bmsGuides(),
         **{
             name: electronics.torsoElectronicsGroups()[name]
             for name in (
@@ -987,10 +938,11 @@ def check_fits(items: tuple) -> tuple[int, int]:
 def check_battery_hold_down() -> tuple[int, int]:
     """Each pack held on every side, and every piece of foam squeezed but not flat.
 
-    cad/electronics.py's hold-down block says what holds a pack in each of six
-    directions: a rail under it, a stop on the rail's end, a fin between the
-    two packs, and foam between it and a fence, the deck and the left wall. The
-    fin and the fences stand on the pelvis, so every face but the top pads' is
+    cad/electronics.py's hold-down block says what holds the battery block -- two
+    packs and the BMS between them, assembled into one piece since 2026-10-05 --
+    in each of six directions: a rail under each pack, a stop on the rail's end,
+    and foam between each pack and the wall pads, the deck and the left wall.
+    The wall pads are part of the pelvis, so every face but the top pads' is
     made before the deck goes on. Each
     of those is a pair of drawn bodies that has to TOUCH -- distance zero and no
     shared volume -- and a pair that has come apart by any amount is a pack free
@@ -1010,11 +962,12 @@ def check_battery_hold_down() -> tuple[int, int]:
     rails = {"front": torso.batteryRails()[0], "rear": torso.batteryRails()[1]}
     foam = e.batteryFoam()
     pads = {"front": foam[0], "rear": foam[1]}
-    strips = {"front": foam[2], "rear": foam[3]}
-    endPad = foam[4]
-    cradle = torso.batteryCradle()
-    fences = {"front": cradle[0], "rear": cradle[1]}
-    fin = cradle[2]
+    low = {"front": foam[2], "rear": foam[3]}
+    high = {"front": foam[4], "rear": foam[5]}
+    ends = {"front": foam[6], "rear": foam[7]}
+    wallPads = torso.batteryPads()
+    lowPads = {"front": wallPads[0:3], "rear": wallPads[4:7]}
+    highPads = {"front": wallPads[3:4], "rear": wallPads[7:8]}
     plate = deck.electronicsDeck()[0]
     wall = torso.pelvisShell()[0]
 
@@ -1023,19 +976,20 @@ def check_battery_hold_down() -> tuple[int, int]:
     checked = failed = 0
     rows = []
     for side in ("front", "rear"):
-        pack = packs[side]
+        pack = [packs[side]]
         rows += [
-            (f"{side} pack on its rail", pack, rails[side]),
-            (f"{side} pack against the fin", pack, fin),
-            (f"{side} pack under its top pad", pack, pads[side]),
-            (f"{side} top pad under the deck", pads[side], plate),
-            (f"{side} pack against its side strip", pack, strips[side]),
-            (f"{side} side strip against its fence", strips[side], fences[side]),
-            (f"{side} pack against the end pad", pack, endPad),
+            (f"{side} pack on its rail", pack, [rails[side]]),
+            (f"{side} pack under its top pad", pack, [pads[side]]),
+            (f"{side} top pad under the deck", [pads[side]], [plate]),
+            (f"{side} pack against its low strip", pack, [low[side]]),
+            (f"{side} low strip on the three low pads", [low[side]], lowPads[side]),
+            (f"{side} pack against its high strip", pack, [high[side]]),
+            (f"{side} high strip on the high pad", [high[side]], highPads[side]),
+            (f"{side} pack against its end pad", pack, [ends[side]]),
+            (f"{side} end pad against the left wall", [ends[side]], [wall]),
         ]
-    rows.append(("end pad against the left wall", endPad, wall))
     for what, left, right in rows:
-        distance, shared = measure([left], [right])
+        distance, shared = measure(left, right)
         ok = distance <= 0.001 and shared <= CONTACT_MM3
         checked += 1
         failed += 0 if ok else 1
@@ -1044,11 +998,25 @@ def check_battery_hold_down() -> tuple[int, int]:
             f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
             "  wants contact"
         )
+    # Each low strip has to bear on all three of its pads and not merely the
+    # nearest, or the block is held at one point along its length.
+    for side in ("front", "rear"):
+        for i, padBody in enumerate(lowPads[side]):
+            distance, shared = measure([low[side]], [padBody])
+            ok = distance <= 0.001 and shared <= CONTACT_MM3
+            checked += 1
+            failed += 0 if ok else 1
+            mark = "  ok  " if ok else " FAIL "
+            what = f"{side} low strip on low pad {i + 1}"
+            print(
+                f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
+                "  wants contact"
+            )
 
     for what, squeezed in (
         ("top pads", e.batteryFoamTop),
         ("side strips", e.batteryFoamSide),
-        ("end pad", e.batteryFoamEnd),
+        ("end pads", e.batteryFoamEnd),
     ):
         ratio = squeezed / e.batteryFoamFree
         ok = 0.5 <= ratio < 1.0
@@ -1067,9 +1035,10 @@ def check_battery_hold_down() -> tuple[int, int]:
     # the whole 3 mm above or below -- and nothing printed and no foam may share
     # any volume with that box. Touching is allowed, because two faces do and are
     # meant to: the stop meets the end face, end-on, and the rail's full-height
-    # length ends where the body does. What this catches is a fence, a fin, a
-    # rail, a pad or a strip run on past the 65 mm, or a deck brought down into
-    # the lead end's 38 mm. The pair beside it is the stop: the rail's top no
+    # length ends where the body does. What this catches is a wall pad, a rail
+    # or a strip of foam run on past the 65 mm, the BMS between the packs moved
+    # out between their lead ends, or a deck brought down into the lead end's
+    # 38 mm. The pair beside it is the stop: the rail's top no
     # longer stands under the lead end, so its contact with the rail no longer
     # says the stop is reached, and it is measured on its own.
     from build123d import Box, Pos
@@ -1081,6 +1050,7 @@ def check_battery_hold_down() -> tuple[int, int]:
     outerY = e.batteryPackOuterY + spareY
     heightZ = e.batteryPackLeadWidth + spareZ
     printed = [*torso.pelvisShell(), *deck.electronicsDeck()]
+    bms = e.torsoElectronicsGroups()["BMS board"]
     stopHeight = e.lowerBandZ + e.batteryRailStopHeight - torso.cavityBottomZ
     for side, sy in (("front", 1), ("rear", -1)):
         envelope = Pos(
@@ -1097,6 +1067,7 @@ def check_battery_hold_down() -> tuple[int, int]:
             (f"{side} pack against its end stop", [packs[side]], [stop], "contact"),
             (f"{side} lead end, worst case, vs print", [envelope], printed, "none"),
             (f"{side} lead end, worst case, vs foam", [envelope], foam, "none"),
+            (f"{side} lead end, worst case, vs the BMS", [envelope], bms, "none"),
         ):
             distance, shared = measure(left, right)
             if wants == "contact":
@@ -1159,7 +1130,9 @@ def check_footings() -> tuple[int, int]:
     So each feature that stands up from the floor or the saddle top has every
     downward face measured against the shell and the two hip clevises, and all
     of each face has to rest on them. The wall-hung features -- the cover bosses,
-    the deck ledges and the hoist lugs -- hang on purpose and are not here.
+    the deck ledges, the hoist lugs and, since 2026-10-05, the battery's wall
+    pads -- hang on purpose and are not here. The fences and the fin that stood
+    here until then went with the BMS's floor guides.
     """
     from cad import torso
 
@@ -1170,16 +1143,9 @@ def check_footings() -> tuple[int, int]:
     features = [
         ("front battery rail", torso.batteryRails()[0]),
         ("rear battery rail", torso.batteryRails()[1]),
-        ("front battery fence", torso.batteryCradle()[0]),
-        ("rear battery fence", torso.batteryCradle()[1]),
-        ("battery fin", torso.batteryCradle()[2]),
         *(
             (f"distribution board post {i + 1}", post)
             for i, post in enumerate(torso.powerEntryPosts())
-        ),
-        *(
-            (f"BMS floor guide {i + 1}", guide)
-            for i, guide in enumerate(torso.bmsGuides())
         ),
         ("IMU seat", torso.imuSeat()[0]),
     ]
@@ -1218,11 +1184,10 @@ def check_no_clashes() -> tuple[int, int]:
     groups = dict(electronics.torsoElectronicsGroups())
     groups["deck"] = deck.electronicsDeck()
     groups["battery rails"] = torso.batteryRails()
-    groups["battery cradle"] = torso.batteryCradle()
+    groups["battery pads"] = torso.batteryPads()
     groups["board posts"] = torso.powerEntryPosts()
     groups["deck ledges"] = torso.deckLedges()
     groups["IMU seat"] = torso.imuSeat()
-    groups["BMS guides"] = torso.bmsGuides()
     # The shell WITHOUT the four feature sets listed above it, because
     # pelvisShell() returns all of them in one list and comparing a part with
     # its own features is not a finding. Seven bodies: the shell, four cover

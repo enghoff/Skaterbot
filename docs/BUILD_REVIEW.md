@@ -172,22 +172,25 @@ listing:
   are drilled by the board house. The Pi is already on order.
 - **Measure a skate wheel before the wheel adapter is printed.** The hub's
   Ø45 mm and the tread's 20 mm crown radius are representative figures.
-- **Look at where the battery management board takes its wires.** The balance
-  and charge leads attach somewhere on the Daly board, and the only air beside it
-  is 3.45 mm to the pack ends since the packs were measured, where it was 4.95.
-  The balance tails now come straight down that gap from the packs' lead ends. A
-  plug on the board's inboard face may not fit. The board is already on order.
+- **~~Look at where the battery management board takes its wires.~~ Answered
+  5 October, with the board in hand.** Its leads leave its two short ends: B-,
+  the NTC pair and P- at one, the 7-way balance socket at the other. Standing
+  across the gap between the bays, those ends faced the walls 4.6 mm away. The
+  board now goes between the two packs, in one 45 mm block with them, and both
+  ends have room. Measure how far its leads come out before the harness is made
+  up.
 - **Measure the motor's output thread depth** on the first motor, to confirm
   M3 × 8.
 
 **Not drawn, so not checked by any gate.**
 
-- **The pack leads' route to the power bay.** The management board stands
-  across the whole gap between the bays, with 1.5 mm over it. The leads can only
-  pass under it, where there is 13.5 mm since the deck rose 3 mm, or round its
-  ends, where there is 4.6 mm. So the packs have to be connected before the board drops in. That is
-  the order gate I checks, but the leads themselves are not drawn, and nobody
-  has checked the packs' leads are long enough.
+- **The pack leads' route to the power bay** is drawn now, as space rather
+  than as wire. Each pack's XT60, mated with the series harness, lies in the
+  strip beside that pack, and its leads turn into it through the cleared gap at
+  about an 8 mm radius. The harness's legs fold back over it and cross to the
+  power board. The gates hold everything else out of that space. Nobody has yet
+  checked the actual leads are long enough: the layout asks about 50 mm of each
+  pack's 76 and about 100 mm of each harness leg.
 - **Motor lead lengths.** The 300 mm pigtails have not been laid along a leg to
   the carrier.
 - **The legs are not in gate I.** Their joints were worked through for assembly

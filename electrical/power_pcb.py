@@ -1251,8 +1251,9 @@ STAND_INS = {
     "capacitor bank",
 }
 
-# WHAT IS DRAWN AS A SOLID BUT IS ACTUALLY A PIECE OF WIRE. The pack's main leads
-# and the link that puts the two packs in series are flying leads: the CAD draws
+# WHAT IS DRAWN AS A SOLID BUT IS ACTUALLY A PIECE OF WIRE. The pack's main leads,
+# the series harness and the BMS's leads are flying leads -- one group of chases
+# in the CAD since 2026-10-05, "battery leads" -- and the CAD draws
 # them as blocks so that the space they need is reserved and visible, but a lead
 # goes where it is dressed and a part standing in its drawn path is a lead to be
 # re-dressed rather than a part to be moved. So a clash with one of these is a
@@ -1260,7 +1261,7 @@ STAND_INS = {
 # deck, the shell -- is a fault. The connectors are NOT in here: an XT60 on the
 # end of a lead still has to be somewhere, and where it can be is set by the pack
 # it plugs into.
-FLEXIBLE = {"battery main leads", "battery series link"}
+FLEXIBLE = {"battery leads"}
 
 
 def check_against_cad(report: Report, parts: list[Placed]) -> None:
