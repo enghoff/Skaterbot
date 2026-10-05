@@ -80,6 +80,48 @@ which is the policy's choice and not the motors' (see `rew_lin_vel_error`),
 and the bottom 20 mm of the ride height's range, which no cost tried has
 moved it into.
 
+## The jump policy
+
+From 27 September 2026 the robot drives on stage 10 and jumps on a second
+policy, handing over between them (`TwoPolicies` in
+`simulation/mujoco/drive.py`; the firmware's side is in
+`docs/POLICY_INTERFACE.md`). Every run that tried to teach one policy both,
+the tried runs below from `windup1k` to `crouchdefault`, traded the driving
+for the jump or the jump for the driving. The jump policy only has to crouch,
+jump, land and hand back, so it is free to drive badly, and does: asked for
+1.45 m/s it holds 0.5-0.6.
+
+Its chain branches from stage 8 through `steps`, `stepsheightwindup` and
+`mergeheight` (below):
+
+| Run | From | Iterations x robots | What it added |
+|---|---|---|---|
+| `jump-2026-09-27_09-38-04_crouchmerge` | mergeheight | 1 500 x 8 192 | A crouch to 150 mm asked for 0.6 s before each jump (`jump_crouch_s`), clearance paid 1 000 /m, pitch charged -400: the push-off jump |
+| `jump-2026-09-27_17-19-09_nosplit300` | crouchmerge | 500 x 6 144 | The wheels' fore-and-aft split charged through the crouch and the jump, -300 /m (`rew_jump_stagger`): it had crouched in the splits |
+| `jump-2026-09-27_17-52-53_heading50` | nosplit300 | 1 000 x 8 192 | The heading turned in the jump charged, -50 /rad (`rew_jump_heading`) |
+| `jump-2026-09-27_19-53-09_quickcrouch` | heading50 | 1 000 x 6 144 | The jump started the moment the legs reach the crouch rather than after 0.6 s, and the operator's height asked for again from the landing: no pause at the bottom, no second crouch after |
+| `jump-2026-09-28_06-13-36_jumpsym300` | quickcrouch | 1 500 x 8 192 | The two legs bending differently charged through the crouch and the jump, -300 /rad² (`rew_jump_leg_asymmetry`). **The candidate jump policy, 28 September 2026** |
+
+Every run passed `env.command_envelope_start=1.0 env.rew_leg_height_error=-1000.0`
+and each run's additions carried on to the next. What they measured,
+handed over from stage 10 in MuJoCo with random delays up to 10 / 5 / 5 ms
+and a random battery, and the clearance in Isaac Lab standing and at 1 m/s:
+
+| Run | Clearance, Isaac Lab / MuJoCo | Knees apart, pushing off / in the air | Roll in the air | Heading turned | Falls in MuJoCo, jumps to 1.5 m/s / to 1.1 m/s |
+|---|---|---|---|---|---|
+| crouchmerge | 152-155 / 143-164 mm | 22 / 84° | 18° | 119° | not measured with the quick crouch |
+| heading50 | 121-130 / 133 mm | 88 / 70° | 12° | 22° | 2 in 40 / -- |
+| quickcrouch | 124-133 / 128-131 mm | 78 / 68° | 14° | 66° | 3 in 40 / 1 in 60 |
+| jumpsym300 | 103-112 / 105-109 mm | 13-16 / 5-9° | 4° | 8° | 2 in 40 / 0 in 60 |
+
+Every jump policy until jumpsym300 folded its right leg far further than its
+left, a habit each inherited from its parent; the higher the jump the more it
+rolled and turned. Evening the legs out cost a sixth of the clearance, 105 mm
+against the 120 asked for, and the runs that won it back lost robustness in
+MuJoCo (symlong, symhigh, below). Every fall above was on landing, most of
+them faster than the jump policy can drive, which is why the firmware should
+not jump above 1 m/s.
+
 ## What the policy is trained across
 
 The training distribution of the default policy, stage 10, as `jump_env_cfg.py`
@@ -148,6 +190,17 @@ Each has its lesson in the comment of the setting it concerns.
 | pushsteps | height | the same, and steps | void for steps: the platform every step robot started on was a post 10 cm across, a step high (`step_platform_m`); the pushes as above |
 | steps | height | steps, with the height cost at -30 | the best on steps, and the only real push-off jump yet (centre of mass up 68 mm, 114 mm clearance, but pitching 44°) -- both by riding at 160 mm whatever it was asked; slow turns gone (0.5 and 1.1 rad/s asked gave 0.0 and 0.2) |
 | heightsteps | heightcost | stage 10 without the doubled speed cost | the same within the noise, but worse on 40 mm steps at 0.2 m/s (23-54 % made it, against 77-85 %) |
+| windup1k, windup3k, windupcont, windupexplore | heightstepsfast | a crouch charged for (`rew_jump_windup`) for 0.3 s after the trigger, at two strengths, continued to 1 500 iterations, and again with the legs' exploration reset | it sank but did not push: the jump stayed at 26-31 mm of rise. It did follow the ride height over its whole range and drove at 1.34 m/s, but lost slow turns and angled steps |
+| stepsheight, stepsheightwindup | steps | the steps policy, which pushes off, with stage 10's costs, and with the wind-up | kept the push -- 70-83 mm of rise, 100-131 mm cleared, pitching 35-50° -- and the steps, but rode at 150-165 mm whatever it was asked and would not turn slowly |
+| mergeheight, mergeturn | stepsheightwindup | the ride height's cost at -1000, and with the turn's tripled | followed the ride height exactly, but jumped 16-22 mm from standing, drove at 0.9-1.1 m/s and still would not turn slowly. From a 150 mm stance, though, it pushed for 86 mm: the idea behind `jump_crouch_s` |
+| crouchmerge | mergeheight | a crouch asked for 0.6 s before each jump, clearance paid 1 000 /m, pitch charged -400 | **the best jump: 152-155 mm cleared (143-164 in MuJoCo with delays), 84 mm of rise above standing**, 36° of pitch -- and poor driving: 0.84 m/s, weak turns, a wheel up standing at 150 mm |
+| crouchdefault | heightstepsfast | the same | kept the driving, and 1.40 m/s, but never learned to push from the crouch: 86 mm, wheels leaving 0.2 s apart |
+| nosplit1000 | crouchmerge | the split charged at -1 000 /m | no better on the split than -300 (44 mm against 56), and pitched more, 37-40° |
+| heading150 | nosplit300 | the heading charged at -150 /rad | stopped jumping: half took off standing, and none stayed up jumping at 1 m/s |
+| quickcrouchlevel | heading50 | quickcrouch with the pitch at -800 | flew more level, 20-22° against 37°, but cleared 112-117 mm and fell 6 times in 40 in MuJoCo |
+| jumpsym100 | quickcrouch | the legs' difference at -100 | halfway: knees 48° apart pushing off, 9° of roll, 116-129 mm |
+| symlong | jumpsym300 | 1 500 iterations more | 112-117 mm and level, but fell 6 times in 40 in MuJoCo, and 7 in 60 below 1.1 m/s, some of them backing slowly |
+| symhigh | jumpsym300 | the same, clearance paid 2 000 /m | 119-126 mm, but rolled 7° (16° at worst), 21° between the knees pushing off, and fell 3 times in 60 below 1.1 m/s |
 
 ## Before fine-tuning for the robot
 

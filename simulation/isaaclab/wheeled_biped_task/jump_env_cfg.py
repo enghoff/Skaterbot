@@ -280,6 +280,82 @@ class WheeledBipedJumpEnvCfg(WheeledBipedRoughEnvCfg):
     rew_jump_com_rise = 2000.0
     rew_jump_pitch = -200.0
     rew_liftoff_skew = -200.0
+    # THE JUMP IS A TUCK, and cannot use a crouch. Of the 80 mm the wheels
+    # clear, the centre of mass rises about 30; the rest is the shins pulled
+    # up. Asked for its lowest ride height first, the default policy jumped
+    # worse, 8 mm of rise; a policy that happened to ride at 160 mm (steps,
+    # 2026-09-26) pushed off from it for 67-74 mm, and for 109 mm from its
+    # lowest, pitching 35-42 degrees (MuJoCo). So a wind-up: for
+    # jump_windup_s after the trigger the legs are charged per metre above
+    # the bottom of the ride height's range, and the jump is scored as
+    # before, its rise measured from where the centre of mass was at the
+    # trigger -- so sinking first costs nothing if the push goes higher. The
+    # policy sees the time since the trigger, so the firmware need do nothing.
+    # It has to be felt: the rise pays once, about 60 a jump at 31 mm, and a
+    # charge per second over 0.3 s is small beside it -- at -100 /m, 1.4 a
+    # jump for not crouching at all; at -1000, 14.
+    # IT SANK AND DID NOT PUSH. At -3000 for 1 500 iterations from the
+    # default (windupcont, 2026-09-27) the policy learned the sink, and in
+    # MuJoCo pushed off from a 150 mm stance for 58 mm of rise -- but from
+    # 45 mm lower, so its apex stayed below the tuck's from standing, and the
+    # score, rightly measured from the trigger, kept the tuck: 26-31 mm, as
+    # before. With the legs' exploration reset (windupexplore) the same.
+    # What it did do was follow the ride height over the whole range, 148
+    # to 202 mm, and drive faster, 1.34 / -1.45 m/s -- losing slow turns and
+    # angled steps. The strong push is the steps policy's, 109 mm from 150.
+    jump_windup_s = 0.3
+    rew_jump_windup = 0.0
+    # SO THE CROUCH IS ASKED FOR, NOT LEARNED. Made to follow the ride height
+    # (mergeheight, -1000 /m, 2026-09-27), the steps policy kept its push but
+    # only from low: asked for 150 mm and then to jump, its centre of mass
+    # rose 86 mm and the wheels cleared 113 mm (MuJoCo); from 203, 32 and 84.
+    # So for jump_crouch_s before each trigger, and until the jump is over,
+    # the ride height asked for is the bottom of its range -- in training as
+    # the firmware will do it on the robot -- and the policy jumps from where
+    # its push works. 0 is off: the trigger comes as the operator presses.
+    # At 0.6 s, with clearance paid 1000 /m to bring the tuck back on top of
+    # the push and the pitch charged -400, from mergeheight (crouchmerge,
+    # 2026-09-27): 152-155 mm cleared, the centre of mass 84 mm above where
+    # it stood, 36 degrees of pitch -- MuJoCo, with the robot's delays, 143 to
+    # 164 mm -- but it drove at 0.84 m/s, turned weakly and spun on one wheel
+    # standing at 150 mm. From the default instead (crouchdefault) it never
+    # learned to push from the crouch. The jump and the driving would not
+    # share one policy; handed over between two in MuJoCo, they do.
+    # Now the longest the crouch may take: the jump comes the moment the
+    # legs' mean height is within jump_crouch_tolerance_m of the bottom --
+    # a waiting crouch looked like hesitation -- and the operator's height is
+    # asked for again from the landing, not after the jump's whole window,
+    # which had the robot sink back into a second crouch. The firmware can
+    # do both: the height is the joint angles' alone (_leg_geometry).
+    jump_crouch_s = 0.0
+    jump_crouch_tolerance_m = 0.005
+    # AND IT CROUCHED IN THE SPLITS: at 150 mm, before the trigger, one wheel
+    # 101 mm ahead of its hip and the other 66 mm behind, one of them off the
+    # ground (crouchmerge, MuJoCo); its parent crouched there evenly. The only
+    # cost on it, wheel_stagger, was about 1 a crouch against some 200 for
+    # the jump, and off in the jump itself. This charges the split per metre
+    # through the crouch and the jump.
+    rew_jump_stagger = 0.0
+    # And it turned in the air: across a jump its heading swung 53 degrees
+    # at the median and up to 164 (crouchmerge, 40 in MuJoCo with the
+    # robot's delays), the default's 14 and 43. The turn-rate cost charged
+    # about 1 for 53 degrees. This charges, per radian, the heading turned
+    # beyond the turn asked for since the crouch, for as long as it is off.
+    rew_jump_heading = 0.0
+    # AND IT JUMPED LOPSIDED, every jump policy there has been: the right knee
+    # folded 50-90 degrees further than the left and the right hip 25-45,
+    # pushing off and tucking alike (MuJoCo, 2026-09-28). Low jumps got away
+    # with it, 2 degrees of roll at 80 mm; quickcrouch's 130 mm rolled 14
+    # degrees in the air and turned 66. No cost could tell which leg did the
+    # work, and every run inherited the habit from the one before. This
+    # charges the legs' difference, per radian squared, through the crouch and
+    # the jump; the always-on leg_asymmetry below is 2, too little to notice.
+    # rsl_rl's mirror loss would be the general cure, but the policy's
+    # stiffness and damping outputs run to +/-250 behind their clip, and the
+    # difference there would swamp it. At -300 the knees went from 78 degrees
+    # apart to 13, the roll from 14 to 4 and the turn from 66 to 8, for a
+    # sixth of the clearance (jumpsym300); -100 went halfway (jumpsym100).
+    rew_jump_leg_asymmetry = 0.0
     # THE FIRST RUN NEVER JUMPED, and these are why. An attempt usually ended
     # in a fall, which costs rew_terminated (-20) and the rest of the episode's
     # alive reward, while not trying cost only the missed jump's -5; so the

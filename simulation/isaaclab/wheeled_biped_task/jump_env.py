@@ -46,6 +46,14 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._next_jump_in = torch.zeros(n, device=dev)
         self._took_off = torch.zeros(n, dtype=torch.bool, device=dev)
         self._peak = torch.zeros(n, device=dev)
+        # The crouch before it (jump_crouch_s), and the ride height the
+        # operator had asked for, to go back to afterwards.
+        self._crouching = torch.zeros(n, dtype=torch.bool, device=dev)
+        self._crouch_t = torch.zeros(n, device=dev)
+        # How far the heading has turned beyond the turn asked for, from the
+        # crouch or the trigger to the end of the jump (rew_jump_heading).
+        self._heading_drift = torch.zeros(n, device=dev)
+        self._asked_height = torch.full((n,), cfg.default_leg_height_m, device=dev)
         # The torso: its height at the trigger, the highest it has been since
         # the wheels left the ground, and how long they have been off it.
         self._start_z = torch.zeros(n, device=dev)
@@ -134,7 +142,19 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         dt = self.step_dt
         self._jump_t += dt * self._jump_active.float()
         self._next_jump_in -= dt
-        start = (~self._jump_active) & (self._next_jump_in <= 0.0) & ~self._on_steps
+        c = self.cfg
+        due = (~self._jump_active) & (self._next_jump_in <= 0.0) & ~self._on_steps
+        if c.jump_crouch_s > 0.0:
+            # A press starts the crouch, and the jump comes the moment the legs
+            # reach the bottom of the ride height -- or at jump_crouch_s, if
+            # they have not -- rather than after a wait in the crouch.
+            self._crouch_t = torch.where(due, self._crouch_t + dt, 0.0)
+            height, _ = self._leg_geometry()
+            bottom = c.command_leg_height_m[0] + c.jump_crouch_tolerance_m
+            low = height.mean(dim=1) <= bottom
+            start = due & (low | (self._crouch_t >= c.jump_crouch_s))
+        else:
+            start = due
         lo, hi = self.cfg.jump_clearance_m
         target = torch.empty(self.num_envs, device=self.device).uniform_(lo, hi)
         lo, hi = self.cfg.jump_interval_s
@@ -156,6 +176,21 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._com_apex = torch.where(start, com, self._com_apex)
         self._lift_t = torch.where(start.unsqueeze(1), -1.0, self._lift_t)
         self._skew_charged &= ~start
+        # The crouch: from the press until both wheels are down again, the
+        # ride height asked for is the bottom of its range, as the firmware
+        # will ask for it; then the operator's again, not a second crouch
+        # while the rest of the jump's window runs out. Never on the steps,
+        # where no jump comes.
+        if c.jump_crouch_s > 0.0:
+            landed = self._landed_t >= 0.0
+            crouch = due | (self._jump_active & ~landed)
+            self._asked_height = torch.where(
+                self._crouching, self._asked_height, self._commands[:, 2]
+            )
+            self._commands[:, 2] = torch.where(
+                crouch, c.command_leg_height_m[0], self._asked_height
+            )
+            self._crouching = crouch
 
     # -- sensing
 
@@ -227,8 +262,36 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         terms["action_rate"] = terms["action_rate"] * (
             idle + c.jump_action_rate_scale * active.float()
         )
-        terms["track_leg_height"] = terms["track_leg_height"] * idle
-        terms["leg_height_error"] = terms["leg_height_error"] * idle
+        # With a crouch asked for, the ride height is paid again from the
+        # landing, when the operator's height is asked for again.
+        settled = idle
+        if c.jump_crouch_s > 0.0:
+            settled = (~active | (self._landed_t >= 0.0)).float()
+        terms["track_leg_height"] = terms["track_leg_height"] * settled
+        terms["leg_height_error"] = terms["leg_height_error"] * settled
+        # The wind-up: a crouch to push from, just after the trigger.
+        height, ahead = self._leg_geometry()
+        winding = (active & (self._jump_t < c.jump_windup_s)).float()
+        above = (height.mean(dim=1) - c.command_leg_height_m[0]).clamp(min=0.0)
+        terms["jump_windup"] = c.rew_jump_windup * winding * above
+        # The wheels split fore and aft while crouching for a jump and in it,
+        # per metre, where wheel_stagger below is off or too weak to notice.
+        busy = (self._crouching | active).float()
+        split = (ahead[:, 0] - ahead[:, 1]).abs()
+        terms["jump_stagger"] = c.rew_jump_stagger * busy * split
+        # And the two legs bending differently in it, hip against hip and knee
+        # against knee, per radian squared.
+        legs = self.robot.data.joint_pos.torch[:, self._leg_ids]
+        unequal = torch.sum(torch.square(legs[:, :2] - legs[:, 2:]), dim=1)
+        terms["jump_leg_asymmetry"] = c.rew_jump_leg_asymmetry * busy * unequal
+        # And the heading it turns through, beyond the turn asked for, for
+        # as long as it is off: the turn-rate cost charged about 1 for a
+        # 53 degree swing, against some 200 for the jump.
+        rate = self.robot.data.root_ang_vel_w.torch[:, 2] - self._commands[:, 1]
+        self._heading_drift = torch.where(
+            busy > 0.0, self._heading_drift + rate * self.step_dt, 0.0
+        )
+        terms["jump_heading"] = c.rew_jump_heading * busy * self._heading_drift.abs()
         terms["wheel_fore_aft"] = terms["wheel_fore_aft"] * idle
         terms["wheel_stagger"] = terms["wheel_stagger"] * idle
         terms["stand_still"] = terms["stand_still"] * idle
@@ -447,6 +510,9 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._com_apex[env_ids] = 0.0
         self._lift_t[env_ids] = -1.0
         self._skew_charged[env_ids] = False
+        self._crouching[env_ids] = False
+        self._crouch_t[env_ids] = 0.0
+        self._heading_drift[env_ids] = 0.0
         self._next_jump_in[env_ids] = torch.empty(
             len(env_ids), device=self.device
         ).uniform_(lo, hi)

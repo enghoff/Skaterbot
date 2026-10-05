@@ -74,7 +74,7 @@ exported network and is not the firmware's business.
 | 13-16 | leg joint speeds, same order | rad/s | 0.05 | encoders |
 | 17-18 | wheel speeds, right then left | rad/s | 0.05 | encoders |
 | 19-24 | the policy's own last six outputs, after clipping to ±1 | -- | 1 | the firmware's memory; zero at start |
-| 25 | jump trigger: 1 from the request until landed or given up, else 0 | -- | 1 | jump policies only |
+| 25 | jump trigger: 1 for 1.5 s from the trigger (see the jump, below), or until 0.8 s have passed without leaving the ground; else 0 | -- | 1 | jump policies only |
 | 26 | jump target clearance, while triggered, else 0 | m | 10 | jump policies only |
 | 27 | seconds since the trigger, capped at 2, while triggered, else 0 | s | 1 | jump policies only |
 | 28 | the pack's voltage, as V / 24 − 1 | -- | 5 | the carrier's INA226; jump policies from September 2026 on |
@@ -155,6 +155,53 @@ the noise training assumes.
 Also set: each motor's **communication time-out**, so a crashed controller
 leaves the motors off rather than holding the last torque; and its
 **undervoltage threshold**, which the bill of materials puts at 21.6 V.
+
+## Two policies: one drives, one jumps
+
+No single policy both drove well and jumped well: every fine-tune that tried
+traded one for the other
+([TRAINING_HISTORY.md](../simulation/isaaclab/TRAINING_HISTORY.md)). So the
+robot carries two networks of the same shape, 29 inputs and 8 outputs, 193 KB
+each, which both fit the G474's 512 KB of flash. The driving policy runs until
+a jump is asked for. The jump policy then takes the robot through the crouch,
+the jump and the landing, and hands it back. `TwoPolicies` in the MuJoCo
+driver is the reference, and `drive.py --jump-run RUN` drives on the default
+policy and jumps on RUN.
+
+**Nothing is reset at a handover.** The incoming policy is fed exactly what the
+outgoing one would have been: the same readings, and as its last outputs
+(index 19-24) the ones the outgoing policy last sent. The motors hold their
+command until the incoming policy's first answer replaces it. The driving
+policy is always fed a trigger of zero (index 25-27).
+
+**The jump, in the order the jump policy was trained to expect it:**
+
+1. On the press, hand over to the jump policy and ask for the lowest ride
+   height, index 8 = −1 (150 mm), with the trigger still 0.
+2. As soon as the legs are within 5 mm of it -- a mean hip-to-axle height of
+   155 mm or less -- or 0.6 s after the press at the latest, raise the trigger:
+   index 25 = 1, index 26 = the clearance (0.12 m, as trained) × 10, index 27 =
+   the seconds since this moment. Each leg's height comes from its joint
+   angles alone, 0.105 cos(hip) + 0.105 cos(knee − hip) m, so it needs no
+   estimate of where the ground is. In MuJoCo the crouch takes 0.1 s.
+3. Hold the ride height at the bottom until 0.5 s after the trigger, then
+   give the operator's height back.
+4. 1.5 s after the trigger, drop it to 0 and hand back to the driving policy.
+
+**No landing detection is needed.** Training held the crouch until both wheels
+were back on the ground, which the simulator knows and the robot does not. But
+the timing hardly matters. In MuJoCo, with the robot's delays, releasing it at
+take-off, at touchdown, up to 0.2 s after touchdown, or at a fixed 0.4-0.6 s
+after the trigger gave the same falls, within 6 mm of the same clearance, and
+legs back at ride height. At 0.7 s the robot starts to sink back into a
+second crouch.
+
+**Jump only below about 1 m/s.** The jump policy does not drive fast: asked
+for 1.45 m/s it holds 0.5, and a robot handed to it faster than it can drive
+lands in trouble. In MuJoCo, with the robot's delays, quickcrouch fell in 3 of
+40 randomised jumps, every one of them at 1.2-1.4 m/s, and jumpsym300 in 2.
+With jumps held below 1.1 m/s, jumpsym300 fell in none of 60. Refuse the jump
+above 1 m/s, or slow down first.
 
 ## What the policy does not do
 

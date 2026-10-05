@@ -468,6 +468,11 @@ class Controller:
             # one fixed target, and an older one trained to targets is asked
             # for the highest of them.
             self.clearance = cfg["jump_clearance_m"][1]
+        # Asked for its lowest ride height this long before each jump, for a
+        # policy trained that way, as the firmware will (jump_env_cfg.py).
+        self.crouch_s = float(cfg.get("jump_crouch_s", 0.0))
+        self.crouch_tolerance = float(cfg.get("jump_crouch_tolerance_m", 0.0))
+        self.hips = [model.body(f"thigh_{side}").id for side in ("right", "left")]
         # The robot's delays, in physics steps: the IMU's reading, the
         # encoders', and a command's taking effect (set_conditions).
         self.delay = (0, 0, 0)
@@ -505,6 +510,7 @@ class Controller:
         self.jump_active = False
         self.jump_t = 0.0
         self.jump_target = 0.0
+        self.crouch_left, self.pending_clearance, self.stand_z = -1.0, 0.0, None
         self.took_off = False
         self.peak_clearance = 0.0
         self.last_peak = None
@@ -574,6 +580,11 @@ class Controller:
         imu = self.history[self.delay[0], :6]
         encoders = self.history[self.delay[1], 6:]
         command = self.command.copy()
+        # Crouched from the press until both wheels are down again; then the
+        # operator's height, not a second crouch.
+        landing = self.jump_active and self.landed_t < 0.0
+        if self.crouch_s > 0.0 and (self.crouch_left >= 0.0 or landing):
+            command[2] = self.height_range[0]
         if self.cfg.get("scale_height_command", False):
             # The ride height as -1 to 1 over its range (env.py).
             lo, hi = self.height_range
@@ -594,6 +605,13 @@ class Controller:
         assert obs.shape == (self.n_obs,), obs.shape
         return obs
 
+    def leg_height(self, d) -> float:
+        """The legs' mean hip-to-axle height in the torso's frame, as
+        training's _leg_geometry has it from the joint angles."""
+        rot = d.xmat[self.base].reshape(3, 3)
+        legs = [d.xpos[h] - d.xpos[w] for h, w in zip(self.hips, self.wheels)]
+        return float(np.mean([(rot.T @ v)[2] for v in legs]))
+
     def tilt(self, d) -> float:
         return math.acos(np.clip(d.xmat[self.base][8], -1.0, 1.0))
 
@@ -601,6 +619,16 @@ class Controller:
 
     def act(self, d):
         """One policy step: read the robot, run the policy, set the targets."""
+        if self.crouch_left >= 0.0:
+            if self.stand_z is None:
+                self.stand_z = d.xpos[self.base, 2]
+            # The jump the moment the legs reach the crouch, or at the most
+            # jump_crouch_s after the press (jump_env_cfg.py).
+            self.crouch_left -= self.dt
+            bottom = self.height_range[0] + self.crouch_tolerance
+            if self.crouch_left < 0.0 or self.leg_height(d) <= bottom:
+                self.crouch_left = -1.0
+                self.start_jump(self.pending_clearance)
         self.update_jump(d)
         # What the motors run until this step's command reaches them.
         self.held = (self.leg_targets, self.wheel_torque, self.kp, self.kd)
@@ -648,13 +676,20 @@ class Controller:
     # -- the jump, as wheeled_biped_task/jump_env.py runs it
 
     def trigger_jump(self, clearance: float):
-        if self.jumps and not self.jump_active:
-            self.jump_active, self.jump_t = True, 0.0
-            self.jump_target = float(clearance)
-            self.took_off, self.peak_clearance = False, 0.0
-            self.touch_t, self.landed_t = [-1.0, -1.0], -1.0
-            # How far the torso pitches, and when each wheel leaves the ground.
-            self.pitch_peak, self.lift_t = 0.0, [-1.0, -1.0]
+        if not self.jumps or self.jump_active or self.crouch_left >= 0.0:
+            return
+        if self.crouch_s > 0.0:
+            self.crouch_left, self.pending_clearance = self.crouch_s, float(clearance)
+            return
+        self.start_jump(clearance)
+
+    def start_jump(self, clearance: float):
+        self.jump_active, self.jump_t = True, 0.0
+        self.jump_target = float(clearance)
+        self.took_off, self.peak_clearance = False, 0.0
+        self.touch_t, self.landed_t = [-1.0, -1.0], -1.0
+        # How far the torso pitches, and when each wheel leaves the ground.
+        self.pitch_peak, self.lift_t = 0.0, [-1.0, -1.0]
 
     def update_jump(self, d):
         if not self.jump_active:
@@ -662,8 +697,11 @@ class Controller:
         c = self.cfg
         torso_z = d.xpos[self.base, 2]
         if self.jump_t == 0.0:
-            # The torso's height at the trigger, to measure its rise from.
+            # The torso's height at the trigger, to measure its rise from --
+            # or where it stood before a crouch, if it was asked for one.
             self.start_z = self.apex_z = torso_z
+            if self.stand_z is not None:
+                self.start_z, self.stand_z = self.stand_z, None
             self.air_t = 0.0
         clear = self.clearance_now(d)
         on_ground = clear < c["wheel_contact_tolerance_m"]
@@ -701,6 +739,84 @@ class Controller:
             self.last_pitch = self.last_skew = 0.0
         if missed or recovered:
             self.jump_active = False
+
+
+class TwoPolicies:
+    """Drive on one policy and jump on another, handing over between them.
+
+    One policy would not both drive well and jump well: every fine-tune that
+    tried traded one for the other (../isaaclab/TRAINING_HISTORY.md). So the
+    driving policy runs until a jump is asked for; the jump policy then takes
+    the robot through its crouch, the jump and the landing; then the driving
+    policy again. What carries over at each handover is what the network's
+    own inputs carry: the sensor history, its last outputs, the commands the
+    motors are holding. The operator's command is one array, shared. It
+    stands in for the firmware doing the same, and answers to the calls a
+    Controller does.
+    """
+
+    STATE = ("history", "actions", "leg_targets", "wheel_torque", "kp", "kd")
+    STATE += ("held", "substep")
+    # Read from the jump policy whichever is driving: the jump's results.
+    JUMP = ("jumps", "clearance", "jump_active", "took_off", "crouch_left", "crouch_s")
+
+    def __init__(
+        self, driving: Controller, jumping: Controller, settle_s: float | None = None
+    ):
+        jumping.command = driving.command
+        for name, value in (("driving", driving), ("jumping", jumping)):
+            object.__setattr__(self, name, value)
+        object.__setattr__(self, "active", driving)
+        # Hand back this long after the landing, rather than when the jump's
+        # window closes: a jump policy trained with its crouch asked for to
+        # the window's end sinks back into it after landing.
+        object.__setattr__(self, "settle_s", settle_s)
+
+    def __getattr__(self, name):
+        if name.startswith("last_") or name in self.JUMP:
+            return getattr(self.jumping, name)
+        return getattr(self.active, name)
+
+    def __setattr__(self, name, value):
+        setattr(self.driving, name, value)
+        setattr(self.jumping, name, value)
+
+    def _hand_to(self, to: Controller):
+        for name in self.STATE:
+            setattr(to, name, getattr(self.active, name))
+        object.__setattr__(self, "active", to)
+
+    def set_conditions(self, delay_ms, battery):
+        self.driving.set_conditions(delay_ms, battery)
+        self.jumping.set_conditions(delay_ms, battery)
+
+    def place(self, d):
+        self.driving.place(d)
+        self.jumping.reset_state()
+        object.__setattr__(self, "active", self.driving)
+
+    def trigger_jump(self, clearance: float):
+        if self.active is self.driving:
+            self._hand_to(self.jumping)
+            self.jumping.trigger_jump(self.jumping.clearance)
+
+    def act(self, d):
+        jump = self.jumping
+        done = not jump.jump_active and jump.crouch_left < 0.0
+        if self.settle_s is not None and jump.jump_active and jump.landed_t >= 0.0:
+            if jump.jump_t >= jump.landed_t + self.settle_s:
+                # Its results were taken at the landing; the jump is over.
+                jump.jump_active, done = False, True
+        if self.active is jump and done:
+            self._hand_to(self.driving)
+        self.active.act(d)
+
+    def motor_torques(self, d):
+        self.active.motor_torques(d)
+
+    def read_peaks(self):
+        (t1, w1), (t2, w2) = self.driving.read_peaks(), self.jumping.read_peaks()
+        return np.maximum(t1, t2), max(w1, w2)
 
 
 # --------------------------------------------------------------------------
@@ -868,6 +984,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run", type=Path, default=DEFAULT_RUN)
     parser.add_argument(
+        "--jump-run",
+        type=Path,
+        metavar="RUN",
+        help="jump on this run's policy, handing over from --run's and back",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="no window: run the robot to its limits, and report",
@@ -910,6 +1032,8 @@ def main() -> int:
     model = build_model(cfg, args.rough, args.steps)
     data = mujoco.MjData(model)
     ctl = Controller(model, cfg, policy)
+    if args.jump_run is not None:
+        ctl = TwoPolicies(ctl, Controller(model, *load_run(args.jump_run)))
     ctl.floor_z = STEPS_COUNT * args.steps
     delay_ms = [float(v) for v in args.delay_ms.split(",")]
     ctl.set_conditions(delay_ms, args.battery)
@@ -918,6 +1042,7 @@ def main() -> int:
         f"{args.run.name}: {ctl.n_obs} inputs, {ctl.n_act} outputs,"
         f" {1 / ctl.dt:.0f} Hz policy, {1 / model.opt.timestep:.0f} Hz physics"
         + (", jumps" if ctl.jumps else "")
+        + (f" on {args.jump_run.name}" if args.jump_run is not None else "")
         + f"; delays {args.delay_ms} ms, battery {args.battery:.2f} of rated speed"
     )
 
@@ -1045,8 +1170,10 @@ def check(model, data, ctl: Controller) -> int:
         ("stop", 2.0, 0.0, 0.0, None),
     ]
     if ctl.jumps:
-        script.append(("jump", 2.5, 0.0, 0.0, ctl.clearance))
-        script.append(("jump at speed", 3.0, v / 2, 0.0, ctl.clearance))
+        # A jump from a crouch comes later, and "held" should be after it.
+        later = ctl.crouch_s + 1.0 if ctl.crouch_s > 0.0 else 0.0
+        script.append(("jump", 2.5 + later, 0.0, 0.0, ctl.clearance))
+        script.append(("jump at speed", 3.0 + later, v / 2, 0.0, ctl.clearance))
 
     print(
         f"  {'':<24} {'asked':>17} {'held, last second':>18}"
