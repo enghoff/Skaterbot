@@ -2767,3 +2767,98 @@ against 10, where they were 1.85 A and 5.6 ms; the diodes' extra drop is most of
 it. The schematic matches the netlist with a clean ERC, and the board routes with
 zero DRC errors.
 
+## The battery packs, measured — 5 October 2026
+
+Both packs arrived and were measured. They are 77 × 38 × 19 mm at most, where
+the only published figure, ElectronicsComp's listing, said 75 × 32 × 17. But
+the pack is not a brick of that size: the 65 mm furthest from the leads is
+within 35 × 17, and only the last 12 mm, where the tabs fold under the wrap and
+the leads come out, grows to 19 × 38. Nobody knows which faces that extra sits
+on, so the design has to clear it whichever way it falls.
+
+So the pack is drawn as two blocks, a 65 mm body and a 12 mm lead end, and
+every printed face and piece of foam that bears on a pack from beside stops at
+the 65 mm. The rails stand full height under the body only, then drop to a sill
+a millimetre under the lowest a lead end could reach, and end in the stop. The
+fences end at the body. The side strips and the top pads stop 2 mm short of it.
+The fin already ended inside it, at the IMU. The one face that touches a lead
+end is the stop, end-on, past the 77 mm, so whatever the end's shape it is
+never alongside it. Gate F now tests each lead end as the box it could fill if
+all of the extra were on any one face, and holds every printed part and every
+piece of foam to sharing none of it.
+
+The height is the real cost. A 35 mm body under the same 4 mm of squeezed foam
+is 39 mm, and a lead end up to 38 mm tall needs that too, with a millimetre to
+spare if all of its extra is on top. At the old 36 mm band it would have run
+into the deck by up to 2 mm. The band went to 39, the torso from 86 mm to 89,
+and the robot from 360 mm to 363. The 3 mm went in under the deck, so
+everything above it — the boards, the rear-wall connectors, the cover — rose
+with it and kept its place, and the hip axis and legs have not moved.
+
+Lengthwise the pack grew towards the left wall. Its lead end sits at the bay's
+end, 1.5 mm further right than before, which squeezes the end pad to 3 mm, the
+same 40 % as the side strips, and puts the stops 2.5 mm into the bay gap. The
+balance tails used to lie over the packs' ends before turning down to the BMS;
+the lead end took that air, so they now leave the end face and come straight
+down the 3.05 mm between the packs and the BMS's slot. That gap was 4.55 mm.
+
+Fore and aft, two lead ends at the full 19 mm meet in the middle. If more of
+the extra is on the inner faces than the outer, the pair want up to 2 mm more
+than the fin leaves and will splay outwards, where nothing stands beside them.
+That is two wrapped ends pressing on each other, and harmless.
+
+The pelvis is 3.1 g heavier, nearly all of it 3 mm more wall: 2 008.2 g against
+the 2 300 g ceiling. Gates A to I pass, and the simulation model was rebuilt
+from the re-exported meshes and agrees with the CAD.
+
+## The battery packs, the BMS and the series harness, weighed — 5 October 2026
+
+The first bought parts on the robot to go on a scale. Each pack is 86 g, against
+the 95 g of ElectronicsComp's listing, so the pair is 172 g where 190 was
+carried. The Daly BMS is 40 g, against the 45 g of its own vendor's table. The
+XT60 series harness that joins the packs is 23 g; it had no figure of its own
+before, only a share of the 68 g battery-wiring estimate, so it now has a line of
+its own and that estimate is the 45 g that is left, not re-estimated.
+
+That is 23 g off the robot: 1 985.2 g against the 2 300 g ceiling, 314.8 g of
+headroom. The simulation model carries the three as weighed parts, a provenance
+it did not have until now, and they are 235 g of it, 12 % of the robot.
+
+## The charge inlet is male, and the female is on the charger's lead — 5 October 2026
+
+The robot's charge inlet is an AMASS XT60E-M now, the eared male panel mount
+the main disconnect used to be, and the charger's lead ends in a female XT60.
+It was the other way round for three weeks, for a reason that still holds: the
+inlet lands on the BMS's charge input, so it is live at pack voltage whenever
+the cells are connected, and the half with the pins is the one that would rather
+be dead. The female is on the lead by choice, because the lead is live only while
+the charger is on. What that costs is two shrouded pins at up to 25.2 V on the
+back of the robot with nothing fused behind them, and whether the BMS cuts a
+short on its charge input is untested.
+
+The male mounts the other way round from the female: its ears bear on the
+inside of the wall and its nose comes out through a 14.7 × 7.2 cut, so it goes
+in from inside, after the deck, and that is what decided where it is. It has to
+stand 8.4 mm off the wall with nothing in the way before it can come down, and at
+the female's x 55.5 its ear plate sat 3 mm into the actuator harness bank's
+plugs. Inboard of x 58.45 the ears meet those plugs, and outboard of 59.45 the
+nose meets the rear right cover boss, so it is at x 59.0, half a millimetre from
+each. There its rear body stands 0.2 mm under that boss in plan, so it is also a
+millimetre below the row, at z 22.5, which leaves 0.75 mm. Inside the cavity it
+is an ear plate 27 mm across, x 45.5 to 72.5, from the inner face to 3.2 mm off
+it, and behind that a 15.5 × 8.1 body whose solder tabs end 8.3 mm off the
+inner face, where the female's reached 14.7. The bridge between the cut and each
+M2 screw is the disconnect's 1.45 mm again. The controller carrier's notch,
+which was cut for the female's body, now has nothing over it and stays.
+
+The pelvis is 298.9 mm³ heavier, the female's larger cut put back less the
+male's: 0.3 g, 1 985.5 g against the 2 300 g ceiling. Gates A to I pass, the
+carrier board's clash check passes, and the simulation model was rebuilt from
+re-exported meshes and agrees with the CAD.
+
+The male panel mount is AMASS's XT60E-M.G.Y at Evelta, ₹54.28 and 98 in stock,
+to go into the Evelta cart beside the buttons, and the Probots cart, which holds
+only the two female sockets, is to be emptied. Neither change is made: the
+browser could not be reached. The charge lead is a female XT60 pigtail and a
+pair of 4 mm banana plugs from QuartzComponents, or QuartzComponents' ready-made
+female-XT60-to-banana lead; docs/BOM.md has both.

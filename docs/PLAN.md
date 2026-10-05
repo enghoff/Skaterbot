@@ -2,7 +2,7 @@
 
 **Status: active. Phases 2, 3, 4 and 5 are complete, and the Phase 7 poses and
 torque models are done. The robot carries its own 6S battery again — see
-Phase 5b, which reverses Phase 5a — and stands 360 mm rather than 339.
+Phase 5b, which reverses Phase 5a — and stands 363 mm rather than 339.
 Phase 1 is drawn but waits on a printer, about a week out. What remains is hard
 stops, a simultaneous-extremes pose, cable routing, and ribbing. See section 11
 for what has been made. This supersedes `CHECKLIST.md`,** which stays in the repository
@@ -528,13 +528,15 @@ deleting hip roll left 700. The real pack is heavier than that reservation
 assumed as well, 288 g rather than 190, because the old figure worked out at
 153 Wh/kg and no high-discharge 6S pack reaches it.
 
-**The torso is 153.9 × 72 × 86 where it was 125 × 68 × 65.** The height is
+**The torso is 153.9 × 72 × 89 where it was 125 × 68 × 65.** The height is
 derived in `cad/wheeled_parameters.py` from what has to fit; the depth is set by
 a clearance, 1.6 mm between a pack and the ledges the electronics deck lands on;
 and the width is not derived from the payload at all any more. It is twice the
 hip half-spacing plus the clevis's own outboard face, so the shell ends exactly
 where the joints it carries do. That gives 12.9 mm more than the payload needs,
-which lands in the gap between the two bays. The robot stands 360 mm.
+which lands in the gap between the two bays. The robot stands 363 mm: it was
+360 until the battery packs were measured on 5 October 2026 and their band
+under the deck went from 36 mm to 39.
 
 **The power hardware is bought rather than drawn.** The power-entry PCB this
 project was going to lay out is gone; a SwiftWing PDB-02-XT60 distribution board

@@ -333,7 +333,7 @@ def describe_plant(links, joints, dimensions, rolled) -> None:
         print(
             f"\n   NOTE: the standing centre of mass sits {abs(com[0]):.1f} mm to the "
             f"{'right' if com[0] > 0 else 'left'}. The bottom band\n"
-            "   of the pelvis holds a 288 g battery against a 60 g power-entry block\n"
+            "   of the pelvis holds the battery against the power-entry block\n"
             "   (cad/electronics.py), one at each side wall, and they do not weigh the\n"
             "   same. On a robot with no hip roll that is a standing bias the wheels have\n"
             "   to hold out against, and where the pack sits is the cheapest way to trim\n"
@@ -363,14 +363,14 @@ def report_provenance(links) -> None:
                 soft.append((solid.label, grams, solid.note))
 
     total = sum(by_source.values())
-    for source in ("measured", "vendor", "bom", "estimate", "assumption"):
+    for source in ("weighed", "measured", "vendor", "bom", "estimate", "assumption"):
         grams = by_source.get(source, 0.0)
         if grams:
             print(
                 f"   {source:<12} {grams:7.1f} g  {grams / total * 100:5.1f}%   "
                 f"{robot_model.SOURCES[source]}"
             )
-    unweighed = total - by_source.get("measured", 0.0)
+    unweighed = total - by_source.get("weighed", 0.0) - by_source.get("measured", 0.0)
     print(
         f"\n   {unweighed / total * 100:.0f} per cent of this robot's mass has never been on a scale."
     )

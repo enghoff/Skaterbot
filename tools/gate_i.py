@@ -39,9 +39,11 @@ WHAT IT DOES NOT CHECK:
 
 The order is the one the torso has to be built in, and the order is itself a
 finding: the rear-wall hardware goes in AFTER the deck, because the controller
-carrier cannot pass the button, the charge socket or the antenna bulkhead on
-the way down -- measured, each blocks it within 7 mm. So the deck also cannot
-come out until all three have. See docs/BUILD_REVIEW.md.
+carrier cannot pass the button or the antenna bulkhead on the way down, and the
+deck cannot pass the charge inlet -- measured, each blocks it within 9 mm. So
+the deck also cannot come out until all three have. See docs/BUILD_REVIEW.md.
+The inlet is the one of the three that goes in from inside, since it became a
+male XT60E-M on 2026-10-05, and its station was chosen for that way in.
 
     uv run tools/gate_i.py
 
@@ -157,12 +159,23 @@ def steps() -> list[tuple[str, list, list, bool]]:
             [(UP, None)],
             False,
         ),
-        # The outboard one of these sits 1.8 mm under the rear right cover boss,
-        # so neither comes straight down: they come down in front of the boss
-        # and go back 8.5 mm to the wall, which tweezers do easily.
+        # THE CHARGE INLET GOES IN FROM INSIDE, since it became an XT60E-M on
+        # 2026-10-05: its ears bear on the inside face, so it comes down in
+        # front of the wall and goes back until its nose is out through the
+        # cutout. The female it replaced went in from outside, flange first.
         (
-            "charge socket's two nuts, held on the wall",
-            [("charge socket", 2), ("charge socket", 3)],
+            "charge inlet, nose out through the wall",
+            [("charge inlet", 0), ("charge inlet", 1), ("charge inlet", 2)],
+            [(IN, 8.5), (UP, None)],
+            False,
+        ),
+        # Then its nuts onto the back of its ears, beside its body, held there
+        # while the screws come in from outside. They come down in front of the
+        # rear right cover boss and go back to the ear plate, as the female's
+        # nuts did to the wall, which tweezers do easily.
+        (
+            "charge inlet's two nuts, behind its ears",
+            [("charge inlet", 3), ("charge inlet", 4)],
             [(IN, 8.5), (UP, None)],
             False,
         ),
@@ -177,12 +190,6 @@ def steps() -> list[tuple[str, list, list, bool]]:
             [("antenna bulkhead", 0)],
             [(OUT, None)],
             True,
-        ),
-        (
-            "charge socket, from outside",
-            [("charge socket", 0), ("charge socket", 1)],
-            [(OUT, None)],
-            False,
         ),
         ("the lid", ["cover"], [(UP, None)], False),
     ]

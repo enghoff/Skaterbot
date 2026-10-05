@@ -375,11 +375,13 @@ edge is at x +32.5 and the monitor still cannot stand under it, so the width
 stands.
 
 **The rear outboard corner is cut out of the reservation.** The charge socket's
-body reaches 17.1 mm in from the rear wall and passes 3.65 mm over this board, so
+body reached 17.1 mm in from the rear wall and passed 3.65 mm over this board, so
 the last 21 mm of the rear edge carries copper, a mounting screw and nothing
 taller. The board itself is a plain rectangle; it is the reserved volume that has
 the notch in it, because a reservation promising height it has not got is worse
-than an awkward shape.
+than an awkward shape. **The notch outlived its reason on 2026-10-05**: the male
+inlet that replaced that socket stops 2.3 mm short of this board's rear edge in
+plan. It stays, because the layout is built round it and air costs nothing.
 
 ### Why everything is where it is
 
@@ -463,11 +465,15 @@ tightest, in millimetres:
 |---|---|
 | 0.85 | the IMU plug and the antenna's bulkhead |
 | 0.95 | bus B's `VIO` capacitor and the nearest SBC standoff |
-| 1.25 | the bus-A connector and the charge socket |
 | 1.50 | the shunt plug, the BEC's cable tie and the IMU header, each against what stands over it |
 | 1.60 | three plugs on the rear and front rows, and the edge of the SBC |
 | 1.76 | the core board and the edge of the SBC |
 | 1.90 | the BEC and the SBC's microSD socket |
+
+**The bus-A connector and the charge socket were 1.25 mm apart** until
+2026-10-05, when the inlet became a male XT60E-M reaching 8.3 mm into the
+cavity where the female's body reached 14.7, and moved to x 59.0; nothing on
+this board is within 3 mm of it now.
 
 **The BEC's outboard cable tie used to head this table at 1.20 mm**, against the
 SBC's microSD socket hanging over it. The straps came in from ±12 to ±10 mm for

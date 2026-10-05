@@ -23,7 +23,8 @@ end.
 2200 mAh pack, 76 × 33 × 25 mm". Every 3S 2200 mAh pack on sale in India is 105
 to 108 mm long, so it would have missed the bay by 30 mm. The bay stays as it is.
 The pack is now a **Bonka 3S 1000 mAh 35C**, in stock at Indian Hobby Center at
-₹1,399, which is 75 × 32 × 17 mm and 95 g by the only published figure. Two in
+₹1,399, which is 75 × 32 × 17 mm and 95 g by the only published figure, and
+86 g each on the scale when the pair arrived. Two in
 series give 22.2 Wh where 48.8 was planned, which cuts runtime by a little over
 half. The robot is 98 g lighter for it. Its 35 A continuous rating is still above
 the 24 A the motors are estimated to draw at once.
@@ -72,6 +73,15 @@ found three things:
 - **Getting at the battery means eight fixings, not four.** The BOM said four deck
   screws released the deck. It also takes the button's nut, the antenna's nut and
   the socket's two screws. The BOM now says so.
+- **The charge inlet is a male XT60E-M since 2026-10-05, and goes in from
+  inside.** The female went onto the charger's lead. The male's ears bear on the
+  inside of the wall, so after the deck it comes down in front of the wall and
+  goes back 8.5 mm until its nose is through, and only x 58.45 to 59.45 lets it
+  do that: inboard, its ears meet the actuator harness plugs; outboard, its nose
+  meets the rear right cover boss. It sits at x 59.0, a millimetre below the
+  other two so its body clears that boss, and its nuts go on behind its ears
+  afterwards. Its pins are live at pack voltage whenever the cells are connected,
+  with nothing fused behind them.
 
 **The screws into the back of each motor had no thread to spare.** Both lengths
 were chosen to engage 3.8 mm. The motor's rear holes are 3.8 mm deep in the
@@ -148,10 +158,15 @@ listing:
 
 **Waiting on a part in hand.** None of these can be answered from a listing.
 
-- **Measure a battery pack before the pelvis is printed.** The rails, the fin,
-  the fences, the rail stops and the foam are all drawn to the pack's 75 × 32 × 17 mm,
-  which is one shop's listing; Bonka publishes nothing. A measured pack is three
-  numbers in `cad/electronics.py`, and everything follows them.
+- **~~Measure a battery pack before the pelvis is printed.~~ Done 5 October.**
+  The packs are 77 × 38 × 19 mm at most against the listing's 75 × 32 × 17, but
+  only the last 12 mm, where the leads come out, is that big; the 65 mm of body
+  furthest from the leads is within 35 × 17. The rails, fin, fences and foam now
+  stop at that 65 mm, so nothing presses beside the lead end, and the band under
+  the deck went from 36 mm to 39 to clear the body's foam and a lead end up to
+  38 mm tall. That makes the torso 89 mm and the robot 363 mm, 3 mm taller, and
+  3.1 g heavier. The end stop still bears on the foot of each lead end, end-on;
+  check that the wrap there is firm before the pelvis prints.
 - **Measure the Banana Pi's mounting holes before the controller carrier PCB is
   ordered.** Its hole pattern is inferred, not published, and the carrier's holes
   are drilled by the board house. The Pi is already on order.
@@ -159,8 +174,9 @@ listing:
   Ø45 mm and the tread's 20 mm crown radius are representative figures.
 - **Look at where the battery management board takes its wires.** The balance
   and charge leads attach somewhere on the Daly board, and the only air beside it
-  is 4.95 mm to the pack ends. A plug on its inboard face may not fit. The board
-  is already on order.
+  is 3.45 mm to the pack ends since the packs were measured, where it was 4.95.
+  The balance tails now come straight down that gap from the packs' lead ends. A
+  plug on the board's inboard face may not fit. The board is already on order.
 - **Measure the motor's output thread depth** on the first motor, to confirm
   M3 × 8.
 
@@ -168,8 +184,8 @@ listing:
 
 - **The pack leads' route to the power bay.** The management board stands
   across the whole gap between the bays, with 1.5 mm over it. The leads can only
-  pass under it, where there is 10.5 mm, or round its ends, where there is
-  4.6 mm. So the packs have to be connected before the board drops in. That is
+  pass under it, where there is 13.5 mm since the deck rose 3 mm, or round its
+  ends, where there is 4.6 mm. So the packs have to be connected before the board drops in. That is
   the order gate I checks, but the leads themselves are not drawn, and nobody
   has checked the packs' leads are long enough.
 - **Motor lead lengths.** The 300 mm pigtails have not been laid along a leg to

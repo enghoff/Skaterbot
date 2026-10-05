@@ -890,22 +890,23 @@ m3Clearance = 3.4
 m3CapCounterbore = 6.0
 m3CapCounterboreDepth = 3.2
 
-# M2 clearance, used in exactly one place: the four screws that clamp the two
-# XT60 panel mounts to the rear wall. THE SIZE IS FORCED BY THE DISCONNECT'S
-# NUTS, not by the wall. The XT60E-M's ear holes are 2.25 mm from the side of its
-# own body, and that is where a nut behind the ear has to sit: an M2.5 nut is
+# M2 clearance, used in exactly one place: the two screws that clamp the XT60E-M
+# charge inlet to the rear wall. It was four while the main disconnect was an
+# XT60E-M too, and the inlet the female XT60E-F. THE SIZE IS FORCED BY THE
+# XT60E-M'S NUTS, not by the wall. Its ear holes are 2.25 mm from the side of
+# its own body, and that is where a nut behind the ear has to sit: an M2.5 nut is
 # 2.5 across half its flats and fouls the body by a quarter of a millimetre, an
 # M2.5 cap head is 2.25 and touches it, and an M2 nut at 2.0 clears it by 0.25 --
 # which also means the body stops the nut turning, so it is tightened from the
 # screw head outside. It was M2.5 for one revision, chosen for the wall alone,
 # before anybody asked where the nut went. The wall does better at M2 as well:
-# 1.45 mm between each screw and the cutout at the disconnect and 1.7 at the
-# charge socket, against 0.95 and 1.2 at M3. Same 0.4 mm over nominal as
+# 1.45 mm between each screw and the cutout, against 0.95 at M3; the female
+# socket's flange screws left 1.7, and 1.2 at M3. Same 0.4 mm over nominal as
 # m3Clearance above, for the same reason: a printed hole comes out undersize.
 m2Clearance = 2.4
-# The nuts on those four screws, drawn because they sit inside the cavity beside
+# The nuts on those two screws, drawn because they sit inside the cavity beside
 # other hardware: an ISO 4032 M2 is 4.0 across flats and 1.6 thick. Drawn across
-# its flats and not its corners, because at the disconnect the connector's own
+# its flats and not its corners, because at the inlet the connector's own
 # body holds a flat square to it -- drawn across corners it would read as a
 # 0.06 mm clash with the part that is the reason it cannot turn.
 m2NutAcrossFlats = 4.0

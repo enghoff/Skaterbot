@@ -153,6 +153,7 @@ class Solid:
 # way, because "2 300 g" means something very different when a third of it has
 # never been weighed.
 SOURCES = {
+    "weighed": "weighed on a scale, the part in hand",
     "measured": "measured from the CAD at PA12-CF density",
     "vendor": "vendor datasheet or vendor STEP",
     "bom": "docs/BOM.md line item, itself an estimate",
@@ -331,18 +332,19 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
     #
-    # mass_budget.toml carries these as seven lines now: 100 g of "electronics and
+    # mass_budget.toml carries these as eight lines now: 100 g of "electronics and
     # wiring", 13 g of distribution board, 34.4 g of power switch board, 20 g of
-    # capacitor bank, 45 g of BMS, 190 g of battery and 68 g of battery wiring,
-    # connectors and mounts. The 100 is split below across the items that make it
-    # up. Each split is an assumption; the totals are not. The power line was one
+    # capacitor bank, 40 g of BMS, 172 g of battery, 23 g of series harness and
+    # 45 g of battery wiring, connectors and mounts. The 100 is split below across
+    # the items that make it up. Each split is an assumption; the totals are not. The power line was one
     # 60 g reservation until September 2026, when the switch board was designed
     # and the bank was cut to its two cans; this model carried the 60 g for a
     # week after the budget had moved, 5.6 g heavy.
     #
-    # THE BATTERY IS THE HEAVIEST BOUGHT THING IN THIS TORSO, at 190 g against
+    # THE BATTERY IS THE HEAVIEST BOUGHT THING IN THIS TORSO, at 172 g against
     # the pelvis print's own 215, and it sits in the bottom band. It was 288 g
-    # until 2026-09-30, for a 2200 mAh pack of a size nobody makes. That is not
+    # until 2026-09-30, for a 2200 mAh pack of a size nobody makes, and 190 g
+    # until the pair was weighed on 2026-10-05. That is not
     # incidental to the model: it is most of what decides where the standing
     # centre of mass ends up, and therefore the pendulum length the balance
     # section below reports.
@@ -355,21 +357,32 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     payload = [
         (
             "battery",
-            190.0,
+            172.0,
             "battery",
-            "estimate",
+            "weighed",
             "cellGrey",
             True,
-            "two Bonka 3S 1000 mAh LiPo packs in series, 95 g each. LISTED FIGURE, NEVER WEIGHED",
+            "two Bonka 3S 1000 mAh LiPo packs in series, 86 g each, weighed 2026-10-05",
+        ),
+        (
+            # It lies in the air over the distribution board, docs/BOM.md
+            # section 11, so it goes in the power band rather than the cavity.
+            "battery series harness",
+            23.0,
+            "power",
+            "weighed",
+            "copperRed",
+            False,
+            "XT60 2-into-1 series harness, 14 AWG, weighed 2026-10-05",
         ),
         (
             "battery wiring and mounts",
-            68.0,
+            45.0,
             "wiring",
             "assumption",
             "copperRed",
             False,
-            "pack leads, series link, panel connectors, bus monitor, the Matek BEC, the standoffs and the battery foam",
+            "pack leads, panel connectors, bus monitor, the Matek BEC, the standoffs and the battery foam",
         ),
         (
             "distribution board",
@@ -410,12 +423,12 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         ),
         (
             "battery management system",
-            45.0,
+            40.0,
             "bms",
-            "vendor",
+            "weighed",
             "pcbGreen",
             True,
-            "Daly 6S 24V 20A on the cell taps, wired charge-only. The vendor's own 45 g, beside its own 58 x 33 x 8.2",
+            "Daly 6S 24V 20A on the cell taps, wired charge-only. 40 g weighed, at the vendor's own 58 x 33 x 8.2",
         ),
         (
             "power switch board",
@@ -481,7 +494,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         # THE BOARD RATHER THAN ITS BAY, unlike every other line here, and that
         # is what a chosen part buys. The other five are reserved volumes with a
         # mass assumed spread through them because nobody knows the outline yet.
-        # This one has a catalogue outline, so the 45 g sits where the 45 g
+        # This one has a catalogue outline, so the 40 g sits where the 40 g
         # actually is -- 8.2 mm of board in a 12.1 mm bay, and 2 mm lower than
         # the bay's own centroid, because it hangs from the deck.
         "bms": (

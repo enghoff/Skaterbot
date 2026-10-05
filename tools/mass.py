@@ -195,7 +195,7 @@ EXPECTED_CHANGE_G = {
         "the union does not, so gate B sees only the 16.",
     ),
     "cad/torso.py": (
-        +88.7,
+        +92.7,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -308,7 +308,19 @@ EXPECTED_CHANGE_G = {
         "all of it new material, and gate B holds it exactly. AND THE DECK "
         "LEDGES WENT A MILLIMETRE DEEPER, 0.2 g on the robot: 240 mm3 on their "
         "open faces, so the plastic outside each deck screw's thread is 2.0 mm "
-        "rather than 1.0.",
+        "rather than 1.0. "
+        "AND THE BOX IS 89 mm TALL, 2026-10-05, which is the 3.6 g this line "
+        "went UP at the baseline's density and 3.1 g on the robot: the packs "
+        "were measured on arrival, 35 mm tall over their bodies and up to 38 at "
+        "the leads where the listing said 32, so the battery's band went from "
+        "36 to 39 and every wall with it. The BMS guides and the fin grew the "
+        "same 3 mm to meet the deck, and the fences and rails were cut back to "
+        "each pack's 65 mm of body, so the net is 3 417 mm3, and gate B holds "
+        "it exactly. AND THE CHARGE INLET BECAME THE MALE, the same day, which "
+        "is the 0.4 g this line went UP at the baseline's density and 0.3 g on "
+        "the robot: the XT60E-F's 19.2 x 12.0 body cut and its flange holes are "
+        "wall again, against an XT60E-M's 14.7 x 7.2 nose cut and two ear "
+        "holes at x 59.0, so 298.9 mm3 net, and gate B holds it exactly.",
     ),
 }
 

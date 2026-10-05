@@ -186,7 +186,7 @@ ADDED = {
     # powerSwitchPadWidth are gone with it.
     "powerSwitchSpacer": 8.0,
     "powerSwitchSpacerDiameter": 6.0,
-    "powerSwitchBoardZ": -18.4,
+    "powerSwitchBoardZ": -19.9,
     "powerSwitchRightX": 71.55,
     "powerSwitchRearY": -25.0,
     "powerSwitchFrontY": 25.0,
@@ -408,13 +408,23 @@ ADDED = {
     # real 2200 mAh 3S packs are 105 to 108 mm long. Since 2026-09-30 it is a
     # Bonka 3S 1000 mAh 35C, 75 x 32 x 17 and 95 g as ElectronicsComp lists it,
     # in a bay kept at the old size so nothing else moved.
-    "batteryPackLength": 75.0,
+    #
+    # MEASURED, 2026-10-05, when the packs arrived: 77 x 38 x 19 at most, but
+    # only the 12 mm where the leads come out is that big, and the 65 mm of body
+    # furthest from them is within 35 x 17. The pack is drawn as those two
+    # blocks, and the band over it went from 36 to 39 for the body's 35 and the
+    # lead end's 38 -- which is the torso's 3 mm and the CHANGED register's
+    # second decision.
+    "batteryPackLength": 77.0,
     "batteryPackThickness": 17.0,
-    "batteryPackWidth": 32.0,
+    "batteryPackWidth": 35.0,
+    "batteryPackBodyLength": 65.0,
+    "batteryPackLeadThickness": 19.0,
+    "batteryPackLeadWidth": 38.0,
     "batteryPackGap": 2.0,
     "batteryWidth": 78.0,
     "batteryDepth": 54.0,
-    "batteryHeight": 36.0,
+    "batteryHeight": 39.0,
     "batteryX": -33.55,
     "batteryLeadZ": -15.0,
     # THE BATTERY'S HOLD-DOWN, 2026-09-30, cad/electronics.py. There was none:
@@ -430,19 +440,28 @@ ADDED = {
     "batteryPackOuterY": 18.0,
     "batteryFenceY": 21.0,
     "batteryFenceThickness": 1.5,
-    "batteryPackTopZ": 1.0,
+    "batteryPackTopZ": 2.5,
     "batteryFenceShort": 6.0,
-    "batteryFenceTopZ": -5.0,
+    "batteryFenceTopZ": -3.5,
     "batteryFoamTop": 4.0,
-    "batteryPackLeftX": -71.05,
-    "batteryPackRightX": 3.950000000000003,
-    "batteryFoamEnd": 3.5,
+    "batteryPackLeftX": -71.55,
+    "batteryPackRightX": 5.450000000000003,
+    "batteryFoamEnd": 3.0,
     "batteryRailStopHeight": 5.0,
     "batteryFoamLeadAir": 2.0,
-    # Where the balance leads lie over the packs, named so the foam can stop short
-    # of them; the numbers are the ones the drawing always used.
+    # Since the packs were measured, 2026-10-05: where each body ends and every
+    # face and every piece of foam beside it stops; the air kept round the lead
+    # end's worst case; and the rails' sill under the lead end and the stop at
+    # its foot, which stands in the bay gap now rather than inside the bay.
+    "batteryPackBodyEndX": -6.549999999999997,
+    "batteryLeadEndAir": 1.0,
+    "batteryRailStopLength": 2.5,
+    "batteryRailSillTopZ": -36.5,
+    # Where the balance leads come down from the packs to the BMS, named so it is
+    # placed rather than typed. They lay over the packs' ends at x = 1 until the
+    # measured lead end took that air; they run down the BMS's flank now.
     "balanceLeadLength": 10.0,
-    "balanceLeadX": 1.0,
+    "balanceLeadX": 6.975000000000001,
     # THE BOUGHT DISTRIBUTION BOARD, September 2026, and the parts it displaced.
     # The power-entry PCB this project was going to lay out and have fabricated
     # is gone: a SwiftWing PDB-02-XT60 does the same job -- pack in through an
@@ -456,11 +475,11 @@ ADDED = {
     "pdbThickness": 1.6,
     "pdbHolePitch": 45.0,
     "pdbY": 0.0,
-    "pdbBoardZ": -28.0,
-    "pdbTopZ": -26.4,
+    "pdbBoardZ": -29.5,
+    "pdbTopZ": -27.9,
     "bayGap": 15.099999999999994,
     "panelX": 36.55,
-    "packLeadZ": -9.399999999999999,
+    "packLeadZ": -10.899999999999999,
     # The Matek 12S Pro BEC, which replaced the generic buck module this file
     # used to reserve 26 x 42 x 14 for on the deck. 9-55 V in, 5 V at 5 A out,
     # and a fifth of the volume -- so it moved down into the power bay, where its
@@ -475,8 +494,8 @@ ADDED = {
     # floor level, so the upper two boards have nothing to stand on and
     # cad/deck.py bridges to four ledges on the walls instead.
     "deckThickness": 3.0,
-    "deckZ": 5.0,
-    "deckBandZ": 8.0,
+    "deckZ": 6.5,
+    "deckBandZ": 9.5,
     "interiorHalfDepth": 33.6,
     "deckLedgeWidth": 12.0,
     # 6 since 2026-09-30, for 2 mm of ledge outside each screw's thread.
@@ -533,7 +552,7 @@ ADDED = {
     # The carrier's hole for the screw under each one, drilled in laminate.
     "sbcStandoffHole": 2.7,
     "powerBoardZ": -28.0,
-    "controllerBoardZ": 11.0,
+    "controllerBoardZ": 12.5,
     # THE SBC'S FOUR POSTS WERE HERE -- sbcPostDiameter 8.0, sbcPostHeight 14.0,
     # sbcPostClearance 8.6 -- printed with the deck and passing THROUGH the
     # controller carrier. They went in September 2026, when the SBC moved onto
@@ -641,7 +660,7 @@ ADDED = {
     # because a rail through the saddle's hollow seals a void inside it.
     "batteryRailY": 12.5,
     "batteryRailStartX": -25.75,
-    "batteryRailEndX": 5.450000000000003,
+    "batteryRailEndX": 7.950000000000003,
     # The fin between the packs stops at the IMU's reservation.
     "batteryFinEndX": -11.0,
     "boardPostSize": 8.0,
@@ -719,39 +738,51 @@ ADDED = {
     "m2Clearance": 2.4,
     "m2NutAcrossFlats": 4.0,
     "m2NutThickness": 1.6,
-    # THE CHARGE SOCKET IS AN XT60E-F, September 2026, and its names kept the
-    # word socket because it is one. The GX16-2's five figures went with it --
+    # THE CHARGE INLET IS AN XT60E-M, 2026-10-05, and its names say inlet
+    # because it is no longer a socket. It was the female XT60E-F for three
+    # weeks, and those nine names went with it: chargeSocketFlangeWidth 34.0,
+    # FlangeHeight 15.8, FlangeThickness 3.1, BodyWidth 18.7, BodyHeight 11.5,
+    # BodyDepth 17.1, CutWidth 19.2, CutHeight 12.0 and FixingPitch 25.0, plus
+    # chargeSocketPanelX 55.5, which is chargeInletPanelX below at 59.0.
+    # Before the female it was a GX16-2, whose five figures were
     # chargeSocketHoleDiameter 16.0, NutDiameter 22.0, NutDepth 6.0, BodyDepth
-    # 19.0 and OutboardDepth 12.0 -- because every stocked GX16 pair put live
-    # pins on the robot, and a female XT60 puts sockets there and cannot take the
-    # disconnect's key. BodyDepth is reused for the XT60E-F's own 17.10 behind
-    # its flange. Every figure is AMASS's drawing of the female, which differs
-    # from the male's on every one that matters: 34.00 across where the male is
-    # 27.00, screws 25.00 apart where the male's are 20.00.
-    "chargeSocketFlangeWidth": 34.0,
-    "chargeSocketFlangeHeight": 15.8,
-    "chargeSocketFlangeThickness": 3.1,
-    "chargeSocketBodyWidth": 18.7,
-    "chargeSocketBodyHeight": 11.5,
-    "chargeSocketBodyDepth": 17.1,
-    "chargeSocketCutWidth": 19.2,
-    "chargeSocketCutHeight": 12.0,
-    "chargeSocketFixingPitch": 25.0,
+    # 19.0 and OutboardDepth 12.0. The male's figures are the ones the main
+    # disconnect was drawn to until 2026-09-16, under the names xt60Panel*: the
+    # same AMASS drawing, the same part, the same caveat that its three axial
+    # sections are the view's proportions and not its labels.
+    "chargeInletNoseWidth": 14.2,
+    "chargeInletNoseHeight": 6.7,
+    "chargeInletCutWidth": 14.7,
+    "chargeInletCutHeight": 7.2,
+    "chargeInletFixingPitch": 20.0,
+    "chargeInletEarSpan": 27.0,
+    "chargeInletEarWidth": 6.13,
+    "chargeInletEarThickness": 3.2,
+    "chargeInletBodyWidth": 15.5,
+    "chargeInletBodyDepth": 5.1,
+    "chargeInletOutboardDepth": 6.0,
+    "chargeInletInboardDepth": 8.3,
     "antennaHoleDiameter": 6.5,
     "antennaNutDiameter": 11.0,
-    # The antenna's nut had borrowed chargeSocketNutDepth; it has its own name
-    # now that the figure it borrowed is gone, at the same 6.0.
+    # The antenna's nut had borrowed chargeSocketNutDepth, the GX16's; it has its
+    # own name now that the figure it borrowed is gone, at the same 6.0.
     "antennaNutDepth": 6.0,
     "antennaBodyDepth": 15.0,
     "antennaOutboardDepth": 8.0,
-    "panelHardwareZ": 22.0,
+    "panelHardwareZ": 23.5,
     "buttonPanelX": -44.0,
     # BOTH OTHER STATIONS MOVED WITH THE CHARGE SOCKET, and were solved for:
     # swept across the wall against every solid in the cavity and each other.
     # The socket went outboard from 50.0 to where its flange still lands on the
     # wall, and the antenna from 68.0 to the far side of the disconnect, because
-    # nothing fits beyond a 34 mm flange before the wall ends.
-    "chargeSocketPanelX": 55.5,
+    # nothing fits beyond a 34 mm flange before the wall ends. The male inlet
+    # went 3.5 further out on 2026-10-05, because it goes in from inside: at 55.5
+    # its ear plate could not pass the actuator harness bank's plugs, and beyond
+    # 59.45 its nose cannot pass under the rear right cover boss.
+    "chargeInletPanelX": 59.0,
+    # And a millimetre below the row, because at 59.0 its rear body stands under
+    # the rear right cover boss and at the row's 23.5 would meet it by 0.25.
+    "chargeInletPanelZ": 22.5,
     "antennaPanelX": -8.0,
     # THE CHASE THROUGH THE ELECTRONICS DECK, cad/deck.py, and it is an old gap
     # being closed rather than a cost of the above. That plate has spanned the
@@ -830,7 +861,7 @@ ADDED = {
     "bmsHeight": 29.0,
     "bmsX": 13.0,
     "bmsY": 0.0,
-    "bmsZ": -25.5,
+    "bmsZ": -24.0,
     # ---- AND THE BOARD THAT WAS CHOSEN FOR IT, 2026-09-13 ------------------
     #
     # The Daly Li-ion NMC 6S 24V 20A, at its vendor specification table's own
@@ -853,8 +884,8 @@ ADDED = {
     # drawn here while none had been chosen. So the top edge is set 1.5 mm under
     # the deck and the slot floor follows it down the board's own height.
     "bmsDeckGap": 1.5,
-    "bmsBoardTopZ": 3.5,
-    "bmsBoardBottomZ": -29.5,
+    "bmsBoardTopZ": 5.0,
+    "bmsBoardBottomZ": -28.0,
     # The two guides that hold it. THE SLOT IS NOW CUT TO THE WHOLE BOARD AND NOT
     # TO ITS PCB, which is the change a chosen board bought: 2.4 mm took a bare
     # 1.6 mm PCB edge and assumed nothing was soldered within a guide's width of
@@ -1002,11 +1033,17 @@ CHANGED = {
     # Only the first three are decisions in their own right. Every other line
     # follows from them arithmetically -- the shell's own stations, the cavity's,
     # the payload bands' -- and says which.
+    #
+    # A SECOND DECISION MOVED THE SAME NAMES, 2026-10-05: the packs were measured
+    # on arrival and the battery's band went from 36 to 39, which made the torso
+    # 89 where it was 86. Each value below is where cad/ stands after both, and
+    # the reasons carry the totals.
     "wheeledTorsoHeight": (
         65.0,
-        86.0,
-        "the battery's 36 mm band and the 3 mm deck over it, which is 21 mm more "
-        "interior than the tethered torso needed. Derived and not chosen: "
+        89.0,
+        "the battery's 39 mm band and the 3 mm deck over it, which is 24 mm more "
+        "interior than the tethered torso needed -- 21 until the measured packs "
+        "took the band from 36 to 39. Derived and not chosen: "
         "cad/wheeled_parameters.py adds up what has to fit",
     ),
     "wheeledTorsoShellWidth": (
@@ -1029,12 +1066,12 @@ CHANGED = {
     ),
     "wheeledTorsoTop": (
         339.0,
-        360.0,
-        "the same 21 mm, on a floor that has not moved",
+        363.0,
+        "the same 24 mm, on a floor that has not moved",
     ),
-    "wheeledTorsoCenterHeight": (306.5, 317.0, "half of that 21 mm"),
-    "wheeledTorsoInteriorFloorZ": (-29.5, -40.0, "torso-local, so half the height"),
-    "floorZ": (-29.5, -40.0, "the same floor, as the payload layout reads it"),
+    "wheeledTorsoCenterHeight": (306.5, 318.5, "half of that 24 mm"),
+    "wheeledTorsoInteriorFloorZ": (-29.5, -41.5, "torso-local, so half the height"),
+    "floorZ": (-29.5, -41.5, "the same floor, as the payload layout reads it"),
     "torsoShellWidth": (125.0, 153.9, "cad/torso.py reading the width above"),
     "torsoInnerWidth": (120.2, 149.1, "the same width, less two walls"),
     "torsoInnerDepth": (63.2, 67.2, "the same depth, less two walls"),
@@ -1043,27 +1080,27 @@ CHANGED = {
         74.55,
         "half the cavity, as the payload layout reads it",
     ),
-    "shellFloorZ": (-32.5, -43.0, "torso-local, so half the height"),
-    "shellTopZ": (30.1, 40.6, "torso-local, so half the height"),
-    "shellHeight": (62.6, 83.6, "that height, less the cover"),
-    "cavityBottomZ": (-29.5, -40.0, "the inside face of the floor, torso-local"),
-    "cavityLength": (61.6, 82.6, "the cavity between that floor and the lid"),
+    "shellFloorZ": (-32.5, -44.5, "torso-local, so half the height"),
+    "shellTopZ": (30.1, 42.1, "torso-local, so half the height"),
+    "shellHeight": (62.6, 86.6, "that height, less the cover"),
+    "cavityBottomZ": (-29.5, -41.5, "the inside face of the floor, torso-local"),
+    "cavityLength": (61.6, 85.6, "the cavity between that floor and the lid"),
     "hipPitchZ": (
         -56.5,
-        -67.0,
+        -68.5,
         "the hip axis in torso-local terms. THE JOINT HAS NOT MOVED: the axis is "
         "still 250 mm off the floor and the torso still sits one keep-out above "
         "it. What moved is the torso centre this is measured from",
     ),
-    "saddleTopZ": (-20.5, -31.0, "the saddle plane, torso-local"),
+    "saddleTopZ": (-20.5, -32.5, "the saddle plane, torso-local"),
     "lowerBandZ": (
         -20.5,
-        -31.0,
+        -32.5,
         "the same plane, which is where the bottom band starts",
     ),
     "upperBandZ": (
         11.5,
-        22.6,
+        24.1,
         "the SBC now stands above a battery, a deck and the controller rather "
         "than above the controller alone, and since September 2026 it stands on "
         "M2.5 x 10 standoffs on the controller carrier, which put it 0.6 mm higher "
@@ -1071,7 +1108,7 @@ CHANGED = {
     ),
     "capacitorZ": (
         -18.9,
-        -16.8,
+        -18.3,
         "the bank stands on the power switch board now, not on the bought one "
         "under it: a 16 mm can on the bought board would be inside a board whose "
         "underside is 8 mm above it",
@@ -1124,7 +1161,7 @@ CHANGED = {
     ),
     "powerHeight": (
         30.0,
-        36.0,
+        39.0,
         "the full height of a band the battery already sets, which costs "
         "nothing and gives the bank room it has still not been sized for",
     ),

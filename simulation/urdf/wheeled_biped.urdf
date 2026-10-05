@@ -11,8 +11,8 @@
   +Y forward and +X to the robot's right, so everything here has been turned a
   quarter turn from the frame the CAD and the mesh files use.
 
-  BASE. base_link's origin is the torso's centre, 0.3170 m above the
-  ground in the neutral standing pose. The robot stands 0.360 m tall and its
+  BASE. base_link's origin is the torso's centre, 0.3185 m above the
+  ground in the neutral standing pose. The robot stands 0.363 m tall and its
   wheels are 0.1699 m apart at the contact patch.
 
   JOINT SIGNS. Both leg joints are positive in FLEXION, matching the angles in
@@ -56,12 +56,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="9.58783747e-05 0.00291589729 -0.0243549701" rpy="0 0 0"/>
-      <mass value="1.036263"/>
-      <inertia ixx="3.554316860e-03" ixy="9.409756054e-07" ixz="-9.352648384e-07"
-               iyy="1.678607952e-03" iyz="-3.636817926e-05" izz="2.469245912e-03"/>
+      <origin xyz="8.7997427e-05 0.00140605956 -0.0251036968" rpy="0 0 0"/>
+      <mass value="1.016741"/>
+      <inertia ixx="3.618582379e-03" ixy="3.096476980e-07" ixz="-5.426847832e-07"
+               iyy="1.736038311e-03" iyz="-1.816087488e-05" izz="2.464784210e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 168.9 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 172.4 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -87,7 +87,7 @@
     </visual>
     <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
     <visual name="power_switch_spacer">
-      <origin xyz="-0.0225 -0.02405 -0.0264" rpy="0 0 -1.57079633"/>
+      <origin xyz="-0.0225 -0.02405 -0.0279" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -95,7 +95,7 @@
     </visual>
     <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
     <visual name="power_switch_spacer">
-      <origin xyz="0.0225 -0.02405 -0.0264" rpy="0 0 -1.57079633"/>
+      <origin xyz="0.0225 -0.02405 -0.0279" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -103,7 +103,7 @@
     </visual>
     <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
     <visual name="power_switch_spacer">
-      <origin xyz="-0.0225 -0.06905 -0.0264" rpy="0 0 -1.57079633"/>
+      <origin xyz="-0.0225 -0.06905 -0.0279" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -111,7 +111,7 @@
     </visual>
     <!-- power switch spacer — 0.1 g, measured: cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8 -->
     <visual name="power_switch_spacer">
-      <origin xyz="0.0225 -0.06905 -0.0264" rpy="0 0 -1.57079633"/>
+      <origin xyz="0.0225 -0.06905 -0.0279" rpy="0 0 -1.57079633"/>
       <geometry>
         <mesh filename="meshes/power-switch-spacer.stl" scale="0.001 0.001 0.001"/>
       </geometry>
@@ -119,7 +119,7 @@
     </visual>
     <!-- hip pitch actuator, right — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
     <visual name="hip_pitch_actuator__right">
-      <origin xyz="0 -0.048 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 -0.048 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
@@ -127,7 +127,7 @@
     </visual>
     <!-- hip pitch bearing, right — 5.0 g, bom: 6800-2RS at 5.0 g, docs/BOM.md section 9 -->
     <visual name="hip_pitch_bearing__right">
-      <origin xyz="0 -0.07645 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 -0.07645 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
@@ -135,7 +135,7 @@
     </visual>
     <!-- hip pitch actuator, left — 150.0 g, vendor: DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g -->
     <visual name="hip_pitch_actuator__left">
-      <origin xyz="0 0.048 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 0.048 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
@@ -143,23 +143,23 @@
     </visual>
     <!-- hip pitch bearing, left — 5.0 g, bom: 6800-2RS at 5.0 g, docs/BOM.md section 9 -->
     <visual name="hip_pitch_bearing__left">
-      <origin xyz="0 0.07645 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 0.07645 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.009500" length="0.005000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
-    <!-- battery — 190.0 g, estimate: two Bonka 3S 1000 mAh LiPo packs in series, 95 g each. LISTED FIGURE, NEVER WEIGHED -->
+    <!-- battery — 172.0 g, weighed: two Bonka 3S 1000 mAh LiPo packs in series, 86 g each, weighed 2026-10-05 -->
     <visual name="battery">
       <origin xyz="0 0.03355 -0.013" rpy="0 0 0"/>
       <geometry>
-        <box size="0.054 0.078 0.036"/>
+        <box size="0.054 0.078 0.039"/>
       </geometry>
       <material name="cellGrey"/>
     </visual>
     <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
     <visual name="sbc">
-      <origin xyz="0 0 0.0306" rpy="0 0 0"/>
+      <origin xyz="0 0 0.0321" rpy="0 0 0"/>
       <geometry>
         <box size="0.058 0.085 0.016"/>
       </geometry>
@@ -167,7 +167,7 @@
     </visual>
     <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
     <visual name="controller_carrier">
-      <origin xyz="0 0.00255 0.014" rpy="0 0 0"/>
+      <origin xyz="0 0.00255 0.0155" rpy="0 0 0"/>
       <geometry>
         <box size="0.046 0.14 0.012"/>
       </geometry>
@@ -175,15 +175,15 @@
     </visual>
     <!-- IMU — 3.0 g, assumption: BNO085 nano breakout -->
     <visual name="imu">
-      <origin xyz="0 0 -0.037" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.0385" rpy="0 0 0"/>
       <geometry>
         <box size="0.022 0.022 0.006"/>
       </geometry>
       <material name="sensorBlue"/>
     </visual>
-    <!-- battery management system — 45.0 g, vendor: Daly 6S 24V 20A on the cell taps, wired charge-only. The vendor's own 45 g, beside its own 58 x 33 x 8.2 -->
+    <!-- battery management system — 40.0 g, weighed: Daly 6S 24V 20A on the cell taps, wired charge-only. 40 g weighed, at the vendor's own 58 x 33 x 8.2 -->
     <visual name="battery_management_system">
-      <origin xyz="0 -0.013 -0.013" rpy="0 0 0"/>
+      <origin xyz="0 -0.013 -0.0115" rpy="0 0 0"/>
       <geometry>
         <box size="0.058 0.0082 0.033"/>
       </geometry>
@@ -193,24 +193,24 @@
     <visual name="power_switch_board">
       <origin xyz="0 -0.04655 -0.013" rpy="0 0 0"/>
       <geometry>
-        <box size="0.054 0.052 0.036"/>
+        <box size="0.054 0.052 0.039"/>
       </geometry>
       <material name="pcbGreen"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.072 0.1539 0.086"/>
+        <box size="0.072 0.1539 0.089"/>
       </geometry>
     </collision>
     <collision>
-      <origin xyz="0 -0.048 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 -0.048 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
     </collision>
     <collision>
-      <origin xyz="0 0.048 -0.067" rpy="1.57079633 0 0"/>
+      <origin xyz="0 0.048 -0.0685" rpy="1.57079633 0 0"/>
       <geometry>
         <cylinder radius="0.023000" length="0.037900"/>
       </geometry>
@@ -471,7 +471,7 @@
   <joint name="hip_pitch_right" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_right"/>
-    <origin xyz="0 -0.048 -0.067" rpy="0 0 0"/>
+    <origin xyz="0 -0.048 -0.0685" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>
@@ -498,7 +498,7 @@
   <joint name="hip_pitch_left" type="revolute">
     <parent link="base_link"/>
     <child link="thigh_left"/>
-    <origin xyz="0 0.048 -0.067" rpy="0 0 0"/>
+    <origin xyz="0 0.048 -0.0685" rpy="0 0 0"/>
     <axis xyz="0 -1 0"/>
     <limit lower="-1.04719755" upper="1.04719755" effort="3.0" velocity="48.2"/>
     <dynamics damping="0.0" friction="0.0"/>

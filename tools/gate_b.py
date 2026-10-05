@@ -756,6 +756,41 @@ DEVIATIONS = {
                 "than burying it."
             ),
         },
+        # AND THE CHARGE INLET BECAME THE MALE, 2026-10-05. The XT60E-F's 19.2 x
+        # 12.0 body cut and its two flange holes at x 43 and 68 are wall again,
+        # and the XT60E-M's 14.7 x 7.2 nose cut and two ear holes are cut at x 59.0
+        # and z 22.5 instead, because the male goes in from inside and that is the
+        # one station on this wall it can get to.
+        #
+        # THE VOLUME IS ARITHMETIC. 552.96 of body cut and 21.7147 of holes back
+        # in, 254.016 of nose cut and the same 21.7147 of holes out: +298.944 mm3,
+        # and the shell measured +298.9440 to four places.
+        #
+        # THE SPLIT IS ARITHMETIC TOO, on the 0.4 mm band of wall the golden
+        # shares, inside its flank at |x| = 62.5. The female's cut had 16.6 mm of
+        # its width in that band and the male's has 10.85, with one hole of each
+        # pair inside it: 16.6 x 12.0 x 0.4 + 1.8096 = 81.4896 put back, against
+        # 10.85 x 7.2 x 0.4 + 1.8096 = 33.0576 cut. Material put back inside the
+        # golden reads as un-removed, so the difference, 48.432, is the minus
+        # below and the rest of the 298.944 is added. The shell was built before
+        # and after and each differenced against the golden, and the change
+        # between the two matched both figures.
+        {
+            "added_mm3": 250.5120000074,
+            "removed_mm3": -48.4319999998,
+            "why": (
+                "THE CHARGE INLET IS THE MALE XT60E-M AND THE FEMALE IS ON THE "
+                "CHARGER'S LEAD. The XT60E-F's 19.2 x 12.0 body cut and its "
+                "flange holes 25 mm apart are wall again, and a 14.7 x 7.2 nose "
+                "cut with two ear holes 20 mm apart is cut at x 59.0, z 22.5. The "
+                "male goes in from inside with its ears on the inner face, and "
+                "that station is the one place on this wall where it can stand "
+                "8.4 mm off the wall on its way in without meeting the actuator "
+                "harness bank's plugs on one side or the rear right cover boss "
+                "on the other. The wall's thinnest bridge is the 1.45 mm between "
+                "each ear screw and the cut again."
+            ),
+        },
         {
             "added_mm3": 2560.7121719410,
             "why": (
@@ -851,6 +886,37 @@ DEVIATIONS = {
                 "where a rope turns over a printed edge under load. "
                 "cad/parameters.py carries the shape's argument and "
                 "tools/gate_e.py counts the two eyes."
+            ),
+        },
+        # THE MEASURED PACK, 2026-10-05, and the second whole-part change, so it
+        # is the same kind of entry as the resize at the top and is pinned the
+        # same way: two figures computed from the built part, whose difference is
+        # what the part gained and whose sum is what the symmetric difference
+        # moved. The removal is mostly not material taken away. The torso's frame
+        # is its own centre, and the centre rose 1.5 mm, so the floor, the
+        # saddles and everything standing on them sit 1.5 mm lower in this frame
+        # than they did -- against a frozen reference that is a slab added
+        # underneath each and a slab removed on top, though nothing moved
+        # relative to the hip axis. The net is the part, and it adds up: about
+        # +3250 of wall 3 mm taller round a 451.8 mm girth, +430 of BMS guide
+        # and +390 of fin, each 3 mm taller to meet a deck 3 mm higher, and
+        # -460 of fence and -120 of rail cut back to the 65 mm of each pack's
+        # body.
+        {
+            "added_mm3": 8522.7052168597,
+            "removed_mm3": 5105.5652245699,
+            "why": (
+                "THE PACKS WERE MEASURED ON ARRIVAL and the battery's band "
+                "went from 36 mm to 39 for them, which made the torso 89 mm "
+                "tall where it was 86: 77 x 38 x 19 at most against the "
+                "listing's 75 x 32 x 17, with only the last 12 mm at the leads "
+                "that big and the 65 mm of body within 35 x 17. The walls are "
+                "3 mm taller, the BMS guides and the fin are 3 mm taller to "
+                "meet the deck, and the fences and the rails stop at each "
+                "pack's 65 mm of body, where the 17 x 35 is a promise; past it "
+                "each rail drops to a sill under the lead end and ends in a "
+                "stop 2.5 mm into the bay gap. cad/electronics.py carries the "
+                "figures and cad/wheeled_parameters.py the height."
             ),
         },
     ],

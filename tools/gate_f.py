@@ -121,9 +121,10 @@ MOVED = {
     "pose_check": {
         "poseTorsoCenterZ": (
             300.7857332246598,
-            311.2857332246598,
-            "the torso grew from 65 mm to 86 to carry a battery, so its centre "
-            "is 10.5 mm further above a floor that has not moved",
+            312.7857332246598,
+            "the torso grew from 65 mm to 86 to carry a battery, and to 89 when "
+            "the packs were measured, so its centre is 12 mm further above a "
+            "floor that has not moved",
         ),
     },
     "squat_check": {
@@ -135,8 +136,8 @@ MOVED = {
         "squatHipPitchZ": (160.45105163371966, 174.98539803417327, WHY_FOLLOWS),
         "squatTorsoCenterZ": (
             216.95105163371966,
-            241.98539803417327,
-            "10.5 mm of it is the taller torso, on a floor that has not moved; "
+            243.48539803417327,
+            "12 mm of it is the taller torso, on a floor that has not moved; "
             "the other 14.5 is the shallower squat the knee stop now allows",
         ),
         "kneeY": (86.01096465034414, 80.4346665274927, WHY_FOLLOWS),
@@ -529,7 +530,7 @@ def check_clearances() -> tuple[int, int]:
 def check_packing() -> tuple[int, int]:
     """Every reserved payload volume inside the shell, and clear of it.
 
-    The 86 mm torso is derived from what has to fit in it, so this is where that
+    The 89 mm torso is derived from what has to fit in it, so this is where that
     derivation is actually checked rather than asserted. Two things per item: it
     does not eat into the shell, and it lies inside the cavity -- because a block
     that sticks out through a wall shares no volume with it either.
@@ -736,12 +737,14 @@ FITS = [
         "dimensioned drawing behind it -- a Daier GQ-12B/S is 21 mm from its dome to the tip of its terminal, and a 2.4 mm wall and its own dome come out of that before anything is behind the wall. Measure a real one: this gap is the margin it has to fit in",
     ),
     (
-        "the charge socket's flange vs the deck below it",
-        "charge socket",
+        "the charge inlet vs the deck below it",
+        "charge inlet",
         "deck plate",
-        6.712,
-        "also diagonal, flange outside to plate inside; the socket's body, "
-        "which is what the leads leave from, stands 8.25 over the plate",
+        8.95,
+        "straight down from the XT60E-M's rear body, which is what the leads "
+        "leave from, a millimetre below the row since the inlet moved to x 59.0 "
+        "on 2026-10-05. It was 6.712 while the inlet was the female XT60E-F, "
+        "measured diagonally from its flange outside the wall",
     ),
     (
         "the antenna vs the SBC in front of it",
@@ -884,14 +887,14 @@ FITS = [
         "the power switch parts vs the deck",
         "power switch parts",
         "deck plate",
-        3.0,
+        6.0,
         "THE TWO TO-220 SWITCHES ARE THE TALLEST THING ON THIS BOARD AGAIN, "
-        "standing 18.8 mm on their leads and leaving 3.0 mm under the deck. "
+        "standing 18.8 mm on their leads and leaving 6.0 mm under the deck. "
         "It was 1.1 mm while the PBV-F1 Kelvin shunt stood here at 20.7 mm "
         "installed, and that shunt went with the current measurement on "
-        "2026-09-16, so the tightest figure in this bay is nearly three times "
-        "what it was. The PCB placement check also checks each real part "
-        "separately",
+        "2026-09-16; it was 3.0 until the measured battery packs raised the "
+        "deck 3 mm on 2026-10-05. The PCB placement check also checks each "
+        "real part separately",
     ),
     (
         # THE BANK USED TO BE THE THING THIS BOARD STOPPED SHORT OF, 2 mm off
@@ -902,9 +905,9 @@ FITS = [
         "the capacitor bank vs the deck plate over it",
         "capacitor bank",
         "deck plate",
-        5.8,
-        "a 16 mm can standing on this board, under a deck 21.8 mm above it. The "
-        "two switches beside them are what governs this bay's height, at 3.0",
+        8.8,
+        "a 16 mm can standing on this board, under a deck 24.8 mm above it. The "
+        "two switches beside them are what governs this bay's height, at 6.0",
     ),
     (
         "IMU board vs the ribs that aim it",
@@ -944,7 +947,7 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "IMU board",
                 "on/off button",
                 "WeAct core board",
-                "charge socket",
+                "charge inlet",
                 "antenna bulkhead",
                 "SBC board",
                 "SBC standoffs",
@@ -991,8 +994,9 @@ def check_battery_hold_down() -> tuple[int, int]:
     made before the deck goes on. Each
     of those is a pair of drawn bodies that has to TOUCH -- distance zero and no
     shared volume -- and a pair that has come apart by any amount is a pack free
-    to move by that amount. The rail's stop is the rail itself, so its contact
-    is the rail's.
+    to move by that amount. The rail's stop is measured on its own since the
+    packs were measured: the rail drops away under the lead end, so the pack
+    touching the rail no longer says it has reached the stop.
 
     The foam is drawn at the thickness it is squeezed to, so the other half of
     the test is that each piece is thinner than the sheet it is cut from, and not
@@ -1055,6 +1059,58 @@ def check_battery_hold_down() -> tuple[int, int]:
             f" {mark} {what:<38} {squeezed:5.2f} of {e.batteryFoamFree:4.1f} mm, "
             f"squeezed {100 * (1 - ratio):4.1f} %   wants 0 to 50 %"
         )
+
+    # THE LEAD END, measured 2026-10-05. A pack is 17 x 35 only over the 65 mm
+    # furthest from its leads; the last 12 mm is up to 19 x 38, and nobody knows
+    # which faces the extra is on. So each lead end is tested here as the box it
+    # could fill whichever way the extra falls -- the whole 2 mm on either face,
+    # the whole 3 mm above or below -- and nothing printed and no foam may share
+    # any volume with that box. Touching is allowed, because two faces do and are
+    # meant to: the stop meets the end face, end-on, and the rail's full-height
+    # length ends where the body does. What this catches is a fence, a fin, a
+    # rail, a pad or a strip run on past the 65 mm, or a deck brought down into
+    # the lead end's 38 mm. The pair beside it is the stop: the rail's top no
+    # longer stands under the lead end, so its contact with the rail no longer
+    # says the stop is reached, and it is measured on its own.
+    from build123d import Box, Pos
+
+    spareY = e.batteryPackLeadThickness - e.batteryPackThickness
+    spareZ = e.batteryPackLeadWidth - e.batteryPackWidth
+    lengthX = e.batteryPackRightX - e.batteryPackBodyEndX
+    innerY = e.batteryPackGap / 2 - spareY
+    outerY = e.batteryPackOuterY + spareY
+    heightZ = e.batteryPackLeadWidth + spareZ
+    printed = [*torso.pelvisShell(), *deck.electronicsDeck()]
+    stopHeight = e.lowerBandZ + e.batteryRailStopHeight - torso.cavityBottomZ
+    for side, sy in (("front", 1), ("rear", -1)):
+        envelope = Pos(
+            e.batteryPackBodyEndX + lengthX / 2,
+            sy * (innerY + outerY) / 2,
+            e.lowerBandZ - spareZ + heightZ / 2,
+        ) * Box(lengthX, outerY - innerY, heightZ)
+        stop = Pos(
+            torso.batteryRailEndX - torso.batteryRailStopLength / 2,
+            sy * torso.batteryRailY,
+            torso.cavityBottomZ + stopHeight / 2,
+        ) * Box(torso.batteryRailStopLength, torso.batteryRailThickness, stopHeight)
+        for what, left, right, wants in (
+            (f"{side} pack against its end stop", [packs[side]], [stop], "contact"),
+            (f"{side} lead end, worst case, vs print", [envelope], printed, "none"),
+            (f"{side} lead end, worst case, vs foam", [envelope], foam, "none"),
+        ):
+            distance, shared = measure(left, right)
+            if wants == "contact":
+                ok = distance <= 0.001 and shared <= CONTACT_MM3
+            else:
+                ok = shared <= CONTACT_MM3
+            checked += 1
+            failed += 0 if ok else 1
+            mark = "  ok  " if ok else " FAIL "
+            want = "wants contact" if wants == "contact" else "wants none shared"
+            print(
+                f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
+                f"  {want}"
+            )
     return checked, failed
 
 

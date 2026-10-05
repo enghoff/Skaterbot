@@ -190,20 +190,22 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # there now because deleting hip roll gave 700 g back. docs/NOTES.md carries the
 # decision.
 #
-# WHAT SETS THE 86 mm, measured up from the inside face of the floor:
+# WHAT SETS THE 89 mm, measured up from the inside face of the floor:
 #
 # * 9 mm of hip pitch saddle. The clevises stand that far proud of the floor
 # across |x| = 26 to 60, so only the 51.5 mm between them is clear at this
 # level. Nothing reserved is narrow enough to use it except the IMU, which
 # goes there -- it is the stiffest spot in the pelvis, directly between the
 # two hip joints, which is where an IMU wants to be anyway.
-# * 36 mm for the battery, 78 x 54 x 36, which was drawn for two 3S 2200 mAh
+# * 39 mm for the battery, 78 x 54 x 39, which was drawn for two 3S 2200 mAh
 # bricks ON EDGE side by side -- a size of brick nobody makes, it turned out on
-# 2026-09-30, so the bay now holds two 1000 mAh packs and the foam round them,
-# and kept its size so that nothing here moved. That orientation is the whole
+# 2026-09-30, so the bay now holds two 1000 mAh packs and the foam round them.
+# It was 36 until the packs arrived and were measured on 2026-10-05: their
+# bodies are 35 tall where the listing said 32, and their lead ends up to 38,
+# and cad/electronics.py says why that makes 39. That orientation is the whole
 # reason a pack fits at all:
-# laid flat the pair is 66 mm across the robot against 67.2 mm of interior
-# depth, and on edge it is 52. The power bay, 52 x 62 x 36, sits BESIDE it in
+# laid flat the pair is 72 mm fore and aft against 67.2 mm of interior depth,
+# and on edge it is 36. The power bay, 52 x 54 x 39, sits BESIDE it in
 # the same band and is now the same height, because the battery sets it and
 # the bay may as well use what the battery has already paid for.
 # * 3 mm of electronics deck, cad/deck.py, which is a printed plate screwed to
@@ -249,12 +251,15 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # way.
 #
 # With 2 mm between the two upper bands and 2.6 mm under the cover that is
-# 80.6 mm of interior; 3 mm of floor and 2.4 mm of cover make 86 mm of torso,
-# and the robot stands 360 mm rather than 339. Those 21 mm are what the battery
-# costs in height, and cad/electronics.py's bands are where they went.
+# 83.6 mm of interior; 3 mm of floor and 2.4 mm of cover make 89 mm of torso,
+# and the robot stands 363 mm rather than 339. Those 24 mm are what the battery
+# costs in height, and cad/electronics.py's bands are where they went. It was
+# 86 and 360 until the measured packs took the battery's band from 36 to 39 on
+# 2026-10-05; the 3 mm went in under the deck, so everything over it -- the
+# boards, the rear-wall connectors, the cover -- rose with it and kept its place.
 wheeledTorsoShellWidth = (hipCenterX + clevisOuterX) * 2
 wheeledTorsoBottom = wheeledHipPitchAxisHeight + jointKeepOut
-wheeledTorsoHeight = 86.0
+wheeledTorsoHeight = 89.0
 wheeledTorsoTop = wheeledTorsoBottom + wheeledTorsoHeight
 wheeledTorsoCenterHeight = wheeledTorsoBottom + wheeledTorsoHeight / 2
 

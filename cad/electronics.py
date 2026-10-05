@@ -96,21 +96,38 @@ bandGap = 2.0
 # WHAT IS BOUGHT is a Bonka 11.1 V 1000 mAh 35C 3S with an XT60, in stock at
 # Indian Hobby Center on 2026-09-30: the only 3S pack short enough for this bay
 # that any readable Indian shop had on the shelf that day. Neither that shop nor
-# Bonka publishes its size. The one figure published for it is ElectronicsComp's,
-# 7.5 x 3.2 x 1.7 cm and 95 g, and that is what is drawn. MEASURE ONE BEFORE
-# THE PELVIS IS PRINTED: the rails, the fences, the stops and the foam all follow
-# the three numbers below. A millimetre or so either way is foam. More is a
-# change to these numbers, and it has limits: Bonka's own figure for the next
-# size up, the 1300 mAh, is 72 x 34 x 22, and at 22 mm thick the side foam has
-# to come down to 2 mm for the rear fence to clear the CAN loom, while at 34 mm
-# tall the top pad is squeezed past half and wants a thinner sheet.
+# Bonka publishes its size, and the one figure published for it, ElectronicsComp's
+# 7.5 x 3.2 x 1.7 cm, is what was drawn until the packs came.
 #
-# The three names below are in TORSO axes, not catalogue axes, because that is
-# the only way to read them against anything else in this file. Each says which
+# MEASURED ON THE PACKS THEMSELVES, 2026-10-05, the day both arrived, and the
+# listing was short on every side: 77 x 38 x 19 mm overall. But the pack is not a
+# brick of that size. ITS BODY IS 17 x 35 FOR THE 65 mm FURTHEST FROM ITS LEADS,
+# and only the last 12 mm, where the leads come out, grows to the 19 x 38 -- the
+# tabs folded under the wrap and the leads' exit. So the pack is drawn as those
+# two blocks, and the rule that comes with it is the one everything round it is
+# placed by: THE FIN, THE FENCES, THE RAILS AND THE FOAM STOP AT THE 65 mm, where
+# the 17 x 35 is a promise, and nothing printed comes alongside the lead end at all.
+# Nobody knows how the lead end's extra is split between its faces, so it is
+# drawn centred on the body, a millimetre proud each side and 1.5 above and
+# below, and everything round it clears it however the split falls: the deck by
+# a millimetre if all 3 mm of it are on top, the rail under it by a millimetre if
+# they are all underneath. Fore and aft the two lead ends meet in the middle at
+# full size, which is two wrapped ends touching and harmless; if more of the
+# extra is on the inner faces than the outer, the pair want up to 2 mm more than
+# the fin leaves and will splay outwards, where nothing stands beside the lead
+# ends.
+#
+# The names below are in TORSO axes, not catalogue axes, because that is the
+# only way to read them against anything else in this file. Each says which
 # catalogue dimension it is.
-batteryPackLength = 75.0  # catalogue length, across the robot
-batteryPackThickness = 17.0  # catalogue height, fore and aft: the packs are on edge
-batteryPackWidth = 32.0  # catalogue width, standing up
+batteryPackLength = 77.0  # catalogue length, across the robot: overall
+batteryPackThickness = 17.0  # catalogue height, fore and aft, the body: on edge
+batteryPackWidth = 35.0  # catalogue width, standing up, the body
+# How far from the end opposite the leads the body's 17 x 35 holds, and the most
+# the lead end comes to past it. Measured, 2026-10-05.
+batteryPackBodyLength = 65.0
+batteryPackLeadThickness = 19.0
+batteryPackLeadWidth = 38.0
 # Between the two packs, and it is a printed fin now rather than air: cad/torso.py
 # stands one up between them. They are soft-case cells that swell in service,
 # so what they are pressed against is foam on their outer faces, not each other.
@@ -124,15 +141,24 @@ batteryPackGap = 2.0
 # The bay's 1 mm to the deck ledges at each side is still what set the shell's
 # depth: the ledges stand 5 mm proud of the front and rear walls beside it.
 # cad/torso_shell.py says why the shell went from 68 mm deep to 72.
+#
+# 39 TALL SINCE 2026-10-05, where it was 36, and it is the measured pack that
+# moved it. A 35 mm body under 4 mm of squeezed foam is 39, which is the same
+# 4 mm the top pads had over the 32 mm the listing claimed, so the pads still
+# push the way they did. And 39 is also what the lead end needs: 38 mm at most,
+# with a millimetre to the deck if every bit of its extra is on top. At 36 the
+# lead end ran into the deck by up to 2 mm. The 3 mm go straight into the
+# robot's height -- cad/wheeled_parameters.py adds it up.
 batteryWidth = 78.0
 batteryDepth = 54.0
-batteryHeight = 36.0
+batteryHeight = 39.0
 
 # THE POWER BAY. 52 wide for a bought 50 x 50 distribution board, where it was
-# 38 for a PCB we would have drawn ourselves, and 36 tall rather than 30 because
-# the battery beside it already sets this band's height and there is no reason to
-# reserve less than the band holds. The bank has not been sized, so the extra
-# 6 mm of height is headroom rather than a decision.
+# 38 for a PCB we would have drawn ourselves, and as tall as the battery's band
+# rather than 30 because the battery beside it already sets this band's height
+# and there is no reason to reserve less than the band holds: 36 until the
+# measured pack made the band 39 on 2026-10-05. The bank has not been sized, so
+# the extra 9 mm of height is headroom rather than a decision.
 #
 # 54 DEEP AND NOT 62, which is the battery's depth rather than the old block's,
 # and for the same reason: the four ledges carrying the electronics deck stand
@@ -142,7 +168,7 @@ batteryHeight = 36.0
 # note on measure() there, which had been reporting every such overlap as zero.
 powerWidth = 52.0
 powerDepth = 54.0
-powerHeight = 36.0
+powerHeight = 39.0
 # THE CONTROLLER BAY, 140 mm wide since September 2026 where it was 76. It grew
 # to take the logic BEC and the bus monitor, which were two separately mounted
 # boards in the power bay with cables running up to the carrier; both ride on the
@@ -161,11 +187,15 @@ powerHeight = 36.0
 # transceivers and the BEC's own input hardware, and 33.65 mm of board is what
 # holds them, which puts this bay's edge at x +67.45.
 #
-# THE REAR OUTBOARD CORNER IS CUT AWAY. The charge socket's body reaches 17.1 mm
-# in from the rear wall and passes 3.65 mm over this board, so the last 21 mm of
-# the rear edge cannot hold the 12 mm this bay otherwise claims. The notch is in
-# the reservation and in the board alike, which is cheaper than a reservation
-# that promises height it has not got.
+# THE REAR OUTBOARD CORNER IS CUT AWAY. The charge socket's body reached 17.1 mm
+# in from the rear wall and passed 3.65 mm over this board, so the last 21 mm of
+# the rear edge could not hold the 12 mm this bay otherwise claims. The notch is
+# in the reservation and in the board alike, which is cheaper than a reservation
+# that promises height it has not got. THE NOTCH OUTLIVED ITS REASON on
+# 2026-10-05: the male inlet that replaced that socket reaches 10.7 mm in from
+# the outer face and stops 2.3 mm short of this board's rear edge in plan. It
+# stays because electrical/carrier_pcb.py lays the board out round it, and a
+# corner of air costs nothing.
 controllerWidth = 140.0
 controllerDepth = 46.0
 controllerHeight = 12.0
@@ -272,9 +302,18 @@ deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
 #   - up, through foam, on the deck's underside;
 #   - to the left, through foam, on the left wall.
 # The printed faces say where each pack is and the foam pushes it there. The foam
-# also takes up what the drawn pack and the bought one differ by, which nobody has
-# measured yet: everything here follows the three pack dimensions above, so a
-# measured pack moves the rails, the fences and the stops with it.
+# also takes up what one pack differs from another by: everything here follows
+# the pack dimensions above, so a different pack moves the rails, the fences and
+# the stops with it.
+#
+# ALL OF IT BEARS ON THE BODY, since the packs were measured on 2026-10-05: the
+# rails, the fin, the fences and every piece of foam stop at the 65 mm the
+# body's 17 x 35 is good for, and past it the lead end has air on every side but
+# one. The one is the stop, which it bears on end-on rather than beside -- the
+# stop stands past the 77 mm, so however the lead end is shaped it is never
+# alongside it -- and the rails drop away under the lead end on their way to it,
+# so the stop is braced without anything coming under the part of the pack that
+# is not a promise.
 #
 # THE FIN AND THE FENCES STAND ON THE PELVIS, and for their first day they hung
 # from the deck. From there they came down blind: the fin had to find the 2 mm
@@ -288,8 +327,11 @@ deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
 # again: squeezed foam grips it and nothing leaves room for fingers beside it.
 #
 # All of it is cut from one 5 mm sheet of closed-cell foam, docs/BOM.md's.
-# Squeezed to 3 mm at the sides, 3.5 at the end and 4 on top: 40, 30 and 20 %,
-# so none of it has been squeezed flat and every piece still pushes.
+# Squeezed to 3 mm at the sides, 3 at the end and 4 on top: 40, 40 and 20 %,
+# so none of it has been squeezed flat and every piece still pushes. The end
+# pad was 3.5 until the measured pack came 2 mm longer than the listing, and it
+# is 3 rather than less because the pack grew towards the left wall and not
+# into the bay gap -- see where its ends are placed below.
 batteryFoamFree = 5.0
 batteryFoamSide = 3.0
 batteryPackOuterY = (batteryPackGap / 2) + batteryPackThickness
@@ -300,18 +342,30 @@ batteryFenceY = batteryPackOuterY + batteryFoamSide
 batteryFenceThickness = 1.5
 batteryPackTopZ = lowerBandZ + batteryPackWidth
 # How far below the pack tops the fences and the fin stop: they hold each pack
-# by 26 mm of its 32, and stay well clear of the pads the deck brings down, so
+# by 29 mm of its 35, and stay well clear of the pads the deck brings down, so
 # nothing on the deck has anything to find on its way in.
 batteryFenceShort = 6.0
 batteryFenceTopZ = batteryPackTopZ - batteryFenceShort
 batteryFoamTop = deckZ - batteryPackTopZ
-batteryPackLeftX = batteryX - (batteryPackLength / 2)
-batteryPackRightX = batteryX + (batteryPackLength / 2)
+# THE LEAD END IS FLUSH WITH THE BAY'S INBOARD END, and the pack is laid off
+# leftwards from there. Centred in the bay as it used to be, a 77 mm pack leaves
+# the end pad 2.5 mm, half its free thickness; held at the bay's end it leaves
+# 3. The lead end is 1.5 mm further right than it was, and the stops moved out
+# of the bay into the gap with it -- cad/torso.py says how far that leaves them
+# from the BMS.
+batteryPackRightX = batteryX + (batteryWidth / 2)
+batteryPackLeftX = batteryPackRightX - batteryPackLength
+# Where the body ends and the lead end begins. Every printed face and every piece
+# of foam that bears on a pack beside it stops short of here.
+batteryPackBodyEndX = batteryPackLeftX + batteryPackBodyLength
 batteryFoamEnd = batteryPackLeftX + interiorHalfWidth
 # The stop on each rail's end stands this far over the rail, into the foot of the
 # pack's end face and no higher: a pack's leads leave its end face, and the packs
 # go in with their leads UP.
 batteryRailStopHeight = 5.0
+# What is kept clear round the lead end's worst case, wherever its extra falls:
+# the deck over it, and the rails where they drop away under it.
+batteryLeadEndAir = 1.0
 
 # Standoffs. Every board is held off what it sits on, and these are the gaps.
 # 3 mm is a stock M3 brass standoff and clears the leads that have to pass under
@@ -450,9 +504,9 @@ xt60Height = 7.5
 # BMS chosen without balancing. Either would want these dimensions again, and
 # they were: 19.5 wide, 7.0 high, 8.0 deep, at x +15.0 from the disconnect.
 # THE CHARGE INLET IS THE ONLY WAY INTO THE PACK, and what it is is further down
-# with the rest of the wall's hardware -- an AMASS XT60E-F, after a GX16 bushing,
-# after an AMASS XT30. What has not changed is why there are two connectors
-# rather than one: it lands on the BMS's charge input AHEAD OF THE DISCONNECT,
+# with the rest of the wall's hardware -- an AMASS XT60E-M since 2026-10-05,
+# after an XT60E-F, a GX16 bushing and an AMASS XT30. What has not changed is why
+# there are two connectors rather than one: it lands on the BMS's charge input AHEAD OF THE DISCONNECT,
 # because charging through the disconnect instead leaves six actuator
 # controllers, the BEC and the SBC sitting across the charger at something like
 # half an amp, and a constant-voltage taper never falls below that, so the charge
@@ -467,10 +521,12 @@ xt60Height = 7.5
 # both were here the rule was met by gender -- the disconnect male and its key a
 # bridged female, the charge socket female and the charger's lead male -- so
 # that a bridged key could not short the charge port and a charger could not
-# sit in series with the pack. WHAT IS LEFT IS STILL A LIVE SOCKET: the charge
+# sit in series with the pack. WHAT IS LEFT IS A LIVE CONNECTOR: the charge
 # inlet lands on the BMS's charge input, which is on the pack side of
-# everything, so it is at pack voltage whenever cells are connected. That is
-# why it carries recessed sockets rather than pins.
+# everything, so it is at pack voltage whenever cells are connected. It carried
+# recessed sockets for that reason until 2026-10-05, and carries pins now, inside
+# the XT60's own shroud, because the female went onto the charger's lead
+# instead. The inlet's own block further down says what that costs.
 # INA226 bus monitor. New hardware: the controller has had no way to read pack
 # state, which matters on a battery in a way it never did on a bench supply. It
 # reads VOLTAGE ONLY since 2026-09-16, on its own VBS pin, which never went
@@ -530,10 +586,10 @@ busWireDiameter = 3.5
 canWireDiameter = 2.6
 balanceLeadWidth = 6.0
 balanceLeadThickness = 2.0
-# The stretch of each lead that lies over its pack before it turns down into the
-# bay gap, and where it is centred.
+# The stretch of each lead that runs down the bay gap from its pack's end. It
+# lay over the pack's last few millimetres until 2026-10-05, and the measured
+# lead end took that air: see balanceLeadX, after the BMS, which places it.
 balanceLeadLength = 10.0
-balanceLeadX = 1.0
 harnessBundleWidth = 9.0
 harnessBundleHeight = 7.0
 harnessRunY = -27.0
@@ -663,56 +719,96 @@ buttonOutboardDepth = 6.0
 # checked against. tools/gate_f.py measures it on the built scene.
 buttonClearDepth = 21.4
 
-# THE CHARGE INLET IS AN AMASS XT60E-F, the female twin of the disconnect's
-# XT60E-M, September 2026. It was a GX16-2 before that and an XT30 before that.
+# THE CHARGE INLET IS AN AMASS XT60E-M, 2026-10-05: the eared male panel mount,
+# the same part the main disconnect was until the button replaced it. It was the
+# female XT60E-F for three weeks before that, a GX16-2 before that and an XT30
+# before that.
 #
-# WHY THE GX16 WENT, and it was not the panel hole: THE PANEL HALF CARRIED PINS.
-# This side is live at 25.2 V whenever the pack is connected, since it lands on
-# the BMS's charge input, so the socket-contact half is the one that belongs on
-# the machine. Every stocked GX16 pair put the pins on the panel instead -- the
-# series datasheet's own package list is a male panel socket and a female wire
-# plug -- and the reverse part was on no Indian shelf. The XT60E-F puts recessed
-# sockets on the robot and is on the shelf at the same shop as the disconnect.
-# Two more things the GX16 taught are worth keeping: it was also sold with a
-# 3-hole circular flange that this wall was never drilled for, and docs/BOM.md
-# linked that wrong variant until 2026-09-13; and its figures were an M16 x 1
-# thread, an S19 hex 21.94 across corners, and 19 mm reserved inboard.
+# THE GENDER WAS TURNED ROUND BY CHOICE, AND AGAINST THE RULE THAT CHOSE THE
+# FEMALE. That rule still holds: this inlet lands on the BMS's charge input, so
+# it is live at pack voltage whenever cells are connected, and the half with the
+# pins is the one that would rather be dead. The female is on the charger's lead
+# instead, which is live only while the charger is on. What that costs is two
+# pins at up to 25.2 V on the back of the robot, shrouded by the XT60's own
+# housing but not recessed, and a short across them reaches the pack through the
+# BMS's charge input and nothing else: nothing on this path is fused, and
+# whether the BMS cuts a short on that input is untested. It also means the lead
+# that charges the robot ends in a female XT60, where the lead that charges a
+# bare pack ends in a male.
 #
-# EVERY FIGURE BELOW IS OFF AMASS'S DIMENSIONED DRAWING OF THE XT60E-F, and none
-# is borrowed from the XT60E-M: the two genders are different mouldings, and
-# assuming they match is the exact mistake the XT90E-M's listing figures made.
-# The female is 34.00 across its ears where the male is 27.00, with its screws
-# 25.00 apart where the male's are 20.00 -- so the assumption would have been
-# wrong on both counts again.
+# WHY THE GX16 WENT, and it was not the panel hole: THE PANEL HALF CARRIED PINS,
+# which was the same rule. Every stocked GX16 pair put the pins on the panel --
+# the series datasheet's own package list is a male panel socket and a female
+# wire plug -- and the reverse part was on no Indian shelf. Two more things the
+# GX16 taught are worth keeping: it was also sold with a 3-hole circular flange
+# that this wall was never drilled for, and docs/BOM.md linked that wrong variant
+# until 2026-09-13; and its figures were an M16 x 1 thread, an S19 hex 21.94
+# across corners, and 19 mm reserved inboard.
 #
-# IT IS A FLANGE AT THE MATING END, NOT EARS PARTWAY ALONG, so it mounts the
-# opposite way round from the disconnect. The socket recess is in the flange's
-# own face; the flange lies on the OUTSIDE of the wall and the body passes
-# through. Along its axis it is 20.20 overall: a 3.10 flange, then 17.10 of body
-# and solder cups behind it -- so the body stands 14.7 mm into the cavity past
-# the wall's inner face, which at this station has nothing in front of it.
+# EVERY FIGURE BELOW IS OFF AMASS'S DIMENSIONED DRAWING OF THE XT60E-M, the
+# figures the disconnect was drawn to, and none is borrowed from the female: the
+# two genders are different mouldings. The female's were a flange 34.00 x 15.80
+# x 3.10 on the outside face, screws 25.00 apart, and 17.10 of body reaching
+# 14.7 mm past the inner face through a 19.2 x 12.0 cut; the male is 27.00
+# across, 20.00 between screws and 8.3 mm deep inside the wall.
 #
-# The flange is 34.00 x 15.80 at its tallest, stepping down to 11.80 across the
-# ears, and it is drawn here as the 34.00 x 15.80 envelope: that errs large at
-# four corners, which on this wall is the safe direction to err. The body behind
-# it is 18.70 x 11.50 on the drawing, and the cutout is that plus half a
-# millimetre all round, exactly as the disconnect's is.
+# IT IS NOT A FLANGE, IT IS TWO EARS PARTWAY ALONG THE BODY, so it mounts the
+# opposite way round from the female and goes in from inside. Along its axis it
+# is 16.70 overall in three pieces: the mating nose stands 8.40 proud of the ear
+# plate, the ear plate is 3.20 thick, and the rear body with its solder tabs is
+# 5.10 behind that. So the ears bear on the INSIDE face of the wall, the nose
+# passes through the cutout and stands 6.0 mm outside it, and the tabs the leads
+# land on stay in the cavity.
 #
-# THE WALL BETWEEN THE CUTOUT AND EACH SCREW IS 1.7 mm AT M2, and 1.2 at M3. The
-# charge socket would take an M2.5 happily -- its nuts sit on the wall's face,
-# 3.15 mm clear of its body -- but the disconnect cannot, so M2 serves the whole
-# wall. The part's own holes are 3.10 with a 6.70 recess on the flange face for
-# the head: put an M2 washer under each head, because a 3.8 mm head alone bears
-# on 0.35 mm of plastic round a 3.10 hole, and the washer's 5.0 fits the recess.
-chargeSocketFlangeWidth = 34.0
-chargeSocketFlangeHeight = 15.8
-chargeSocketFlangeThickness = 3.1
-chargeSocketBodyWidth = 18.7
-chargeSocketBodyHeight = 11.5
-chargeSocketBodyDepth = 17.1
-chargeSocketCutWidth = 19.2
-chargeSocketCutHeight = 12.0
-chargeSocketFixingPitch = 25.0
+# THOSE THREE AXIAL FIGURES ARE THE ONE THING HERE NOT READ STRAIGHT OFF A LABEL,
+# and they are the first thing to measure on a real connector. The drawing's own
+# side view labels the tab end to the ear plate 9.50 and the plate 4.00, which
+# leaves 3.20 of nose -- and that cannot be right: it is contradicted by the same
+# view's proportions, by AMASS's own photograph, in which the nose is plainly
+# the longest section, and by the part's purpose, since 3.2 mm of nose through a
+# 2.4 mm wall is 0.8 mm for a plug to grip. The figures above are the view's
+# proportions at its 16.70 scale. IF A MEASURED PART SAYS THE LABELS WERE RIGHT,
+# the body reaches 13.5 mm in, which this station has room for -- the female
+# reached 14.7 -- but the nose would want the ears on the outside instead.
+#
+# THE CUTOUT IS CUT TO THE NOSE, NOT TO THE BODY -- 14.20 x 6.70 plus half a
+# millimetre all round -- and that is forced rather than chosen. The ear holes
+# are 20.00 apart and the body is 15.50 long, so a cutout sized to the body would
+# run into them. AT 14.7 THERE IS 1.45 mm OF WALL BETWEEN THE CUTOUT AND EACH
+# SCREW HOLE, the thinnest bridge on this wall again, at M2 -- and M2 is forced
+# by the nuts, which cad/parameters.py sets out: each sits behind an ear, 2.25 mm
+# from the side of the body.
+#
+# THE STATION MOVED 3.5 mm OUTBOARD, to x 59.0, AND 1 mm DOWN, AND IT IS THE WAY
+# IN THAT MOVED IT. The male goes in from inside: it comes down in front of the
+# wall and goes back until its nose is through the cutout, so before it can come
+# down at all it has to stand 8.4 mm off the inner face with nothing in the way.
+# Two things bound that. The ear plate's inboard tip has to pass the actuator
+# harness bank's mated plugs, which end at x 44.95, and the nose, still under the
+# rear right cover boss at that depth, has to pass inboard of the boss, which
+# starts at x 66.55. That leaves x 58.45 to 59.45 and nothing else on this wall:
+# at the female's 55.5 the ear plate sat 3 mm into those plugs, and tools/gate_i.py
+# could find no straight way in. 59.0 is the middle, half a millimetre from each.
+# It puts the rear body 0.2 mm under the boss in plan, which is what the
+# millimetre down clears; chargeInletPanelZ says so where it is set.
+chargeInletNoseWidth = 14.2
+chargeInletNoseHeight = 6.7
+chargeInletCutWidth = 14.7
+chargeInletCutHeight = 7.2
+chargeInletFixingPitch = 20.0
+# The ear plate, which is what actually holds the connector: 27.00 tip to tip,
+# 6.13 across and 3.20 thick, bearing on the inside face either side of the
+# cutout. The rear body behind it is the 15.50 x 8.10 of the XT60 shell.
+chargeInletEarSpan = 27.0
+chargeInletEarWidth = 6.13
+chargeInletEarThickness = 3.2
+chargeInletBodyWidth = 15.5
+chargeInletBodyDepth = 5.1
+# How far the connector reaches either side of the wall it is bolted to. Outboard
+# is the nose the charger's lead goes onto, measured from the wall's OUTER face;
+# inboard is the ear plate and the rear body, measured from its inner face.
+chargeInletOutboardDepth = 6.0
+chargeInletInboardDepth = chargeInletEarThickness + chargeInletBodyDepth
 
 # AN SMA BULKHEAD FOR THE RADIO, which this robot has never had. The SBC keeps
 # its WiFi on a module inside a sealed PA12 box with six motors in it, and a u.FL
@@ -741,9 +837,12 @@ antennaBodyDepth = 15.0
 antennaOutboardDepth = 8.0
 
 # THE THREE STATIONS, all at one height so the back of the robot reads as a row
-# rather than a scatter. z = 22 is the only band that works: a window 20 mm tall
-# has to clear the deck's top face at z = 8 underneath and the cover's lip at
-# z = 38.2 above, which leaves its centre between 19 and 30.
+# rather than a scatter. z = 23.5 is the only band that works: a window 20 mm
+# tall has to clear the deck's top face at z = 9.5 underneath and the cover's lip
+# at z = 39.7 above, which leaves its centre between 20.5 and 31.5. It was 22
+# until the torso grew 3 mm under the deck on 2026-10-05, and 23.5 is the same
+# place relative to the deck and the cover: this frame is the torso's centre,
+# which rose by half of it.
 #
 # THE x FIGURES WERE SOLVED FOR, NOT LAID OUT BY HAND, September 2026. With the
 # disconnect held where it was gated, the charge socket and the antenna were swept
@@ -757,10 +856,18 @@ antennaOutboardDepth = 8.0
 # IS GONE: the tightest strip of wall is now each connector's own bridge between
 # its cutout and its screws, 1.25 and 1.5, which the parts set and no layout can
 # change. Move one station and all three want re-checking -- tools/gate_f.py
-# measures the lot.
-panelHardwareZ = 22.0
+# measures the lot. THE CHARGE INLET MOVED TO x 59.0 when it became a male on
+# 2026-10-05, for its way in rather than for its place; its own block above says
+# why, and the bridge it binds is its own 1.45 again.
+panelHardwareZ = 23.5
 buttonPanelX = -44.0
-chargeSocketPanelX = 55.5
+chargeInletPanelX = 59.0
+# THE ONE STATION A MILLIMETRE OUT OF THE ROW, 2026-10-05. At x 59.0 the
+# inlet's rear body stands 0.2 mm under the rear right cover boss, which comes
+# down to z 27.3, and at the row's height the body's top edge is 27.55. A millimetre
+# lower it is 0.75 clear, and the row the back of the robot reads as does not
+# notice a millimetre.
+chargeInletPanelZ = panelHardwareZ - 1.0
 antennaPanelX = -8.0
 # Negative Y is the rear: the foot's front pressure pads sat at y = +51 and its
 # rear pads at y = -40, and the leading leg swings to +Y.
@@ -785,11 +892,11 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
             buttonHoleDiameter,
         ),
         (
-            "XT60E-F charge socket",
-            chargeSocketPanelX,
-            panelHardwareZ,
-            chargeSocketCutWidth,
-            chargeSocketCutHeight,
+            "XT60E-M charge inlet",
+            chargeInletPanelX,
+            chargeInletPanelZ,
+            chargeInletCutWidth,
+            chargeInletCutHeight,
         ),
         (
             "SMA antenna bulkhead",
@@ -801,18 +908,27 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
     ]
 
 
-def chargeSocketFixings() -> list[tuple[float, float]]:
-    """The XT60E-F's two flange screws, in the pelvis's own x and z.
+def chargeInletFixings() -> list[tuple[float, float]]:
+    """The XT60E-M's two ear screws, in the pelvis's own x and z.
 
-    Clamped the other way round from the disconnect's: the flange is outside,
-    so the screw heads sit in the recesses on its face and the nuts are on the
-    wall's inner face. M2 like the disconnect's, which leaves 1.7 mm of wall
-    between each screw and the body's cutout, with a washer under each head.
+    They are clearance holes and nothing else: the screw head takes the wall on
+    the outside, with a washer under it, the connector's own ear plate sits
+    against the inside face, and a nut behind the ear takes the load, so 2.4 mm
+    of wall is CLAMPED rather than threaded.
+
+    M2, AND THE NUT IS WHY. Each ear hole is 2.25 mm from the side of the
+    connector's own body, and the nut sits in that gap: an M2's flats clear it by
+    a quarter of a millimetre, where an M2.5 fouls it by the same, and the body
+    then holds the nut square so the screw is turned from outside. No washer
+    fits under that nut, which is why the washer is under the head. The wall
+    keeps 1.45 mm between each screw and the nose cutout. The connector's own
+    holes are 3.00, which leaves an M2 half a millimetre of adjustment each side
+    -- the cutout, not the screws, is what locates the part.
     """
-    half = chargeSocketFixingPitch / 2
+    half = chargeInletFixingPitch / 2
     return [
-        (chargeSocketPanelX - half, panelHardwareZ),
-        (chargeSocketPanelX + half, panelHardwareZ),
+        (chargeInletPanelX - half, chargeInletPanelZ),
+        (chargeInletPanelX + half, chargeInletPanelZ),
     ]
 
 
@@ -846,7 +962,8 @@ def chargeSocketFixings() -> list[tuple[float, float]]:
 #
 # THE BOARD IS THE DALY Li-ion NMC 6S 24V 20A, chosen 2026-09-13, and everything
 # below is drawn to it. Its vendor specification table gives length 58, width 33,
-# height 8.2 mm and 45 g, and those are the three numbers this file uses. It was
+# height 8.2 mm and 45 g, and the first three are the numbers this file uses; the
+# board in hand weighed 40 g on 2026-10-05. It was
 # chosen on two counts and neither of them is its current rating, which is very
 # nearly irrelevant on a charge-only board seeing 2.2 A: it BALANCES -- 30 mA
 # passive, from 4.18 V per cell -- and it is the only balancing 6S board found
@@ -897,6 +1014,11 @@ bmsWidth = bmsGuideSlot
 bmsX = ((batteryX + (batteryWidth / 2)) + (powerX - (powerWidth / 2))) / 2
 bmsDepth = (interiorHalfDepth * 2) - (bmsBayClearance * 2)
 bmsY = 0.0
+# WHERE THE BALANCE TAILS COME DOWN: the board's battery-side flank, halfway
+# between the packs' lead ends and its slot. That is 3.05 mm, which takes a lead
+# dressed flat and taped with half a millimetre either side, and it was 4.55
+# until the measured pack's lead end came 1.5 mm closer.
+balanceLeadX = (batteryPackRightX + (bmsX - bmsWidth / 2)) / 2
 
 # THE BOARD HANGS FROM THE DECK RATHER THAN STANDING ON THE FLOOR, and it is the
 # only thing in this torso that does. The reason is the retention: what stops a
@@ -931,7 +1053,7 @@ bmsGuideY = tuple(
 # take its top. What that buys is not hold-down -- the plate 1.5 mm over the top
 # edge was already doing that -- but LATERAL SUPPORT AT THE FAR END. Held only at
 # the bottom, a 33 mm card standing on 4 mm of engagement is a cantilever and its
-# top edge swings; held at both ends it is a card in a cage, and 45 g of board
+# top edge swings; held at both ends it is a card in a cage, and 40 g of board
 # stops depending on how stiff a 4 mm slot is.
 #
 # They drop 4 mm below the plate and the top edge stands 2.5 mm up inside them,
@@ -1057,8 +1179,8 @@ def carrier_screw_xy() -> list[tuple[float, float]]:
 
     SIX, AND NOT AT FOUR CORNERS. A 140 mm board wants more than four screws,
     and two of the four corners are not available anyway: the rear edge carries
-    connectors from board x 43 to x 118, and the rear outboard corner passes
-    under the charge socket. electrical/carrier_pcb.py places the holes and
+    connectors from board x 43 to x 118, and the rear outboard corner is
+    notched for the charge socket that stood over it until 2026-10-05. electrical/carrier_pcb.py places the holes and
     measures each one clear of what stands near it; cad/deck.py drills its
     bosses to this list, so the two cannot disagree about where the board bolts.
     """
@@ -1506,27 +1628,39 @@ def sbcBoard():
 
 
 def batteryPacks() -> list:
-    """The two 3S bricks, on edge, side by side.
+    """The two 3S packs, on edge, side by side: rear, then front.
 
     Drawn as two bodies and not as one block, because the gap between them is
-    real: cad/torso.py's fin stands in it.
+    real: cad/torso.py's fin stands in it. Each is its 65 mm body and its lead
+    end united, the lead end centred on the body because nobody knows which way
+    its extra falls -- see the measured figures above.
     """
     offset = (batteryPackGap + batteryPackThickness) / 2
-    return [
-        slab(
-            batteryPackLength,
+    leadLength = batteryPackLength - batteryPackBodyLength
+    packs = []
+    for sy in (-1, 1):
+        body = slab(
+            batteryPackBodyLength,
             batteryPackThickness,
             batteryPackWidth,
-            batteryX,
+            batteryPackLeftX + batteryPackBodyLength / 2,
             sy * offset,
             lowerBandZ,
         )
-        for sy in (-1, 1)
-    ]
+        leadEnd = slab(
+            leadLength,
+            batteryPackLeadThickness,
+            batteryPackLeadWidth,
+            batteryPackBodyEndX + leadLength / 2,
+            sy * offset,
+            lowerBandZ - (batteryPackLeadWidth - batteryPackWidth) / 2,
+        )
+        packs.append(body + leadEnd)
+    return packs
 
 
-# How far the top pads stop short of the balance leads, which lie over the
-# packs' right-hand ends and are dressed flat there rather than squeezed.
+# How far every piece of foam beside or over a pack stops short of its lead end,
+# so that none of it bears on the part of the pack that is not a promise.
 batteryFoamLeadAir = 2.0
 
 
@@ -1542,9 +1676,7 @@ def batteryFoam() -> list:
     face it bears on as a contact and anything else as a clash; tools/gate_f.py
     holds each thickness to the free sheet, which is what says it still pushes.
     """
-    topLength = (
-        balanceLeadX - balanceLeadLength / 2 - batteryFoamLeadAir - batteryPackLeftX
-    )
+    topLength = batteryPackBodyEndX - batteryFoamLeadAir - batteryPackLeftX
     pads = [
         slab(
             topLength,
@@ -1558,10 +1690,10 @@ def batteryFoam() -> list:
     ]
     strips = [
         slab(
-            batteryPackLength,
+            topLength,
             batteryFoamSide,
             batteryFenceTopZ - lowerBandZ,
-            batteryX,
+            batteryPackLeftX + topLength / 2,
             sy * (batteryPackOuterY + batteryFoamSide / 2),
             lowerBandZ,
         )
@@ -1626,7 +1758,7 @@ partNumbers = {
     "bus monitor": "INA226, bus voltage only -- no external shunt",
     "logic BEC": "Matek BEC12S-PRO",
     "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
-    "charge socket": "AMASS XT60E-F panel mount, socket contacts",
+    "charge inlet": "AMASS XT60E-M panel mount, pin contacts",
     "antenna bulkhead": "SMA or RP-SMA bulkhead jack on a u.FL pigtail",
     "controller standoffs": "M3 brass, 6 mm A/F x 3 mm",
     "controller carrier board": "ours -- 140 x 46 mm two-layer PCB, electrical/carrier_pcb.py",
@@ -1634,7 +1766,7 @@ partNumbers = {
     "CAN transceivers": "MCP2562FD-E/P, 8-pin PDIP, in sockets",
     "WeAct core board": "WeAct STM32G474CEU6",
     "SBC board": "Banana Pi BPI-M4 Zero",
-    "BMS board": "Daly Li-ion NMC 6S 24V 20A, 58 x 33 x 8.2 mm, 45 g -- balancing, wired charge-only",
+    "BMS board": "Daly Li-ion NMC 6S 24V 20A, 58 x 33 x 8.2 mm, 40 g -- balancing, wired charge-only",
     "IMU board": "BNO085 Nano breakout",
 }
 
@@ -1668,7 +1800,6 @@ def torsoElectronicsGroups() -> dict[str, list]:
     upperZ = upperBandZ + pcbThickness
     innerWallY = -interiorHalfDepth
     outerWallY = -(torsoShellDepth / 2)
-    packTopZ = lowerBandZ + batteryPackWidth
 
     groups = {
         # ---- the battery ----------------------------------------------------
@@ -1681,24 +1812,24 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # the same merge, made in the same place, and it ends on a connector
         # rather than in one.
         #
-        # WHERE THEY GO IS THE AIR OVER THE PACKS' RIGHT-HAND ENDS, and it is
-        # worth knowing before the harness is made up, because it is the only
-        # way from the battery bay into the bay gap. The packs top out at z = 1
-        # and the deck's underside is at 5; the bays themselves are 1.5 mm
-        # apart, which no wire lies in. So the tails come off the packs, lie
-        # FLAT over their last few millimetres -- a millimetre clear above and
-        # below, which is a lead dressed down and taped, not one left proud --
-        # and turn down into the gap at the BMS's inboard face. The foam pads
-        # over the packs stop 2 mm short of them. Past x = 7 the bay is the
-        # board's.
+        # WHERE THEY GO IS STRAIGHT DOWN FROM THE PACKS' LEAD ENDS, into the
+        # 3.05 mm between those ends and the BMS's slot, and it is worth knowing
+        # before the harness is made up, because it is the only way from the
+        # battery bay into the bay gap. Until 2026-10-05 the tails lay flat over
+        # the packs' last few millimetres before they turned down; the measured
+        # lead end is up to 38 mm tall where the body is 35, and it took that
+        # air. So each tail leaves its pack's end face near the top, turns down
+        # at once and is dressed flat against the board's flank -- half a
+        # millimetre clear either side, which is a lead taped down, not one
+        # left proud. Drawn is the 10 mm of it under the deck.
         "battery balance leads": [
             slab(
-                balanceLeadLength,
-                balanceLeadWidth,
                 balanceLeadThickness,
+                balanceLeadWidth,
+                balanceLeadLength,
                 balanceLeadX,
                 dy,
-                packTopZ + ((deckZ - packTopZ - balanceLeadThickness) / 2),
+                deckZ - batteryLeadEndAir - balanceLeadLength,
             )
             for dy in (-8.0, 8.0)
         ],
@@ -1863,40 +1994,55 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # The charge inlet, on the BMS's charge input ahead of the disconnect. It
         # is the only connector here that is not part of running the robot, and
         # since the balance port went it is the only way into the pack at all.
-        # The flange is outside the wall and the body comes through it, which is
-        # the XT60E-F's way round and the opposite of the disconnect's.
-        "charge socket": [
-            # The flange, flat against the outside face, drawn at its 15.8 mm
-            # envelope rather than stepping down to 11.8 at the ears.
+        # THE INLET IS THREE BODIES AND NOT ONE, because the XT60E-M is three
+        # different sections along its axis, and the ears are inside the wall
+        # with the nose through it -- the disconnect's way round, and the
+        # opposite of the female's flange outside. The nose is what stands
+        # outside, the ear plate is what bears on the inside face, and the rear
+        # body with its solder tabs is what the cavity has to keep clear of.
+        "charge inlet": [
+            # The nose, from where the charger's plug meets it to the wall's
+            # inner face.
             slab(
-                chargeSocketFlangeWidth,
-                chargeSocketFlangeThickness,
-                chargeSocketFlangeHeight,
-                chargeSocketPanelX,
-                outerWallY - (chargeSocketFlangeThickness / 2),
-                panelHardwareZ - (chargeSocketFlangeHeight / 2),
+                chargeInletNoseWidth,
+                chargeInletOutboardDepth + shellWall,
+                chargeInletNoseHeight,
+                chargeInletPanelX,
+                outerWallY - (chargeInletOutboardDepth / 2) + (shellWall / 2),
+                chargeInletPanelZ - (chargeInletNoseHeight / 2),
             ),
-            # The body and its solder cups, from the wall's outer face inwards.
-            # It fills its cutout less the half millimetre each side the cut is
-            # given, so it stands clear of the shell rather than inside it.
+            # The ear plate, flat against the inside face.
             slab(
-                chargeSocketBodyWidth,
-                chargeSocketBodyDepth,
-                chargeSocketBodyHeight,
-                chargeSocketPanelX,
-                outerWallY + (chargeSocketBodyDepth / 2),
-                panelHardwareZ - (chargeSocketBodyHeight / 2),
+                chargeInletEarSpan,
+                chargeInletEarThickness,
+                chargeInletEarWidth,
+                chargeInletPanelX,
+                innerWallY + (chargeInletEarThickness / 2),
+                chargeInletPanelZ - (chargeInletEarWidth / 2),
             ),
+            # The rear body and its solder tabs, which is what reaches furthest
+            # into the cavity: 8.3 mm past the inner face, where the female's
+            # body reached 14.7.
+            slab(
+                chargeInletBodyWidth,
+                chargeInletBodyDepth,
+                xt60Width,
+                chargeInletPanelX,
+                innerWallY + chargeInletEarThickness + (chargeInletBodyDepth / 2),
+                chargeInletPanelZ - (xt60Width / 2),
+            ),
+            # Its two nuts, on the back of the ear plate beside the body -- the
+            # quarter of a millimetre between them is why these screws are M2.
             *[
                 slab(
                     m2NutAcrossFlats,
                     m2NutThickness,
                     m2NutAcrossFlats,
                     atX,
-                    innerWallY + (m2NutThickness / 2),
+                    innerWallY + chargeInletEarThickness + (m2NutThickness / 2),
                     atZ - (m2NutAcrossFlats / 2),
                 )
-                for atX, atZ in chargeSocketFixings()
+                for atX, atZ in chargeInletFixings()
             ],
         ],
         # The antenna bulkhead and its nut, drawn the same way. The pigtail that

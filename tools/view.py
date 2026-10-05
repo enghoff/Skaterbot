@@ -159,7 +159,7 @@ def _payload_colour(name: str) -> str:
         "bus terminal",
         "fuse holder",
         "on/off button",
-        "charge socket",
+        "charge inlet",
         "antenna bulkhead",
     ):
         return terminalBlue

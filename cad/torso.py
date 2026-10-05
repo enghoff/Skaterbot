@@ -23,12 +23,14 @@ from cad.electronics import (
     batteryFenceThickness,
     batteryFenceTopZ,
     batteryFenceY,
+    batteryLeadEndAir,
+    batteryPackBodyEndX,
     batteryPackGap,
+    batteryPackLeadWidth,
     batteryPackLeftX,
     batteryPackRightX,
+    batteryPackWidth,
     batteryRailStopHeight,
-    batteryWidth,
-    batteryX,
     bmsGuideDepth,
     bmsGuideSlot,
     bmsGuideSlotDepth,
@@ -36,7 +38,7 @@ from cad.electronics import (
     bmsGuideY,
     bmsX,
     bmsZ,
-    chargeSocketFixings,
+    chargeInletFixings,
     deckLedgeDepth,
     deckLedgeHeight,
     deckLedgeWidth,
@@ -149,7 +151,7 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # screws -- and this pelvis is the only printed piece involved.
 # There is no bonded joint anywhere on the robot now.
 #
-# THEY ALL SIT ABOVE THE ELECTRONICS DECK, at z = 22, which is new. Below the
+# THEY ALL SIT ABOVE THE ELECTRONICS DECK, at z = 23.5, which is new. Below the
 # deck this wall is fuller than ever: the deck's own ledges stand on it, and it
 # now CARRIES the bus monitor as well, on the two pads below -- 0.75 mm of air
 # between that board and this wall. A bare prism could thread between those; the
@@ -185,10 +187,24 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # and a rail run through the hollow at this station walls its middle off into a
 # sealed void -- tools/check.py refused the pelvis for exactly that. At y = 20
 # the rails ran outside the saddle's walls and never met it.
+#
+# THEY CARRY THE PACKS' BODIES AND NOTHING ELSE, since the packs were measured
+# on 2026-10-05: full height only as far as the 65 mm a body's 17 x 35 is good
+# for, and past it a sill a millimetre under the lowest the lead end can reach,
+# out to the end stop. The sill is there for the stop's sake -- a 2.5 mm block
+# standing 14 mm off the floor on its own is a lever, and on the sill it is the
+# end of a beam.
 batteryRailThickness = 3.0
 batteryRailY = (imuDepth + batteryRailThickness) / 2
 batteryRailStartX = -(hipCenterX + rearCheekX - cheekThickness / 2)
-batteryRailEndX = batteryX + (batteryWidth / 2)
+# The stop's own length along the pack. It was whatever the pack left of the
+# bay, 1.5 mm, until the measured pack's lead end came out to the bay's end; it
+# stands in the bay gap now, and 2.5 leaves it 0.55 mm short of the BMS's slot.
+batteryRailStopLength = 2.5
+batteryRailEndX = batteryPackRightX + batteryRailStopLength
+batteryRailSillTopZ = (
+    lowerBandZ - (batteryPackLeadWidth - batteryPackWidth) - batteryLeadEndAir
+)
 
 # THE STRAP SLOTS ARE GONE, 2026-09-30. Each rail carried two, for two cinch
 # straps that were to go down through the front rail, under the packs and up
@@ -202,7 +218,9 @@ batteryRailEndX = batteryX + (batteryWidth / 2)
 # WHAT EACH RAIL CARRIES INSTEAD is the packs' right-hand end stop: a block on the
 # rail's own end that stands into the foot of the pack's end face, from the pack's
 # end to the rail's, and no higher than batteryRailStopHeight, so the leads that
-# leave the top of that face have it to themselves.
+# leave the top of that face have it to themselves. It meets the lead end
+# end-on, past the pack's 77 mm, and is the one printed face that touches the
+# lead end at all; whatever the end's shape, it never comes alongside it.
 
 # THE BATTERY'S FIN AND FENCES, which make each pack a slot of its own that it is
 # pushed down into by hand before anything else goes in over it. They hung from
@@ -223,7 +241,8 @@ batteryRailEndX = batteryX + (batteryWidth / 2)
 # rails do -- never down through the saddle, whose hollow a body run through it
 # would wall off into a sealed void. It stops where the IMU's reservation
 # begins, so it covers the packs' first 60 mm and leaves the square of floor the
-# IMU stands in as it was.
+# IMU stands in as it was -- and so it ends inside the 65 mm of each pack's body
+# with no change, though it was never placed for that.
 batteryFinEndX = -(imuWidth / 2)
 
 # THE IMU SEAT. The one board in this torso small enough that no screw will fit
@@ -294,27 +313,34 @@ def _piloted(
 def batteryRails() -> list:
     """The two rails the packs sit on, laid across the robot, and their end stops.
 
-    They start at the left hip saddle's inboard face and stop at the battery
-    bay's own inboard end, so the bay gap beyond it is clear to the floor. Each
-    rail and its stop overlap rather than touch, so they are one body the moment
-    they are united.
+    They start at the left hip saddle's inboard face, stand full height under
+    the packs' bodies, drop to a sill under the lead ends and end in a stop just
+    past them, 2.5 mm into the bay gap. Rail, sill and stop overlap rather than
+    touch, so each is one body the moment they are united.
     """
-    railLength = batteryRailEndX - batteryRailStartX
-    railCenterX = (batteryRailEndX + batteryRailStartX) / 2
+    railLength = batteryPackBodyEndX - batteryRailStartX
     railHeight = lowerBandZ - cavityBottomZ
-    stopLength = batteryRailEndX - batteryPackRightX
+    sillLength = batteryRailEndX - batteryPackBodyEndX + 1.0
+    sillHeight = batteryRailSillTopZ - cavityBottomZ
     stopHeight = railHeight + batteryRailStopHeight
     rails = []
     for sy in (1, -1):
         rail = Pos(
-            railCenterX, sy * batteryRailY, cavityBottomZ + railHeight / 2
+            batteryRailStartX + railLength / 2,
+            sy * batteryRailY,
+            cavityBottomZ + railHeight / 2,
         ) * Box(railLength, batteryRailThickness, railHeight)
+        sill = Pos(
+            batteryRailEndX - sillLength / 2,
+            sy * batteryRailY,
+            cavityBottomZ + sillHeight / 2,
+        ) * Box(sillLength, batteryRailThickness, sillHeight)
         stop = Pos(
-            batteryRailEndX - stopLength / 2,
+            batteryRailEndX - batteryRailStopLength / 2,
             sy * batteryRailY,
             cavityBottomZ + stopHeight / 2,
-        ) * Box(stopLength, batteryRailThickness, stopHeight)
-        rails.append(rail + stop)
+        ) * Box(batteryRailStopLength, batteryRailThickness, stopHeight)
+        rails.append(rail + sill + stop)
     return rails
 
 
@@ -322,7 +348,8 @@ def batteryCradle() -> list:
     """The two fences and the fin the packs stand between: front fence, rear
     fence, fin.
 
-    Each fence is one box standing on the shell floor from end to end. The fin
+    Each fence is one box standing on the shell floor along the packs' bodies,
+    from their left ends to the 65 mm where the lead ends begin. The fin
     is one body drawn as two lengths that meet at the saddle's inboard face --
     one standing on the saddle's top, one on the shell floor -- so it is as tall
     as what it stands on allows and no taller.
@@ -330,11 +357,13 @@ def batteryCradle() -> list:
     fenceHeight = batteryFenceTopZ - cavityBottomZ
     fences = [
         Pos(
-            (batteryPackLeftX + batteryPackRightX) / 2,
+            (batteryPackLeftX + batteryPackBodyEndX) / 2,
             sy * (batteryFenceY + batteryFenceThickness / 2),
             cavityBottomZ + fenceHeight / 2,
         )
-        * Box(batteryPackRightX - batteryPackLeftX, batteryFenceThickness, fenceHeight)
+        * Box(
+            batteryPackBodyEndX - batteryPackLeftX, batteryFenceThickness, fenceHeight
+        )
         for sy in (1, -1)
     ]
     finOnSaddle = Pos(
@@ -538,9 +567,9 @@ def pelvisShell() -> list:
     ]
 
     # WHAT THE REAR WALL IS CUT FOR, AND IT IS THE HARDWARE ITSELF NOW. One hole
-    # per bought part -- a rectangle for the XT60E-M's nose, a rectangle for the
-    # XT60E-F's body, a round hole for the antenna's bushing -- plus two
-    # clearance holes for each XT60's screws. A round hole is square in
+    # per bought part -- a round hole for the button's bushing, a rectangle for
+    # the XT60E-M charge inlet's nose, a round hole for the antenna's bushing --
+    # plus two clearance holes for the XT60's screws. A round hole is square in
     # cad/electronics.py's table, which is why this is the one place that has to
     # tell them apart.
     panelCutouts = []
@@ -556,28 +585,27 @@ def pelvisShell() -> list:
                 Pos(atX, panelWallY, atZ) * Box(width, shellWall + 4.0, height)
             )
 
-    # The two XT60s' four screws, and they are M2 where everything else on this
-    # robot is M3. Each connector is clamped to the wall by its own ears or
-    # flange and a nut, so this wall is clamped rather than threaded. That is
+    # The XT60's two screws, and they are M2 where everything else on this
+    # robot is M3. The connector is clamped to the wall by its own ears and a
+    # nut, so this wall is clamped rather than threaded. That is
     # what a panel-mount part buys over a bonded one -- 2.4 mm of shell will not
     # hold a thread, and the printed panel that used to carry these needed 6 mm
     # of plate to tap into.
     #
     # THE SIZE WAS THE DISCONNECT'S NUTS' DOING and the disconnect is gone: its
     # nuts sat 2.25 mm from its body, which an M2 cleared and an M2.5 did not,
-    # and that pair is what set M2 for the whole wall. The charge socket would
-    # take an M2.5 happily and keeps M2 anyway, because one thread size on one
-    # wall is worth more than a quarter millimetre of bridge. THE THINNEST
-    # MATERIAL ON THIS WALL WENT WITH THE DISCONNECT: it was the 1.45 mm between
-    # each of its ear screws and its cutout, and what is left is the charge
-    # socket's own 1.7. The button that replaced it needs no screws at all --
-    # it clamps the wall with its own nut -- so tools/gate_e.py counts two holes
-    # here now and not four.
+    # and that pair is what set M2 for the whole wall. THE SAME PART IS BACK, as
+    # the charge inlet since 2026-10-05, so the reason is too: the female socket
+    # it replaced would have taken an M2.5, and the male does not. So is the
+    # thinnest material on this wall, the 1.45 mm between each ear screw and the
+    # nose cutout, where the female's flange screws left 1.7. The button that
+    # replaced the disconnect needs no screws at all -- it clamps the wall with
+    # its own nut -- so tools/gate_e.py counts two holes here and not four.
     panelFixings = [
         Pos(atX, panelWallY, atZ)
         * Rot(90, 0, 0)
         * Cylinder(m2Clearance / 2, shellWall + 4.0)
-        for atX, atZ in chargeSocketFixings()
+        for atX, atZ in chargeInletFixings()
     ]
 
     # KCL-SHAPED: slots first, into the simple box, then the cavity. Taking them
