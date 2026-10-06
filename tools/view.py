@@ -62,15 +62,16 @@ WHERE THE VIEWER COMES FROM, AND HOW IT IS FOUND. Either the OCP CAD Viewer
 extension in VS Code -- open its panel -- or the standalone browser viewer,
 which this repository can start for itself:
 
-    uv run --with ocp_viewer --with build123d python -m ocp_viewer
+    uv run --with ocp_viewer --with build123d python -m ocp_viewer --port 3970
 
-WHICH PORT IT IS ON IS NOT 3939 AND MUST NOT BE ASSUMED. Every viewer registers
-itself in `~/.ocpvscode` as it starts and drops out of it as it stops, and every
-client reads that file to find one; 3939 is only where the VS Code extension
-begins looking for a free port, so anything already holding it -- a standalone
-viewer, a second window, a viewer that outlived its editor -- pushes the panel
-to 3940 and up. This asks `ocp_vscode` for the answer rather than naming a
-number, which is what `--port` is for when you do want to name one.
+WHICH PORT IT IS ON MUST NOT BE ASSUMED. Every viewer registers itself in
+`~/.ocpvscode` as it starts and drops out of it as it stops; this project's
+panel starts looking for a free port at 3970 (.vscode/settings.json) and takes
+the next one up if that is held. The registry is shared by every project on the
+machine, so this looks only from 3970 up, through tools/watch.py's
+find_viewer(): another project's panel on 3939 answers too, and drawing into it
+is what happened while the choice was left to `ocp_vscode`. `--port` names one
+outright, and so does the OCP_PORT environment variable.
 
 Colours are the robot's own palette, read from cad/parameters.py, for the same
 reason the URDF reads it: a colour retyped here would be a second source of it.
@@ -85,6 +86,7 @@ check. This is for looking at the machine.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -529,9 +531,10 @@ def main() -> int:
         "--port",
         type=int,
         default=None,
-        help="the viewer to draw into. The default is discovery:"
-        " whichever viewer registered itself in ~/.ocpvscode and still"
-        " answers, or the OCP_PORT environment variable, or 3939",
+        help="the viewer to draw into. The default is the OCP_PORT environment"
+        " variable if it is set, and otherwise this project's viewer: the"
+        " lowest port from 3970 up that is registered in ~/.ocpvscode and"
+        " answers",
     )
     parser.add_argument(
         "--size",
@@ -563,12 +566,30 @@ def main() -> int:
 
     import ocp_vscode
 
+    # This project's viewer, not whichever one ocp_vscode's own discovery would
+    # take: the registry it reads holds every project's viewers. OCP_PORT still
+    # pins one without a flag, as it does for ocp_vscode.
+    from watch import PROJECT_PORT, find_viewer
+
+    if args.port is None and os.environ.get("OCP_PORT"):
+        args.port = int(os.environ["OCP_PORT"])
     if args.port is None:
-        # Its own discovery rather than ours: it reads the same registry, and it
-        # honours OCP_PORT, which is how you pin a viewer without a flag.
-        ocp_vscode.find_and_set_port()
-    else:
-        ocp_vscode.set_port(args.port)
+        args.port = find_viewer() or PROJECT_PORT
+    ocp_vscode.set_port(args.port)
+
+    # NOTHING LISTENING IS A FAILURE, said before the build rather than after it.
+    # ocp_vscode does not treat it as one: it warns once that it cannot reach a
+    # viewer, returns, and this script would print "showing the robot" and exit
+    # 0 having shown nothing -- which is also how tools/watch.py came to redraw
+    # into a dead port for a day without noticing.
+    import socket
+
+    port = ocp_vscode.get_port()
+    with socket.socket() as probe:
+        probe.settimeout(0.5)
+        if probe.connect_ex((ocp_vscode.get_host(), port)) != 0:
+            print(f"no viewer is listening on port {port}", file=sys.stderr)
+            return 1
 
     if args.piece and args.piece != "robot":
         from cad.scenes import GROUPS

@@ -7,15 +7,17 @@
     //
     // It is the default build task, so ctrl-shift-B is the whole gesture.
     //
-    // Order matters, but the port does not: the panel takes 3939 if it is free
+    // Order matters, but the port does not: the panel takes 3970 if it is free
     // and the next port up if it is not, and watch.cmd reads ~/.ocpvscode to
-    // find whichever it took. The viewer task still has to finish first, so
-    // that there is something registered to find.
+    // find whichever it took. 3970 rather than the extension's 3939 is set in
+    // settings.json beside this, so that another project's panel on 3939 is
+    // never the one found. The viewer task still has to finish first, so that
+    // there is something registered to find.
     "version": "2.0.0",
     "tasks": [
         {
             "label": "open the CAD viewer",
-            "detail": "the OCP CAD Viewer panel, on port 3939",
+            "detail": "the OCP CAD Viewer panel, on port 3970",
             "type": "runCommands",
             "commands": ["ocpCadViewer.ocpCadViewer"],
             "presentation": { "reveal": "never" }

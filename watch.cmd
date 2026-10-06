@@ -32,10 +32,11 @@ rem "OCP CAD Viewer: Open viewer", then this -- and in either order, because
 rem until a viewer exists this waits for one rather than drawing a robot it has
 rem nowhere to put.
 rem
-rem WHICH PORT THE PANEL IS ON IS NOT ASSUMED. 3939 is only where the extension
-rem starts looking for a free one, so a standalone viewer or a second window puts
-rem the panel on 3940 and up. Every viewer registers itself in ~/.ocpvscode and
-rem tools/watch.py reads that, so it finds the panel wherever it landed.
+rem WHICH PORT THE PANEL IS ON IS NOT ASSUMED. 3970 is only where this project's
+rem panel starts looking for a free one (.vscode/settings.json), so a standalone
+rem viewer or a second panel puts it on 3971 and up. Every viewer registers itself
+rem in ~/.ocpvscode and tools/watch.py reads that, from 3970 up only, so it finds
+rem this project's panel wherever it landed and never another project's on 3939.
 rem
 rem --browser is the other way: a standalone viewer in a browser tab, started
 rem here and stopped again when you stop watching.

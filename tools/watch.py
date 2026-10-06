@@ -31,7 +31,7 @@ Free and offline, exactly like tools/view.py: the geometry is tessellated here
 and pushed over a socket to a viewer -- either the OCP CAD Viewer panel in VS
 Code, or the standalone one this repository can start for itself:
 
-    uv run --with ocp_viewer --with build123d python -m ocp_viewer
+    uv run --with ocp_viewer --with build123d python -m ocp_viewer --port 3970
 
 THE SERVER AND THE CLIENT ARE TWO PACKAGES SINCE OCP CAD Viewer 4.1, and only
 one of them was renamed. What pushes geometry is still `ocp_vscode`, which is
@@ -80,9 +80,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VIEW = ROOT / "tools" / "view.py"
-# Where every viewer announces itself, and the port the first one takes.
+# Where every viewer announces itself.
 REGISTRY = Path.home() / ".ocpvscode"
-DEFAULT_PORT = 3939
+# Where THIS project's viewer starts, which is .vscode/settings.json's
+# OcpCadViewer.advanced.initialPort and has to stay the same number. The
+# extension's own default is 3939, and every other project's panel starts there;
+# the registry above is shared by all of them, so a watcher that took any viewer
+# it found drew this robot into another project's window. The panel takes this
+# port if it is free and the next one up if not.
+PROJECT_PORT = 3970
 
 
 def sources() -> dict[Path, float]:
@@ -127,25 +133,31 @@ def registered_ports() -> list[int]:
 
 
 def find_viewer(pinned: int | None = None) -> int | None:
-    """The port of a viewer that is actually answering, or None.
+    """The port of THIS project's viewer, if one is answering, or None.
 
-    WHY THIS IS NOT THE CONSTANT 3939. That is only where the VS Code extension
-    STARTS looking for a free port. Anything already holding it -- a standalone
-    viewer in a browser tab, a second window, a viewer that outlived the editor
-    that opened it -- pushes the panel to 3940 and up, and then a watcher aimed
-    at 3939 sits waiting with the viewer open on screen in front of it. That is
-    exactly what happened here, and the registry is the cure: ask which viewers
-    exist rather than asserting where one ought to be.
+    WHY THIS IS NOT A CONSTANT. PROJECT_PORT is only where the extension STARTS
+    looking for a free port. Anything already holding it -- a standalone viewer
+    in a browser tab, a second panel, a viewer that outlived the editor that
+    opened it -- pushes the panel one port up, and then a watcher aimed at the
+    first port sits waiting with the viewer open on screen in front of it. So
+    the registry is asked which viewers exist rather than asserting where one
+    ought to be.
+
+    AND WHY ONLY FROM PROJECT_PORT UP. The registry holds every project's
+    viewers, not this one's, and another project's panel on 3939 is a viewer
+    that answers. Taking whichever answered drew this robot into it.
     """
     if pinned is not None:
         return pinned if viewer_listening(pinned) else None
-    live = [port for port in registered_ports() if viewer_listening(port)]
+    live = [
+        port
+        for port in registered_ports()
+        if port >= PROJECT_PORT and viewer_listening(port)
+    ]
     if not live:
         # A viewer old enough not to register, or one whose line was lost.
-        return DEFAULT_PORT if viewer_listening(DEFAULT_PORT) else None
-    if DEFAULT_PORT in live:
-        return DEFAULT_PORT  # the conventional one, when there is a choice
-    return live[0]
+        return PROJECT_PORT if viewer_listening(PROJECT_PORT) else None
+    return live[0]  # the lowest, which is PROJECT_PORT whenever that is up
 
 
 def wait_for_viewer(
@@ -286,10 +298,10 @@ def main() -> int:
         "--port",
         type=int,
         default=None,
-        help="pin the viewer to draw into. The default is to find one:"
-        " whichever viewer registered itself in ~/.ocpvscode and still"
-        " answers, which is how the VS Code panel is found when it did"
-        " not get the conventional 3939",
+        help="pin the viewer to draw into. The default is to find this"
+        " project's: the lowest port from PROJECT_PORT (3970) up that is"
+        " registered in ~/.ocpvscode and still answers, which is how the VS"
+        " Code panel is found when it did not get 3970 itself",
     )
     parser.add_argument(
         "--serve",
@@ -324,7 +336,7 @@ def main() -> int:
     # the registry about. Either way the answer is known before anything is
     # drawn, and view.py is then told the number rather than repeating the
     # search for itself.
-    served = args.port or DEFAULT_PORT
+    served = args.port or PROJECT_PORT
     server = serve_viewer(served) if args.serve else None
     pinned = served if args.serve else args.port
 
@@ -354,6 +366,23 @@ def main() -> int:
                 now = settled
             print(f"{time.strftime('%H:%M:%S')} {changed_names(watched, now)}")
             watched = now
+            # THE VIEWER IS LOOKED FOR AGAIN BEFORE EVERY DRAW, not only after a
+            # draw fails. A panel that is closed and reopened, or a VS Code
+            # window reloaded, comes back on whatever port is free -- and a draw
+            # aimed at the old one does NOT fail: ocp_vscode warns once that it
+            # cannot reach a viewer and returns, view.py exits 0, and this loop
+            # went on pushing every redraw into a dead port with the panel open
+            # beside it. Found that way: drawing to 3939 for a day while the
+            # panel sat on 3940.
+            found = find_viewer(pinned)
+            if found is None:
+                found = wait_for_viewer(pinned, server)
+                if found is None:
+                    return 1
+            if found != port:
+                print(f"  the viewer is on port {found} now, not {port}")
+                port = found
+                command = viewer_command() + ["--port", str(port), *forwarded]
             drawn = draw(command)
             if not drawn:
                 # A closed panel recovers, and recovers onto whatever port it

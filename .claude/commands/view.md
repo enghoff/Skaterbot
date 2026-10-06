@@ -18,7 +18,7 @@ metered engine. It needs a viewer listening: either the OCP CAD Viewer panel in
 VS Code, or
 
 ```
-uv run --with ocp_viewer --with build123d python -m ocp_viewer --port 3939
+uv run --with ocp_viewer --with build123d python -m ocp_viewer --port 3970
 ```
 
 Then:

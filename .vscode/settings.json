@@ -1,0 +1,11 @@
+{
+    // THIS PROJECT'S OCP CAD VIEWER STARTS AT 3970, not the extension's 3939.
+    // Every project on this machine shares one registry of viewers,
+    // ~/.ocpvscode, and every other project's panel starts at 3939 -- so with
+    // two VS Code windows open, this one's panel landed on 3940 behind the
+    // other's, and tools/watch.py, which prefers the lowest port it finds,
+    // drew the robot into the other project's viewer. 3970 is far enough up
+    // that the other window's panels, each taking the next free port, do not
+    // reach it. tools/watch.py's PROJECT_PORT has to say the same number.
+    "OcpCadViewer.advanced.initialPort": 3970
+}
