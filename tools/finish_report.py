@@ -54,7 +54,7 @@ DENSITY = _density()
 
 
 def pieces() -> dict:
-    from cad import joint, shin, thigh, torso, wheel_adapter
+    from cad import joint, shin, thigh, torso, wheel_adapter, wheel_cap
 
     return {
         # A thigh and a shin are two pieces since the knee was straddled, and
@@ -72,6 +72,7 @@ def pieces() -> dict:
         # holds both hands against their golden STEPs, which is a check on the
         # mirror rather than on a second print.
         "wheel-adapter": wheel_adapter.wheelAdapterRight,
+        "wheel-cap": wheel_cap.wheelCapRight,
         "pelvis-shell": torso.pelvisShell,
         "torso-cover": torso.torsoCover,
         # not printed pieces in their own right, but they are what the pieces

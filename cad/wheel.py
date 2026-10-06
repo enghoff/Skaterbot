@@ -1,25 +1,27 @@
-"""A complete driven wheel: the printed adapter, the bought wheel, and the clamp.
+"""A complete driven wheel: the printed adapter and cap, the bought wheel, and the clamp.
 
 Ported from wheel.kcl.
 
-THE CLAMP IS THREE BOUGHT ITEMS, and until they were drawn this module had two.
-An M5 socket cap screw pulls a Ø30 washer against the hub's outer face and
-threads into a heat-set insert in the spigot; what stood here was the washer as a
-solid disc and a cylinder the size of the screw's head, which showed where the
-clamp sits without showing what is in it. The screw and the insert were not
-modelled at all, and the washer had no bore.
+THE CLAMP IS A PRINTED CAP AND THREE BOUGHT ITEMS. An M5 socket cap screw sits
+on a plain M5 washer inside the cap, passes down through the cap's floor and the
+hub's centre ridge, and threads into a heat-set insert in the adapter's spigot.
+The cap stands on the ridge, so tightening the screw clamps the hub between the
+cap and the adapter's output disc.
 
-DRAWING THE SCREW IS WHAT SETTLED ITS LENGTH. The pocket it goes into is blind
-and reaches 15 mm below the head by the dimensions as declared, 17 as
-cad/wheel_adapter.py actually cuts them, so the M5 x 20 the bill of materials
-asks for lands on the bottom of the bore before the head ever reaches the
-washer and the joint would never see preload. Measured rather than reasoned: a
-Ø5 shank 20 mm under the head shares 58.9 mm3 with the printed adapter, which is
-3 mm of screw inside solid plastic. The screw here is the 12 mm one, which
-threads through 9 of the insert's 9.5 mm and shares nothing with the adapter.
+UNTIL 6 OCTOBER 2026 THE CAP WAS A Ø30 PENNY WASHER lying on the hub's outer
+face, and the spigot ran the hub's whole width to hold the insert at its far end.
+Both rested on the hub being bored Ø22 straight through, which it is not, and
+the washer was a part nobody in India sells in a basket.
 
-Nothing in this file is printed. The clamp is bought steel and brass and is
-counted in tools/mass_budget.toml with the fasteners, not weighed from the CAD.
+DRAWING THE SCREW IS WHAT SETS ITS LENGTH, as it was the first time: an M5 x 20
+was once asked for and would have bottomed in the old spigot's blind bore. Under
+the head there are 18.5 mm of washer, floor, ridge and air before the insert's
+mouth now, so the screw is a 25 and engages 6.5 mm of the 10 mm insert.
+cad/wheeled_parameters.py carries the arithmetic beside wheelClampScrewLength.
+
+Nothing in this file is printed. The cap is cad/wheel_cap.py and the adapter is
+cad/wheel_adapter.py; the clamp is bought steel and brass and is counted in
+tools/mass_budget.toml with the fasteners, not weighed from the CAD.
 """
 
 from __future__ import annotations
@@ -33,10 +35,12 @@ from cad.wheel_adapter import (
     wheelAdapterLeft,
     wheelAdapterRight,
 )
+from cad.wheel_cap import wheelCapLeft, wheelCapRight
 from cad.wheeled_parameters import (
     capHeadDiameter,
     capHeadLength,
-    skateWheelOuterX,
+    wheelCapFloor,
+    wheelCapInnerX,
     wheelClampScrewDiameter,
     wheelClampScrewLength,
     wheelClampSocketAcrossFlats,
@@ -49,7 +53,8 @@ from cad.wheeled_parameters import (
     wheelSpigotInsertBore,
 )
 
-washerInnerX = skateWheelOuterX
+# The washer lies on the cap's floor, inside it.
+washerInnerX = wheelCapInnerX + wheelCapFloor
 washerOuterX = washerInnerX + wheelClampWasherThickness
 washerCenterX = washerInnerX + wheelClampWasherThickness / 2
 
@@ -63,11 +68,11 @@ def _disc(diameter: float, thickness: float, x: float = 0.0):
 
 
 def clampWasher():
-    """Ø30 x 2, bored M5 clearance.
+    """A plain M5 washer, Ø11 x 1.5 as fastdep sells it, on the cap's floor.
 
-    Deliberately a big washer: it bridges the millimetre the spigot is held short
-    and lands on the WHEEL's hub face, so the preload crosses the hub and not the
-    end of a printed spigot.
+    It is there to keep the screw head off printed plastic: 1 kN on the bare
+    head is 30 MPa on the cap's floor, and on this washer 14. It was a Ø30
+    penny washer on the hub's face until 6 October 2026.
     """
     blank = _disc(wheelClampWasherDiameter, wheelClampWasherThickness, washerCenterX)
     bore = _disc(wheelClampWasherBore, wheelClampWasherThickness + 2.0, washerCenterX)
@@ -101,6 +106,9 @@ def clampScrew():
 def heatSetInsert():
     """The M5 brass insert, seated flush with the spigot's outer end.
 
+    The bore it is melted into runs on through the disc, so its inner end stands
+    2 mm clear of the adapter's back face with open bore behind it.
+
     A plain sleeve. A real one is knurled outside and slightly tapered, and
     neither changes what this body is here for: showing that the screw has
     something to pull against, and how much of the screw is inside it.
@@ -121,21 +129,36 @@ def _clampHardware() -> list:
     return [clampScrew(), clampWasher(), heatSetInsert()]
 
 
+def wheelRightGroups() -> dict[str, list]:
+    """The right wheel as the four things it is assembled from.
+
+    Kept apart so that a scene which wants to measure them against each other --
+    the cap on the ridge, the spigot short of it, the screw through the cap's
+    bore -- can, rather than receiving them as one bag. tools/gate_h.py measures
+    every group against every other, and nothing within a group.
+    """
+    return {
+        "wheel adapter": wheelAdapterRight(),
+        "skate wheel": [skateWheelHub(), skateWheelTread()],
+        "wheel cap": [wheelCapRight()],
+        "wheel clamp": _clampHardware(),
+    }
+
+
 def wheelRight() -> list:
     """Matches a right wheel motor whose output points +X."""
-    return [
-        *wheelAdapterRight(),
-        skateWheelHub(),
-        skateWheelTread(),
-        *_clampHardware(),
-    ]
+    return [body for group in wheelRightGroups().values() for body in group]
 
 
 def wheelLeft() -> list:
     """The mirrored installation.
 
-    The adapter brings its own mirrored hand from cad/wheel_adapter.py, so only
-    the bought parts are mirrored here.
+    The adapter and the cap bring their own mirrored hands from their own
+    modules, so only the bought parts are mirrored here.
     """
     donor = [skateWheelHub(), skateWheelTread(), *_clampHardware()]
-    return [*wheelAdapterLeft(), *[mirrored(body, Plane.YZ) for body in donor]]
+    return [
+        *wheelAdapterLeft(),
+        wheelCapLeft(),
+        *[mirrored(body, Plane.YZ) for body in donor],
+    ]

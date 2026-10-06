@@ -242,6 +242,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     from cad.torso import pelvisShell, torsoCover
     from cad.wheel import clampScrew, clampWasher, heatSetInsert
     from cad.wheel_adapter import wheelAdapterLeft, wheelAdapterRight
+    from cad.wheel_cap import wheelCapLeft, wheelCapRight
     from cad.wheeled_parameters import (
         prototypeWheelAxisHeight,
         wheeledHipPitchAxisHeight,
@@ -255,6 +256,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     thigh_of = {-1: thighLeft, 1: thighRight}
     shin_of = {-1: shinLeft, 1: shinRight}
     adapter_of = {-1: wheelAdapterLeft, 1: wheelAdapterRight}
+    cap_of = {-1: wheelCapLeft, 1: wheelCapRight}
 
     def motor(x, z, spin):
         return [Pos(x, 0, z) * b.rotate(Axis.Y, spin) for b in actuatorAssembly()]
@@ -285,6 +287,9 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         ]
         printed[leg, "wheel adapter"] = [
             Pos(knee_x, 0, prototypeWheelAxisHeight) * b for b in adapter_of[sign]()
+        ]
+        printed[leg, "wheel cap"] = [
+            Pos(knee_x, 0, prototypeWheelAxisHeight) * cap_of[sign]()
         ]
 
     if finished:
@@ -338,7 +343,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         )
 
     def wheel_module(leg, sign):
-        """The printed adapter, the skate wheel it carries, and its clamp."""
+        """The printed adapter and cap, the skate wheel they carry, and its clamp."""
         at = Pos(sign * (hipCenterX + kneeOutboardOffset), 0, prototypeWheelAxisHeight)
         hub, tread = skateWheelHub(), skateWheelTread()
         # Named one by one rather than as a bag of "clamp hardware": these are
@@ -355,6 +360,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         return Compound(
             children=[
                 _piece("adapter", printed[leg, "wheel adapter"], P.printedOrange),
+                _piece("cap", printed[leg, "wheel cap"], P.printedOrange),
                 _piece("hub", [at * hub], P.printedDark),
                 _piece("tyre", [at * tread], P.soleBlack),
                 Compound(
@@ -477,7 +483,7 @@ def _describe(raw, finished) -> str:
 
 
 def pieces() -> dict[str, callable]:
-    from cad import deck, hardware, joint, shin, thigh, torso, wheel_adapter
+    from cad import deck, hardware, joint, shin, thigh, torso, wheel_adapter, wheel_cap
 
     return {
         "joint-stator-clevis": joint.statorClevis,
@@ -497,6 +503,7 @@ def pieces() -> dict[str, callable]:
         "limb-105-mirrored": shin.shinRight,
         "wheel-adapter-right": wheel_adapter.wheelAdapterRight,
         "wheel-adapter-left": wheel_adapter.wheelAdapterLeft,
+        "wheel-cap": wheel_cap.wheelCapRight,
         "pelvis-shell": torso.pelvisShell,
         "torso-cover": torso.torsoCover,
         "electronics-deck": deck.electronicsDeck,

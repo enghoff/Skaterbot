@@ -325,6 +325,30 @@ DEVIATIONS = {
                 "already, so this is the whole of the change to the part."
             ),
         },
+        # A NEGATIVE ADDED FIGURE, for the reason the pelvis's carry. The insert's
+        # bore runs right through the part now, and 45.04 mm3 of what it cuts is
+        # material the two entries above ADDED -- the centre of the retired
+        # register pocket, Ø6.4 x 1.2, and of the sealed wafer, Ø6.4 x 0.2 -- so
+        # against the golden it shows up as material un-added rather than removed.
+        {
+            "added_mm3": -45.0378723,
+            "removed_mm3": 6008.8872365,
+            "why": (
+                "THE SPIGOT IS 6 mm WHERE IT WAS 23, AND THE INSERT'S BORE RUNS "
+                "THROUGH, 6 October 2026. A skate wheel's hub is not bored Ø22 "
+                "straight through, as the golden was drawn on: its two bearing "
+                "seats stop against a ridge 7 mm in from each face, and the old "
+                "spigot would have met it with the wheel standing 16 mm off the "
+                "motor. The spigot now fills the inboard seat and stops a "
+                "millimetre short of the ridge, and a printed cap in the outboard "
+                "seat clamps the hub down onto this disc in place of the Ø30 penny "
+                "washer that could not be bought. So the outer 17 mm of the "
+                "spigot is gone, with the blind insert pocket that was in it, and "
+                "the Ø6.4 bore is cut through what is left: 6 mm of spigot, the "
+                "plug and the disc, the same 12 mm the pocket was. 6008.89 mm3 of "
+                "golden material out, and the 45.04 noted above."
+            ),
+        },
     ],
     "joint-stator-clevis": [
         {

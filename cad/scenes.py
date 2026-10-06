@@ -51,7 +51,7 @@ from cad.poses import (
 from cad.shin import shinLeft, shinRight
 from cad.thigh import thighLeft, thighRight
 from cad.torso import pelvisShell, torsoCover
-from cad.wheel import wheelLeft, wheelRight
+from cad.wheel import wheelLeft, wheelRight, wheelRightGroups
 from cad.wheeled_parameters import wheeledTorsoCenterHeight
 
 
@@ -307,10 +307,18 @@ def wheelModuleGroups() -> dict[str, list]:
     It does NOT show whether the six output holes are open, and never did -- the
     motor stands directly behind them, and structure behind a hole makes an open
     one look closed. tools/gate_e.py counts them on the solid instead.
+
+    THE WHEEL IS FOUR GROUPS HERE, not one, since 6 October 2026: the adapter,
+    the bought wheel, the printed cap and the clamp hardware. tools/gate_h.py
+    measures groups against each other and never within one, so as a single
+    group nothing ever asked whether the spigot stops short of the hub's ridge
+    or the cap lands on it. This is the one scene that splits it; the stances
+    keep each wheel whole, because what they look at is the wheel against the
+    leg.
     """
     return {
         "motor": _turned(actuatorAssembly(), Axis.Y, 90),
-        "wheel": wheelRight(),
+        **wheelRightGroups(),
     }
 
 

@@ -228,6 +228,24 @@ bodies = 3  # output disc, spigot, plug
 print_up = "+X"  # the disc on the bed, the spigot standing up from it
 note = "Slice it once and print two. The second one goes on the left wheel turned round; there is no handed version of this part."
 
+# The cap that clamps each wheel, drawn 6 October 2026 in place of a Ø30 penny
+# washer nobody in India sells in a basket. Like the adapter it is a solid of
+# revolution on the wheel's axis, so it is not handed: cad/wheel_cap.py builds
+# both hands for the scenes, and one STEP prints twice.
+[[printed]]
+file = "cad/wheel_cap.py"
+label = "Wheel caps, the pair"
+measure = ["wheelCapRight", "wheelCapLeft"]
+count = 1
+
+[[printed.piece]]
+name = "wheel-cap"
+export = "wheelCapRight"
+prints = 2
+bodies = 1  # one cup
+print_up = "+X"  # the floor on the bed, the pocket open upward
+note = "Slice it once and print two. Ø22 x 12.5 with a 6 mm floor: the floor is what carries the wheel's clamp load, so print it solid rather than as a skin over infill."
+
 # Measured through cad/torso.py, which is the six-motor pelvis: 125 x 68 x 65,
 # where the walking robot's is 118 x 68 x 106. The lid and the cover bosses are
 # built by functions in cad/torso_shell.py and called from cad/torso.py, so they
@@ -315,8 +333,8 @@ note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of t
 
 [[fixed]]
 label = "Fasteners"
-total_g = 51.0
-note = """45 g of M3 sets plus 6 g for the two wheel clamps, which are an M5 x 12 cap screw, a Ø30 washer and an M5 heat-set insert each. The screw was an M5 x 20 until it was drawn: the bore it goes into is blind and reaches 15 mm below the head as dimensioned, so a 20 bottoms out and the clamp never sees preload. docs/BOM.md section 10 has the arithmetic. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
+total_g = 61.0
+note = """45 g of M3 sets plus 16 g for the two wheel clamps, which since 2026-10-06 are an M5 x 25 cap screw (5.3 g, the ISO 4762 head and shank in steel), a plain M5 washer, Ø11 x 1.5 (0.9 g), and an M5 x 10 brass heat-set insert on a 7 mm knurl (1.9 g) each -- all three computed from their catalogue dimensions, none weighed. The printed cap each one sits in is measured from the CAD with the printed parts. THIS LINE CARRIED 6 g FOR THE CLAMPS UNTIL THEN, which was never right: the Ø30 x 2 steel washer it named was 10.7 g on its own, so the clamps were about 31 g for the pair and the line was 25 g light. The cap took the washer's place, and the clamps are 16 g. docs/BOM.md section 10 has the arithmetic for the screw's length. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
 
 [[fixed]]
 label = "Electronics and wiring"

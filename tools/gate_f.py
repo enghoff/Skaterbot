@@ -415,7 +415,7 @@ CLEARANCES = (
         "wheel_module_check",
         "the adapter on its motor's output face",
         ("motor",),
-        ("wheel",),
+        ("wheel adapter", "skate wheel", "wheel cap", "wheel clamp"),
         "touch",
         0.0,
     ),

@@ -207,7 +207,7 @@ for by calling functions.
 |---|---|
 | `parameters.py`, `wheeled_parameters.py` | every dimension, with its provenance |
 | `joint.py`, `limb.py`, `hardware.py`, `torso_shell.py`, `skate_wheel.py`, `geometry.py` | the shared drawing functions |
-| `thigh.py`, `shin.py`, `wheel_adapter.py`, `torso.py` | the printed parts |
+| `thigh.py`, `shin.py`, `wheel_adapter.py`, `wheel_cap.py`, `torso.py` | the printed parts |
 | `actuator.py`, `wheel.py`, `electronics.py` | the bought parts and the payload envelopes |
 | `main.py` | the neutral 339 mm assembly, `robotAssembly()` |
 | `poses.py`, `scenes.py` | the check scenes: the poses, and the bodies placed at them |

@@ -170,8 +170,12 @@ listing:
 - **Measure the Banana Pi's mounting holes before the controller carrier PCB is
   ordered.** Its hole pattern is inferred, not published, and the carrier's holes
   are drilled by the board house. The Pi is already on order.
-- **Measure a skate wheel before the wheel adapter is printed.** The hub's
-  Ø45 mm and the tread's 20 mm crown radius are representative figures.
+- **Measure a skate wheel before the wheel adapter or its cap is printed.**
+  The hub has a ridge between its two bearing seats, which the CAD did not
+  draw until 6 October 2026; the adapter's spigot now stops 1 mm short of it
+  and the printed cap that replaced the Ø30 penny washer stands on it. So
+  measure both seats' depths (drawn 7 mm) and the bore through the ridge
+  (drawn Ø16), as well as the hub's Ø45 and the tread's 20 mm crown radius.
 - **~~Look at where the battery management board takes its wires.~~ Answered
   5 October, with the board in hand.** Its leads leave its two short ends: B-,
   the NTC pair and P- at one, the 7-way balance socket at the other. Standing

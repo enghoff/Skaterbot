@@ -176,7 +176,7 @@ EXPECTED_CHANGE_G = {
         "what MISUMI's M3 x 14 did. Gate B holds it exactly.",
     ),
     "cad/wheel_adapter.py": (
-        +2.3,
+        -10.9,
         "THE Ø30.4 REGISTER POCKET IS RETIRED, and this is the first time this "
         "piece has been off the engine's figure at all. It shares "
         "cad/joint.py's output disc with the limbs, so it takes the correction "
@@ -192,7 +192,19 @@ EXPECTED_CHANGE_G = {
         "sealed a 16 mm3 void into each adapter, so it now reaches a "
         "millimetre past it. 272 mm3 more plug an adapter, nearly all of it "
         "inside the disc already -- which this sum-of-bodies figure counts and "
-        "the union does not, so gate B sees only the 16.",
+        "the union does not, so gate B sees only the 16. "
+        "AND THE SPIGOT IS 6 mm WHERE IT WAS 23, 6 October 2026, which is the "
+        "13.2 g this line came DOWN by at the baseline's density and 11.6 g on "
+        "the robot. A skate wheel's hub is not bored Ø22 straight through, as "
+        "this part was drawn to: its two bearing seats stop against a ridge 7 mm "
+        "in from each face, and the old spigot would have met it with the wheel "
+        "standing 16 mm off the motor. So the spigot fills the inboard seat and "
+        "stops a millimetre short of the ridge, the insert's Ø6.4 bore runs "
+        "through what is left of the part, and a printed cap in the outboard "
+        "seat clamps the hub down in place of the Ø30 penny washer that could "
+        "not be bought. The caps are a line of their own, 7.2 g on the pair, so "
+        "the wheel's printed parts are 4.4 g lighter in all. Gate B holds the "
+        "adapter's change exactly.",
     ),
     "cad/torso.py": (
         +82.2,

@@ -14,6 +14,7 @@ from cad.parameters import (
     jointKeepOut,
     lowerLegLength,
     rotorHubOuterX,
+    rotorHubThickness,
     torsoFloorThickness,
     upperLegLength,
 )
@@ -31,17 +32,35 @@ from cad.parameters import (
 # (ISO 15 / ABEC 608), pressed into the hub from each side;
 # * the two bearing seats are Ø22 and 24 mm apart across the hub, which is what
 # fixes the 24 mm width;
+# * the seats stop against a ridge of hub between them, 10 mm long, which is
+# the length every inline bearing spacer is made to (10.1 to 10.3 mm as sold):
+# the spacer lives inside that ridge, between the two inner races;
 # * the 8 mm bore and the 24 mm width are the two dimensions an 8 mm skate axle
 # relies on, so they are the same across brands.
 #
-# The hub outside diameter and the tread profile are NOT standardised. Ø45 and
-# a 20 mm crown radius are representative of an 80 mm wheel; both need
-# confirming with calipers against whichever wheel is actually bought, and the
-# adapter's Ø22 spigot is the only dimension that has to be right first time.
+# The hub outside diameter, the ridge's bore and the tread profile are NOT
+# standardised. Ø45, Ø16 and a 20 mm crown radius are representative of an
+# 80 mm wheel; all three need confirming with calipers against whichever wheel
+# is actually bought, and so do the two seat depths, which the adapter's spigot
+# and the cap are both drawn against.
 skateWheelDiameter = 80.0
 skateWheelWidth = 24.0
 skateWheelHubDiameter = 45.0
 skateWheelBearingBore = 22.0
+# THE BORE IS NOT STRAIGHT THROUGH, and until 6 October 2026 this file and
+# cad/skate_wheel.py both said it was: pull the 608s and "the seats and the 8 mm
+# bore between them become one bore". They do not. The 8 mm bore was the
+# bearings' own, and what is left between the seats is the ridge the outer races
+# stopped against. Each seat is one bearing's width deep, so the ridge starts
+# 7 mm in from either face -- where the 23 mm spigot this adapter used to carry
+# would have stopped dead, with the wheel standing 16 mm off the motor.
+skateWheelBearingSeatDepth = 7.0
+# The ridge's bore, which has NOT been measured. It has to clear the spacer and
+# the inner race, whose shoulder on a 608 is about Ø12, and stop the outer race,
+# whose shoulder is about Ø19; Ø16 is the middle of that window. Nothing on the
+# robot depends on it except how wide a hole the cap's floor has to span, and
+# that floor is sized for the top of the window -- see wheelCapFloor below.
+skateWheelRidgeBore = 16.0
 
 # The tread is crowned rather than flat: it stands 4 mm proud at the centre
 # line and falls to Ø72 at the sidewalls. A 20 mm radius through those two
@@ -74,16 +93,28 @@ skateWheelCrownCenterRadius = skateWheelDiameter / 2 - skateWheelCrownRadius
 skateWheelInnerX = rotorHubOuterX
 skateWheelCenterX = skateWheelInnerX + skateWheelWidth / 2
 skateWheelOuterX = skateWheelInnerX + skateWheelWidth
+# The two faces of the centre ridge: the inboard seat's floor, which the
+# spigot stops short of, and the outboard seat's, which the cap lands on.
+skateWheelRidgeInnerX = skateWheelInnerX + skateWheelBearingSeatDepth
+skateWheelRidgeOuterX = skateWheelOuterX - skateWheelBearingSeatDepth
 
 # ---------------------------------------------------------------------------
 # The printed adapter
 #
-# A Ø22 spigot fills both bearing bores once the 608s are pulled out, and an
-# M5 on the axis clamps the hub back against the output disc. Torque reaches
-# the wheel through that clamped face, not through the spigot: an M5 at a
-# modest 1 kN preload on the disc's r11-r18 annulus is good for about 4 Nm of
-# friction against the actuator's 3 Nm peak, where a press fit alone would
-# depend on how the printed spigot came off the bed.
+# A Ø22 spigot centres the wheel in its INBOARD bearing seat once the 608s are
+# pulled out, and an M5 on the axis clamps the hub back against the output
+# disc. Torque reaches the wheel through that clamped face, not through the
+# spigot: an M5 at a modest 1 kN preload on the disc's r11-r18 annulus is good
+# for about 4 Nm of friction against the actuator's 3 Nm peak, where a press
+# fit alone would depend on how the printed spigot came off the bed.
+#
+# THE SPIGOT IS 6 mm LONG, NOT 23, since 6 October 2026. It ran the hub's whole
+# width on the reading that the bore went straight through, and it does not:
+# the hub's centre ridge starts one seat's depth in. So the spigot stops a
+# millimetre short of the ridge, which leaves the hub's inboard face to land on
+# the disc exactly as it did, and the printed cap in the OUTBOARD seat is what
+# presses the hub down -- see the clamp below. The millimetre is what the seat
+# may measure shallow by before the spigot, rather than the disc, takes the hub.
 #
 # THE SIX SCALLOPS ARE NOT DECORATION. The actuator's own output screws sit on
 # Ø24, which is two millimetres bigger than the wheel bore that has to pass
@@ -93,7 +124,7 @@ skateWheelOuterX = skateWheelInnerX + skateWheelWidth
 # surface stands a fraction of a millimetre inside that.
 #
 # Six axial scallops on the bolt centres open that path the whole length of the
-# spigot. What is left is 19 mm of Ø22 on six pads, which is plenty: the spigot
+# spigot. What is left is 6 mm of Ø22 on six pads, which is plenty: the spigot
 # only centres the wheel, it does not drive it.
 wheelSpigotDiameter = skateWheelBearingBore
 wheelKeyAccessDiameter = 4.5
@@ -103,50 +134,81 @@ wheelKeyAccessDiameter = 4.5
 # interpenetrating bodies rather than a union. Ø17 clears them by half a
 # millimetre.
 wheelSpigotPlugDiameter = 17.0
-# One millimetre short of the hub's outer face, so the clamp washer lands on
-# the hub and not on the end of the spigot.
-wheelSpigotLength = skateWheelWidth - 1.0
-# M5 heat-set insert, Ø6.4 x 9.5 nominal, given a little depth to seat into.
+wheelSpigotLength = skateWheelBearingSeatDepth - 1.0
+# The M5 heat-set insert's bore: Ø6.4 is what a 7 mm knurl wants. IT RUNS RIGHT
+# THROUGH THE ADAPTER since the spigot shortened -- 6 mm of spigot and the 6 mm
+# disc, which is the same 12 mm the blind pocket in the old spigot was. A blind
+# bore that deep in a 12 mm part would leave a floor too thin to print, pressed
+# against the motor's output face; open, the melt the insert pushes ahead of it
+# has somewhere to go.
 wheelSpigotInsertBore = 6.4
-wheelSpigotInsertDepth = 12.0
-wheelClampWasherDiameter = 30.0
-wheelClampWasherThickness = 2.0
+wheelSpigotInsertDepth = wheelSpigotLength + rotorHubThickness
 
 # ---------------------------------------------------------------------------
 # What the clamp is made of
 #
-# Three bought items on the wheel's axis, and two of them were drawn as plain
-# cylinders standing in for the space they occupy until the screw and the insert
-# were modelled properly.
+# A printed cap and three bought items on the wheel's axis.
+#
+# THE CAP REPLACED A Ø30 PENNY WASHER on 6 October 2026, because nobody in
+# India sells an M5 one in a basket and the nearest stand-in was an import. The
+# washer lay on the hub's outer face and spanned its Ø22 bore as a plate in
+# bending, which is why its thickness was load-bearing. The cap sits in the
+# outboard bearing seat instead and lands on the centre ridge, so the preload
+# goes into the hub end-on, through the face the bearing used to push on: about
+# 6 MPa on the ridge at 1 kN with the Ø16 bore drawn, 10 at the widest the
+# bearing allows. The only plate left is the cap's own floor, spanning the
+# ridge's bore.
+wheelCapDiameter = skateWheelBearingBore
+# THE FLOOR IS SIZED FOR THE WIDEST RIDGE BORE THE BEARING ALLOWS. The screw
+# head bears on the washer and the washer on the floor, and the ridge holds the
+# floor up from its bore outwards, so the floor is an annular plate loaded near
+# its middle across whatever the ridge's bore turns out to be. At 1 kN, treating
+# the load as a ring under the head's Ø8.5, 6 mm keeps the bending stress under
+# 18 MPa across a Ø19 bore and about 14 across the Ø16 drawn -- a plate estimate,
+# and a pessimistic one for a floor this thick across a span this short. The
+# cap prints floor-down, so its layers lie across that stress rather than
+# along it.
+wheelCapFloor = 6.0
+# M5 clearance through the floor, the same Ø5.5 the journal screw passes.
+wheelCapBore = 5.5
+# The washer's Ø11 with half a millimetre of air round it.
+wheelCapCounterbore = 12.0
 #
 # PROVENANCE: ISO 4762 (DIN 912) socket cap screw, M5 -- head Ø8.5 x 5.0 across a
-# 4 mm hex socket -- and the heat-set insert the spigot's bore was already cut
-# for, Ø6.4 x 9.5 nominal. Neither is in reference/: a cap screw and a heat-set
-# insert are catalogue parts and every maker builds them to the same table.
+# 4 mm hex socket -- which is also what fastdep lists for the screw bought: a
+# DIN 912 12.9 M5 x 25 with an 8.28-8.72 head 4.82-5.00 tall, read 2026-10-06.
+# A cap screw is a catalogue part and every maker builds it to the same table,
+# so it is not in reference/.
 wheelClampScrewDiameter = 5.0
-# HOW LONG THE SCREW CAN BE, which is not a free choice. Under the head sits the
-# 2 mm washer, then the millimetre the spigot is held short of the hub's face,
-# and then a BLIND bore: 12 mm deep as this file declares it, 14 as
-# cad/wheel_adapter.py actually cuts it, because that cutter's 2 mm overrun goes
-# inboard past the pocket's bottom rather than outward past its open mouth. So
-# the reach is 15 mm against the nominal pocket and 17 mm against the drawn one,
-# and either way a screw longer than that lands on the bottom and the joint
-# never sees preload -- the M5 x 20 the bill of materials asks for stands 3 mm
-# of its shank inside solid printed spigot. 12 is the standard length that fits
-# both readings: it threads through 9 of the insert's 9.5 mm and stops 3 mm
-# clear of the nominal bottom, 5 mm clear of the drawn one.
-wheelClampScrewLength = 12.0
+# HOW LONG THE SCREW CAN BE, which is still not a free choice. Under the head
+# are the 1.5 mm washer, the cap's 6 mm floor, the ridge's 10 and the millimetre
+# the spigot stops short of the ridge: 18.5 mm before the insert's mouth. A 25
+# threads 6.5 mm into the 10 mm insert and its tip stops 5.5 mm inside the
+# adapter's back face. A 30 would take all 10 mm of the insert, but its tip
+# would stand half a millimetre from the motor's output face, and a washer or a
+# floor that prints thin would close that. It was 12 while the washer lay on
+# the hub's face and the insert sat at the far end of a 23 mm spigot, and 20
+# before that, which bottomed in that spigot's blind bore -- docs/BOM.md
+# section 10 keeps the history.
+wheelClampScrewLength = 25.0
 # The socket is drawn only so the head reads as a cap head. 4 mm across the
 # flats is the M5 key; the depth is nominal.
 wheelClampSocketAcrossFlats = 4.0
 wheelClampSocketDepth = 2.5
-# M5 clearance through a washer this size, which is a penny washer rather than
-# anything in the ISO 7089 series -- no standard flat washer for M5 is Ø30.
+# The washer under the head, inside the cap: fastdep's plain M5, which it lists
+# as Ø11 x 1.5 mild steel (read 2026-10-06). It is what keeps the head off
+# printed plastic. 1 kN on the bare Ø8.5 head is 30 MPa on the cap's floor; on
+# this washer it is 14.
+wheelClampWasherDiameter = 11.0
+wheelClampWasherThickness = 1.5
+# Drawn at M5 clearance. fastdep gives the hole as 5 mm and ISO 7089 as 5.3 to
+# 5.48; nothing bears on that face, and 5.5 keeps the shank from being drawn in
+# a slot narrower than any process could tell from contact.
 wheelClampWasherBore = 5.5
-# The insert itself, seated flush with the spigot's outer end. The bore it goes
-# into is 12 mm deep for the 9.5 mm insert, which is the seating allowance the
-# comment above records -- and 14 as drawn, for the overrun reason below.
-wheelInsertLength = 9.5
+# The insert as bought: 10 mm long on a Ø7 knurl, the Amazon.in listing's
+# 7 x 7 x 10. It sits flush with the spigot's outer end, so its inner end stops
+# 2 mm short of the adapter's back face. It was drawn 9.5 until 6 October 2026.
+wheelInsertLength = 10.0
 # Its thread is drawn at pitch diameter rather than as a helix, so a screw in it
 # overlaps by a quarter of a millimetre the way an engaged thread does. M5 pitch
 # diameter is 4.48.
@@ -155,6 +217,13 @@ wheelInsertThreadDiameter = 4.5
 # left them: they are the screw's dimensions and they belong with the rest of it.
 capHeadDiameter = 8.5
 capHeadLength = 5.0
+# Where the cap stands on the axis: on the ridge, and as tall as its floor, the
+# washer and the head, so the head sits flush with its outer end. It stands
+# 5.5 mm proud of the hub's outer face, where the old washer and head stood 7.
+wheelCapInnerX = skateWheelRidgeOuterX
+wheelCapOuterX = (
+    wheelCapInnerX + wheelCapFloor + wheelClampWasherThickness + capHeadLength
+)
 
 # ---------------------------------------------------------------------------
 # Axis heights

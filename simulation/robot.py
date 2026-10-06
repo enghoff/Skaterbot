@@ -530,7 +530,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         )
 
     # M3 fastener sets, spread over the six joints they serve. The budget's
-    # 45 g is for the joints; its 6 g of wheel clamps is placed on the wheels.
+    # 45 g is for the joints; its 16 g of wheel clamps is placed on the wheels.
     for side in SIDES:
         base.solids.append(
             Solid(
@@ -847,18 +847,44 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                     "number in this model."
                 ),
             ),
+            # THE CAP IS A PRINT, placed as its own mesh like the adapter and
+            # for the same reason: a solid of revolution on the wheel's axis, so
+            # the left wheel carries the right wheel's print turned round.
+            Solid(
+                label=f"wheel cap, {side}",
+                grams=0.0,  # measured from the mesh
+                shape="mesh",
+                piece="wheel-cap",
+                half_turn=sign < 0,
+                at=(0.0, 0.0, 0.0),
+                source="measured",
+                note="cad/wheel_cap.py, the Ø22 cup in the hub's outboard seat",
+            ),
             Solid(
                 label=f"wheel clamp, {side}",
-                grams=3.0,
+                grams=8.0,
                 shape="cylinder_x",
+                # The screw from its head to its tip, as a Ø5 rod: what is
+                # steel and brass on the axis, wherever it is.
                 dims=(
-                    d["wheelClampWasherDiameter"],
-                    d["wheelClampWasherThickness"] + 5.0,
+                    d["wheelClampScrewDiameter"],
+                    d["wheelClampScrewLength"] + d["capHeadLength"],
                 ),
-                at=(sign * (d["skateWheelOuterX"] + 3.5), 0.0, 0.0),
+                at=(
+                    sign
+                    * (
+                        d["wheelCapOuterX"]
+                        - (d["wheelClampScrewLength"] + d["capHeadLength"]) / 2
+                    ),
+                    0.0,
+                    0.0,
+                ),
                 source="bom",
                 material="bearingSteel",
-                note="M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair",
+                note=(
+                    "M5 x 25 cap screw, plain M5 washer and M5 x 10 heat-set insert, "
+                    "from their catalogue dimensions; the budget's 16 g for the pair"
+                ),
             ),
         ]
         # The contact primitive. A cylinder, not the crowned tread: every

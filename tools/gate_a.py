@@ -245,22 +245,59 @@ ADDED = {
     # The KCL drew two blanks -- a solid Ø30 disc and a cylinder the size of a
     # cap head -- and never drew the screw or the heat-set insert at all, so it
     # had no dimensions for either. These are catalogue figures for an ISO 4762
-    # M5 cap screw and the insert the spigot's bore was already cut for, except
-    # the screw's LENGTH, which follows from the pocket: see the derivation in
-    # cad/wheeled_parameters.py.
+    # M5 cap screw and the insert the adapter's bore is cut for, except the
+    # screw's LENGTH, which follows from what it passes through: see the
+    # derivation in cad/wheeled_parameters.py.
+    #
+    # THE SCREW IS A 25 AND THE INSERT IS 10 since 6 October 2026, when the
+    # penny washer became a printed cap (below). The screw was 12 while the
+    # washer lay on the hub's face; it crosses the cap's floor and the hub's
+    # centre ridge now. The insert is the 10 mm one the bill buys, drawn 9.5
+    # until the clamp was redrawn round it.
     "wheelClampScrewDiameter": 5.0,
-    "wheelClampScrewLength": 12.0,
+    "wheelClampScrewLength": 25.0,
     "wheelClampSocketAcrossFlats": 4.0,
     "wheelClampSocketDepth": 2.5,
     "wheelClampWasherBore": 5.5,
-    "wheelInsertLength": 9.5,
+    "wheelInsertLength": 10.0,
     "wheelInsertThreadDiameter": 4.5,
     # The stations those put on the axis, alongside the washerInnerX and
     # washerOuterX the KCL already named: where the head's outer face sits,
-    # where the screw's tip stops, and the washer's mid-plane.
-    "capHeadOuterX": 55.95,
-    "screwTipX": 38.95,
-    "washerCenterX": 49.95,
+    # where the screw's tip stops, and the washer's mid-plane. All three moved
+    # with the cap: the washer lies on its floor and the head is flush with its
+    # outer end.
+    "capHeadOuterX": 54.45,
+    "screwTipX": 24.450000000000003,
+    "washerCenterX": 48.7,
+    # ---- THE WHEEL CLAMP LOST ITS PENNY WASHER, 6 October 2026 --------------
+    #
+    # The clamp's Ø30 penny washer could not be bought in India at a sane price,
+    # and looking for a printed replacement found that the hub it lay on was
+    # drawn wrong: a skate wheel's two bearing seats stop against a ridge of hub
+    # between them, and cad/skate_wheel.py had the bore Ø22 straight through.
+    # The adapter's 23 mm spigot would have met that ridge 7 mm in. So the spigot
+    # is 6 mm now (CHANGED below), and a printed cap in the outboard seat lands
+    # on the ridge and takes the washer's place, squeezed end-on rather than
+    # bent across a hole. These are the hub's seat and ridge, and the cap.
+    #
+    # The seat depth is the 608's width; the ridge's bore is unmeasured and
+    # drawn in the middle of the window the bearing allows. Both are in
+    # cad/wheeled_parameters.py with their provenance, and both are on the list
+    # of what to measure before the adapter is printed.
+    "skateWheelBearingSeatDepth": 7.0,
+    "skateWheelRidgeBore": 16.0,
+    "skateWheelRidgeInnerX": 31.95,
+    "skateWheelRidgeOuterX": 41.95,
+    # The cap: Ø22 to the seat, a 6 mm floor sized for the widest ridge bore the
+    # bearing allows, an M5 clearance through it, and a pocket for the washer
+    # with half a millimetre round it. It stands on the ridge and is as tall as
+    # its floor, the washer and the screw head.
+    "wheelCapDiameter": 22.0,
+    "wheelCapFloor": 6.0,
+    "wheelCapBore": 5.5,
+    "wheelCapCounterbore": 12.0,
+    "wheelCapInnerX": 41.95,
+    "wheelCapOuterX": 54.45,
     # ---- THE JOURNAL GOES IN LAST, AND ON ITS OWN SCREW, September 2026 ------
     #
     # journalRootFillet was here and is gone with the stub it relieved. What
@@ -1188,6 +1225,62 @@ CHANGED = {
         25.95,
         25.35,
         "follows plugInnerX: the plug's outer end has not moved",
+    ),
+    # ---- THE WHEEL'S SPIGOT AND CLAMP, 6 October 2026 -----------------------
+    #
+    # One decision and the names that follow from it. The spigot ran the hub's
+    # whole width on the reading that the hub was bored Ø22 straight through; a
+    # skate wheel's hub has a ridge between its two bearing seats, so the spigot
+    # stops a millimetre short of it, and the Ø30 penny washer that lay on the
+    # hub's face became a printed cap standing on the ridge (ADDED above).
+    "wheelSpigotLength": (
+        23.0,
+        6.0,
+        "the spigot fills the inboard bearing seat and stops a millimetre short "
+        "of the hub's centre ridge, where it used to run the hub's width",
+    ),
+    "spigotOuterX": (
+        47.95,
+        30.95,
+        "follows wheelSpigotLength",
+    ),
+    "spigotCenterX": (
+        36.45,
+        27.95,
+        "follows wheelSpigotLength",
+    ),
+    "insertOuterX": (
+        47.95,
+        30.95,
+        "the insert is still flush with the spigot's end, which moved in",
+    ),
+    "insertInnerX": (
+        35.95,
+        18.95,
+        "the insert's bore runs through to the disc's back face now -- the same "
+        "12 mm, all of the shortened spigot and the disc",
+    ),
+    "washerInnerX": (
+        48.95,
+        47.95,
+        "the washer is a plain M5 one lying on the cap's floor, inside the cap, "
+        "where the penny washer lay on the hub's outer face",
+    ),
+    "washerOuterX": (
+        50.95,
+        49.45,
+        "follows washerInnerX and the plain washer's 1.5 mm",
+    ),
+    "wheelClampWasherDiameter": (
+        30.0,
+        11.0,
+        "a plain M5 washer, Ø11 as fastdep sells it, where the Ø30 penny washer "
+        "nobody in India sells used to be",
+    ),
+    "wheelClampWasherThickness": (
+        2.0,
+        1.5,
+        "the plain M5 washer's 1.5 mm, as fastdep lists it",
     ),
 }
 

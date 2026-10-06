@@ -25,10 +25,13 @@ from build123d import (
 
 from cad.wheeled_parameters import (
     skateWheelBearingBore,
+    skateWheelBearingSeatDepth,
     skateWheelCenterX,
     skateWheelCrownCenterRadius,
     skateWheelHubDiameter,
     skateWheelInnerX,
+    skateWheelOuterX,
+    skateWheelRidgeBore,
     skateWheelShoulderDiameter,
     skateWheelWidth,
 )
@@ -38,23 +41,40 @@ shoulderRadius = skateWheelShoulderDiameter / 2
 
 
 def skateWheelHub():
-    """A plain annulus standing in for a spoked hub.
+    """A plain annulus standing in for a spoked hub, with its bearing seats.
 
-    Its bore is the pair of Ø22 bearing seats, drawn straight through: with the
-    608s pulled out for the direct drive, the seats and the 8 mm bore between
-    them become one bore.
+    Two Ø22 seats, each one 608's width deep, and the centre ridge between them
+    that the bearings' outer races stop against, bored through. Until 6 October
+    2026 the bore was drawn Ø22 straight through, on the reading that pulling
+    the bearings left one bore. It leaves two pockets and a ridge, and the ridge
+    is what the cap now clamps -- so drawing it is what lets the scenes say
+    whether the spigot and the cap land where they are meant to.
+
+    The seat cutters run a millimetre past the hub's faces, so no wall of the
+    cut is coplanar with a face of the body it crosses.
     """
     hubBlank = (
         Pos(skateWheelCenterX, 0, 0)
         * Rot(0, 90, 0)
         * Cylinder(skateWheelHubDiameter / 2, skateWheelWidth)
     )
-    hubBoreCutter = (
+    ridgeBore = (
         Pos(skateWheelCenterX, 0, 0)
         * Rot(0, 90, 0)
-        * Cylinder(skateWheelBearingBore / 2, skateWheelWidth + 2.0)
+        * Cylinder(skateWheelRidgeBore / 2, skateWheelWidth + 2.0)
     )
-    return hubBlank - hubBoreCutter
+    seatLength = skateWheelBearingSeatDepth + 1.0
+    seats = [
+        Pos(x, 0, 0) * Rot(0, 90, 0) * Cylinder(skateWheelBearingBore / 2, seatLength)
+        for x in (
+            skateWheelInnerX - 1.0 + seatLength / 2,
+            skateWheelOuterX + 1.0 - seatLength / 2,
+        )
+    ]
+    hub = hubBlank - ridgeBore
+    for seat in seats:
+        hub -= seat
+    return hub
 
 
 def skateWheelTread():

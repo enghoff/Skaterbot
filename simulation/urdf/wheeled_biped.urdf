@@ -305,12 +305,12 @@
 
   <link name="wheel_right">
     <inertial>
-      <origin xyz="-4.77226617e-11 -0.0364907289 -3.48219019e-11" rpy="0 0 0"/>
-      <mass value="0.075272"/>
-      <inertia ixx="3.746939437e-05" ixy="-9.899560440e-15" ixz="1.958688486e-14"
-               iyy="6.478110909e-05" iyz="-6.040781014e-15" izz="3.746939439e-05"/>
+      <origin xyz="-1.70007047e-11 -0.0365600901 -1.26024363e-11" rpy="0 0 0"/>
+      <mass value="0.078228"/>
+      <inertia ixx="3.744578607e-05" ixy="9.013860813e-15" ixz="1.140342157e-14"
+               iyy="6.439321880e-05" iyz="7.024015837e-15" izz="3.744578620e-05"/>
     </inertial>
-    <!-- wheel adapter, right — 12.3 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, right — 6.6 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__right">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -326,11 +326,19 @@
       </geometry>
       <material name="soleBlack"/>
     </visual>
-    <!-- wheel clamp, right — 3.0 g, bom: M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair -->
-    <visual name="wheel_clamp__right">
-      <origin xyz="0 -0.05245 0" rpy="1.57079633 0 0"/>
+    <!-- wheel cap, right — 3.6 g, measured: cad/wheel_cap.py, the Ø22 cup in the hub's outboard seat -->
+    <visual name="wheel_cap__right">
+      <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
-        <cylinder radius="0.015000" length="0.007000"/>
+        <mesh filename="meshes/wheel-cap.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- wheel clamp, right — 8.0 g, bom: M5 x 25 cap screw, plain M5 washer and M5 x 10 heat-set insert, from their catalogue dimensions; the budget's 16 g for the pair -->
+    <visual name="wheel_clamp__right">
+      <origin xyz="0 -0.03945 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.002500" length="0.030000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>
@@ -430,12 +438,12 @@
 
   <link name="wheel_left">
     <inertial>
-      <origin xyz="4.77226617e-11 0.0364907289 -3.48219019e-11" rpy="0 0 0"/>
-      <mass value="0.075272"/>
-      <inertia ixx="3.746939437e-05" ixy="-9.899560440e-15" ixz="-1.958688486e-14"
-               iyy="6.478110909e-05" iyz="6.040781014e-15" izz="3.746939439e-05"/>
+      <origin xyz="1.70007047e-11 0.0365600901 -1.26024363e-11" rpy="0 0 0"/>
+      <mass value="0.078228"/>
+      <inertia ixx="3.744578607e-05" ixy="9.013860813e-15" ixz="-1.140342157e-14"
+               iyy="6.439321880e-05" iyz="-7.024015837e-15" izz="3.744578620e-05"/>
     </inertial>
-    <!-- wheel adapter, left — 12.3 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
+    <!-- wheel adapter, left — 6.6 g, measured: cad/wheel_adapter.py, three bodies, joint centre at its own origin -->
     <visual name="wheel_adapter__left">
       <origin xyz="0 0 0" rpy="0 0 1.57079633"/>
       <geometry>
@@ -451,11 +459,19 @@
       </geometry>
       <material name="soleBlack"/>
     </visual>
-    <!-- wheel clamp, left — 3.0 g, bom: M5 x 20 cap screw, 30 dia washer and heat-set insert; the budget's 6 g for the pair -->
-    <visual name="wheel_clamp__left">
-      <origin xyz="0 0.05245 0" rpy="1.57079633 0 0"/>
+    <!-- wheel cap, left — 3.6 g, measured: cad/wheel_cap.py, the Ø22 cup in the hub's outboard seat -->
+    <visual name="wheel_cap__left">
+      <origin xyz="0 0 0" rpy="0 0 1.57079633"/>
       <geometry>
-        <cylinder radius="0.015000" length="0.007000"/>
+        <mesh filename="meshes/wheel-cap.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="printedOrange"/>
+    </visual>
+    <!-- wheel clamp, left — 8.0 g, bom: M5 x 25 cap screw, plain M5 washer and M5 x 10 heat-set insert, from their catalogue dimensions; the budget's 16 g for the pair -->
+    <visual name="wheel_clamp__left">
+      <origin xyz="0 0.03945 0" rpy="1.57079633 0 0"/>
+      <geometry>
+        <cylinder radius="0.002500" length="0.030000"/>
       </geometry>
       <material name="bearingSteel"/>
     </visual>

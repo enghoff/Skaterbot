@@ -414,6 +414,41 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     rows["power-switch-spacer"] = [
         ("M3 clearance bore for the M3 x 20", m3Clearance / 2, 1),
     ]
+
+    # THE WHEEL ADAPTER, which had no rows here until 6 October 2026 although it
+    # carries the joint whose holes this gate was written for. It shares the
+    # limbs' output disc, and it is three bodies left apart precisely because the
+    # plug would fill the six counterbores if it reached past r9.25 -- so the
+    # counterbores are what most needs counting. The insert's bore runs through
+    # all three bodies, and a union that missed cutting one would fill it.
+    from cad.wheeled_parameters import (
+        wheelCapBore,
+        wheelCapCounterbore,
+        wheelKeyAccessDiameter,
+        wheelSpigotInsertBore,
+    )
+
+    rows["wheel-adapter"] = [
+        ("M3 clearance holes on the Ø24 output circle", m3Clearance / 2, 6),
+        ("cap counterbores over them, clear of the plug", m3CapCounterbore / 2, 6),
+        (
+            "key-access scallops down the spigot over each output screw",
+            wheelKeyAccessDiameter / 2,
+            6,
+        ),
+        ("Ø6.4 bore the M5 insert is melted into", wheelSpigotInsertBore / 2, 1),
+    ]
+    # AND THE CAP THAT CLAMPS THE WHEEL, drawn the same day in place of the Ø30
+    # penny washer: the screw's way through its floor, and the pocket the washer
+    # and the head sit in.
+    rows["wheel-cap"] = [
+        ("M5 clearance through the floor", wheelCapBore / 2, 1),
+        (
+            "Ø12 pocket the washer and the screw head sit in",
+            wheelCapCounterbore / 2,
+            1,
+        ),
+    ]
     return rows
 
 
@@ -436,8 +471,19 @@ def complete_pockets() -> dict[str, list[tuple[str, float]]]:
     feature all the way round, or has a union eaten a segment out of it -- is
     the one that caught the defect, and the next pilot drawn on this robot wants
     asking it on the day it is drawn.
+
+    THE NEXT ONE WAS THE WHEEL ADAPTER'S INSERT BORE, 6 October 2026. A brass
+    insert is melted into it, and since the bore crosses all three of the
+    adapter's bodies, a plug or a disc that missed being cut would leave a
+    segment standing in it rather than closing it outright.
     """
-    return {}
+    from cad.wheeled_parameters import wheelSpigotInsertBore
+
+    return {
+        "wheel-adapter": [
+            ("Ø6.4 insert bore, whole round", wheelSpigotInsertBore / 2),
+        ],
+    }
 
 
 def panel_openings() -> dict[str, list[tuple]]:
@@ -631,9 +677,39 @@ def panel_openings() -> dict[str, list[tuple]]:
         )
     ]
 
+    # THE WHEEL CLAMP'S TWO BORES, open end to end. The adapter's runs through
+    # spigot, plug and disc, and the cap's through its floor; both are what the
+    # screw passes down, and a bore closed over still leaves one cylindrical
+    # face for the count above. The probes are squares inside the circles.
+    from cad.wheel_adapter import insertInnerX, insertOuterX
+    from cad.wheeled_parameters import (
+        wheelCapFloor,
+        wheelCapInnerX,
+        wheelSpigotInsertDepth,
+    )
+
+    wheelAdapter = [
+        (
+            "the insert's bore, open from the spigot's end to the disc's back",
+            ((insertInnerX + insertOuterX) / 2, 0.0, 0.0),
+            (wheelSpigotInsertDepth, 4.4, 4.4),
+            "X",
+        )
+    ] + seatingFace(1, 0.0)
+    wheelCap = [
+        (
+            "the screw's way through the cap's floor",
+            (wheelCapInnerX + wheelCapFloor / 2, 0.0, 0.0),
+            (wheelCapFloor, 3.8, 3.8),
+            "X",
+        )
+    ]
+
     return {
         "journal-sleeve": sleeve,
         "power-switch-spacer": spacer,
+        "wheel-adapter": wheelAdapter,
+        "wheel-cap": wheelCap,
         "pelvis-shell": pelvis,
         "electronics-deck": deck,
         "joint-rotor-hub": seatingFace(1, 0.0),
@@ -683,9 +759,21 @@ def opening_material(
 
 
 def registry() -> dict[str, callable]:
-    from cad import deck, electronics, hardware, joint, shin, thigh, torso
+    from cad import (
+        deck,
+        electronics,
+        hardware,
+        joint,
+        shin,
+        thigh,
+        torso,
+        wheel_adapter,
+        wheel_cap,
+    )
 
     return {
+        "wheel-adapter": wheel_adapter.wheelAdapterRight,
+        "wheel-cap": wheel_cap.wheelCapRight,
         # Not a printed piece, and the only bought one here. See the note beside
         # its row in panel_openings().
         "journal-sleeve": hardware.journalSleeve,
