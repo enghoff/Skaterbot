@@ -332,7 +332,7 @@ DEVIATIONS = {
         # against the golden it shows up as material un-added rather than removed.
         {
             "added_mm3": -45.0378723,
-            "removed_mm3": 6008.8872365,
+            "removed_mm3": 5979.4465861,
             "why": (
                 "THE SPIGOT IS 6 mm WHERE IT WAS 23, AND THE INSERT'S BORE RUNS "
                 "THROUGH, 6 October 2026. A skate wheel's hub is not bored Ø22 "
@@ -343,10 +343,12 @@ DEVIATIONS = {
                 "millimetre short of the ridge, and a printed cap in the outboard "
                 "seat clamps the hub down onto this disc in place of the Ø30 penny "
                 "washer that could not be bought. So the outer 17 mm of the "
-                "spigot is gone, with the blind insert pocket that was in it, and "
-                "the Ø6.4 bore is cut through what is left: 6 mm of spigot, the "
-                "plug and the disc, the same 12 mm the pocket was. 6008.89 mm3 of "
-                "golden material out, and the 45.04 noted above."
+                "spigot is gone, with the blind insert pocket that was in it. "
+                "What is left is bored for an insert pressed in from the motor "
+                "side: Ø6.4 for 8.5 mm in from the disc's back face, through the "
+                "disc and the plug, to a step, and the screw's Ø5.5 on through the "
+                "last 3.5 mm of spigot. 5979.45 mm3 of golden material out, and "
+                "the 45.04 noted above."
             ),
         },
     ],
@@ -968,6 +970,46 @@ DEVIATIONS = {
                 "from above the actuator harness and leave each strip clear for "
                 "its pack's XT60. The end stops came down 2 mm, clear of the "
                 "pack's bottom lead. cad/electronics.py carries the figures."
+            ),
+        },
+        # THE PADS BEAR ON THE BLOCK, 2026-10-06. The net, +2102.40 mm3, is
+        # arithmetic: each pad reaches 11.1 mm off its wall where it reached 8.1,
+        # and its 45 degree underside grows with it, so its profile goes from
+        # 72.18 mm2 to 115.98 and it is 6 mm wide -- 262.8 mm3 a pad, eight pads.
+        # The REMOVED figure is negative for the panel entry's reason: the deeper
+        # pads stand 3 mm higher and fill some of the band the tethered torso's
+        # floor occupied, which reads as material the golden had that this
+        # pelvis had not, put back. Moving the four rear pads 6 mm along the wall
+        # costs nothing here, since none of them overlaps the golden.
+        {
+            "added_mm3": 1765.2670009491,
+            "removed_mm3": -337.1330006779,
+            "why": (
+                "THE SIDE FOAM WENT AND THE PADS CAME IN TO THE BLOCK. The "
+                "owner wants the battery block held at its own 45 mm, so the "
+                "3 mm foam strips down its sides went and each of the eight wall "
+                "pads reaches 3 mm further in, which raises the low ones 3 mm to "
+                "keep their underside clear of the actuator harness. The rear "
+                "four also moved 6 mm right to stand opposite the front four: "
+                "their profile was drawn with y negated, which reversed its "
+                "winding and extruded each one a pad width the wrong way."
+            ),
+        },
+        # THE HIGH PADS CAME DOWN 10.5 mm, 2026-10-06, and moving a body weighs
+        # nothing: the net is zero. What is left is a sliver, and it is exact. At
+        # its new height each high pad's 45 degree underside crosses z = -29.5,
+        # the top of the tethered torso's floor, 0.1 mm short of the old inner
+        # wall at y = 31.6 -- a 0.1 x 0.1 triangle 6 mm long, 0.03 mm3, on each
+        # of the two. Inside the golden, so it reads as 0.06 less added and 0.06
+        # less removed, the same sign as the entry above and for its reason.
+        {
+            "added_mm3": -0.0600000000,
+            "removed_mm3": -0.0599999949,
+            "why": (
+                "NO WALL PAD REACHES MORE THAN 17 mm UP THE PACK, the owner's "
+                "limit. The two high pads stood 7.5 mm under the pack's top, "
+                "27.5 mm up from its bottom face; their tops are on the 17 mm "
+                "line now. The low pads stop at 12.5 and did not move."
             ),
         },
     ],

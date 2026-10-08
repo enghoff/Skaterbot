@@ -81,8 +81,8 @@ GRID = 1.27
 # becomes visible instead of being asserted.
 SYMBOL_OF = {
     "P1": "Connector_Generic:Conn_01x01",
-    "P2": "Connector_Generic:Conn_01x01",
     "P3": "Connector_Generic:Conn_01x01",
+    "P4": "Connector_Generic:Conn_01x01",
     "F1": "Device:Fuse",
     "Q1": "Transistor_FET:Q_PMOS_GDS",
     "Q2": "Transistor_FET:Q_PMOS_GDS",
@@ -110,6 +110,8 @@ SYMBOL_OF = {
     "D7": "Device:D_Schottky",
     "J3": "Connector_Generic:Conn_01x02",
     "J2": "Connector_Generic:Conn_01x04",
+    **{f"J{n}": "Connector_Generic:Conn_01x04" for n in range(4, 10)},
+    "J10": "Connector_Generic:Conn_01x03",
 }
 SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 27) if n != 24})
 
@@ -118,7 +120,7 @@ SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 27) if n != 24})
 #
 # Four blocks, each drawn the way that circuit is drawn: the power path runs
 # left to right across the whole top, the pack pad at one edge of the sheet and
-# the bus pad at the other, with the two switches stacked in parallel and the
+# the seven outputs down the other, with the two switches stacked in parallel and the
 # bank hanging off the bus; the gate drive sits under its left end with the
 # source rail along its top and the gate bus across its middle; the reference
 # and the two comparators are in the band under the bus rail; the hold and the
@@ -157,8 +159,18 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     "Q7": [(1, 101.60, 93.98, 270, None)],
     "C5": [(1, 127.00, 60.96, 0, None)],
     "C6": [(1, 152.40, 60.96, 0, None)],
-    "P2": [(1, 373.38, 45.72, 0, None)],
-    "P3": [(1, 368.30, 83.82, 0, None)],
+    # THE OUTPUTS DOWN THE RIGHT-HAND EDGE, 2026-10-07, where P2 handed the bus
+    # to the bought distribution board. The pack's negative and the BMS's B-
+    # stand inboard of them with their grounds.
+    "J4": [(1, 386.08, 45.72, 0, None)],
+    "J5": [(1, 386.08, 63.50, 0, None)],
+    "J6": [(1, 386.08, 81.28, 0, None)],
+    "J7": [(1, 386.08, 99.06, 0, None)],
+    "J8": [(1, 386.08, 116.84, 0, None)],
+    "J9": [(1, 386.08, 134.62, 0, None)],
+    "J10": [(1, 386.08, 152.40, 0, None)],
+    "P3": [(1, 355.60, 83.82, 0, None)],
+    "P4": [(1, 355.60, 96.52, 0, None)],
     # the gate drive
     "R2": [(1, 33.02, 129.54, 0, None)],
     "D1": [(1, 48.26, 129.54, 270, None)],
@@ -250,7 +262,7 @@ NET_DRAW: dict[str, dict] = {
             (
                 "h",
                 45.72,
-                ["Q1.2", "Q2.2", "C5.1", "C6.1", "U1.8", "C2.1", "P2.1"],
+                ["Q1.2", "Q2.2", "C5.1", "C6.1", "U1.8", "C2.1"],
                 [(311.15, 38.10)],
             ),
             ("h", 76.20, ["R10.1", "R11.1", "R15.1"]),
@@ -258,7 +270,25 @@ NET_DRAW: dict[str, dict] = {
         # Q6 AND Q7 TAKE A LABEL RATHER THAN THE TRUNK. The bus trunk runs along
         # y 45.72 past the top of the column, and a stub down to the third and
         # fourth device would cross both the devices above it.
-        "labels": ["C1.2", "Q6.2", "Q7.2"],
+        "labels": [
+            "C1.2",
+            "Q6.2",
+            "Q7.2",
+            "J4.1",
+            "J4.2",
+            "J5.1",
+            "J5.2",
+            "J6.1",
+            "J6.2",
+            "J7.1",
+            "J7.2",
+            "J8.1",
+            "J8.2",
+            "J9.1",
+            "J9.2",
+            "J10.1",
+            "J10.2",
+        ],
     },
     "GATE": {
         "labels": ["C7.2", "R25.1"],
@@ -330,6 +360,7 @@ NET_DRAW: dict[str, dict] = {
     "GND": {
         "gnd": [
             "P3.1",
+            "P4.1",
             "C5.2",
             "C6.2",
             "Q3.3",
@@ -345,7 +376,23 @@ NET_DRAW: dict[str, dict] = {
             "C4.2",
             "R19.2",
         ],
-        "labels": ["J2.3", "J3.2"],
+        "labels": [
+            "J2.3",
+            "J3.2",
+            "J4.3",
+            "J4.4",
+            "J5.3",
+            "J5.4",
+            "J6.3",
+            "J6.4",
+            "J7.3",
+            "J7.4",
+            "J8.3",
+            "J8.4",
+            "J9.3",
+            "J9.4",
+            "J10.3",
+        ],
         "flag": (342.90, 96.52),
     },
 }
@@ -367,14 +414,14 @@ VALUE_ON_SHEET = {
     "10 kOhm, 0204 metal film": "10k",
     "1 kOhm 1 W, PR01 axial": "1k 1W",
     "wire pad, 3.0 mm hole": "14 AWG pad",
-    "wire pad, 1.15 mm hole": "22 AWG pad",
+    "wire pad, 2.15 mm hole": "16 AWG pad",
     "Keystone 3568 holder + mini (ATM) blade fuse, 20 A to start": "20 A ATM",
     "Infineon IRF4905PbF, P-channel 55 V, TO-220AB": "IRF4905",
     "470 uF 35 V low-ESR aluminium, 10 x 16 radial": "470u 35V",
     "22 uF 16 V solid tantalum, radial": "22u 16V",
     "10 uF 16 V solid tantalum, radial": "10u 16V",
     "KEMET R82DC3220AA60K, 220 nF 63 V film, 5 mm pitch": "220n 63V",
-    "KEMET C320C104K5R5TA, 100 nF 50 V X7R, 2.54 mm": "100n 50V",
+    "KEMET C315C104K5R5TA, 100 nF 50 V X7R, 2.54 mm": "100n 50V",
     "BZX79-C15, 15 V 0.5 W zener, DO-35": "BZX79-C15",
     "1N4148, DO-35": "1N4148",
     "BC546B NPN 65 V, TO-92": "BC546B",
@@ -382,6 +429,8 @@ VALUE_ON_SHEET = {
     "TL431ACLP, TO-92": "TL431ACLP",
     "JST-XH 2-pin": "JST-XH 2",
     "JST-XH 4-pin": "JST-XH 4",
+    "JST-XH 3-pin": "JST-XH 3",
+    "JST-PH 4-pin": "JST-PH 4",
     "10 Ohm, 0204 metal film": "10R",
     "1 kOhm, 0204 metal film": "1k",
     "15 kOhm, 0204 metal film": "15k",

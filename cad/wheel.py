@@ -4,9 +4,10 @@ Ported from wheel.kcl.
 
 THE CLAMP IS A PRINTED CAP AND THREE BOUGHT ITEMS. An M5 socket cap screw sits
 on a plain M5 washer inside the cap, passes down through the cap's floor and the
-hub's centre ridge, and threads into a heat-set insert in the adapter's spigot.
-The cap stands on the ridge, so tightening the screw clamps the hub between the
-cap and the adapter's output disc.
+hub's centre ridge, and threads into a heat-set insert in the adapter. The cap
+stands on the ridge, so tightening the screw clamps the hub between the cap and
+the adapter's output disc. The insert is pressed in from the motor side, so the
+screw pulls it against a step in the adapter's bore rather than out of it.
 
 UNTIL 6 OCTOBER 2026 THE CAP WAS A Ø30 PENNY WASHER lying on the hub's outer
 face, and the spigot ran the hub's whole width to hold the insert at its far end.
@@ -15,8 +16,9 @@ the washer was a part nobody in India sells in a basket.
 
 DRAWING THE SCREW IS WHAT SETS ITS LENGTH, as it was the first time: an M5 x 20
 was once asked for and would have bottomed in the old spigot's blind bore. Under
-the head there are 18.5 mm of washer, floor, ridge and air before the insert's
-mouth now, so the screw is a 25 and engages 6.5 mm of the 10 mm insert.
+the head there are 30.5 mm of washer, floor, ridge, air and adapter before the
+motor, so the screw is a 30, runs through the whole insert, and stops half a
+millimetre inside the adapter's back face.
 cad/wheeled_parameters.py carries the arithmetic beside wheelClampScrewLength.
 
 Nothing in this file is printed. The cap is cad/wheel_cap.py and the adapter is
@@ -104,10 +106,10 @@ def clampScrew():
 
 
 def heatSetInsert():
-    """The M5 brass insert, seated flush with the spigot's outer end.
+    """The M5 brass insert, pressed in from the motor side against the step.
 
-    The bore it is melted into runs on through the disc, so its inner end stands
-    2 mm clear of the adapter's back face with open bore behind it.
+    Its outer end bears on the step in the adapter's bore, and the screw coming
+    the other way pulls it against that step rather than out of its pocket.
 
     A plain sleeve. A real one is knurled outside and slightly tapered, and
     neither changes what this body is here for: showing that the screw has

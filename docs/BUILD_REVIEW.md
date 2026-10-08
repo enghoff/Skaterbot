@@ -207,6 +207,9 @@ generic "100 A multirotor PDB" is in stock at three readable shops for ₹86–1
 with the same 50 × 50 mm outline and 45 mm hole square, but no factory-fitted
 XT60, so the bus input would be soldered on. **This needs a decision.** Robu's
 motor pigtails and thermal pad were in stock the same day, and are in its cart.
+*Decided on 2026-10-07, and not either way:* one was bought from SwiftWing direct
+on 1 October, and on 7 October the power switch board took over its job, with the
+motor outputs on plugs, so no distribution board is on the bill at all.
 
 **Read in a browser on 1 October, and three parts did not exist.** element14 and
 Techtonics, which refuse automated reads, were read in a browser instead. The

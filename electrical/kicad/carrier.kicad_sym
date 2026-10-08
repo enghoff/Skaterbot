@@ -297,7 +297,7 @@
     (property "Value" "JST-XH 2-pin" (at 0 -6.35 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "carrier:J1" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-    (property "Description" "battery bus in, from the distribution board" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Description" "battery bus in, from the power switch board's J10" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (symbol "J1_0_1"
       (rectangle (start -12.70 3.81) (end 12.70 -3.81)    (stroke (width 0.254) (type default)) (fill (type background)))
     )
@@ -359,7 +359,7 @@
     (property "Value" "INA226 breakout, on a 1 x 8 header" (at 0 -13.97 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "carrier:A3" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina226.pdf" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-    (property "Description" "the bus monitor, on two M2 standoffs, landed on all eight of its pins; its screw terminals are left empty and the shunt pair comes in on J7" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Description" "the bus monitor, on two M2 standoffs, landed on all eight of its pins; its screw terminals are left empty and its shunt inputs go to ground" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (symbol "A3_0_1"
       (rectangle (start -12.70 11.43) (end 12.70 -11.43)    (stroke (width 0.254) (type default)) (fill (type background)))
     )
@@ -376,17 +376,19 @@
   )
   (symbol "J7"
     (pin_names (offset 0.762)) (in_bom yes) (on_board yes)
-    (property "Reference" "J7" (at 0 6.35 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "JST-XH 2-pin" (at 0 -6.35 0) (effects (font (size 1.27 1.27))))
+    (property "Reference" "J7" (at 0 8.89 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "JST-XH 4-pin" (at 0 -8.89 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "carrier:J7" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
-    (property "Description" "the shunt's sense pair, down to the shunt at the distribution board -- twisted, and about 75 mV at pack common mode" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Description" "the power switch board's hold lead: the MCU's hold out, the button back in, ground; pin 4 is the SBC's hold and is not used here" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
     (symbol "J7_0_1"
-      (rectangle (start -12.70 3.81) (end 12.70 -3.81)    (stroke (width 0.254) (type default)) (fill (type background)))
+      (rectangle (start -12.70 6.35) (end 12.70 -6.35)    (stroke (width 0.254) (type default)) (fill (type background)))
     )
     (symbol "J7_1_1"
-      (pin passive line (at -17.78 1.27 0) (length 5.08) (name "IN+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
-      (pin passive line (at -17.78 -1.27 0) (length 5.08) (name "IN-" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at -17.78 3.81 0) (length 5.08) (name "HOLD" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at -17.78 1.27 0) (length 5.08) (name "SENSE" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at -17.78 -1.27 0) (length 5.08) (name "GND" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at -17.78 -3.81 0) (length 5.08) (name "SBC_HOLD" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
     )
   )
   (symbol "J2"

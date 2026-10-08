@@ -272,26 +272,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             note="cad/deck.py:electronicsDeck, plate and four SBC posts",
         ),
     ]
-    # THE POWER SWITCH BOARD'S FOUR SPACERS ARE PRINTS, one mesh placed four
-    # times on the bought board's own 45 mm square, as cad/electronics.py's
-    # power_switch_screw_xy() places them.
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            base.solids.append(
-                Solid(
-                    label="power switch spacer",
-                    grams=0.0,  # measured from the mesh
-                    shape="mesh",
-                    piece="power-switch-spacer",
-                    at=(
-                        d["powerX"] + sx * d["pdbHolePitch"] / 2,
-                        d["pdbY"] + sy * d["pdbHolePitch"] / 2,
-                        d["pdbTopZ"],
-                    ),
-                    source="measured",
-                    note="cad/electronics.py:powerSwitchSpacerPrint, Ø6 x Ø3.4 x 8",
-                )
-            )
+    # THE POWER SWITCH BOARD'S FOUR PRINTED SPACERS WENT on 2026-10-07 with the
+    # bought distribution board they stood on: the board sits on its nuts now.
 
     # The two hip pitch actuators. Their housings are held by the pelvis
     # clevises, so their mass is the pelvis's even though their output drives
@@ -332,10 +314,11 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     # goes -- which is a good deal better than a lump at the torso centre, and
     # it is the only reason this model's roll inertia means anything.
     #
-    # mass_budget.toml carries these as eight lines now: 100 g of "electronics and
-    # wiring", 13 g of distribution board, 34.4 g of power switch board, 20 g of
-    # capacitor bank, 40 g of BMS, 172 g of battery, 23 g of series harness and
-    # 45 g of battery wiring, connectors and mounts. The 100 is split below across
+    # mass_budget.toml carries these as seven lines now: 100 g of "electronics and
+    # wiring", 36.7 g of power switch board, 20 g of capacitor bank, 40 g of BMS,
+    # 172 g of battery, 23 g of series harness and 45 g of battery wiring,
+    # connectors and mounts. The 13 g distribution board was an eighth until
+    # 2026-10-07, when the power switch board took over its job. The 100 is split below across
     # the items that make it up. Each split is an assumption; the totals are not. The power line was one
     # 60 g reservation until September 2026, when the switch board was designed
     # and the bank was cut to its two cans; this model carried the 60 g for a
@@ -365,8 +348,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             "two Bonka 3S 1000 mAh LiPo packs in series, 86 g each, weighed 2026-10-05",
         ),
         (
-            # It lies in the air over the distribution board, docs/BOM.md
-            # section 11, so it goes in the power band rather than the cavity.
+            # It lies in the air over the power bay, docs/BOM.md section 11,
+            # so it goes in the power band rather than the cavity.
             "battery series harness",
             23.0,
             "power",
@@ -383,15 +366,6 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             "copperRed",
             False,
             "pack leads, panel connectors, bus monitor, the Matek BEC, the standoffs and the battery foam",
-        ),
-        (
-            "distribution board",
-            13.0,
-            "power",
-            "bom",
-            "pcbGreen",
-            False,
-            "SwiftWing PDB-02-XT60, 50 x 50 x 1.6 mm. Catalogue figure, not weighed",
         ),
         (
             "SBC",
@@ -432,13 +406,13 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         ),
         (
             "power switch board",
-            33.8,
+            36.7,
             "power",
             "estimate",
             "pcbGreen",
             True,
-            "fuse, the four-FET on/off and low-battery switch and its screws, over the"
-            " distribution board; the spacers are prints. Provisional, never weighed",
+            "fuse, the four-FET on/off and low-battery switch, the seven output"
+            " headers and its screws, on the posts. Provisional, never weighed",
         ),
         (
             # The cans stand on the switch board, so they share its envelope;
@@ -530,7 +504,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         )
 
     # M3 fastener sets, spread over the six joints they serve. The budget's
-    # 45 g is for the joints; its 16 g of wheel clamps is placed on the wheels.
+    # 45 g is for the joints; its 17 g of wheel clamps is placed on the wheels.
     for side in SIDES:
         base.solids.append(
             Solid(
@@ -862,7 +836,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             ),
             Solid(
                 label=f"wheel clamp, {side}",
-                grams=8.0,
+                grams=8.5,
                 shape="cylinder_x",
                 # The screw from its head to its tip, as a Ø5 rod: what is
                 # steel and brass on the axis, wherever it is.
@@ -882,8 +856,8 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 source="bom",
                 material="bearingSteel",
                 note=(
-                    "M5 x 25 cap screw, plain M5 washer and M5 x 10 heat-set insert, "
-                    "from their catalogue dimensions; the budget's 16 g for the pair"
+                    "M5 x 30 cap screw, plain M5 washer and M5 x 8 heat-set insert, "
+                    "from their catalogue dimensions; the budget's 17 g for the pair"
                 ),
             ),
         ]

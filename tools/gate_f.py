@@ -799,49 +799,31 @@ FITS = [
         "own standoffs leave over the deck. A longer head, or a carrier standoff "
         "bought 2 mm short, and they land on the plate and tilt the board",
     ),
-    # THE POWER SWITCH BOARD, September 2026, and its four numbers are the whole
-    # of how it is held and what it has to miss. Two screws go down through it,
-    # an 8 mm spacer and the bought distribution board, into that board's own
-    # rear posts; the third goes into a pad on the right-hand wall. It stands
-    # over the bought board's XT60 input socket. The PBV shunt now stands taller
-    # than the TO-220 switches, so it sets the clearance to the deck.
+    # THE POWER SWITCH BOARD, September 2026, and its numbers are the whole of
+    # how it is held and what it has to miss. Four screws go down through it and
+    # an M3 nut on a washer into the printed posts. It stood 8 mm over a bought
+    # distribution board on printed spacers until 2026-10-07; that board went,
+    # and this one stands on the nuts where it stood and carries the motor
+    # outputs itself.
     (
-        "power switch board on its spacers",
+        "power switch board on its standoffs",
         "power switch board",
-        "power switch spacers",
+        "power switch standoffs",
         0.0,
-        "the board SITS ON the four spacers, so any gap here means it is hanging "
-        "on its screws -- the same test the packs on their rails get. FOUR, not "
-        "two and a printed pad on the wall: this board is the bought board's own "
-        "50 x 50 outline and takes all four of that board's screws",
-    ),
-    (
-        "power switch board vs the distribution board under it",
-        "power switch board",
-        "distribution board",
-        8.0,
-        "the spacer, and what the bought board's own solder joints and the motor "
-        "leads leaving them have to fit in. It is as much as the deck above "
-        "allows: the switches are 18.8 mm tall on top of it",
-    ),
-    (
-        "power switch board vs the bought board's XT60 socket",
-        "power switch board",
-        "bus input socket",
-        0.5,
-        "THE TIGHTEST FIGURE ON THIS BOARD, and it is the one to measure a real "
-        "distribution board against before anything is ordered: this board "
-        "passes over that socket, and the plug that goes into it has to come out "
-        "rearward, under this board, because the capacitor bank is in front of "
-        "it. Half a millimetre is what the drawn socket leaves",
+        "the board SITS ON the four nuts, so any gap here means it is hanging on "
+        "its screws -- the same test the packs on their rails get. They are the "
+        "bought board's own four posts on its 45 mm square, so the pelvis did "
+        "not change when that board went",
     ),
     (
         "the power switch parts vs the deck",
         "power switch parts",
         "deck plate",
-        6.0,
+        15.6,
         "THE TWO TO-220 SWITCHES ARE THE TALLEST THING ON THIS BOARD AGAIN, "
-        "standing 18.8 mm on their leads and leaving 6.0 mm under the deck. "
+        "standing 18.8 mm on their leads and leaving 15.6 mm under the deck "
+        "since the board came down onto the posts on 2026-10-07; it was 6.0 "
+        "while it stood over the bought distribution board. "
         "It was 1.1 mm while the PBV-F1 Kelvin shunt stood here at 20.7 mm "
         "installed, and that shunt went with the current measurement on "
         "2026-09-16; it was 3.0 until the measured battery packs raised the "
@@ -857,9 +839,10 @@ FITS = [
         "the capacitor bank vs the deck plate over it",
         "capacitor bank",
         "deck plate",
-        8.8,
-        "a 16 mm can standing on this board, under a deck 24.8 mm above it. The "
-        "two switches beside them are what governs this bay's height, at 6.0",
+        18.4,
+        "a 16 mm can standing on this board, under a deck 34.4 mm above it "
+        "since the board came down 9.6 mm onto the posts. The two switches "
+        "beside them are what governs this bay's height, at 15.6",
     ),
     (
         "IMU board vs the ribs that aim it",
@@ -904,12 +887,10 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "SBC standoffs",
                 "BMS board",
                 "bus monitor",
-                "distribution board",
-                "bus input socket",
                 "capacitor bank",
                 "power switch board",
                 "power switch parts",
-                "power switch spacers",
+                "power switch standoffs",
             )
         },
         **{
@@ -941,7 +922,8 @@ def check_battery_hold_down() -> tuple[int, int]:
     cad/electronics.py's hold-down block says what holds the battery block -- two
     packs and the BMS between them, assembled into one piece since 2026-10-05 --
     in each of six directions: a rail under each pack, a stop on the rail's end,
-    and foam between each pack and the wall pads, the deck and the left wall.
+    the wall pads straight on each pack's outer face since 2026-10-06, and foam
+    between each pack and the deck and the left wall.
     The wall pads are part of the pelvis, so every face but the top pads' is
     made before the deck goes on. Each
     of those is a pair of drawn bodies that has to TOUCH -- distance zero and no
@@ -962,9 +944,7 @@ def check_battery_hold_down() -> tuple[int, int]:
     rails = {"front": torso.batteryRails()[0], "rear": torso.batteryRails()[1]}
     foam = e.batteryFoam()
     pads = {"front": foam[0], "rear": foam[1]}
-    low = {"front": foam[2], "rear": foam[3]}
-    high = {"front": foam[4], "rear": foam[5]}
-    ends = {"front": foam[6], "rear": foam[7]}
+    ends = {"front": foam[2], "rear": foam[3]}
     wallPads = torso.batteryPads()
     lowPads = {"front": wallPads[0:3], "rear": wallPads[4:7]}
     highPads = {"front": wallPads[3:4], "rear": wallPads[7:8]}
@@ -981,10 +961,8 @@ def check_battery_hold_down() -> tuple[int, int]:
             (f"{side} pack on its rail", pack, [rails[side]]),
             (f"{side} pack under its top pad", pack, [pads[side]]),
             (f"{side} top pad under the deck", [pads[side]], [plate]),
-            (f"{side} pack against its low strip", pack, [low[side]]),
-            (f"{side} low strip on the three low pads", [low[side]], lowPads[side]),
-            (f"{side} pack against its high strip", pack, [high[side]]),
-            (f"{side} high strip on the high pad", [high[side]], highPads[side]),
+            (f"{side} pack on the three low pads", pack, lowPads[side]),
+            (f"{side} pack on the high pad", pack, highPads[side]),
             (f"{side} pack against its end pad", pack, [ends[side]]),
             (f"{side} end pad against the left wall", [ends[side]], [wall]),
         ]
@@ -998,24 +976,39 @@ def check_battery_hold_down() -> tuple[int, int]:
             f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
             "  wants contact"
         )
-    # Each low strip has to bear on all three of its pads and not merely the
+    # Each pack has to bear on all three of its low pads and not merely the
     # nearest, or the block is held at one point along its length.
     for side in ("front", "rear"):
         for i, padBody in enumerate(lowPads[side]):
-            distance, shared = measure([low[side]], [padBody])
+            distance, shared = measure([packs[side]], [padBody])
             ok = distance <= 0.001 and shared <= CONTACT_MM3
             checked += 1
             failed += 0 if ok else 1
             mark = "  ok  " if ok else " FAIL "
-            what = f"{side} low strip on low pad {i + 1}"
+            what = f"{side} pack on low pad {i + 1}"
             print(
                 f" {mark} {what:<38} gap {distance:6.3f} mm  shared {shared:8.3f} mm3"
                 "  wants contact"
             )
 
+    # No wall pad reaches more than batteryPadReach up the pack from its bottom
+    # face, the owner's limit. A pad's top is its bounding box's, since the
+    # lead-in chamfer is below it and its underside below that.
+    for side in ("front", "rear"):
+        for i, padBody in enumerate([*lowPads[side], *highPads[side]]):
+            reach = padBody.bounding_box().max.Z - e.lowerBandZ
+            ok = reach <= e.batteryPadReach + 1e-6
+            checked += 1
+            failed += 0 if ok else 1
+            mark = "  ok  " if ok else " FAIL "
+            what = f"{side} {'high pad' if i == 3 else f'low pad {i + 1}'} top"
+            print(
+                f" {mark} {what:<38} {reach:5.2f} mm up the pack"
+                f"   wants {e.batteryPadReach:.1f} at most"
+            )
+
     for what, squeezed in (
         ("top pads", e.batteryFoamTop),
-        ("side strips", e.batteryFoamSide),
         ("end pads", e.batteryFoamEnd),
     ):
         ratio = squeezed / e.batteryFoamFree
@@ -1144,7 +1137,7 @@ def check_footings() -> tuple[int, int]:
         ("front battery rail", torso.batteryRails()[0]),
         ("rear battery rail", torso.batteryRails()[1]),
         *(
-            (f"distribution board post {i + 1}", post)
+            (f"power board post {i + 1}", post)
             for i, post in enumerate(torso.powerEntryPosts())
         ),
         ("IMU seat", torso.imuSeat()[0]),

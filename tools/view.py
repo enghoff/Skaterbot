@@ -43,8 +43,8 @@ the hip's set and nothing else. The hardware node is a function of the joint now
 rather than of the hip, which is the fix for this one instance and not for the
 blind spot: a tree built by naming things one at a time will go on doing this.
 
-A PAYLOAD NODE CARRIES ITS PART NUMBER, so the tree reads "distribution board
-(SwiftWing PDB-02-XT60)" rather than leaving you to go and look it up. The
+A PAYLOAD NODE CARRIES ITS PART NUMBER, so the tree reads "logic BEC
+(Matek BEC12S-PRO)" rather than leaving you to go and look it up. The
 designations are cad/electronics.py's `partNumbers`, which is the CAD's own
 table and not a second copy of docs/BOM.md, and they are applied at the LABEL
 only -- `_payload_colour` and `_group_colour` below still match on the bare

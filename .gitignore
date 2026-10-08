@@ -45,11 +45,14 @@ exports/
 simulation/meshes/
 simulation/urdf/meshes/manifest.json
 
-# Fabrication output. KiCad plots the gerbers and drill files from
-# electrical/kicad/carrier.kicad_pcb, so they are a render of a tracked input
-# and go stale against it. Regenerate them rather than committing them.
+# Fabrication output. KiCad plots the gerbers and drill files from each
+# board's .kicad_pcb, so they are a render of a tracked input and go stale
+# against it. Regenerate them with electrical/fabricate.py rather than
+# committing them.
 electrical/kicad/gerber/
 electrical/kicad/carrier-fabrication.zip
+electrical/kicad_power/gerber/
+electrical/kicad_power/power-fabrication.zip
 
 # What electrical/power_pcb.py hands to KiCad and reads back from it: the board
 # description it writes for the builder, the pad positions it checks against, and

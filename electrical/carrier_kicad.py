@@ -443,7 +443,7 @@ LEGENDS = {
     "J4": ("BUS C WHEEL", "BUS C"),
     "J5": ("SBC",),
     "J6": ("IMU",),
-    "J7": ("SHUNT",),
+    "J7": ("HOLD",),
     "JP1": ("IMU V",),
     "A2": ("BEC 5V",),
     "A3": ("INA226",),

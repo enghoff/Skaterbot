@@ -1,20 +1,22 @@
 # The power switch board
 
 The second board this robot designs for itself, and the first one that carries
-its own bus current. It stands in the pack's positive lead between the pack and
-the distribution board, and it holds three of the four things that lead needed:
-the **main fuse**, which was an in-line holder taped to the bought distribution
-board; a **MOSFET switch** that is the robot's on/off and its low-battery cutoff
-at once, which the bill had never bought; and the **bulk capacitor bank**, which
-used to stand on the bought board underneath.
+its own bus current. It takes the pack's leads in and hands the switched bus out,
+and it holds what that path needed: the **main fuse**, which was an in-line
+holder taped to a bought distribution board; a **MOSFET switch** that is the
+robot's on/off and its low-battery cutoff at once, which the bill had never
+bought; the **bulk capacitor bank**, which used to stand on the bought board
+underneath; and **since 7 October 2026 the distribution itself** — six motor
+outputs and the carrier's feed, each on a JST-XH plug, where that bought board
+sat underneath with every motor lead soldered to its tabs.
 
 **The fourth was a bus shunt, and it was deleted on 16 September 2026** along
 with the current measurement it existed to serve. The section at the end of this
 file records why, and it reverses what the rest of the file used to argue rather
 than quietly rewriting it.
 
-It is the bought distribution board's own 50 × 50 mm footprint, two layers, and
-it sits 8 mm above that board on that board's own four screws.
+It is 50 × 66 mm, two layers, out to both long walls of the power bay, and it
+stands on its own four nuts on the posts the bought board used.
 [`electrical/power.py`](../electrical/power.py) is the circuit,
 [`electrical/power_pcb.py`](../electrical/power_pcb.py) is the board and
 [`electrical/power_sch.py`](../electrical/power_sch.py) is the drawing:
@@ -230,15 +232,17 @@ own Python: it places the library footprints, lays the copper, fills the zones
 and writes the file. Then `kicad-cli` runs KiCad's design rule check on the
 result, and every short, open and clearance is KiCad's finding on the filled
 board rather than a claim made here — **0 errors and 0 unconnected items**, on
-99 tracks and 57 vias (11 silkscreen warnings remain). What this repository checks on top of that is the part
+116 tracks and 49 vias since 2026-10-07, the ground trunk's among them (11 silkscreen warnings remain), and every motor's ground and bus at 2.2 mm of copper or more at its narrowest. What this repository checks on top of that is the part
 that lives outside the board: that every pad is where the layout meant to put it
 (to a hundredth of a millimetre, read back from the built board), that no two
-courtyards overlap, that nothing stands on a screw's washer, that no lead lands
-in the bought board's input socket, and that every part clears every drawn thing
-in the torso, measured in the CAD's own frame.
+courtyards overlap, that nothing stands on a screw's washer, and that every part
+clears every drawn thing in the torso, measured in the CAD's own frame.
 
 **It wants 2 oz copper.** The zones are sized for it; at 1 oz the switch's own
-copper would run hot at the peak current this robot has never measured.
+copper would run hot at the peak current this robot has never measured. **The
+file says so since 2026-10-07**: the board carries a stackup of 70 µm copper,
+so the gerber job file a fab reads says 0.070 mm. Without one, KiCad assumed 1 oz
+and the job file said 0.035 on a board already in a fab's cart.
 
 ### Three things that check found that looked finished
 
@@ -259,34 +263,116 @@ repository owned and would not have worked:
   written with as the extent — so a 6 mm can measured 0 mm deep and every part
   beside it was placed on top of it.
 
+### What an outside review found that every check had passed — 2026-10-07
+
+**The motor ground ran through one 0.25 mm track.** Ground was routed pad to pad
+at signal width, with the bottom-layer pour meant to carry the current — and the
+signals routed after it cut that pour into pieces. On the filled board the front
+row of motor plugs, both bank capacitors and the carrier's feed reached the
+pack's negative through a single 0.25 mm track. KiCad's check was clean, because
+a track is a connection; it does not ask what a connection can carry. The review
+was right, and nothing here had asked.
+
+**So ground has a trunk now**, 2 mm of bottom-layer copper with no via in it,
+laid before any signal: from the pack's negative to the BMS's, the carrier's
+feed and both bank cans, and up a spine through the middle of the board to a bar
+joining the front row's two islands, with a matching bar behind the rear row and
+a corridor from P3 down to it past the rear-left screw's washer. Where it has to
+go a particular way it is drawn copper, like the bus's own column; the rest is
+routed. The spine takes the middle rather than the inboard edge, because under
+the bus column there it walled the gate-drive parts in. **The bus bars went out
+to 28.4 mm from the centre line** for the same reason, 3.6 mm of copper where
+there was 1.8, past the screws whose keepouts had cut the old bar to 1.1 mm by J9.
+
+**And it is measured on every build.** `check_power_paths()` reads the board KiCad
+saved, erodes each net's real copper until a motor plug's pins and their source
+come apart, and fails the board if the narrowest copper on the way is under
+2 mm — about 9 A in 2 oz copper on an outer layer at a 20 °C rise, a row of three
+motors at the 3 A their own plug allows. The pins are terminals, not copper to
+be measured, so a 1.2 mm connector pad does not read as a 1.2 mm path. What it
+does not do is a thermal rating: 2 mm is a width, and the motors' current has
+still never been measured.
+
+## It is the distribution board as well — 2026-10-07
+
+**The bought distribution board is gone.** A SwiftWing PDB-02-XT60 sat under this
+board on the same four posts, and every motor lead was soldered to its tabs
+before this board went over it: changing one lead meant taking both boards out
+and unsoldering. Its sibling with six XT30 sockets fitted would not have fitted —
+each socket stands 4.6 to 7.5 mm proud of the board's edge and a plugged lead
+needs about 20 mm more, against 3 mm to the shell on one side and half a
+millimetre to the pack leads on the other.
+
+**So this board carries the outputs, on plugs.** A motor's own plug is a JST-SH
+whose three 1 A contacts a side limit its branch, so each output is a **JST-PH
+4-pin header**, pins 1 and 2 the switched bus and 3 and 4 ground — two 2 A
+contacts a side, more than the branch can use. **PH because nothing else in the
+robot is PH**: every other plug on both boards is XH, at 2.5 mm against 2.0, so a
+motor's power lead cannot be pushed into a signal socket. The carrier's feed is
+an XH **3-pin**, J10, pins 1 and 2 the bus and 3 ground, so that its one ground
+pin is all the bus copper under it has to step round. Every plug takes a
+ready-made lead, the motors' on 24 AWG; nothing is crimped.
+
+**Where they stand.** The bay was swept from under the post tops to the deck,
+and the two 8.6 mm strips between the old 50 × 50 outline and the long walls held
+nothing. The board goes out to within 0.6 mm of each wall, 50 × 66 on the same
+four holes, and three motor headers stand in each strip. **It goes in
+sideways.** The deck's two ledges on this side stand 6 mm proud of the walls at
+x 46 to 58, and the lid's two screw bosses stand over its outboard corners, so a
+board out to the walls cannot be lowered straight down — `tools/gate_i.py`
+found that. It is the first thing into the torso, while the battery bay beside
+it is still empty, so it comes down 30 mm inboard of its posts, slides outboard
+under the ledges and the bosses, and drops the last 5 mm onto its nuts; gate I
+runs that path. **It was notched round the ledges for the first day** so that it
+could drop past them, and the notches are what made the headers PH; they went
+once the sideways path was found, and PH stayed for its keying. A screw sits at
+every corner, so neither strip can be fed round an end: the rear one is fed down
+Q2's own drain riser, past the source pour's outboard end, and the front one up
+a column of bus copper along the inboard side, where three small resistors used
+to stand. **Each strip has two solid islands of ground on the bottom layer**
+that join its headers' ground pins; ground is otherwise routed pad to pad here,
+and those pins taking their own tracks across the middle of the board is what
+left signals unrouted until the islands went in. Two and not one because that is
+what routes: joined into one a strip when the notches went, they left the
+enable line with no way through.
+
+**Not fused one by one.** A resettable fuse per output was the intention, and a
+radial one that will stand a 30 V bus is a 12 mm disc: the board has room for
+one or two, not six. One spliced into each motor lead was the next idea, and it
+was dropped on 2026-10-07. The 20 A main fuse covers the outputs together, so a
+short in one motor's lead is on that fuse alone.
+
+**The board came down 9.6 mm**, which was the bought board and the spacer, and it
+went where it was short: the switches had 6 mm under the deck and have 15.6, and
+the pack's connectors no longer hang over the inboard column. The pack's
+negative lands on this board now too, on P3 at the same 14 AWG as the positive,
+and the BMS's B− beside it on P4; P3 was a 22 AWG ground from the bought board's
+negative.
+
 ## Where it sits, and how it is held
 
-Directly over the bought distribution board, on the same outline. Four M3
-self-tapping screws from above, which is the only direction anything in this bay
-can be driven from: each goes through this board, an 8 mm spacer and the
-distribution board into the printed post that already carries that board's
-corner. They are **that board's own four screws, made longer**, and there is no
-printed material anywhere in this change — the wall pad the old two-screw
-outline needed is gone with it.
+On the four printed posts the bought board used, on the same 45 mm square, so
+the pelvis did not change. Four M3 × 8 self-tapping screws from above, which is
+the only direction anything in this bay can be driven from, each through the
+board and an M3 nut on a washer that stands it 3 mm off its post. Until
+2026-10-07 they were M3 × 20 through this board, an 8 mm printed spacer and the
+bought board, and the spacers are off the print now.
 
 What the fit comes to, all of it measured by `tools/gate_f.py` and
-`electrical/power_pcb.py` rather than asserted:
+`electrical/power_pcb.py` rather than asserted, since 2026-10-07:
 
 | | |
 |---|---|
-| 8.00 mm | under the board, over the distribution board: its solder joints and the motor leads leaving them |
-| 5.80 mm | over the two capacitor cans, to the electronics deck above |
-| 3.00 mm | over the two TO-220 switches, to that deck |
-| 0.60 mm | from the nearest trimmed lead to the distribution board's own XT60 input socket |
-| 0.65 mm | from the nearest can to the pack's own XT60 connectors overhead |
-| 0.50 mm | over that input socket |
+| 15.6 mm | over the two TO-220 switches, to the electronics deck above — 6.0 while the board stood 8 mm over the bought one |
+| 18.4 mm | over the two capacitor cans, to that deck |
+| 0.70 mm | from each motor header to the long wall beside it |
+| 0.65 mm | from R6 and R7, in the inboard column, to the battery's leads |
+| 0.55 mm | from J4 to the CAN loom running up the wall beside it |
 
-**Nothing with a lead may stand over that socket**, and that is a keepout in the
-layout rather than a clearance to check afterwards: the socket reaches to within
-half a millimetre of the underside and a trimmed lead is 2 mm long. Raising the
-board to 10 mm of spacer to clear it outright was tried and is worse — it takes
-two millimetres off the far side, where the pack's connectors hang 7.4 mm over
-this board, and leaves 1 mm over the switches instead of 3.
+**Nothing under the board but its own nuts.** The bought board's XT60 input
+socket stood half a millimetre under this one and kept every lead out from over
+it; with that board gone, a trimmed lead hangs into a millimetre of air over the
+post tops, and the keepout is gone from the layout.
 
 ## What this changes elsewhere
 
@@ -294,17 +380,23 @@ this board, and leaves 1 mm over the switches instead of 3.
   PCB-mount holder, where it was a standard blade in an in-line holder taped to
   the distribution board. The rating still follows the measurement.
 * **There is no bus shunt and no sense pair.** Both went with the current
-  measurement; the carrier's J7 is now a spare header. With the robot off, the
+  measurement; the carrier's J7 was a spare header until it became the hold
+  and button socket on 2026-10-07. With the robot off, the
   only live copper on this board is the fuse and the MOSFET sources.
 * **The capacitor bank is on this board**, two cans on the switched bus, where it
   stood on the bought board before. It is the capacitance the soft start is
-  sized to charge, so it belongs here.
-* **The pack's main lead takes a different route.** Its positive leaves the
-  pack's connector, rises through the electronics deck's rear notch to the loop
-  key above, and comes back down to this board's input pad.
-* **The distribution board's motor leads must be soldered first.** This board
-  covers that one completely, so every lead leaving it has to be on before this
-  board goes over it, and every lead has to leave through the 8 mm gap.
+  sized to charge, so it belongs here. **And it cannot grow without the soft
+  start changing.** The bill's two spare cans were laid out at the ends of the
+  rows of motor plugs on 2026-10-07, where they fit, and taken off again: the
+  reset regression below is already at 1.97 A of its 2 A limit at its 2200 µF
+  corner, and a restart's surge grows with the bank: 2.09 A with three cans at
+  their +20 % tolerance, 2.12 A with four at nominal and 2.39 A at +20 %.
+* **The pack's main leads both land here.** Its positive leaves the series
+  harness and comes down to P1; its negative to P3, and the BMS's B− to P4 beside
+  it. All three are soldered, as the harness's own output was always cut off for
+  room; the packs unplug at their own XT60s.
+* **Every motor plugs in from above**, with the deck out, once this board is
+  down. Nothing on it has to be soldered before anything else goes in.
 
 ## What is not settled
 
@@ -312,11 +404,10 @@ this board, and leaves 1 mm over the switches instead of 3.
   and a momentary push button needs a third opening. Nothing is drawn for it and
   the wall's stations were solved rather than laid out, so adding one means
   sweeping it against the cavity again.
-* **The carrier has no connector for the hold and the button sense.** Those
-  three wires land on J2 here and have nowhere to go at the other end:
-  `electrical/carrier.py` is at a checked fabrication release and adding a plug
-  to it is a change of its own. The SBC's hold is a flying lead to a GPIO on its
-  40-pin header, and which GPIO has not been chosen.
+* **The hold lead lands on the carrier's J7 since 2026-10-07**, in the same
+  pin order as J2 here, so one double-ended lead joins them. The SBC's hold on
+  pin 4 leaves that lead for a GPIO on its 40-pin header, and which GPIO has not
+  been chosen. No firmware drives the hold yet.
 * **Nothing isolates the pack any more, and this is the open item to weigh.**
   The loop key was deleted on 2026-09-16 and its button took the wall station,
   so the only break in the pack's positive lead is this board's two transistors
@@ -331,10 +422,6 @@ this board, and leaves 1 mm over the switches instead of 3.
   continuous rating both follow that measurement, and the 24 A this board is
   sized to is an estimate. Take it once on a bench with a clamp meter round the
   pack lead, through a first stand and a first drive.
-* **The bought board's own geometry is a catalogue outline.** Its XT60 input
-  socket, which this board passes half a millimetre over and keeps every lead
-  out of, is drawn from a listing rather than from a board anybody has held.
-  Measure one before ordering this.
 * **A regeneration clamp is still not on the bill.** This board switches the bus;
   it does not absorb energy coming back into it.
 
@@ -426,7 +513,10 @@ load and the opposite capacitor corner. Each run checks completed initial and
 repeat startup, capacitor charging current, gate voltage, and complete turn-off
 for longer OFF requests. Very short requests need not fully disconnect the load.
 
-Maximum modeled capacitor charging current is 1.419 A. Nominal light-load
+Maximum modeled capacitor charging current is 1.965 A, at 25.2 V with a 3 ms
+OFF gap in the adverse corner — 98 % of the limit. It read 1.419 A here until
+2026-10-07 and the committed design gives 1.965 too, so that figure was stale
+rather than changed. Nominal light-load
 turn-off is 0.785 ms; the additional adverse turn-off case is 5.557 ms.
 The old microsecond turn-off claim has been removed. These are simplified
 semiconductor models at nominal temperature, NOT qualified manufacturer models
@@ -468,9 +558,10 @@ so the board was changed to parts that can, and kept through-hole.**
   5 mm pitch, and element14 marks it as its last stock.
 - **C1 and C2 name the parts bought.** C1 is a KEMET R82, 220 nF 63 V,
   7.2 × 2.5 × 6.5 mm, so its footprint is KiCad's 7.2 mm film footprint where
-  it was a generic 7.0. C2 is the carrier's dipped KEMET C320 100 nF X7R on
+  it was a generic 7.0. C2 is the carrier's dipped KEMET 100 nF X7R on
   2.54 mm, rated 50 V where the disc was 100, which the ratings check now
-  covers at a 30 V bus.
+  covers at a 30 V bus: the C315 since 2026-10-07, 3.81 × 2.54 mm, where the
+  C320 it replaced was 5.08 × 3.18 and did not fit the carrier.
 
 **What it costs is margin in the switch-off transient**, and nothing else the
 checks measure. `power_reset.py` still passes all 26 cases, but its worst

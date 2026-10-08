@@ -77,6 +77,7 @@ EXIT_MM = 1.0
 UP = (0.0, 0.0, 1.0)
 OUT = (0.0, -1.0, 0.0)  # through the rear wall, which is the -y wall
 IN = (0.0, 1.0, 0.0)
+INBOARD = (-1.0, 0.0, 0.0)  # from the power bay towards the robot's middle
 
 # Everything that rides on the deck and goes in with it.
 DECK = [
@@ -105,43 +106,45 @@ def steps() -> list[tuple[str, list, list, bool]]:
     part is clear of the shell."""
     return [
         ("IMU onto its seat", ["IMU board", "IMU sensor"], [(UP, None)], False),
+        # ONE BOARD IN THE POWER BAY since 2026-10-07, on its nuts, where a
+        # bought distribution board went in first and this one followed it on
+        # spacers. The nuts go down with it, each held on its screw.
+        #
+        # AND IT DOES NOT GO STRAIGHT DOWN. It reaches both long walls, under
+        # the deck's two ledges on this side, and its outboard corners stand
+        # under the lid's two screw bosses. It goes in SIDEWAYS instead, while
+        # the battery bay beside it is still empty: down 30 mm inboard of its
+        # station, outboard under the ledges and the bosses, and the last 5 mm
+        # down onto the nuts, which is enough for the screws' tips to come out
+        # of the posts. Run backwards, that is this path. It was notched round
+        # the ledges for a day so that it could drop past them, 2026-10-07.
         (
-            "distribution board on its nuts",
-            ["distribution board standoffs", "distribution board", "bus input socket"],
-            [(UP, None)],
-            False,
-        ),
-        (
-            "power switch board on its spacers",
+            "power switch board on its nuts",
             [
-                "power switch spacers",
+                "power switch standoffs",
                 "power switch board",
                 "power switch parts",
                 "capacitor bank",
             ],
-            [(UP, None)],
+            [(UP, 5.0), (INBOARD, 30.0), (UP, None)],
             False,
         ),
         # The end pads go onto the left wall first. Then the battery goes in as
         # ONE BLOCK, since 2026-10-05: both packs and the BMS between them,
-        # assembled beforehand, with the four side strips already on its outer
-        # faces, straight down past the wall pads.
+        # assembled beforehand, straight down between the wall pads, which bear
+        # on its outer faces with no foam since 2026-10-06.
         (
             "end pads onto the left wall",
-            [("battery foam", 6), ("battery foam", 7)],
+            [("battery foam", 2), ("battery foam", 3)],
             [(UP, None)],
             False,
         ),
         (
-            "the battery block, with its side strips on",
+            "the battery block",
             [
                 ("battery packs", 0),
                 ("battery packs", 1),
                 "BMS board",
-                ("battery foam", 2),
-                ("battery foam", 3),
-                ("battery foam", 4),
-                ("battery foam", 5),
             ],
             [(UP, None)],
             False,

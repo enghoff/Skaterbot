@@ -4,11 +4,13 @@
 # ///
 """The power switch board, as a netlist whose circuit arithmetic can be checked.
 
-The second board this robot designs for itself. It stands in the pack's positive
-lead between the pack and the distribution board, and it carries the three
-things that lead needed and had nowhere to put: the main fuse, a MOSFET switch
-that is the robot's on/off and its low-battery cutoff at once, and the bulk
-capacitor bank the soft start is sized to charge.
+The second board this robot designs for itself. It takes the pack's leads in and
+hands the switched bus out, and it carries the things that path needed and had
+nowhere to put: the main fuse, a MOSFET switch that is the robot's on/off and
+its low-battery cutoff at once, the bulk capacitor bank the soft start is sized
+to charge -- and since 2026-10-07 the distribution itself, six motor outputs and
+the carrier's feed, each on a plug. Until then a bought distribution board sat
+under this one and every motor lead was soldered to it.
 
 THERE IS NO CURRENT MEASUREMENT ON THIS BOARD, since 2026-09-16, and the reason
 is worth keeping because the shunt was one of the four reasons this board was
@@ -123,7 +125,9 @@ the gate's pull to its source is 1 MOhm, which raises the gate drive at the
 bottom of the bus. The WIMA MKS2 for C7 is discontinued, and KEMET's MMK5 is
 the same 7.2 x 7.2 x 13 mm on the same pitch. C1 and C2 name the parts bought:
 a KEMET R82, which is 7.2 mm long where the footprint was 7.0, and a dipped
-KEMET C320, 50 V where the disc was 100, which the ratings below now check.
+KEMET C315, 50 V where the disc was 100, which the ratings below now check. It
+was the C320 until 2026-10-07, which is 5.08 x 3.18 mm and did not fit the
+carrier it is bought with; the C315 is the same capacitor at 3.81 x 2.54.
 """
 
 from __future__ import annotations
@@ -251,12 +255,6 @@ PARTS = [
         "Infineon IRF4905PbF, P-channel 55 V, TO-220AB",
         {"1": "G", "2": "D", "3": "S"},
     ),
-    Part(
-        "P2",
-        "switched bus out, to the distribution board -- 14 AWG",
-        "wire pad, 3.0 mm hole",
-        {"1": "out"},
-    ),
     # THE BULK BANK IS ON THIS BOARD NOW. It stood on the bought distribution
     # board until this one covered it, and it belongs here anyway: it is the
     # capacitance the soft start is sized to charge, and these are the two cans
@@ -273,11 +271,55 @@ PARTS = [
         "470 uF 35 V low-ESR aluminium, 10 x 16 radial",
         {"1": "+", "2": "-"},
     ),
+    # THE PACK'S NEGATIVE LANDS HERE TOO, since the bought distribution board
+    # went: P3 was a 22 AWG ground from that board's negative, and it is the
+    # whole return current now, so it is P1's size. The BMS's B- joins it on a
+    # pad of its own beside it, because two leads do not share one hole.
     Part(
         "P3",
-        "ground, from the distribution board's negative -- 22 AWG",
-        "wire pad, 1.15 mm hole",
+        "pack negative in, the series harness's negative leg -- 14 AWG soldered through",
+        "wire pad, 3.0 mm hole",
         {"1": "gnd"},
+    ),
+    Part(
+        "P4",
+        "the BMS's B-, which meets the pack's negative here -- 16 AWG",
+        "wire pad, 2.15 mm hole",
+        {"1": "gnd"},
+    ),
+    # ---- the distribution ----------------------------------------------------
+    # SIX MOTOR OUTPUTS ON PLUGS, 2026-10-07, where there were six pairs of
+    # solder tabs on a bought board. A motor's own plug is a JST-SH whose three
+    # 1 A contacts a side are what limits its branch, so two JST-PH contacts a
+    # side, 2 A each, are more than the branch can use. PH AND NOT XH because
+    # nothing else in the robot is PH: a power lead cannot be pushed into one of
+    # the XH signal sockets. It was chosen while the board was notched under the
+    # deck's ledges, for its length -- a four-pin is 10.9 mm where an XH five-pin
+    # is 15.9 -- and kept when the notches went, for the keying and because its
+    # ready-made leads are the ones whose wire gauge is published.
+    #
+    # NOT FUSED ONE BY ONE. A resettable fuse per output was the intention, and
+    # a radial one that will stand a 30 V bus is a 12 mm disc: there is room on
+    # this board for one or two, not six. One in each motor lead was the next
+    # idea, and the owner dropped it on 2026-10-07. The 20 A main fuse covers
+    # the outputs together.
+    *(
+        Part(
+            f"J{n}",
+            f"motor output {n - 3}: 1 and 2 the switched bus, 3 and 4 ground",
+            "JST-PH 4-pin",
+            {"1": "VBUS", "2": "VBUS", "3": "GND", "4": "GND"},
+        )
+        for n in range(4, 10)
+    ),
+    # THE CARRIER'S FEED, which came off the bought board's tabs as well. Three
+    # pins so that one ground pin is all the bus copper under it has to step
+    # round; the carrier fuses its own end.
+    Part(
+        "J10",
+        "the carrier's feed: 1 and 2 the switched bus, 3 ground",
+        "JST-XH 3-pin",
+        {"1": "VBUS", "2": "VBUS", "3": "GND"},
     ),
     # ---- the gate drive ------------------------------------------------------
     Part(
@@ -415,7 +457,7 @@ PARTS = [
     Part(
         "C2",
         "U1 supply",
-        "KEMET C320C104K5R5TA, 100 nF 50 V X7R, 2.54 mm",
+        "KEMET C315C104K5R5TA, 100 nF 50 V X7R, 2.54 mm",
         {"1": "1", "2": "2"},
     ),
     Part(
@@ -533,8 +575,8 @@ NETS: dict[str, list[tuple[str, str]]] = {
     #
     # THE DRAINS AND THE BUS ARE ONE NET. They were two, VDRN and VBUS, with the
     # Kelvin shunt between them; with the shunt gone there is nothing in the path
-    # to separate, so the switched bus runs from both drains straight to the
-    # output pad. C1 hangs off it as before -- the Miller capacitor watches the
+    # to separate, so the switched bus runs from the drains straight to the
+    # outputs. C1 hangs off it as before -- the Miller capacitor watches the
     # drains, and the drains are the bus.
     "BATT": [("P1", "1"), ("F1", "1")],
     "VSRC": [
@@ -556,7 +598,7 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("Q6", "2"),
         ("Q7", "2"),
         ("C1", "2"),
-        ("P2", "1"),
+        *((f"J{n}", pin) for n in range(4, 11) for pin in ("1", "2")),
         ("C5", "1"),
         ("C6", "1"),
         ("U1", "8"),
@@ -619,6 +661,9 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "SENSE": [("J2", "2"), ("D7", "2")],
     "GND": [
         ("P3", "1"),
+        ("P4", "1"),
+        *((f"J{n}", pin) for n in range(4, 10) for pin in ("3", "4")),
+        ("J10", "3"),
         ("Q3", "3"),
         ("R7", "2"),
         ("U1", "4"),

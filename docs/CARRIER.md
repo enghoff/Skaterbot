@@ -42,8 +42,8 @@ the design is a good one.
 Six motors, one IMU, one bus monitor and one single-board computer, and the
 carrier is where all of it meets. It carries no motor power at all: each
 actuator's OEM pigtail is split in the torso, the three `VCC`/`GND` pairs go to
-an XT30 fed from the bought distribution board, and only the CAN pair comes up
-here. That is what keeps a hand-soldered perfboard out of a 24 V, 10 A path.
+a 4-pin JST-PH plug on the power switch board -- an XT30 on the bought distribution
+board until 2026-10-07 -- and only the CAN pair comes up here. That is what keeps a hand-soldered perfboard out of a 24 V, 10 A path.
 
 ## The three buses, and why nothing here is terminated
 
@@ -100,13 +100,13 @@ right hole spacing, and the footprints use it.
 
 | | | |
 |---|---|---|
-| **J1** | 2-pin | 1 `VBAT`, 2 `GND` — the raw battery bus in, from the distribution board |
+| **J1** | 2-pin | 1 `VBAT`, 2 `GND` — the raw battery bus in, from the power switch board's J10 |
 | **J2** | 4-pin | bus A: 1 H, 2 L to the left hip; 3 H, 4 L to the right hip |
 | **J3** | 4-pin | bus B, the two knees, same order |
 | **J4** | 4-pin | bus C, the two wheels, same order |
 | **J5** | 8-pin | the SBC: 1 and 2 `GND`, 3 and 4 `+5V`, 5 MCU→SBC, 6 SBC→MCU, 7 `BOOT0`, 8 `NRST` |
 | **J6** | 6-pin | IMU: 1 `SCL`, 2 `GND`, 3 supply, 4 `INT`, 5 `RST`, 6 `SDA` |
-| **J7** | 2-pin | **spare.** It was the shunt's sense pair, 1 `IN+`, 2 `IN−`, until the current measurement was deleted on 2026-09-16. Link both pins to ground rather than leaving the monitor's inputs floating |
+| **J7** | 4-pin | **the power switch board's hold lead, since 2026-10-07**: 1 `HOLD` from PC11, 2 `SENSE` to PB14, 3 `GND`, 4 the SBC's hold, which is not used here. In the power switch board's own J2 order, so one double-ended lead joins them. At the front edge in front of the core board; its lead comes up through the deck's front opening beside J1 and along the edge. It was the shunt's 2-pin sense pair until then, and the monitor's two shunt inputs are tied to ground on the board now |
 | **JP1** | 3 pads | IMU supply link: bridge 1–2 for 5 V, 2–3 for 3.3 V |
 
 **Three of these changed on 14 September 2026, when the BEC and the monitor came
@@ -152,6 +152,18 @@ transceiver, one more on the 3.3 V beside the sensor connectors, 10 µF of bulk
 on the 5 V, and a second 10 µF on the bus where it arrives — that last one for
 the lead's own inductance when the switch board's MOSFETs open. The two
 4.7 kΩ I²C pull-ups go on only if neither sensor module brings its own.
+
+**Two parts were drawn smaller than they are, until an outside review on
+2026-10-07.** The 100 nF were bought as KEMET's C320, 5.08 × 3.18 mm, on a board
+drawn for 4.0 × 2.6; at their real size they stood within 0.25 mm of a neighbour
+in seven places round the transceivers. The C315 is the same capacitor at
+3.81 × 2.54 × 3.14 mm on KEMET's own sheet, so the part changed and the layout
+did not. And the fuse, Littelfuse's RXEF185, is a 17.5 mm disc standing 22.4 mm,
+where it was drawn 12 × 13: it came 6.4 mm back from the front edge, clear of the
+mounting hole it then stood 2.7 mm from, and the bus feed's 10 µF took its spot.
+It is the tallest thing on the board, and the torso clears it. **Its hold falls to
+about 1.33 A at 50 °C**, which the BEC's input reaches only near full 5 V load at
+a low pack; the logic's real draw has not been measured.
 
 The transceivers' `STBY` pins are tied to ground rather than driven. They have
 about 1.1 MΩ of pull-up inside, so a pin left floating is standby and not normal
@@ -290,7 +302,11 @@ pair carrying about 75 mV at 25 V of common mode runs 150 mm up to the carrier.
 Twist it, filter it at the inputs, and expect a noisier reading than a monitor
 sitting on the shunt would give.
 
-**That pair lands on J7 on this board now, and not in the monitor's own screw
+**THERE IS NO SHUNT ANY MORE**, since 2026-09-16, and since 2026-10-07 the
+monitor's `IN+` and `IN−` are tied to ground on this board, its R100 carrying
+nothing; the three paragraphs above and the two below are how it stood before.
+
+**That pair landed on J7 on this board, and not in the monitor's own screw
 terminals**, which is a change of mind made on 15 September 2026 when the monitor
 was landed on all eight of its pins. Its `IN+` and `IN−` are on that header as
 well as on the terminals, so the choice is free. What it buys is a pair arriving
@@ -658,14 +674,10 @@ beeping with a meter before ordering.**
 
 ## What is not settled
 
-- **Three wires have nowhere to land on this board.** The power switch board
-  added on 15 September 2026 — `docs/POWER_SWITCH.md` — wants a hold output from
-  the MCU, a button input back to it, and a ground, and this board is at a
-  checked fabrication release with no connector for them. Adding one is a change
-  to this board and to its release, and it has not been made. Until it is, that
-  switch is held closed by a shorting link on its own button connector, which is
-  a bench arrangement rather than the robot's. The MCU has spare pins for both
-  signals; what it has not got is a plug.
+- **The hold lead has landed, 2026-10-07**, on J7: the MCU drives `HOLD` on PC11
+  and reads the button on PB14 with its own pull-up. **No firmware does either
+  yet**, so until it does the power switch board is held on by a shorting link on
+  its own button plug, which is a bench arrangement rather than the robot's.
 - **Which IMU breakout.** The 7Semi BNO085 nano is listed at 3.6–5 V, so JP1
   defaults to 5 V, and the pin order on J6 follows the names its listing uses
   rather than a pinout anyone has read off the board. Confirm both against the

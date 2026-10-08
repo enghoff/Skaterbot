@@ -176,7 +176,7 @@ EXPECTED_CHANGE_G = {
         "what MISUMI's M3 x 14 did. Gate B holds it exactly.",
     ),
     "cad/wheel_adapter.py": (
-        -10.9,
+        -10.8,
         "THE Ø30.4 REGISTER POCKET IS RETIRED, and this is the first time this "
         "piece has been off the engine's figure at all. It shares "
         "cad/joint.py's output disc with the limbs, so it takes the correction "
@@ -194,20 +194,21 @@ EXPECTED_CHANGE_G = {
         "inside the disc already -- which this sum-of-bodies figure counts and "
         "the union does not, so gate B sees only the 16. "
         "AND THE SPIGOT IS 6 mm WHERE IT WAS 23, 6 October 2026, which is the "
-        "13.2 g this line came DOWN by at the baseline's density and 11.6 g on "
+        "13.1 g this line came DOWN by at the baseline's density and 11.5 g on "
         "the robot. A skate wheel's hub is not bored Ø22 straight through, as "
         "this part was drawn to: its two bearing seats stop against a ridge 7 mm "
         "in from each face, and the old spigot would have met it with the wheel "
         "standing 16 mm off the motor. So the spigot fills the inboard seat and "
-        "stops a millimetre short of the ridge, the insert's Ø6.4 bore runs "
-        "through what is left of the part, and a printed cap in the outboard "
+        "stops a millimetre short of the ridge, the insert is pressed in from "
+        "the motor side against a step in what is left of the part, and a "
+        "printed cap in the outboard "
         "seat clamps the hub down in place of the Ø30 penny washer that could "
         "not be bought. The caps are a line of their own, 7.2 g on the pair, so "
-        "the wheel's printed parts are 4.4 g lighter in all. Gate B holds the "
+        "the wheel's printed parts are 4.3 g lighter in all. Gate B holds the "
         "adapter's change exactly.",
     ),
     "cad/torso.py": (
-        +82.2,
+        +84.5,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -342,7 +343,12 @@ EXPECTED_CHANGE_G = {
         "fences, which filled the strips beside the packs from the floor up, "
         "went for eight small pads off the long walls that leave each strip "
         "clear for its pack's XT60. -9 840.8 mm3 net, and gate B holds it "
-        "exactly.",
+        "exactly. AND THE PADS BEAR ON THE BLOCK, 2026-10-06, which is the "
+        "2.3 g this line went UP at the baseline's density and 2.0 g on the "
+        "robot: the foam down the block's sides went, so each of the eight "
+        "pads reaches 3 mm further off its wall to meet the block's own "
+        "45 mm, and its 45 degree underside grows with it. 262.8 mm3 a pad, "
+        "2 102.4 mm3 on the eight, and gate B holds it exactly.",
     ),
 }
 

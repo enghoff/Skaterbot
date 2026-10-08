@@ -184,13 +184,27 @@ ADDED = {
     # board's outline also buys the mount: four screws where there were two and a
     # printed pad on the wall, so powerSwitchPadScrewY, powerSwitchPadHeight and
     # powerSwitchPadWidth are gone with it.
-    "powerSwitchSpacer": 8.0,
-    "powerSwitchSpacerDiameter": 6.0,
-    "powerSwitchBoardZ": -19.9,
+    #
+    # AND THE BOUGHT BOARD WENT, 2026-10-07. This board stands on its nuts where
+    # it stood, 9.6 mm lower, and carries the six motor outputs and the carrier's
+    # feed on JST-XH headers, so it reaches both long walls: 50 x 66 on the same
+    # four holes, powerSwitchWallGap off each wall. powerSwitchSpacer and
+    # powerSwitchSpacerDiameter went with the spacers. xhDepth and xhPinOffset
+    # are a JST-XH header's courtyard across its pin row, which every XH header
+    # on the board shares and which the two that stood there before typed out;
+    # phDepth, phPinOffset and phHeight are the same for the JST-PH motor
+    # outputs.
+    "powerSwitchBoardZ": -29.5,
     "powerSwitchRightX": 71.55,
-    "powerSwitchRearY": -25.0,
-    "powerSwitchFrontY": 25.0,
+    "powerSwitchRearY": -33.0,
+    "powerSwitchFrontY": 33.0,
     "powerSwitchLeftX": 21.55,
+    "powerSwitchWallGap": 0.6,
+    "xhDepth": 6.75,
+    "xhPinOffset": -0.525,
+    "phDepth": 5.5,
+    "phPinOffset": -0.55,
+    "phHeight": 11.0,
     # The bank's lead pitch, which is what places a can by its first lead the way
     # every other footprint on that board is placed.
     "capacitorPitch": 5.0,
@@ -249,17 +263,19 @@ ADDED = {
     # screw's LENGTH, which follows from what it passes through: see the
     # derivation in cad/wheeled_parameters.py.
     #
-    # THE SCREW IS A 25 AND THE INSERT IS 10 since 6 October 2026, when the
-    # penny washer became a printed cap (below). The screw was 12 while the
-    # washer lay on the hub's face; it crosses the cap's floor and the hub's
-    # centre ridge now. The insert is the 10 mm one the bill buys, drawn 9.5
-    # until the clamp was redrawn round it.
+    # THE SCREW IS A 30 AND THE INSERT IS 8 since 6 October 2026, when the
+    # penny washer became a printed cap (below) and the insert moved to the
+    # motor side of the adapter. The screw was 12 while the washer lay on the
+    # hub's face; it crosses the cap's floor, the hub's centre ridge and the
+    # whole adapter now. The insert is ThinkRobotics' M5, drawn at its own
+    # drawing's 8 mm though its listing says 6; it was the 10 mm Amazon.in one,
+    # and 9.5 before that.
     "wheelClampScrewDiameter": 5.0,
-    "wheelClampScrewLength": 25.0,
+    "wheelClampScrewLength": 30.0,
     "wheelClampSocketAcrossFlats": 4.0,
     "wheelClampSocketDepth": 2.5,
     "wheelClampWasherBore": 5.5,
-    "wheelInsertLength": 10.0,
+    "wheelInsertLength": 8.0,
     "wheelInsertThreadDiameter": 4.5,
     # The stations those put on the axis, alongside the washerInnerX and
     # washerOuterX the KCL already named: where the head's outer face sits,
@@ -267,7 +283,7 @@ ADDED = {
     # with the cap: the washer lies on its floor and the head is flush with its
     # outer end.
     "capHeadOuterX": 54.45,
-    "screwTipX": 24.450000000000003,
+    "screwTipX": 19.450000000000003,
     "washerCenterX": 48.7,
     # ---- THE WHEEL CLAMP LOST ITS PENNY WASHER, 6 October 2026 --------------
     #
@@ -298,6 +314,13 @@ ADDED = {
     "wheelCapCounterbore": 12.0,
     "wheelCapInnerX": 41.95,
     "wheelCapOuterX": 54.45,
+    # The adapter's bore since the insert went in from the motor side: the
+    # screw's clearance on from the step the insert is pressed against to the
+    # spigot's end. The step is the point of it -- with the insert bearing on
+    # it, failing means punching out the adapter in front of the insert as
+    # well as shearing the insert's own length -- and cad/wheeled_parameters.py
+    # carries that arithmetic.
+    "wheelSpigotClearance": 5.5,
     # ---- THE JOURNAL GOES IN LAST, AND ON ITS OWN SCREW, September 2026 ------
     #
     # journalRootFillet was here and is gone with the stub it relieved. What
@@ -472,9 +495,10 @@ ADDED = {
     # and takes up whatever the bought pack differs from the drawn one by. The fin
     # and fences hung from the deck for a day and stand on the pelvis now, 1.5
     # thick to reach the actuator harness run and no further, and stopping 6 mm
-    # under the pack tops.
+    # under the pack tops. The foam down the block's two sides went on
+    # 2026-10-06, and batteryFoamSide and batteryFoamFaceY with it: the wall
+    # pads bear on the block's own faces, 45 mm apart.
     "batteryFoamFree": 5.0,
-    "batteryFoamSide": 3.0,
     "batteryPackOuterY": 22.5,
     "batteryPackTopZ": 2.5,
     "batteryFoamTop": 4.0,
@@ -499,22 +523,24 @@ ADDED = {
     # chases the leads turn in are placed from these, and the CAN loom moved to
     # the back of the bay gap to give the rear connector its strip.
     "batteryBlockWidth": 45.0,
-    "batteryFoamFaceY": 25.5,
     "xt60Span": 15.6,
     "batteryConnectorLength": 30.0,
     "batteryConnectorY": 28.05,
-    "batteryConnectorZ": -22.0,
+    "batteryConnectorZ": -19.0,
     "batteryConnectorRightX": -7.549999999999997,
     "batteryConnectorLeftX": -37.55,
-    "batteryLegLaneZ": -5.4,
+    "batteryLegLaneZ": -2.4000000000000004,
     "batteryLeadInset": 7.0,
     "batteryLeadReach": 10.0,
     "batteryLegReach": 10.0,
     "harnessAir": 0.5,
     "batteryPadWidth": 6.0,
     "batteryPadHeight": 5.0,
-    "batteryPadLowZ": -28.0,
-    "batteryPadHighZ": -10.0,
+    # The owner's limit, 2026-10-06: no wall pad reaches more than 17 mm up the
+    # pack from its bottom face. It brought the high pad down 10.5 mm.
+    "batteryPadReach": 17.0,
+    "batteryPadLowZ": -25.0,
+    "batteryPadHighZ": -20.5,
     "batteryPadHighX": -55.949999999999996,
     "batteryPadLeadIn": 1.5,
     "loomRunX": 18.5,
@@ -1150,10 +1176,11 @@ CHANGED = {
     ),
     "capacitorZ": (
         -18.9,
-        -18.3,
-        "the bank stands on the power switch board now, not on the bought one "
-        "under it: a 16 mm can on the bought board would be inside a board whose "
-        "underside is 8 mm above it",
+        -27.9,
+        "the bank stands on the power switch board, not on the bought one: a 16 "
+        "mm can on the bought board would have been inside a board 8 mm above it. "
+        "And that board stands where the bought one stood since 2026-10-07, on its "
+        "nuts on the posts, so the cans came down 9.6 mm with it from -18.3",
     ),
     "capacitorDiameter": (
         16.0,
@@ -1251,14 +1278,23 @@ CHANGED = {
     ),
     "insertOuterX": (
         47.95,
-        30.95,
-        "the insert is still flush with the spigot's end, which moved in",
+        27.45,
+        "the insert is pressed in from the motor side now and stops against a "
+        "step 8.5 mm in from the adapter's back face, where it used to sit "
+        "flush with the spigot's end",
+    ),
+    "wheelSpigotInsertDepth": (
+        12.0,
+        8.5,
+        "the insert's pocket runs in from the motor side to the step it is "
+        "pressed against: deep enough for the 8 mm the insert's drawing gives "
+        "and half a millimetre clear of the back face",
     ),
     "insertInnerX": (
         35.95,
         18.95,
-        "the insert's bore runs through to the disc's back face now -- the same "
-        "12 mm, all of the shortened spigot and the disc",
+        "the insert's pocket opens on the disc's back face now, which is the "
+        "side it is pressed in from",
     ),
     "washerInnerX": (
         48.95,

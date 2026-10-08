@@ -14,7 +14,6 @@ from cad.parameters import (
     jointKeepOut,
     lowerLegLength,
     rotorHubOuterX,
-    rotorHubThickness,
     torsoFloorThickness,
     upperLegLength,
 )
@@ -135,14 +134,33 @@ wheelKeyAccessDiameter = 4.5
 # millimetre.
 wheelSpigotPlugDiameter = 17.0
 wheelSpigotLength = skateWheelBearingSeatDepth - 1.0
-# The M5 heat-set insert's bore: Ø6.4 is what a 7 mm knurl wants. IT RUNS RIGHT
-# THROUGH THE ADAPTER since the spigot shortened -- 6 mm of spigot and the 6 mm
-# disc, which is the same 12 mm the blind pocket in the old spigot was. A blind
-# bore that deep in a 12 mm part would leave a floor too thin to print, pressed
-# against the motor's output face; open, the melt the insert pushes ahead of it
-# has somewhere to go.
+# The M5 heat-set insert's pocket: Ø6.4 is what a 7 mm knurl wants.
+#
+# THE INSERT GOES IN FROM THE MOTOR SIDE, since 6 October 2026, and the clamp
+# pushes it further in rather than pulling it out. Pressed in from the wheel's
+# side, as it was, the screw pulls the insert back the way it came, and all that
+# holds it is the plastic its knurl melted into. Pressed in from the back until
+# it stops against the step below, it can only fail by shearing that same length
+# of plastic AND punching out the plug of adapter in front of it, which is the
+# 3.5 mm between the step and the spigot's end. So a 6 mm insert carries about
+# what the 10 mm one did the other way round, 9.5 mm of shear against 10, and an
+# 8 mm one more. That is what lets the clamp use ThinkRobotics' insert, whose
+# only M5 is that short. It is arithmetic, not a test: a printed coupon with an
+# insert set in it and the screw torqued up is what proves it.
+#
+# The insert has to be in before the adapter goes onto the motor, which it is:
+# the back face is open on the bench and covered once it is bolted down.
 wheelSpigotInsertBore = 6.4
-wheelSpigotInsertDepth = wheelSpigotLength + rotorHubThickness
+# How deep the pocket runs in from the back face, to the step the insert stops
+# against. Deep enough for the longest the insert might be -- the listing says 6
+# and its own drawing 8 -- with half a millimetre of the back face left clear,
+# so the melt the iron pushes back up the pocket stays below the face that lands
+# on the motor's output register. A 6 mm insert simply sits 2.5 mm down.
+wheelSpigotInsertDepth = 8.5
+# The screw's clearance on from the step to the spigot's end, the same Ø5.5 the
+# cap's floor and the journal screw use. The step it leaves is what the insert
+# is pressed against.
+wheelSpigotClearance = 5.5
 
 # ---------------------------------------------------------------------------
 # What the clamp is made of
@@ -181,16 +199,22 @@ wheelCapCounterbore = 12.0
 # so it is not in reference/.
 wheelClampScrewDiameter = 5.0
 # HOW LONG THE SCREW CAN BE, which is still not a free choice. Under the head
-# are the 1.5 mm washer, the cap's 6 mm floor, the ridge's 10 and the millimetre
-# the spigot stops short of the ridge: 18.5 mm before the insert's mouth. A 25
-# threads 6.5 mm into the 10 mm insert and its tip stops 5.5 mm inside the
-# adapter's back face. A 30 would take all 10 mm of the insert, but its tip
-# would stand half a millimetre from the motor's output face, and a washer or a
-# floor that prints thin would close that. It was 12 while the washer lay on
-# the hub's face and the insert sat at the far end of a 23 mm spigot, and 20
-# before that, which bottomed in that spigot's blind bore -- docs/BOM.md
-# section 10 keeps the history.
-wheelClampScrewLength = 25.0
+# are the 1.5 mm washer, the cap's 6 mm floor, the ridge's 10, the millimetre
+# the spigot stops short of the ridge and the spigot's own 6 mm and the disc's
+# 6: 30.5 mm to the adapter's back face. So a 30 is the length, and its tip
+# stops half a millimetre inside that face, through the whole of an insert
+# that sits against the step whichever of its two lengths it turns out to be.
+# A floor or a washer that comes out thin moves the tip out towards the motor,
+# and the motor's output face is recessed Ø8 x 1.85 deep at its centre in the
+# vendor STEP (reference/dm_3507_3d-241021.STEP, read 2026-10-06), so the tip
+# has 2.35 mm before it can touch anything -- unmeasured on a real motor, and
+# not needed unless the stack is a millimetre thin.
+#
+# It was 25 for an afternoon, while the insert sat at the spigot's end; 12 while
+# the washer lay on the hub's face and the insert sat at the far end of a 23 mm
+# spigot; and 20 before that, which bottomed in that spigot's blind bore --
+# docs/BOM.md section 10 keeps the history.
+wheelClampScrewLength = 30.0
 # The socket is drawn only so the head reads as a cap head. 4 mm across the
 # flats is the M5 key; the depth is nominal.
 wheelClampSocketAcrossFlats = 4.0
@@ -205,10 +229,14 @@ wheelClampWasherThickness = 1.5
 # 5.48; nothing bears on that face, and 5.5 keeps the shank from being drawn in
 # a slot narrower than any process could tell from contact.
 wheelClampWasherBore = 5.5
-# The insert as bought: 10 mm long on a Ø7 knurl, the Amazon.in listing's
-# 7 x 7 x 10. It sits flush with the spigot's outer end, so its inner end stops
-# 2 mm short of the adapter's back face. It was drawn 9.5 until 6 October 2026.
-wheelInsertLength = 10.0
+# The insert as bought: ThinkRobotics' brass heat-set insert, whose M5 is
+# listed as "M5 X 6mm" and drawn on the same page as Ø7.0 over the knurl, a Ø5.9
+# pilot and 8.0 long (read 2026-10-06). The two disagree, and it is drawn at the
+# drawing's 8 because that is the one the pocket has to hold; the step it is
+# pressed against fixes its outer end either way. Measure one when it arrives.
+# It was the 10 mm Amazon.in insert, sat at the spigot's end, until the same day,
+# and 9.5 before that.
+wheelInsertLength = 8.0
 # Its thread is drawn at pitch diameter rather than as a helix, so a screw in it
 # overlaps by a quarter of a millimetre the way an engaged thread does. M5 pitch
 # diameter is 4.48.

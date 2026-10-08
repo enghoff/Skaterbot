@@ -259,20 +259,19 @@ def load_footprint(library: str, name: str, height: float) -> Footprint:
 # 4.45 mm body standing 20.7 mm tall, clearing the deck above by 1.1 mm, on four
 # inline pins with a 17.78 mm current span -- about 250 mm2 of courtyard in the
 # middle of the bus path, plus a second pour to get current into it. The board
-# keeps the bought distribution board's own 50 x 50 footprint, which it became
-# when the capacitor bank stopped reserving four cans for the two it buys, so
-# what the removal bought is room rather than a smaller board.
+# kept the bought distribution board's 50 x 50 footprint then, so what the
+# removal bought was room rather than a smaller board. It is 50 x 66 since
+# 2026-10-07, out to both long walls, with the motor outputs in the two strips.
 #
-# THE HEIGHTS OF THE UPRIGHT PARTS ARE NOT SPARE HEADROOM. The pack's own XT60s
-# hang over the inboard column of this board with 7.4 mm to spare, so a 9 mm can
-# there would foul them. check_against_cad() measures that against the drawn
-# torso rather than trusting this note.
+# THE HEIGHTS OF THE UPRIGHT PARTS ARE NOT SPARE HEADROOM, though there is more
+# of it since the board came down 9.6 mm. check_against_cad() measures every
+# part against the drawn torso rather than trusting a note.
 THT_RESISTOR = ("Resistor_THT", "R_Axial_DIN0204_L3.6mm_D1.6mm_P2.54mm_Vertical", 5.5)
 THT_DIODE = ("Diode_THT", "D_DO-35_SOD27_P2.54mm_Vertical_AnodeUp", 5.5)
 FOOTPRINT_OF = {
     "P1": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
-    "P2": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
-    "P3": ("Connector_Wire", "SolderWire-0.5sqmm_1x01_D0.9mm_OD2.3mm", 6.0),
+    "P3": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
+    "P4": ("Connector_Wire", "SolderWire-1.5sqmm_1x01_D1.7mm_OD3.9mm", 12.0),
     "F1": ("Fuse", "Fuseholder_Blade_Mini_Keystone_3568", 7.37 + 9.0),
     "Q1": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
     "Q2": ("Package_TO_SOT_THT", "TO-220-3_Vertical", 18.77),
@@ -301,6 +300,12 @@ FOOTPRINT_OF = {
     "J1": ("Connector_JST", "JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical", 12.8),
     "J2": ("Connector_JST", "JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical", 12.8),
     "J3": ("Connector_JST", "JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical", 12.8),
+    # The six motor outputs and the carrier's feed, 2026-10-07.
+    **{
+        f"J{n}": ("Connector_JST", "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical", 11.0)
+        for n in range(4, 10)
+    },
+    "J10": ("Connector_JST", "JST_XH_B3B-XH-A_1x03_P2.50mm_Vertical", 12.8),
 }
 for _part in power.PARTS:
     if _part.refdes in FOOTPRINT_OF:
@@ -337,11 +342,20 @@ def unplace(kx: float, ky: float) -> tuple[float, float]:
     return (kx - PAGE_X + X_MIN, Y_MAX - (ky - PAGE_Y))
 
 
+def outline_polygon():
+    """The board's edge as a shapely polygon. It is a rectangle, and it was
+    notched for a day on 2026-10-07; everything below asks this rather than the
+    bounding box, so an outline that is not its bounding box stays checked."""
+    from shapely.geometry import Polygon
+
+    return Polygon(OUTLINE)
+
+
 def inside_outline(x: float, y: float, margin: float = 0.0) -> bool:
     """Whether a point is on the board, at least `margin` in from every edge."""
-    return (X_MIN + margin <= x <= X_MAX - margin) and (
-        Y_MIN + margin <= y <= Y_MAX - margin
-    )
+    from shapely.geometry import Point
+
+    return outline_polygon().buffer(-margin).covers(Point(x, y))
 
 
 @dataclass
@@ -355,6 +369,11 @@ class Report:
 # Chosen inside what a hobby board house builds in 2 oz copper as standard -- 0.2
 # mm track and gap is the usual floor at that weight -- with the margin that
 # makes hand soldering forgiving.
+#
+# AND THE 2 oz IS DECLARED IN THE FILE, 2026-10-07: the board's stackup carries
+# it, so the gerber job file tells the fab 70 um. It said 35 until then, which
+# an outside review caught on a board already in a fab's cart.
+COPPER = 0.07
 
 TRACK = 0.25
 BRANCH = 0.4  # a power or ground net where it leaves its zone for a small part
@@ -363,25 +382,22 @@ EDGE_CLEARANCE = 0.4
 VIA_PAD = 0.8
 VIA_DRILL = 0.4
 HOLE_TO_HOLE = 0.25
-# Round an M3 screw: its head and washer on top, the ÃƒÆ’Ã‹Å“6 spacer underneath.
-SCREW_BODY_KEEPOUT = 4.0
+# Round an M3 screw: its head and washer on top, a 7 mm washer and its nut
+# underneath. 4.0 WHILE A 6 mm SPACER STOOD UNDER IT on the bought board; the
+# board is on the nuts now, and 3.6 is the washer and a tenth. It is what lets
+# a motor header pass under a screw in a strip only 6.85 mm deep.
+SCREW_BODY_KEEPOUT = 3.6
 SCREW_COPPER_KEEPOUT = 3.6
 SCREW_HOLE = e.m3Clearance
 ZONE_CLEARANCE = 0.3
 ZONE_MIN_WIDTH = 0.25
 
-# HOW LONG A TRIMMED LEAD IS under the board, and the one place on this board
-# where that costs something. The bought distribution board's own XT60 input
-# socket stands to within half a millimetre of this board's underside, so a part
-# with a drilled pad over that socket lands its leads inside it. Nothing with a
-# drill goes over this rectangle -- it is a keepout rather than a clearance, and
-# it is the price through-hole pays that surface mount did not. The rectangle
-# comes from cad/electronics.py, which draws the socket, rather than being typed
-# again here.
+# HOW LONG A TRIMMED LEAD IS under the board. It cost something while the
+# bought distribution board's XT60 input socket stood half a millimetre under
+# this board: nothing with a drill could go over it. That board went on
+# 2026-10-07 and what is under the leads now is a millimetre of air over the post
+# tops, which check_against_cad() measures like everything else.
 TAIL = 2.0
-TAIL_CLEARANCE = 0.5
-SOCKET = e.bus_input_socket_box()
-SOCKET_FOULS_TAILS = e.bus_input_socket_top() > (e.powerSwitchBoardZ - TAIL)
 
 
 # ---- placement ---------------------------------------------------------------------
@@ -438,9 +454,9 @@ TARGETS: dict[str, tuple[float, float, int]] = {
     # each cluster gets one island:
     #
     #   THE GATE BAND, between the fuse and the switches, and THE INBOARD POCKET
-    #   forward of the bought board's XT60: the gate drive, with the parts that
-    #   hang off the source copper in the band nearest it and the transistors and
-    #   their followers in the pocket;
+    #   along the inboard edge: the gate drive, with the parts that hang off the
+    #   source copper in the band nearest it and the transistors and their
+    #   followers in the pocket;
     #   THE FRONT STRIP, between the bank and the plugs: the cutoff's divider,
     #   its filter and what feeds the reference;
     #   THE OUTBOARD BLOCK beside the comparator: the hold, round the plug it
@@ -449,29 +465,42 @@ TARGETS: dict[str, tuple[float, float, int]] = {
     # Only R3 and R4 care in the electrical sense -- 10 ohms in series with a
     # gate wants to be at the gate. Everything else here is kilohms and megohms
     # into a comparator, and a long track costs it nothing but room.
-    "D1": (33.2, -16.3, 0),
-    "R2": (38.05, -16.3, 0),
-    "R3": (42.9, -16.3, 0),
-    "R8": (33.2, -13.0, 0),
+    # WHERE legalize() HAD PUT THEM, 2026-10-07, written back as the targets.
+    # The band itself did not change when the bought board went, but P3 grew to
+    # the pack's 14 AWG and J10 took P2's place, and asked for the old targets
+    # the placer cascaded: R26 took R8's slot, R8 took R25's, and R25 had none.
+    # THE ROW OVER THE PACK'S COPPER READ VSRC, RESET_C, VSRC, GATE, VSRC, GATE
+    # until 2026-10-07, so no two of its source pins were neighbours and the
+    # reset line had to cut across the row: once the bus took the inboard column
+    # those two were what was left unrouted in every order tried. D1 and R2 are
+    # in parallel between the same two nets, so R26 and R2 turned end for end:
+    # it reads RESET_C, VSRC, VSRC, GATE, GATE, VSRC now, the reset pin at the
+    # end nearest Q5 and R2's source pin at the gap down to the source pour.
+    "D1": (39.05, -16.3, 0),
+    "R2": (46.2, -16.3, 180),
+    "R3": (32.99, -13.7, 0),
+    "R8": (33.01, -11.51, 0),
     "Q5": (38.0, -13.0, 0),
     "C7": (47.0, 20.0, 180),
-    "R25": (38.0, -10.0, 0),
+    "R25": (39.3, -3.89, 0),
     # R26 SAT AT (48, 16) UNTIL 2026-09-22 and its net ran the length of the
     # board to reach Q5. That routed while there were two switches; with four it
     # does not, and the fix is the one that should have been there anyway --
     # a collector resistor belongs at its collector. RESET_C is 4 mm now, not 29.
-    "R26": (36.0, -13.0, 0),
-    "D2": (42.9, -13.0, 0),
-    # The inboard pocket. Nothing with a lead may stand behind it, over the
-    # bought board's own input socket, and nothing over 7.4 mm may stand in it,
-    # under the pack's own connectors.
+    "R26": (36.27, -16.59, 180),
+    "D2": (43.4, -13.0, 0),
+    # The inboard pocket. IT REACHES FURTHER BACK THAN IT DID, 2026-10-07: the
+    # bought board's input socket kept every lead out from under its rear half
+    # until that board went. And R6, R7 and R9 moved out of the column they
+    # stood in at x 29, because that column is the bus's way forward to the front
+    # strip now; they stand behind the transistors they serve instead.
     "Q4": (23.5, 2.0, 0),
     "Q3": (23.5, 7.0, 0),
-    "R6": (29.1, 0.8, 90),
-    "R7": (29.1, 5.5, 90),
+    "R6": (22.75, -1.4, 0),
+    "R7": (22.75, -3.8, 0),
     "R5": (22.7, 11.0, 0),
     "D3": (22.8, 13.6, 0),
-    "R9": (29.1, 10.2, 90),
+    "R9": (22.75, -6.2, 0),
     "D8": (22.8, 16.0, 0),
     # Outboard of the switches, beside the gate and the button they serve.
     "R4": (70.2, -17.4, 90),
@@ -500,7 +529,10 @@ TARGETS: dict[str, tuple[float, float, int]] = {
     "D4": (67.7, 6.5, 0),
     "D5": (67.7, 9.2, 0),
     "R20": (48.2, 9.5, 0),
-    "R21": (48.2, 12.2, 0),
+    # BESIDE THE COMPARATOR SINCE 2026-10-07, when the ground spine took the
+    # column it stood in: it is the hold comparator's hysteresis, output to
+    # input, which is where it belongs anyway.
+    "R21": (64.05, 4.0, 0),
     "R22": (67.7, 11.9, 0),
     "R23": (67.7, 14.6, 0),
 }
@@ -529,16 +561,28 @@ ZONES = [
     {
         "net": "BATT",
         "layers": ("F.Cu", "B.Cu"),
-        "rects": [(30.0, -24.6, 43.0, -17.9)],
+        # ITS TOP EDGE CAME DOWN 0.7 mm, 2026-10-07, to -18.6, which still takes
+        # in the fuse holder's pins and P1 whole: it leaves a lane under the row
+        # of upright parts above it, the only way the source pins in that row
+        # reach one another past the gate pins between them.
+        # AND ITS BOTTOM EDGE WENT UP 0.6 mm, to -24.0, the same day, for the bus
+        # bar to the rear strip's headers, which has to pass under it. P1 is
+        # still whole inside it.
+        # AND ITS INBOARD EDGE CAME IN 0.5 mm, to 30.5, the same day, for the
+        # ground corridor between it and the rear-left screw: P1 is still on it.
+        "rects": [(30.5, -24.0, 43.0, -18.6)],
         "priority": 2,
     },
     {
         "net": "VSRC",
         "layers": ("F.Cu", "B.Cu"),
+        # ITS OUTBOARD END STOPS AT x 61.95, which is Q2's source pin and no
+        # further, since 2026-10-07: past it is the bus's way back to the rear
+        # strip, down Q2's drain riser.
         "rects": [
-            (48.5, -24.6, 63.0, -17.0),
+            (48.5, -24.0, 61.95, -17.0),
             (53.9, -17.0, 56.3, -13.8),
-            (59.8, -17.0, 62.2, -13.8),
+            (59.8, -17.0, 61.95, -13.8),
         ],
         "priority": 2,
     },
@@ -581,9 +625,28 @@ ZONES = [
         # A pour drawn as boxes that share only a boundary line fills as two
         # islands, and KiCad has reported exactly that on this board before --
         # one VBUS zone unconnected to another VBUS zone.
+        #
+        # AND OUT TO THE SEVEN PLUGS, 2026-10-07, which is where P2 used to hand
+        # the bus to the bought board. Two ways out, because the motor headers
+        # stand in the two strips along the long walls and a screw sits at every
+        # corner, so neither strip can be reached round an end:
+        #
+        #   THE REAR STRIP down Q2's own drain riser, carried on past the source
+        #   pour's outboard end to a bar along the strip, with a stub to the two
+        #   bus pins of each of J4, J5 and J6;
+        #   THE FRONT STRIP up the inboard column at x 28 to 30.7, where R6, R7 and
+        #   R9 stood, to a bar along that strip and a stub to J7, J8 and J9.
+        #
+        # EACH BAR RUNS 26.6 FROM THE CENTRE LINE, where it ran inside the notches
+        # the board had for a day, and the stubs drop from it to the headers' bus
+        # pins.
+        #
+        # J10, the carrier's feed, sits on the bar it replaced P2 on. Its one
+        # ground pin is stepped round: the bar keeps its full depth either side of
+        # it and runs under it 2.5 mm deep.
         "rects": [
             (51.4, -15.5, 53.6, -11.6),
-            (62.4, -15.5, 64.7, -11.6),
+            (62.35, -26.6, 64.7, -11.6),
             # AND TWO MORE FORWARD, to the second row of switches. Same pitch as
             # the pair behind them, because the two rows are the same footprint
             # at the same x: a riser lands on a drain either way it is reached.
@@ -591,9 +654,26 @@ ZONES = [
             (62.4, -9.9, 64.7, -5.5),
             (51.4, -11.6, 67.5, -9.4),
             (44.0, -11.6, 53.0, -9.4),
-            (31.6, -9.9, 46.2, -5.1),
+            (28.0, -9.9, 46.2, -7.35),
+            (28.0, -9.9, 34.0, -5.1),
+            (36.4, -9.9, 46.2, -5.1),
             (31.9, -8.6, 34.1, 4.0),
             (42.9, -9.9, 44.3, 4.0),
+            # the rear strip: the bar, and a stub to each header's bus pins. THE
+            # BARS WENT OUT TO 28.4 FROM THE CENTRE LINE, 2026-10-07, from 26.6,
+            # which is 3.6 mm of copper where there was 1.8: that is as close
+            # as they come to the headers' ground pins, and it carries them past
+            # the screws, whose keepouts had cut the old bar to 1.1 mm by J9.
+            (23.5, -28.4, 64.7, -24.8),
+            (23.5, -30.5, 26.7, -26.5),
+            (36.25, -30.5, 39.45, -26.5),
+            (61.35, -30.5, 64.55, -26.5),
+            # the front strip: the column up to it, the bar, and the stubs
+            (28.0, -9.9, 30.7, 26.6),
+            (28.0, 24.8, 69.5, 28.4),
+            (27.5, 26.5, 30.7, 30.5),
+            (40.25, 26.5, 43.45, 30.5),
+            (65.35, 26.5, 68.55, 30.5),
         ],
         "priority": 1,
     },
@@ -607,6 +687,104 @@ ZONES = [
         "rects": [(X_MIN + 0.5, Y_MIN + 0.5, X_MAX - 0.5, Y_MAX - 0.5)],
         "priority": 0,
         "soft": True,
+    },
+    # AND SOLID ISLANDS OF IT UNDER THE STRIPS OF MOTOR HEADERS, 2026-10-07.
+    # Routed pad to pad like the rest of ground, the headers' ground pins took
+    # long tracks across the middle of the board to join one another, which is
+    # what left two signals unrouted in every order the router tried. An island
+    # joins its own pins, and the router connects it to the rest of ground once.
+    # It is HARD, unlike the pour round it: nothing else may cross it, so it
+    # cannot be cut into the pieces that would make that one connection a lie.
+    # Each is a band behind the pins and a column up beside or between each
+    # header's bus pins, stepping round them.
+    #
+    # FOUR OF THEM, TWO TO A STRIP, which is what the notches the board had for
+    # a day made them. Joined into one a strip once the notches went, they left
+    # the enable line unrouted in all 36 orders; split, the board routes on the
+    # eleventh. Each pair is joined by the ground pour round it either way.
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [
+            (21.95, -32.6, 45.0, -30.85),
+            (27.05, -30.9, 35.9, -27.0),
+            (39.8, -30.9, 45.0, -27.0),
+        ],
+        "priority": 1,
+        "island": True,
+    },
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [
+            (59.0, -32.6, 71.15, -30.85),
+            (64.9, -30.9, 71.15, -27.0),
+        ],
+        "priority": 1,
+        "island": True,
+    },
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [
+            (21.95, 30.85, 45.0, 32.6),
+            (21.95, 27.0, 27.15, 30.9),
+            (31.05, 27.0, 39.9, 30.9),
+        ],
+        "priority": 1,
+        "island": True,
+    },
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [
+            (59.0, 30.85, 71.15, 32.6),
+            (59.0, 27.0, 65.0, 30.9),
+        ],
+        "priority": 1,
+        "island": True,
+    },
+    # AND THE GROUND TRUNK'S DRAWN PART, 2026-10-07. Where the trunk has to go a
+    # particular way it is copper drawn here, like the bus's own column, so the
+    # placer moves small parts out of it and the router cannot cut it; the rest
+    # of it is routed, see TRUNK_PINS.
+    #
+    #   THE SPINE, up the middle from the bank's outboard can to the front row,
+    #   between C7 and J2, and a bar joining the front row's two islands behind
+    #   its plugs. The router's own shortest way to the front was under the
+    #   bus column at the inboard edge, and that walled in the gate-drive parts
+    #   on that side: the bus is over them on the top layer.
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [
+            (48.6, 1.0, 51.4, 30.0),
+            (44.2, 28.9, 61.0, 32.6),
+        ],
+        # 2 AND NOT 1: they overlap the islands they join, on purpose, and
+        # KiCad refuses two zones that intersect at one priority.
+        "priority": 2,
+        "island": True,
+    },
+    #   THE REAR BAR, joining the rear row's two islands the same way.
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        "rects": [(44.2, -32.6, 61.0, -28.9)],
+        "priority": 2,
+        "island": True,
+    },
+    #   THE CORRIDOR from P3 down to the rear row, between the rear-left screw's
+    #   washer and the pack's positive pour: 2.2 mm at its narrowest, past the
+    #   washer, and the only way the rear row reaches the pack on this layer.
+    {
+        "net": "GND",
+        "layers": ("B.Cu",),
+        # Two boxes and not one: a single box reaching in to P3 met the screw's
+        # round keepout at a slant and left two copper slivers KiCad flags.
+        "rects": [(25.0, -17.8, 30.2, -13.2), (27.7, -27.5, 30.2, -17.0)],
+        "priority": 2,
+        "island": True,
     },
 ]
 
@@ -637,7 +815,9 @@ def zone_polygon(zone):
     shape = unary_union([box(*rect) for rect in zone["rects"]])
     for sx, sy in SCREWS:
         shape = shape.difference(Point(sx, sy).buffer(SCREW_COPPER_KEEPOUT, 32))
-    return shape
+    # Inside the real edge by the copper's clearance, which the bounding box is
+    # only while the board is a rectangle.
+    return shape.intersection(outline_polygon().buffer(-EDGE_CLEARANCE))
 
 
 # ---- legalizing the placement ---------------------------------------------------------
@@ -650,8 +830,13 @@ def _pad_shape(x: float, y: float, w: float, h: float):
 
 
 def legal(part: Placed, down: list[Placed], zones) -> bool:
+    from shapely.geometry import box
+
     x0, y0, x1, y1 = part.courtyard()
-    if not (inside_outline(x0, y0, 0.1) and inside_outline(x1, y1, 0.1)):
+    # THE WHOLE COURTYARD, not its two corners: on an outline that is not a
+    # rectangle -- the board was notched for a day -- a part's corners can both be
+    # on the board while its middle is off it.
+    if not outline_polygon().buffer(-0.1).covers(box(x0, y0, x1, y1)):
         return False
     for sx, sy in SCREWS:
         nx = min(max(sx, x0), x1)
@@ -664,15 +849,6 @@ def legal(part: Placed, down: list[Placed], zones) -> bool:
             return False
     nets = net_of()
     for pad, px, py, w, h in part.pads():
-        if pad.drill and SOCKET_FOULS_TAILS:
-            sx0, sy0, sx1, sy1 = SOCKET
-            if (
-                px + w / 2 + TAIL_CLEARANCE > sx0
-                and px - w / 2 - TAIL_CLEARANCE < sx1
-                and py + h / 2 + TAIL_CLEARANCE > sy0
-                and py - h / 2 - TAIL_CLEARANCE < sy1
-            ):
-                return False
         net = nets.get((part.refdes, pad.name))
         shape = _pad_shape(px, py, w, h).buffer(ZONE_CLEARANCE + 0.05)
         for zone, polygon in zones:
@@ -771,9 +947,14 @@ class Grid:
         xs = X_MIN + np.arange(self.nx) * GRID
         ys = Y_MIN + np.arange(self.ny) * GRID
         self.gx, self.gy = np.meshgrid(xs, ys, indexing="ij")
-        edge = np.minimum.reduce(
-            [self.gx - X_MIN, self.gy - Y_MIN, X_MAX - self.gx, Y_MAX - self.gy]
-        )
+        # THE DISTANCE TO THE REAL EDGE, negative off the board, so that an
+        # outline that is not its bounding box is still kept to.
+        import shapely
+
+        board = outline_polygon()
+        distance = shapely.distance(board.exterior, shapely.points(self.gx, self.gy))
+        inside = shapely.contains_xy(board, self.gx, self.gy)
+        edge = np.where(inside, distance, -distance)
         self.edge = edge
         self.screw = np.full_like(edge, 1e3)
         self.drills = np.full_like(edge, 1e3)
@@ -789,6 +970,7 @@ class Grid:
         self.zone_mask: dict[tuple[str, str], object] = {}
         import shapely
 
+        self.islands: list[tuple[str, str, object]] = []
         for zone in ZONES:
             polygon = zone_polygon(zone)
             inside = shapely.contains_xy(polygon, self.gx, self.gy)
@@ -796,6 +978,8 @@ class Grid:
                 key = (zone["net"], layer)
                 prior = self.zone_mask.get(key)
                 self.zone_mask[key] = inside if prior is None else (prior | inside)
+                if zone.get("island"):
+                    self.islands.append((zone["net"], layer, inside))
         nets = net_of()
         self.pad_cells: dict[tuple[str, str], list[tuple[int, int, int]]] = {}
         for part in parts:
@@ -877,6 +1061,9 @@ class Grid:
             block |= self.screw < (half + CLEARANCE)
             for (zone_net, zone_layer), mask in self.zone_mask.items():
                 if zone_layer == layer and zone_net != net and zone_net not in SOFT:
+                    block |= self._dilate(mask, half + ZONE_CLEARANCE + MARGIN)
+            for zone_net, zone_layer, mask in self.islands:
+                if zone_layer == layer and zone_net != net:
                     block |= self._dilate(mask, half + ZONE_CLEARANCE + MARGIN)
             if via:
                 block |= self.drills < (VIA_DRILL / 2 + HOLE_TO_HOLE + MARGIN)
@@ -1023,8 +1210,52 @@ def _track(grid: Grid, run, net: str, width: float):
 # The nets with the least room to find a way through, first. Ground is early
 # rather than late for the same reason: each of its pads is one via from the
 # pour under the board, and a via needs somewhere to sit.
-ROUTE_FIRST = ("FAST_E", "HOLD_REF", "GATE", "GND", "VSRC", "VBUS", "EN", "REF")
-PASSES = 16
+# MILLER, HOLD_IN AND UV_IN JOINED IT ON 2026-10-07. The board grew two strips
+# of motor headers whose grounds have to reach the rest through the middle, and
+# the bus took the inboard column up to the front strip; with those down first,
+# the three of them were what was left over in every one of sixteen orders.
+ROUTE_FIRST = (
+    "RESET_C",
+    "RESET_B",
+    "MILLER",
+    "HOLD_IN",
+    "UV_IN",
+    "FAST_E",
+    "HOLD_REF",
+    "GATE",
+    "GND",
+    "VSRC",
+    "VBUS",
+    "EN",
+    "REF",
+)
+PASSES = 36
+
+# THE GROUND TRUNK, 2026-10-07: 2 mm of bottom-layer copper from the pack's
+# negative to everything that returns real current through it, laid before any
+# signal and with no via in it. Until then ground was routed pad to pad at signal
+# width like every other net, with a soft pour over the bottom layer that was
+# meant to carry the current -- and the signals routed after it cut that pour
+# into pieces. An outside review measured the filled board: the front row of
+# motor plugs, the bank and the carrier's feed all reached P3 through one
+# 0.25 mm track. KiCad's DRC was clean, because a track is a connection; it does
+# not ask what the connection can carry. check_power_paths() does now.
+#
+# Each island is reached anywhere on it rather than at a pin, which is what an
+# island is for. 2 mm is about 9 A in 2 oz copper on an outer layer for a 20 C
+# rise, which is three motors at the 3 A their own plug allows.
+TRUNK_WIDTH = 2.0
+TRUNK_PINS = (
+    ("P3", "1"),
+    ("P4", "1"),
+    ("C5", "2"),
+    ("C6", "2"),
+    ("J10", "3"),
+    ("J4", "3"),
+    ("J6", "3"),
+    ("J7", "3"),
+    ("J9", "3"),
+)
 
 
 def _pins_by_net(parts: list[Placed]) -> dict[str, list[tuple[str, str]]]:
@@ -1047,7 +1278,9 @@ def _one_pass(parts: list[Placed], order: list[str], by_net):
     # open circuit both times this board has been laid out, once as a surface
     # mount board and once as this one. Routed as well, the pour shares the
     # current and nothing depends on the fill staying in one piece.
-    zoned = {zone["net"] for zone in ZONES if not zone.get("soft")}
+    zoned = {
+        zone["net"] for zone in ZONES if not zone.get("soft") and not zone.get("island")
+    }
     tracks: list[dict] = []
     vias: list[dict] = []
     failures: list[str] = []
@@ -1056,11 +1289,14 @@ def _one_pass(parts: list[Placed], order: list[str], by_net):
         for part in parts
         for pad, x, y, _, _ in part.pads()
     }
+    trunk = _route_trunk(grid, positions, tracks, vias, failures)
     for net in order:
         pins = by_net[net]
         width = BRANCH if net in zoned else TRACK
-        tree: set[tuple[int, int, int]] = set()
+        tree: set[tuple[int, int, int]] = set(trunk) if net == "GND" else set()
         todo = list(pins)
+        if net == "GND":
+            todo = [p for p in pins if not any(c in tree for c in grid.pad_cells[p])]
         if net in zoned:
             for (zone_net, layer), mask in grid.zone_mask.items():
                 if zone_net != net:
@@ -1076,8 +1312,34 @@ def _one_pass(parts: list[Placed], order: list[str], by_net):
                 ix, iy = grid.np.nonzero(inside)
                 tree.update((int(a), int(b), li) for a, b in zip(ix, iy))
             todo = [p for p in pins if not any(c in tree for c in grid.pad_cells[p])]
+        # THE ISLANDS: each pin standing in one belongs to it, and when the first
+        # of them is joined to the tree the whole island and every pin in it is.
+        islands = []
+        for zone_net, layer, mask in grid.islands:
+            if zone_net != net:
+                continue
+            li = LAYERS.index(layer)
+            inside = ~grid._dilate(~mask, 0.25)
+            ix, iy = grid.np.nonzero(inside)
+            islands.append({(int(a), int(b), li) for a, b in zip(ix, iy)})
+        member = {
+            pin: i
+            for pin in pins
+            for i, cells in enumerate(islands)
+            if any(c in cells for c in grid.pad_cells[pin])
+        }
+
+        def absorb(pin) -> None:
+            if pin not in member:
+                return
+            i = member[pin]
+            tree.update(islands[i])
+            todo[:] = [p for p in todo if member.get(p) != i]
+
         if not tree:
-            tree.update(grid.pad_cells[todo.pop(0)])
+            first = todo.pop(0)
+            tree.update(grid.pad_cells[first])
+            absorb(first)
         sample = [
             grid.point(c[0], c[1]) for c in list(tree)[:: max(1, len(tree) // 300)]
         ]
@@ -1107,7 +1369,84 @@ def _one_pass(parts: list[Placed], order: list[str], by_net):
             tree.update(path)
             tree.update(grid.pad_cells[target])
             sample += [grid.point(p[0], p[1]) for p in path[:: max(1, len(path) // 8)]]
+            if target in member:
+                absorb(target)
+                sample += [
+                    grid.point(c[0], c[1]) for c in list(islands[member[target]])[::200]
+                ]
     return tracks, vias, failures, grid
+
+
+def _island_cells(grid: Grid) -> list[set[tuple[int, int, int]]]:
+    """Each ground island's cells, a quarter of a millimetre in from its edge,
+    with islands that overlap one another taken as one: the spine and the bars
+    are drawn overlapping the islands they join."""
+    out = []
+    for zone_net, layer, mask in grid.islands:
+        if zone_net != "GND":
+            continue
+        li = LAYERS.index(layer)
+        inside = ~grid._dilate(~mask, 0.25)
+        ix, iy = grid.np.nonzero(inside)
+        out.append({(int(a), int(b), li) for a, b in zip(ix, iy)})
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(out)):
+            for j in range(i + 1, len(out)):
+                if out[i] & out[j]:
+                    out[i] |= out.pop(j)
+                    merged = True
+                    break
+            if merged:
+                break
+    return out
+
+
+def _route_trunk(grid: Grid, positions, tracks, vias, failures) -> set:
+    """Lay the ground trunk on the bottom layer and return its cells."""
+    bottom = LAYERS.index("B.Cu")
+    islands = _island_cells(grid)
+
+    def landing(pin):
+        pad = {c for c in grid.pad_cells[pin] if c[2] == bottom}
+        for cells in islands:
+            if pad & cells:
+                return cells
+        return pad
+
+    tree = set(landing(TRUNK_PINS[0])) | {
+        c for c in grid.pad_cells[TRUNK_PINS[0]] if c[2] == bottom
+    }
+    todo = list(TRUNK_PINS[1:])
+    while todo:
+        sample = [
+            grid.point(c[0], c[1]) for c in list(tree)[:: max(1, len(tree) // 300)]
+        ]
+        todo.sort(key=lambda p: min(math.dist(positions[p], q) for q in sample))
+        pin = todo.pop(0)
+        targets = landing(pin)
+        if targets & tree:
+            tree.update(targets)
+            continue
+        blocked = grid.blocked("GND", TRUNK_WIDTH)
+        # ONE LAYER AND NO VIA: a via is 0.8 mm of barrel, which is what the
+        # trunk is there to replace.
+        blocked["F.Cu"] = grid.np.ones_like(blocked["F.Cu"])
+        no_via = {layer: grid.np.ones_like(blocked["F.Cu"]) for layer in LAYERS}
+        path = _astar(grid, blocked, no_via, tree, targets, grid.cell(*positions[pin]))
+        if path is None:
+            failures.append(f"GND trunk to {pin[0]}.{pin[1]}")
+            continue
+        new_tracks, new_vias = _geometry(grid, path, "GND", TRUNK_WIDTH)
+        for track in new_tracks:
+            grid.stamp_track(track["layer"], track["points"], "GND", TRUNK_WIDTH)
+        tracks += new_tracks
+        vias += new_vias
+        tree.update(path)
+        tree.update(targets)
+        tree.update(grid.pad_cells[pin])
+    return tree
 
 
 def route(parts: list[Placed], report: Report):
@@ -1117,16 +1456,32 @@ def route(parts: list[Placed], report: Report):
     board is laid again, which is the only rip-up this router has and is usually
     enough: what blocks a net is nearly always a net that went down before it.
     """
+    import random
+
     by_net = _pins_by_net(parts)
     rest = sorted(n for n in by_net if n not in ROUTE_FIRST)
     first: list[str] = []
     best = None
+    tried: set[tuple[str, ...]] = set()
+    # A SEEDED SHUFFLE WHEN AN ORDER COMES ROUND AGAIN, 2026-10-07. Pushing each
+    # pass's failures to the front settles into a cycle on a crowded board -- the
+    # same four orders over and over from the thirteenth pass on -- and every
+    # pass after that is spent learning nothing. Seeded, so a run is repeatable.
+    shuffle = random.Random(7)
     for attempt in range(PASSES):
         order = (
             [n for n in first if n in by_net]
             + [n for n in ROUTE_FIRST if n in by_net and n not in first]
             + [n for n in rest if n not in first]
         )
+        if tuple(order) in tried:
+            shuffle.shuffle(first)
+            order = (
+                [n for n in first if n in by_net]
+                + [n for n in ROUTE_FIRST if n in by_net and n not in first]
+                + [n for n in rest if n not in first]
+            )
+        tried.add(tuple(order))
         tracks, vias, failures, grid = _one_pass(parts, order, by_net)
         print(f"route pass {attempt + 1}: unfinished {failures}", flush=True)
         copper = sum(
@@ -1234,7 +1589,7 @@ def bodies(part: Placed) -> list[tuple[str, tuple[float, ...]]]:
             out.append(
                 (
                     "tail",
-                    (x - w / 2, y - h / 2, x + w / 2, y + h / 2, bottom - 2.0, bottom),
+                    (x - w / 2, y - h / 2, x + w / 2, y + h / 2, bottom - TAIL, bottom),
                 )
             )
     return out
@@ -1245,7 +1600,6 @@ def bodies(part: Placed) -> list[tuple[str, tuple[float, ...]]]:
 STAND_INS = {
     "power switch board",
     "power switch parts",
-    "power switch spacers",
     # The bank is two parts ON this board now, so the CAD's cans are this file's
     # own C5 and C6 drawn twice rather than something to clear.
     "capacitor bank",
@@ -1311,6 +1665,183 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
                         nearest[label] = (gap, name)
     for label, (gap, name) in sorted(nearest.items(), key=lambda item: item[1][0])[:8]:
         report.notes.append(f"{label}: {gap:.2f} mm from the {name}")
+
+
+# ---- what the copper can carry -------------------------------------------------------
+#
+# 2026-10-07, after an outside review found what nothing here asked: the front row
+# of motor plugs, the bank and the carrier's feed reached the pack's negative
+# through a single 0.25 mm track, on a board KiCad passed with no errors. DRC asks
+# whether things are joined. This asks how wide the narrowest copper is on the
+# way, measured on the board KiCad saved -- its own fills, tracks, vias and pads
+# -- by eroding the copper until the two ends come apart.
+#
+# 2 mm is about 9 A in 2 oz copper on an outer layer at a 20 C rise, which is a
+# row of three motors at the 3 A their own plug allows. Vias and through-hole
+# pads are where the two layers meet; a path that has to change layer through a
+# single 0.8 mm via shows up as that via.
+MIN_POWER_PATH = 2.0
+POWER_PATHS = [
+    *(
+        (
+            "GND",
+            f"motor output {n - 3} ground",
+            [(f"J{n}", "3"), (f"J{n}", "4")],
+            [("P3", "1")],
+        )
+        for n in range(4, 10)
+    ),
+    *(
+        (
+            "VBUS",
+            f"motor output {n - 3} bus",
+            [(f"J{n}", "1"), (f"J{n}", "2")],
+            [("Q1", "2"), ("Q2", "2"), ("Q6", "2"), ("Q7", "2")],
+        )
+        for n in range(4, 10)
+    ),
+    ("GND", "bank ground, C5", [("C5", "2")], [("P3", "1")]),
+    ("GND", "bank ground, C6", [("C6", "2")], [("P3", "1")]),
+]
+
+
+def _board_copper(net: str):
+    """(copper by layer, places the layers meet, pad centres) for one net, in
+    KiCad's frame, from the saved board."""
+    from shapely.geometry import LineString, Point, Polygon
+    from shapely.ops import unary_union
+
+    board = parse_sexpr(BOARD_FILE.read_text(encoding="utf-8"))
+    copper: dict[str, list] = {layer: [] for layer in LAYERS}
+    joins: list[tuple[float, float]] = []
+    pads: dict[tuple[str, str], list[tuple[float, float]]] = {}
+
+    def net_of_node(node) -> str | None:
+        found = _child(node, "net")
+        return found[-1] if found else None
+
+    for zone in _children(board, "zone"):
+        if net_of_node(zone) != net:
+            continue
+        for fill in _children(zone, "filled_polygon"):
+            layer = _child(fill, "layer")[1]
+            points = [
+                (float(q[1]), float(q[2])) for q in _children(_child(fill, "pts"), "xy")
+            ]
+            copper[layer].append(Polygon(points).buffer(0))
+    for segment in _children(board, "segment"):
+        if net_of_node(segment) != net:
+            continue
+        start, end = _child(segment, "start"), _child(segment, "end")
+        width = float(_child(segment, "width")[1])
+        line = LineString(
+            [(float(start[1]), float(start[2])), (float(end[1]), float(end[2]))]
+        )
+        copper[_child(segment, "layer")[1]].append(line.buffer(width / 2))
+    for via in _children(board, "via"):
+        if net_of_node(via) != net:
+            continue
+        at = _child(via, "at")
+        x, y = float(at[1]), float(at[2])
+        disc = Point(x, y).buffer(float(_child(via, "size")[1]) / 2)
+        for layer in LAYERS:
+            copper[layer].append(disc)
+        joins.append((x, y))
+    for footprint in _children(board, "footprint"):
+        at = _child(footprint, "at")
+        fx, fy = float(at[1]), float(at[2])
+        angle = math.radians(float(at[3]) if len(at) > 3 else 0.0)
+        ref = next(
+            (q[2] for q in _children(footprint, "property") if q[1] == "Reference"),
+            "?",
+        )
+        for pad in _children(footprint, "pad"):
+            if net_of_node(pad) != net:
+                continue
+            pat, size = _child(pad, "at"), _child(pad, "size")
+            px, py = float(pat[1]), float(pat[2])
+            x = fx + px * math.cos(angle) + py * math.sin(angle)
+            y = fy - px * math.sin(angle) + py * math.cos(angle)
+            # The pad's inscribed circle: certainly copper, whatever its shape.
+            radius = min(float(size[1]), float(size[2])) / 2
+            disc = Point(x, y).buffer(radius)
+            layers = _child(pad, "layers")[1:]
+            for layer in LAYERS:
+                if "*.Cu" in layers or layer in layers:
+                    copper[layer].append(disc)
+            if pad[2] == "thru_hole":
+                joins.append((x, y))
+            pads.setdefault((ref, pad[1]), []).append((x, y, radius))
+    return {k: unary_union(v) for k, v in copper.items()}, joins, pads
+
+
+def _joined(copper, joins, erode: float, a_points, b_points) -> bool:
+    """Whether copper eroded by `erode` still joins a point of a to a point of b."""
+    from shapely.geometry import Point
+
+    pieces = []
+    for layer, shape in copper.items():
+        eroded = shape.buffer(-erode) if erode else shape
+        parts = list(eroded.geoms) if hasattr(eroded, "geoms") else [eroded]
+        pieces += [(layer, g) for g in parts if not g.is_empty]
+    parent = list(range(len(pieces)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for x, y in joins:
+        here = Point(x, y)
+        hit = [i for i, (_, g) in enumerate(pieces) if g.distance(here) < 1e-6]
+        for i in hit[1:]:
+            parent[find(i)] = find(hit[0])
+
+    # THE END PADS ARE TERMINALS, NOT COPPER TO BE MEASURED: current comes in
+    # through the pin, so whatever copper still reaches the pad's own outline
+    # after the erosion is joined to it. Measured from the pin's centre instead,
+    # a 1.2 mm connector pad at the edge of its stub read as a 1.2 mm path.
+    def groups(points):
+        out = set()
+        for x, y, radius in points:
+            here = Point(x, y)
+            out |= {
+                find(i)
+                for i, (_, g) in enumerate(pieces)
+                if g.distance(here) <= erode + radius + 1e-6
+            }
+        return out
+
+    return bool(groups(a_points) & groups(b_points))
+
+
+def check_power_paths(report: Report) -> None:
+    """The narrowest copper between each power pin and its source, on the saved
+    board, against MIN_POWER_PATH."""
+    cache: dict[str, tuple] = {}
+    for net, what, from_pins, to_pins in POWER_PATHS:
+        if net not in cache:
+            cache[net] = _board_copper(net)
+        copper, joins, pads = cache[net]
+        a = [xy for pin in from_pins for xy in pads.get(pin, [])]
+        b = [xy for pin in to_pins for xy in pads.get(pin, [])]
+        if not (a and b and _joined(copper, joins, 0.0, a, b)):
+            report.faults.append(f"{what}: not joined to its source at all")
+            continue
+        low, high = 0.0, 3.0
+        for _ in range(9):
+            mid = (low + high) / 2
+            if _joined(copper, joins, mid, a, b):
+                low = mid
+            else:
+                high = mid
+        width = 2 * low
+        line = f"{what}: {width:.2f} mm of copper at its narrowest"
+        if width < MIN_POWER_PATH - 0.05:
+            report.faults.append(f"{line}, under the {MIN_POWER_PATH} mm it wants")
+        else:
+            report.notes.append(line)
 
 
 # ---- building it in KiCad ------------------------------------------------------------
@@ -1418,6 +1949,12 @@ def description(parts: list[Placed], tracks, vias) -> dict:
             for outline, holes in zone_pieces(zone)
         ],
         "title": "power switch board -- generated by electrical/power_pcb.py, do not edit",
+        "stackup": {
+            "copper": COPPER,
+            "mask": 0.01,
+            "board": e.pcbThickness,
+            "finish": "HAL SnPb",
+        },
     }
 
 
@@ -1608,6 +2145,8 @@ def main() -> int:
         build_in_kicad(parts, tracks, vias, report)
         if not report.faults:
             drc(report)
+        if not report.faults:
+            check_power_paths(report)
     if not args.no_cad:
         check_against_cad(report, parts)
 

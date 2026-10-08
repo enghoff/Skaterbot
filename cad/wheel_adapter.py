@@ -24,9 +24,15 @@ from __future__ import annotations
 from build123d import Axis, Cylinder, Pos, Rot
 
 from cad.joint import outputDisc
-from cad.parameters import actuatorOutputBoltCircle, journalSeatDepth, rotorHubOuterX
+from cad.parameters import (
+    actuatorOutputBoltCircle,
+    journalSeatDepth,
+    rotorHubInnerX,
+    rotorHubOuterX,
+)
 from cad.wheeled_parameters import (
     wheelKeyAccessDiameter,
+    wheelSpigotClearance,
     wheelSpigotDiameter,
     wheelSpigotInsertBore,
     wheelSpigotInsertDepth,
@@ -55,10 +61,11 @@ plugInnerX = rotorHubOuterX - journalSeatDepth - plugSeatOverlap
 plugOuterX = rotorHubOuterX + 4.0
 plugCenterX = (plugInnerX + plugOuterX) / 2
 
-# The insert's bore runs from the spigot's end right through to the disc's back
-# face, and the insert sits flush at the spigot's end.
-insertOuterX = spigotOuterX
-insertInnerX = spigotOuterX - wheelSpigotInsertDepth
+# The insert's pocket runs in from the disc's back face to a step, and the
+# insert is pressed in from that side until it stops against it. The screw's
+# clearance carries on from the step to the spigot's end.
+insertInnerX = rotorHubInnerX
+insertOuterX = insertInnerX + wheelSpigotInsertDepth
 
 
 def _disc(diameter: float, thickness: float, x: float = 0.0):
@@ -91,28 +98,28 @@ def wheelAdapterRight() -> list:
     for i in range(6):
         spigotAfterKeyAccess -= firstKeyCut.rotate(Axis.X, i * 60)
 
-    # THROUGH ALL THREE BODIES, a millimetre past both ends of the part. The
-    # export unites them, so a bore cut in one body and not in the others is
-    # filled back in by whichever was missed -- the plug crosses this axis inside
-    # the disc, and the disc is the plug's whole length. It used to be cut in the
-    # spigot alone, which was enough while the bore was a pocket in the spigot's
-    # far end and stops being enough the moment it reaches the disc.
-    #
-    # The old cutter also overran INBOARD, past the pocket's floor, so the
-    # pocket came out 2 mm deeper than declared. Through, there is no floor for
-    # an overrun to move.
-    insertCutter = _disc(
-        wheelSpigotInsertBore,
-        wheelSpigotInsertDepth + 2.0,
-        (insertInnerX + insertOuterX) / 2,
+    # IN ALL THREE BODIES. The export unites them, so a bore cut in one body and
+    # not in the others is filled back in by whichever was missed -- the plug
+    # crosses this axis inside the disc, and the pocket's step falls inside the
+    # spigot. The screw's clearance runs a millimetre past both ends of the part,
+    # and the insert's pocket a millimetre out past the back face and no further
+    # in than its step: the old cutter overran inboard past its floor and came
+    # out 2 mm deeper than declared, and here that floor is the step the insert
+    # is pressed against.
+    clearance = _disc(
+        wheelSpigotClearance,
+        spigotOuterX - insertInnerX + 2.0,
+        (insertInnerX + spigotOuterX) / 2,
     )
-    adapterDisc = adapterDiscRaw - insertCutter
-    spigot = spigotAfterKeyAccess - insertCutter
+    pocketLength = wheelSpigotInsertDepth + 1.0
+    pocket = _disc(wheelSpigotInsertBore, pocketLength, insertOuterX - pocketLength / 2)
+
+    def bored(body):
+        return body - clearance - pocket
 
     plugRaw = _disc(wheelSpigotPlugDiameter, plugOuterX - plugInnerX, plugCenterX)
-    plug = plugRaw - insertCutter
 
-    return [adapterDisc, spigot, plug]
+    return [bored(adapterDiscRaw), bored(spigotAfterKeyAccess), bored(plugRaw)]
 
 
 def wheelAdapterLeft() -> list:

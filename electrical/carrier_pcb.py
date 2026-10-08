@@ -217,7 +217,16 @@ def dip8_socket() -> Footprint:
 
 
 def radial_mlcc() -> Footprint:
-    """A dipped 100 nF X7R on 2.54 mm leads, stood upright."""
+    """A dipped 100 nF X7R on 2.54 mm leads, stood upright.
+
+    KEMET's C315 CASE SINCE 2026-10-07, C315C104K5R5TA: 3.81 long, 2.54 thick
+    and 3.14 tall at most on KEMET's own sheet, with up to 1.52 of coating down
+    the leads, so inside the 4.0 x 2.6 x 6.0 drawn here. The bill named
+    the C320 until then, which is 5.08 x 3.18, and an outside review found it did
+    not fit what was drawn: at its own size it stood within 0.25 mm of a
+    neighbour in seven places round the transceivers. The smaller case is the
+    same capacitor, so the part changed and not the layout.
+    """
     return Footprint(
         "C radial 2.54",
         (
@@ -406,24 +415,21 @@ def ina226_module() -> Footprint:
     and its two mounting holes come down on the two M2 standoffs instead of near
     them.
 
-    ITS SCREW TERMINALS ARE LEFT EMPTY and the shunt's twisted pair lands on J7
-    instead, because IN+ and IN- are on the header too. What that buys is a pair
-    that arrives in a connector with strain relief on the edge of the board, on a
-    deck whose whole stack is meant to lift out on plugs, rather than in two screw
-    terminals in the middle of it facing the charge socket. What it costs is that
-    the 75 mV now crosses about 20 mm of this board's copper as a pair over the
-    ground plane, where before it never touched the board at all.
+    ITS SCREW TERMINALS ARE LEFT EMPTY, and IN+ and IN- -- which are on the
+    header too -- go to ground on this board. They took a twisted pair from the
+    main bus shunt on J7 until that shunt went with the current measurement on
+    2026-09-16; since 2026-10-07 J7 is the power switch board's hold lead and the
+    two inputs are tied down rather than left to float.
 
-    THE MODULE CARRIES ITS OWN 0.1 OHM SHUNT between those two pins. It stays in
-    circuit, in parallel with whatever external shunt is fitted, so a milliohm
-    shunt reads about half a percent low unless R100 is lifted off the module.
+    THE MODULE CARRIES ITS OWN 0.1 OHM SHUNT between those two pins. With both of
+    them at ground it carries nothing and can stay on.
 
     The two mounting holes are the outer pair of the four in the board's own
     column -- busSenseHolePitch 16.7, busSenseHoleInset 2.5, both read off the
     vendor's photographs and neither measured.
     """
-    # Pin 1 at the rear, pin 8 at the front, so that IN+ and IN- come out of the
-    # end nearest J7 and the pair is as short as this board can make it.
+    # Pin 1 at the rear, pin 8 at the front. IN+ and IN- came out of the end
+    # nearest the shunt's plug while there was one; they go to ground now.
     span = PITCH * 7
     pads = tuple(
         Pad(
@@ -452,14 +458,20 @@ def ina226_module() -> Footprint:
 
 
 def radial_ptc() -> Footprint:
-    """A resettable fuse on 5.08 mm leads, standing on the bus feed."""
+    """A resettable fuse on 5.08 mm leads, standing on the bus feed.
+
+    THE BODY IS THE RXEF185'S OWN, 2026-10-07: a 17.5 mm disc, 3.0 mm thick and
+    22.4 mm tall seated, the distributors' figures for Littelfuse's part. It was
+    drawn 12.1 wide and 13 tall until an outside review held it against the
+    listing; the thickness keeps the 3.6 it had, for the leads' kink.
+    """
     return Footprint(
         "PTC radial P5.08",
         (
             Pad("1", 0.0, 0.0, 1.8, 1.8, 1.0, "rect"),
             Pad("2", 5.08, 0.0, 1.8, 1.8, 1.0),
         ),
-        (Body((-3.5, -1.8, 8.58, 1.8, 0.0, 13.0)),),
+        (Body((2.54 - 8.75, -1.8, 2.54 + 8.75, 1.8, 0.0, 22.4)),),
     )
 
 
@@ -702,8 +714,8 @@ def _fp(refdes: str) -> Footprint:
 #    comment, which is how the claim survived unexamined in the first place.
 #
 # The front edge carries what goes UP rather than down -- the SBC's own cable,
-# and the bus feed and shunt pair that come through a second opening in the deck
-# over the distribution board.
+# the bus feed that comes through a second opening in the deck over the power
+# bay, and since 2026-10-07 the power switch board's hold lead.
 REAR_ROW_Y = 3.0
 FRONT_ROW_Y = BOARD_D - 3.0
 
@@ -735,24 +747,24 @@ PLACEMENT = {
     "J3": (99.0, REAR_ROW_Y, 180),
     "J2": (115.0, REAR_ROW_Y, 180),
     # The front edge: the SBC's cable under its own 40-pin header, and the bus
-    # feed where the deck's second opening brings it up over the power bay. The
-    # shunt's pair comes up the same way, beside the feed it measures.
+    # feed where the deck's second opening brings it up over the power bay.
     "J5": (56.0, FRONT_ROW_Y, 0),
     "J1": (110.0, FRONT_ROW_Y, 0),
-    # THE SHUNT'S PAIR IS NOT ON AN EDGE ROW, and it is the only part on this
-    # board that is not. Both rows are full -- the front one down to 3.5 mm gaps
-    # between the bulk, bus A's decoupling pair and the mounting station at x 100,
-    # the rear one to 3.6 mm between the three bus connectors -- and this is the
-    # one measurement on the robot that is worth a special case. It stands in the
-    # channel between the SBC's outboard edge and the monitor, 6 mm from the two
-    # pins it feeds, where nothing overhangs it and a plug has its full height.
-    # The two I2C pull-ups moved aft to make room; a pull-up belongs to the bus
-    # rather than to either sensor and does not care where it sits.
-    "J7": (109.0, 35.0, 0),
-    # The bus feed's own hardware, in the outboard strip where the fuse's 13 mm
-    # of height is not under the SBC.
-    "F1": (122.0, 43.0, 0),
-    "C9": (130.0, 36.0, 0),
+    # THE POWER SWITCH BOARD'S HOLD LEAD, 2026-10-07, at the front edge in front
+    # of the core board, where the strip between its header and the edge was
+    # empty. Pin 2 stands straight in front of P1-7, the button's pin, and pin
+    # 1's track runs left to P1-17, away from it, so the two never cross.
+    # Its plug's 9.8 mm clears the core board's own edge by 2 mm. This number was
+    # the shunt's sense pair until then, a two-pin plug in the channel beside the
+    # monitor; the shunt went on 2026-09-16 and so has that plug.
+    "J7": (21.0, FRONT_ROW_Y, 0),
+    # The bus feed's own hardware, in the outboard strip where the fuse's height
+    # is not under the SBC. THE FUSE CAME 6.4 mm BACK FROM THE FRONT EDGE AND 1.3
+    # INBOARD on 2026-10-07, when it was drawn at the RXEF185's real 17.5 mm
+    # across: at the edge it stood 2.7 mm from the mounting hole where 4 is
+    # wanted. The can it feeds took the front-edge spot instead.
+    "F1": (120.7, 36.6, 0),
+    "C9": (125.0, 43.0, 0),
     # Bulk on the 5 V rail, at the SBC's cable, which is the load that takes most
     # of it. It sat by the BEC's old header; the BEC's output pin is under the
     # module now and there is nothing standing beside it to put a can on.
@@ -1927,12 +1939,16 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
         report.notes.append(f"{label}: {gap:.2f} mm from the {name}")
 
 
-# THE ONE PLUG ON THIS BOARD WHOSE LEAD DOES NOT GO DOWN. J5 runs up to the SBC
-# standing 10 mm above it on its own standoffs, so the deck under J5 is nothing
-# to do with J5. Every other plug here is fed from the bay below or from a leg
-# beyond it, and has to get through the deck to be fed at all. JP1 is not in this
-# list because it is not a plug: it is three holes and a wire link.
-LEADS_UP = ("J5",)
+# THE TWO PLUGS ON THIS BOARD WHOSE LEADS DO NOT GO STRAIGHT DOWN. J5 runs up to
+# the SBC standing 10 mm above it on its own standoffs, so the deck under J5 is
+# nothing to do with J5. J7, since 2026-10-07, is the power switch board's hold
+# lead, and it stands at the front edge in front of the core board where the
+# deck under it is solid: its lead comes up through the deck's front opening
+# beside J1 and runs along the front edge to it, about 90 mm, on a 250 mm lead.
+# Every other plug here is fed from the bay below or from a leg beyond it, and
+# has to get through the deck where it stands. JP1 is not in this list because
+# it is not a plug: it is three holes and a wire link.
+LEADS_UP = ("J5", "J7")
 
 
 def check_leads_down(report: Report, parts: list[Placed]) -> None:

@@ -185,23 +185,6 @@ bodies = 1  # a plain tube
 print_up = "+X"  # standing on one end
 note = "Ø10 x Ø5.3 x 7. Print spares: it is the one piece here that gets fitted to a bearing bore. A millimetre longer since 2026-09-30, which is the washer it replaced: it stands that far past the bearing so the screw's head sits where it did."
 
-# THE POWER SWITCH BOARD'S FOUR SPACERS, printed since 2026-09-30 because the
-# unthreaded Ø6 x 8 spacer they are is in nobody's stock. cad/electronics.py
-# says what was tried. A tube bored for the M3 clearance, printed standing up.
-[[printed]]
-file = "cad/electronics.py"
-label = "Power switch spacers, four"
-measure = ["powerSwitchSpacerPrint"]
-count = 4
-
-[[printed.piece]]
-name = "power-switch-spacer"
-export = "powerSwitchSpacerPrint"
-prints = 4
-bodies = 1  # a plain tube
-print_up = "+Z"  # standing on one end
-note = "Ø6 x Ø3.4 x 8, between the distribution board and the power switch board on each of the four M3 x 20. Print spares."
-
 [[printed]]
 file = "cad/wheel_adapter.py"
 label = "Wheel adapters, the pair"
@@ -333,8 +316,8 @@ note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of t
 
 [[fixed]]
 label = "Fasteners"
-total_g = 61.0
-note = """45 g of M3 sets plus 16 g for the two wheel clamps, which since 2026-10-06 are an M5 x 25 cap screw (5.3 g, the ISO 4762 head and shank in steel), a plain M5 washer, Ø11 x 1.5 (0.9 g), and an M5 x 10 brass heat-set insert on a 7 mm knurl (1.9 g) each -- all three computed from their catalogue dimensions, none weighed. The printed cap each one sits in is measured from the CAD with the printed parts. THIS LINE CARRIED 6 g FOR THE CLAMPS UNTIL THEN, which was never right: the Ø30 x 2 steel washer it named was 10.7 g on its own, so the clamps were about 31 g for the pair and the line was 25 g light. The cap took the washer's place, and the clamps are 16 g. docs/BOM.md section 10 has the arithmetic for the screw's length. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
+total_g = 62.0
+note = """45 g of M3 sets plus 17 g for the two wheel clamps, which since 2026-10-06 are an M5 x 30 cap screw (6.0 g, the ISO 4762 head and shank in steel), a plain M5 washer, Ø11 x 1.5 (0.9 g), and ThinkRobotics' M5 brass heat-set insert on a 7 mm knurl, 8 mm long by its drawing (1.5 g) each -- all three computed from their catalogue dimensions, none weighed. The printed cap each one sits in is measured from the CAD with the printed parts. THIS LINE CARRIED 6 g FOR THE CLAMPS UNTIL THEN, which was never right: the Ø30 x 2 steel washer it named was 10.7 g on its own, so the clamps were about 31 g for the pair and the line was 25 g light. The cap took the washer's place, and the clamps are 17 g. docs/BOM.md section 10 has the arithmetic for the screw's length. The M3 figure is docs/BOM.md's 60 g estimate for eight joints, pro-rated to six at ten screws a joint. That estimate is known to be low -- BOM.md section 10 puts the installed schedule nearer 90 g for eight, so about 68 g for six -- and it is left at the pro-rated figure only so that this line keeps meaning the same thing it did before hip roll went."""
 
 [[fixed]]
 label = "Electronics and wiring"
@@ -348,20 +331,14 @@ note = """TWO CANS, WEIGHED OFF A DATA SHEET RATHER THAN ALLOWED FOR, September 
 
 [[fixed]]
 label = "Power switch board"
-total_g = 33.8
-note = """The second board this project designs for itself, September 2026: the bought distribution board's own 50 x 50 footprint in 1.6 mm two-layer FR-4, standing 8 mm over it in the pack's positive lead, carrying the main fuse, a MOSFET switch that is the robot's on/off and its low-battery cutoff, and the bulk bank. electrical/power.py is the circuit, electrical/power_pcb.py the board and electrical/power_sch.py the drawing. 34.4 g is a provisional assembly allowance, including 2 g for the active C1 reset parts added on 2026-09-21 (Q5, C7, R25, R26, less R24; unweighed): about 10 for the bare board in 2 oz copper, 8.8 for the four TO-220 switches, 3 for the mini blade holder and its fuse, 3 for thirty-eight through-hole parts and two JST headers, and 7 for the four 8 mm spacers and the four screws that hold it down -- 6.4 since 2026-09-30, when the spacers became prints and moved to the printed table. IT WAS 22 g AND 54 x 32.5 while the board was surface mount and covered half the bought one; going through-hole so that it can be built by hand is what grew it, and the room came from the capacitor bank's reservation. The bank's own two cans are on that line, not this one. The four long screws REPLACE the distribution board's own rather than adding to them. IT WAS 36 g UNTIL 2026-09-16, when the current measurement came off the design: the 8 g reserved for the PBV-R001-F1-1.0 Kelvin shunt is the whole of the difference, and its sense plug J1 went with it. IT WAS 30 g UNTIL 2026-09-22, and the 4.4 g is two more TO-220s: the Vishay SQP120P06-6m7L the switch was drawn around went obsolete, and the commodity IRF4905 that replaced it is 20 mOhm where that was 6.7, so it takes four devices sharing 6 A each to do what two did. Both are 2.2 g. Nothing here has been weighed."""
+total_g = 36.7
+note = """IT IS THE DISTRIBUTION BOARD AS WELL SINCE 2026-10-07, and 36.7 g where it was 33.8: the bought SwiftWing board under it (13 g, its own line until then) and the four printed spacers went, and this board grew to 50 x 66 to carry the six motor outputs on JST-PH headers and the carrier's feed on an XH. The 2.9 g is about 3.2 for the third more board, 1.9 for six PH four-pins and an XH three-pin at about 0.25 and 0.35 g each, a catalogue-class figure, and less 2.2 for four M3 x 8 where there were four M3 x 20. The robot is about 11 g lighter for it. It was notched under the deck's ledges for the first day, and 0.6 g lighter for the notches. What follows is the board as it was before that: The second board this project designs for itself, September 2026: the bought distribution board's own 50 x 50 footprint in 1.6 mm two-layer FR-4, standing 8 mm over it in the pack's positive lead, carrying the main fuse, a MOSFET switch that is the robot's on/off and its low-battery cutoff, and the bulk bank. electrical/power.py is the circuit, electrical/power_pcb.py the board and electrical/power_sch.py the drawing. 34.4 g is a provisional assembly allowance, including 2 g for the active C1 reset parts added on 2026-09-21 (Q5, C7, R25, R26, less R24; unweighed): about 10 for the bare board in 2 oz copper, 8.8 for the four TO-220 switches, 3 for the mini blade holder and its fuse, 3 for thirty-eight through-hole parts and two JST headers, and 7 for the four 8 mm spacers and the four screws that hold it down -- 6.4 since 2026-09-30, when the spacers became prints and moved to the printed table. IT WAS 22 g AND 54 x 32.5 while the board was surface mount and covered half the bought one; going through-hole so that it can be built by hand is what grew it, and the room came from the capacitor bank's reservation. The bank's own two cans are on that line, not this one. The four long screws REPLACE the distribution board's own rather than adding to them. IT WAS 36 g UNTIL 2026-09-16, when the current measurement came off the design: the 8 g reserved for the PBV-R001-F1-1.0 Kelvin shunt is the whole of the difference, and its sense plug J1 went with it. IT WAS 30 g UNTIL 2026-09-22, and the 4.4 g is two more TO-220s: the Vishay SQP120P06-6m7L the switch was drawn around went obsolete, and the commodity IRF4905 that replaced it is 20 mOhm where that was 6.7, so it takes four devices sharing 6 A each to do what two did. Both are 2.2 g. Nothing here has been weighed."""
 
 [[fixed]]
 label = "Battery management system"
 each_g = 40.0
 count = 1
-note = """Daly Li-ion NMC 6S 24V 20A, chosen 2026-09-13. WEIGHED, 40 g, on 2026-10-05, the board in hand: 5 g under the 45 g the VENDOR'S OWN specification table gives beside its 58 x 33 x 8.2 mm outline, which this line carried until then. It was 30 g while no board had been chosen. WIRED CHARGE-ONLY: the discharge path stays direct from the pack to the distribution board, so this board only ever sees the charge current of about 2.2 A. That is what lets it be a small board, and no large one fits -- the torso was swept for free volume and the biggest box left anywhere in it is 38 x 64 x 12 mm. It was chosen because it BALANCES, at 30 mA from 4.18 V per cell, and because it fits: the 30 A boards in its own family are 75 mm long and the cheap generic 6S boards that would fit balance nothing at all. cad/electronics.py draws it at catalogue size, standing on edge in the gap between the two bays. What it does NOT buy is an over-discharge cutoff -- that is the power switch board's, at pack level, since 2026-09-15."""
-
-[[fixed]]
-label = "Distribution board"
-each_g = 13.0
-count = 1
-note = """SwiftWing PDB-02-XT60: 50 x 50 x 1.6 mm, 4-layer 2 oz copper, an XT60 socket and six pairs of solder tabs, 3S-6S. CATALOGUE FIGURE from the v1.2 datasheet, which is better than most lines here -- it is a published number for a specific part rather than an allowance. It replaces a PCB this project was going to lay out and have fabricated, and it is why the shell is 141 mm wide rather than 135: at 50 mm square it is 12 wider than the bay the custom board needed. Its stated 26 V maximum is the one figure on it that does not match this application and wants confirming -- there are no active parts on the board, so it should be a statement of scope."""
+note = """Daly Li-ion NMC 6S 24V 20A, chosen 2026-09-13. WEIGHED, 40 g, on 2026-10-05, the board in hand: 5 g under the 45 g the VENDOR'S OWN specification table gives beside its 58 x 33 x 8.2 mm outline, which this line carried until then. It was 30 g while no board had been chosen. WIRED CHARGE-ONLY: the discharge path stays direct from the pack to the power switch board, so this board only ever sees the charge current of about 2.2 A. That is what lets it be a small board, and no large one fits -- the torso was swept for free volume and the biggest box left anywhere in it is 38 x 64 x 12 mm. It was chosen because it BALANCES, at 30 mA from 4.18 V per cell, and because it fits: the 30 A boards in its own family are 75 mm long and the cheap generic 6S boards that would fit balance nothing at all. cad/electronics.py draws it at catalogue size, standing on edge in the gap between the two bays. What it does NOT buy is an over-discharge cutoff -- that is the power switch board's, at pack level, since 2026-09-15."""
 
 [[fixed]]
 label = "Battery — 6S 1000 mAh, two 3S packs in series"

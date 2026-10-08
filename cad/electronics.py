@@ -141,9 +141,10 @@ bmsBoardThickness = 8.2
 # it is built, 2026-10-05, and it is what the torso is laid out to; how the board
 # and the two packs share it inside is the builder's, and what is drawn is the
 # board at its catalogue thickness in the middle of the 11 mm the packs leave.
-# They are soft-case cells that swell in service, so what they are pressed
-# against is foam on their outer faces and a flat, rigid board between them,
-# never each other. The block is what the foam and the wall pads hold.
+# They are soft-case cells that swell in service, so what is between them is a
+# flat, rigid board, never each other. The block is what the wall pads hold, and
+# since 2026-10-06 they hold it by its own outer faces, 45 mm apart, with no foam
+# between: the owner's call. A pack that swells now pushes on printed pads.
 batteryBlockWidth = 45.0
 # Between the two packs, and it is the BMS now, where it was a 2 mm printed fin.
 batteryPackGap = batteryBlockWidth - 2 * batteryPackThickness
@@ -169,8 +170,10 @@ batteryDepth = 54.0
 batteryHeight = 39.0
 
 # THE POWER BAY. 52 wide for a bought 50 x 50 distribution board, where it was
-# 38 for a PCB we would have drawn ourselves, and as tall as the battery's band
-# rather than 30 because the battery beside it already sets this band's height
+# 38 for a PCB we would have drawn ourselves -- and the board in it is our own
+# again since 2026-10-07, on the same 50 mm and the same posts -- and as tall as
+# the battery's band rather than 30 because the battery beside it already sets
+# this band's height
 # and there is no reason to reserve less than the band holds: 36 until the
 # measured pack made the band 39 on 2026-10-05. The bank has not been sized, so
 # the extra 9 mm of height is headroom rather than a decision.
@@ -318,14 +321,16 @@ deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
 #   - down, on cad/torso.py's two rails, which stand under the packs' centre lines;
 #   - to the right, on a stop at each rail's end, which catches the foot of the
 #     end face and leaves the top of it, where the leads come out, clear;
-#   - outwards, through foam, on the pads cad/torso.py stands off each long wall;
+#   - outwards, directly, on the pads cad/torso.py stands off each long wall;
 #   - up, through foam, on the deck's underside;
 #   - to the left, through foam, on the left wall.
 # Towards each other is no longer a direction anything has to hold: the packs and
-# the board between them are assembled into one piece, and the foam on the two
-# outer faces squeezes the block from both sides. The
-# printed faces say where the block is and the foam pushes it there. The foam
-# also takes up what one pack differs from another by: everything here follows
+# the board between them are assembled into one piece, and the pads on the two
+# long walls hold it between them across its whole 45 mm. Elsewhere the
+# printed faces say where the block is and the foam pushes it there, taking up
+# what one pack differs from another by. Across the block nothing takes that up
+# now -- a block built over 45 will not go in, and one under it is free by the
+# difference -- so it is the builder's 45 that has to be right. Everything here follows
 # the pack dimensions above, so a different pack moves the rails, the pads and
 # the stops with it.
 #
@@ -342,25 +347,28 @@ deckScrewY = interiorHalfDepth - (m25CapHeadDiameter / 2 + deckScrewHeadAir)
 # the fences were what stood between the packs and the two strips along the long
 # walls -- which is where each pack's XT60 has to lie, and where the actuator
 # harness runs along the back of the floor. A fence standing on the floor along
-# the whole of a pack took both. Four pads off each wall bear on the foam
-# instead, lifted clear of the harness and placed round the connector -- and the
-# side foam is cut to the pads too, one strip under the connector and one short
-# one at the left, so at the connector's height the strip runs clear from the
-# block's face to the wall, 11.1 mm.
+# the whole of a pack took both. Four pads off each wall bear on the block
+# instead, lifted clear of the harness and placed round the connector, so at
+# the connector's height the strip runs clear from the block's face to the
+# wall, 11.1 mm.
 #
-# All of it is cut from one 5 mm sheet of closed-cell foam, docs/BOM.md's.
-# Squeezed to 3 mm at the sides, 3 at the end and 4 on top: 40, 40 and 20 %,
-# so none of it has been squeezed flat and every piece still pushes. The end
+# THE SIDE STRIPS WENT ON 2026-10-06. Until then the pads bore on 3 mm of
+# squeezed foam down each outer face, cut to the pads, and stood 51 mm apart;
+# the owner wants the block held at its own 45. The pads came 3 mm in from each
+# wall, and because a deeper pad's 45 degree underside reaches 3 mm lower at the
+# wall, the low ones and the connectors over them went 3 mm up to keep their
+# half millimetre over the harness.
+#
+# What foam is left is cut from one 5 mm sheet of closed-cell foam, docs/BOM.md's.
+# Squeezed to 3 mm at the end and 4 on top: 40 and 20 %, so none of it has been
+# squeezed flat and every piece still pushes. The end
 # pad was 3.5 until the measured pack came 2 mm longer than the listing, and it
 # is 3 rather than less because the pack grew towards the left wall and not
-# into the bay gap -- see where its ends are placed below. The side strips go
-# onto the block's two outer faces before it goes in, and the block goes down
-# past the pads, whose top edges are chamfered for it.
+# into the bay gap -- see where its ends are placed below. The block goes down
+# between the pads, whose top edges are chamfered for it.
 batteryFoamFree = 5.0
-batteryFoamSide = 3.0
+# Each pack's outer face, which is the block's, and where the wall pads bear.
 batteryPackOuterY = (batteryPackGap / 2) + batteryPackThickness
-# The outer face of each side strip, which is where the wall pads bear.
-batteryFoamFaceY = batteryPackOuterY + batteryFoamSide
 batteryPackTopZ = lowerBandZ + batteryPackWidth
 batteryFoamTop = deckZ - batteryPackTopZ
 # THE LEAD END IS FLUSH WITH THE BAY'S INBOARD END, and the pack is laid off
@@ -425,7 +433,11 @@ upperBandZ = controllerBoardZ + pcbThickness + sbcStandoffHeight
 # parts it was reserving for, and it was the whole of the front half of the bay.
 # The two cans the bill names stand on the power switch board now; the strip they
 # held is that board. THE CAPACITANCE ITSELF IS UNCHANGED and still unmeasured:
-# what shrank is the reservation, not the bank.
+# what shrank is the reservation, not the bank. AND IT CANNOT SIMPLY GROW:
+# electrical/power_reset.py puts the soft start's worst restart at 1.97 A of its
+# 2 A limit with these two cans, and a third takes it over -- found 2026-10-07,
+# when the board had room for the bill's two spares at the ends of its rows of
+# motor plugs.
 capacitorDiameter = 10.0
 capacitorHeight = 16.0
 capacitorPitch = 5.0
@@ -636,7 +648,7 @@ loomRunX = 18.5
 # There are two of them and they are the most awkward things in this torso.
 # There is no third: the harness's own female output is cut off, docs/BOM.md
 # says so, and its two loose legs are soldered to the power switch board's pack
-# input and the distribution board's negative.
+# inputs, P1 and P3.
 #
 # EACH PACK'S CONNECTOR LIES IN THE STRIP BESIDE IT, along the long wall, above
 # the lower wall pads. Its leads come out of the end face, turn through the bay
@@ -651,7 +663,7 @@ batteryLegReach = 10.0
 harnessAir = 0.5
 
 # THE WALL PADS, which replaced the battery's two fences on 2026-10-05: four on
-# each long wall, bearing on the side strips at batteryFoamFaceY. Three low and
+# each long wall, bearing on the block's faces at batteryPackOuterY. Three low and
 # one high. The low ones are as low as the actuator harness along the back of the
 # floor lets them be -- each has a 45 degree underside running down to the wall,
 # because it prints upright, and that underside has to clear the harness's top
@@ -659,15 +671,22 @@ harnessAir = 0.5
 # lies over them. The high one is at the left, where the connector and its legs
 # are not. Placed by the pack's own length rather than typed stations, so a
 # different pack moves them.
+#
+# NO PAD REACHES MORE THAN 17 mm UP THE PACK, measured from its bottom face: the
+# owner's limit, 2026-10-06. A pad may stand up to that line and not past it,
+# and tools/gate_f.py measures every one against it. The low pads stop at 12.5
+# and were never near it; the high one stood 7.5 mm under the pack's top, 27.5
+# up, and now stands with its top on the line.
+batteryPadReach = 17.0
 batteryPadWidth = 6.0
 batteryPadHeight = 5.0
 batteryPadLowZ = (
     floorZ
     + harnessBundleHeight
     + harnessAir
-    + (abs(harnessRunY) + harnessBundleWidth / 2 - batteryFoamFaceY)
+    + (abs(harnessRunY) + harnessBundleWidth / 2 - batteryPackOuterY)
 )
-batteryPadHighZ = batteryPackTopZ - 7.5 - batteryPadHeight
+batteryPadHighZ = lowerBandZ + batteryPadReach - batteryPadHeight
 batteryPadLowX = tuple(
     batteryPackLeftX + batteryPackBodyLength * share for share in (0.12, 0.43, 0.74)
 )
@@ -1231,56 +1250,45 @@ harnessDepth = 5.75
 harnessHeight = 12.8
 
 
-# ---- the power switch board, over the distribution board ---------------------
+# ---- the power switch board, which is the distribution board now -------------
 #
 # A SECOND BOARD OF OUR OWN, September 2026, and electrical/power.py says what is
-# on it: the main fuse, the bus shunt and a MOSFET switch that is the robot's
-# on/off and its low-battery cutoff. It sits in the pack's positive lead between
-# the pack and the distribution board, which is why it is down here in the power
-# bay rather than on the deck with the carrier. SINCE THE LOOP KEY WENT it is
-# the only thing in that lead: the pack's own connector, mated inside the shell,
-# is what makes and breaks it now.
+# on it: the main fuse, a MOSFET switch that is the robot's on/off and its
+# low-battery cutoff, and since 2026-10-07 the bus's distribution as well -- six
+# motor outputs and the carrier's feed, each on a plug. It takes the pack's leads
+# in and hands the switched bus out, which is why it is down here in the power
+# bay rather than on the deck with the carrier. SINCE THE LOOP KEY WENT the
+# pack's own connector, mated inside the shell, is what makes and breaks it.
 #
-# WHERE IT GOES IS DIRECTLY OVER THE BOUGHT BOARD, covering it exactly: the
-# outline below is that board's own 50 x 50 footprint, 8 mm above it, which is
-# over its XT60 input socket and clears the plug that goes into it by half a
-# millimetre. It held the rear half of the bay and the capacitor bank held the
-# front until the bank's reservation was cut to what the bill buys; the note
-# further down says where that area came from.
+# THE BOUGHT DISTRIBUTION BOARD IS GONE, 2026-10-07, and this board stands where
+# it stood. That board was a SwiftWing PDB-02-XT60 under this one, and every
+# motor lead was soldered to its tabs before this board went over it, so changing
+# one meant taking both boards out and unsoldering. The robot's own motor plug,
+# a JST-SH with three 1 A contacts a side, is what limits a branch's current, so
+# the outputs here are JST-PH 4-pin headers, two 2 A contacts a side, on this
+# board's own copper. PH is a family nothing else in the robot uses -- every
+# other plug on both boards is XH, at 2.5 mm against PH's 2.0 -- so a motor's
+# power lead cannot go into a signal socket.
 #
 # HOW IT IS HELD. Four M3 self-tapping screws from above, which is the only
-# direction a screwdriver has in this bay: each goes through this board, an 8 mm
-# spacer and the distribution board into the printed post that already carries
-# that board's corner. They are the bought board's own four screws, made longer,
-# so this board costs the print nothing at all.
+# direction a screwdriver has in this bay, through an M3 nut on a washer that
+# stands the board 3 mm off each printed post: the bought board's own four
+# screws and posts, on the same 45 mm square, so the pelvis does not change at
+# all. They were M3 x 20 through an 8 mm spacer and both boards while there were
+# two; one board on the nuts takes the M3 x 8 the bought board took alone.
 #
-# 8 mm OF SPACER is what clears the bought board's own solder joints and the
-# motor leads leaving them, and it is as much as the deck above allows: the
-# tallest parts on this board are the two TO-220 switches, 18.8 mm over it.
-#
-# TEN WAS TRIED WHEN THE BOARD WENT THROUGH-HOLE and it is worse. A trimmed lead
-# hangs about 2 mm under the board and the bought board's XT60 input socket
-# stands to within half a millimetre of the underside, so at 8 mm nothing with a
-# lead may stand over that socket. Ten clears it -- and takes two millimetres off
-# the far side, where the pack's own connectors hang 7.4 mm over this board and
-# an upright resistor is 5.5. That trade buys 180 mm2 of board at one end and
-# spends the inboard column at the other, and it leaves 1 mm over the switches
-# instead of 3. So the socket stays a keepout, and electrical/power_pcb.py takes
-# its rectangle from bus_input_socket_box() below.
-powerSwitchSpacer = 8.0
-powerSwitchSpacerDiameter = 6.0
-# AND THE SPACERS ARE PRINTED, 2026-09-30. An unthreaded Ø6 x 8 spacer is in
-# nobody's stock: Robu's 8 mm nylon ones are sold out, fastdep's aluminium ones
-# come in 5, 10, 15 and 20, and 10 was ruled out above. A PA12 tube bored for
-# the M3 clearance prints with the rest -- 1.3 mm of wall -- and is what the
-# screw slides through, as the bought one was to be.
-powerSwitchBoardZ = pdbTopZ + powerSwitchSpacer
-# The bank stands on THIS board now, not on the bought one: a can on the bought
-# board would be 16 mm tall under a board whose underside is 8 mm above it.
+# THE BOARD IS 9.6 mm LOWER THAN IT WAS, which is the bought board and the
+# spacer, and the room went where it was short: the two TO-220 rows had 1.1 mm
+# under the deck and the inboard column had 7.4 mm under the pack's connectors.
+# And with nothing under it but the posts, its trimmed leads hang into 1 mm of
+# air over the post tops rather than over another board's XT60 socket.
+powerSwitchBoardZ = pdbBoardZ
+# The bank stands on THIS board, as it has since the board covered the bought
+# one: a can on that board would have been 16 mm tall under 8 mm of air.
 capacitorZ = round(powerSwitchBoardZ + pcbThickness, 6)
-# IT IS THE BOUGHT BOARD'S OWN FOOTPRINT, September 2026, and it was a 54 x 32.5
-# rectangle over the rear half of that board until this file's second pass. Two
-# things drove the change and the second is the interesting one.
+# IT WAS THE BOUGHT BOARD'S OWN FOOTPRINT from September 2026, and a 54 x 32.5
+# rectangle over the rear half of that board before this file's second pass. Two
+# things drove that change and the second is the interesting one.
 #
 # THE BOARD WENT FROM SURFACE MOUNT TO THROUGH-HOLE, so that it can be built by
 # hand with an iron, and a through-hole part wants about half again the area of
@@ -1297,24 +1305,45 @@ capacitorZ = round(powerSwitchBoardZ + pcbThickness, 6)
 # WHICH BUYS THE MOUNT AS WELL, on the bought board's own four screws as above.
 # The wall pad that used to stop a two-screw board turning about its own edge is
 # gone with it, and so is the only printed material this board ever cost.
+#
+# AND IT REACHES BOTH LONG WALLS NOW, 2026-10-07: 50 x 66 rather than 50 x 50,
+# still on the same four holes. The bought board's footprint was the limit only
+# while this board sat on it. The bay was swept from under the post tops to the
+# deck and the two 8.6 mm strips between the old edges and the walls held
+# nothing, so the board goes to within powerSwitchWallGap of each wall and the
+# six motor outputs stand in those strips, three along each. Across the robot it
+# keeps its 50 mm: the shell wall is 3 mm off the outboard edge and the pack's
+# leads pass half a millimetre off the inboard one.
+#
+# IT DOES NOT GO STRAIGHT DOWN, because it cannot: the deck's two ledges on this
+# side stand 6 mm proud of each long wall at x 46 to 58, 29 mm over the board,
+# and the lid's two screw bosses stand over its outboard corners. So it goes in
+# SIDEWAYS, which tools/gate_i.py runs. It is the first thing into the torso, so
+# the battery bay beside it is empty: down 30 mm inboard of its station, clear of
+# both, then outboard UNDER the ledges and the bosses, and the last 5 mm down onto
+# the nuts.
+#
+# IT WAS NOTCHED ROUND THE LEDGES FOR A DAY, 2026-10-07, so that it could drop
+# past them, and the notches split each strip in two. Sliding in under the ledges
+# needs no notch. The headers stayed where the notches had put them -- two at
+# the inboard end of each strip, one at the outboard end -- because that is
+# where the copper that feeds them was already routed.
+powerSwitchWallGap = 0.6
 powerSwitchRightX = round(powerX + (pdbWidth / 2), 6)
 powerSwitchLeftX = round(powerX - (pdbWidth / 2), 6)
-powerSwitchRearY = pdbY - (pdbDepth / 2)
-powerSwitchFrontY = pdbY + (pdbDepth / 2)
+powerSwitchRearY = round(-(interiorHalfDepth - powerSwitchWallGap), 6)
+powerSwitchFrontY = round(interiorHalfDepth - powerSwitchWallGap, 6)
 
 
 def power_switch_outline() -> list[tuple[float, float]]:
     """The board's edge, anticlockwise from its rear inboard corner, torso x and y."""
-    return [
-        (powerSwitchLeftX, powerSwitchRearY),
-        (powerSwitchRightX, powerSwitchRearY),
-        (powerSwitchRightX, powerSwitchFrontY),
-        (powerSwitchLeftX, powerSwitchFrontY),
-    ]
+    left, right = powerSwitchLeftX, powerSwitchRightX
+    rear, front = powerSwitchRearY, powerSwitchFrontY
+    return [(left, rear), (right, rear), (right, front), (left, front)]
 
 
 def power_switch_screw_xy() -> list[tuple[float, float]]:
-    """All four of the bought board's screws, made longer to carry this one too."""
+    """The four screws, on the 45 mm square the bought board and its posts used."""
     return [
         (powerX + sx * (pdbHolePitch / 2), pdbY + sy * (pdbHolePitch / 2))
         for sx in (-1, 1)
@@ -1337,21 +1366,23 @@ def power_switch_screw_xy() -> list[tuple[float, float]]:
 #   Q7  under it is free for VSRC to run forward to the front row's sources.
 #       There are four since 2026-09-22, when the switch became an IRF4905 --
 #       20 mOhm against the obsolete part's 6.7, so the current is shared wider.
-#   R1  PBV-F1 shunt, four inline terminals spanning 17.78 mm; 20.7 mm high
-#   P2  the switched bus out, on the inboard side where the distribution board's
-#       input is
-#   P3  ground in, a 22 AWG lead
+#   P3  the pack's negative in, 14 AWG, and P4 the BMS's B- beside it, 16 AWG:
+#   P4  both on the inboard edge, where the BMS's lane reaches the board. P3 was
+#       a 22 AWG ground from the bought board's negative until that board went
 #   C5  the bulk bank, two cans on the bus copper they damp -- they stood on the
 #   C6  bought board until this board covered it
-#   J3  the button, J1 the shunt's sense pair and J2 both holds, along the front
+#   J3  the button and J2 both holds, along the front
+#   J4  the six motor outputs, JST-PH 4-pin: 1 and 2 the switched bus, 3 and 4
+#   ..  ground. J4 to J6 along the rear strip, J7 to J9 along the front one,
+#   J9  turned so each one's bus pins face the copper that feeds them
+#   J10 the carrier's feed, JST-XH 3-pin: 1 and 2 the bus, 3 ground. Three so
+#       that its one ground pin is all the bus copper under it has to step
+#       round; it stands where P2 handed the bus to the bought board
 #
-# NOTHING TALLER THAN 7.4 mm GOES INBOARD OF x 29.6 below y 4, because that is
-# where the pack's own XT60s hung over this board until 2026-10-05. They lie in
-# the strips beside the packs now, and what passes over this corner is the pack
-# positive on its way to P1, 14 mm up, so the rule is stricter than it has to
-# be and has been left as it is rather than move parts on a routed board.
-# electrical/power_pcb.py measures every part against the drawn torso rather
-# than trusting this note.
+# THE OLD RULE FOR THE INBOARD COLUMN IS GONE with the 9.6 mm the board came
+# down. It kept anything over 7.4 mm out from under the pack's connectors while
+# they hung over this corner; electrical/power_pcb.py measures every part
+# against the drawn torso rather than trusting a note either way.
 powerSwitchStations = {
     "P1": (33.0, -21.5, 0),
     "F1": (41.0, -19.5, 0),
@@ -1359,12 +1390,19 @@ powerSwitchStations = {
     "Q2": (66.08, -15.0, 180),
     "Q6": (50.0, -6.0, 0),
     "Q7": (66.08, -6.0, 180),
-    "P2": (34.8, -7.5, 0),
-    "P3": (28.0, -18.0, 0),
+    "P3": (25.5, -15.5, 0),
+    "P4": (24.5, -9.8, 0),
     "C5": (33.0, 3.0, 0),
     "C6": (44.0, 3.0, 0),
     "J3": (34.0, 20.5, 0),
     "J2": (54.5, 20.5, 0),
+    "J4": (24.1, -29.6, 0),
+    "J5": (36.85, -29.6, 0),
+    "J6": (61.95, -29.6, 0),
+    "J7": (30.1, 29.6, 180),
+    "J8": (42.85, 29.6, 180),
+    "J9": (67.95, 29.6, 180),
+    "J10": (30.2, -6.0, 0),
 }
 
 
@@ -1437,80 +1475,8 @@ def standoff(diameter, height, atX, atY, atZ):
     )
 
 
-def powerSwitchSpacerPrint():
-    """One of the power switch board's four spacers, as printed: a tube bored for
-    the M3 x 20 that clamps the stack, standing on the origin."""
-    tube = Cylinder(
-        powerSwitchSpacerDiameter / 2,
-        powerSwitchSpacer,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    bore = Pos(0, 0, -1.0) * Cylinder(
-        m3Clearance / 2,
-        powerSwitchSpacer + 2.0,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    return tube - bore
-
-
-def distributionBoard():
-    """The bought distribution board on its own, so its holes can be counted.
-
-    NOT OURS ANY MORE. This was a 38 x 62 PCB the project would have laid out and
-    had fabricated, whose entire job was to join a pack to six branches through a
-    fuse. It is a SwiftWing PDB-02-XT60 now -- 50 x 50, four M3 holes on a 45 mm
-    square, an XT60 socket and six pairs of solder tabs -- so the hole pattern
-    below is READ OFF A DATASHEET rather than chosen, which is the difference
-    between this function and the controller carrier beside it.
-
-    It is still drawn as a slab with its holes cut and nothing unioned back on,
-    for the reason every board here is: tools/gate_e.py counts them, and a
-    component unioned over one would fill it in with nothing else to report it.
-    """
-    blank = Pos(powerX, pdbY, pdbBoardZ) * Box(
-        pdbWidth, pdbDepth, pdbThickness, align=(Align.CENTER, Align.CENTER, Align.MIN)
-    )
-    for dx in (-pdbHolePitch / 2, pdbHolePitch / 2):
-        for dy in (-pdbHolePitch / 2, pdbHolePitch / 2):
-            blank -= Pos(
-                powerX + dx, pdbY + dy, pdbBoardZ + (pdbThickness / 2)
-            ) * Cylinder(m3Clearance / 2, pdbThickness * 3)
-    return blank
-
-
-def _bus_input_socket_slab():
-    """The bought board's XT60 input: width, depth, height and where it stands."""
-    return (
-        xt60Width,
-        xt60Length,
-        xt60Height,
-        powerX - (pdbWidth / 2) + (xt60Width / 2) + 2.0,
-        pdbY - 8.0,
-        pdbTopZ,
-    )
-
-
-def bus_input_socket_box() -> tuple[float, float, float, float]:
-    """That socket's footprint in x and y, and how far under the power board it
-    reaches.
-
-    NAMED BECAUSE TWO FILES NEED IT. The group above draws it; electrical/
-    power_pcb.py keeps the power switch board's through-hole leads out of it,
-    because this socket stands to within half a millimetre of that board's
-    underside and a trimmed lead is 2 mm long. A part with a drilled pad over
-    this rectangle is a part whose leads land inside the socket.
-    """
-    width, depth, height, atX, atY, atZ = _bus_input_socket_slab()
-    return (atX - width / 2, atY - depth / 2, atX + width / 2, atY + depth / 2)
-
-
-def bus_input_socket_top() -> float:
-    width, depth, height, atX, atY, atZ = _bus_input_socket_slab()
-    return atZ + height
-
-
 def powerSwitchBoard():
-    """The power switch board on its own, so its three holes can be counted.
+    """The power switch board on its own, so its four holes can be counted.
 
     A plain rectangle with its screw holes cut and nothing unioned back on, for
     the reason every board here is drawn that way: tools/gate_e.py counts the
@@ -1540,11 +1506,26 @@ def powerSwitchBoard():
 # is the same rule the rest of this file follows for a bought part: a TO-220
 # standing on its leads is 18.8 mm tall and 10 wide, a mini blade fuse stands
 # 9 mm over a 7.4 mm holder, and a JST-XH with its plug in and 3 mm for the wires
-# to leave is 12.8 -- the figure the controller carrier already uses.
+# to leave is 12.8 -- the figure the controller carrier already uses. A header's
+# box is its KiCad courtyard: an XH's 2.95 mm past the end pins and from 2.85
+# behind the pin row to 3.9 in front of it, so the three-pin's is 10.9 long; a
+# PH four-pin's is 10.9 by 5.5, 2.45 past the end pins, 2.2 behind and 3.3 in
+# front. A PH plug stands about 8 mm off the board, and with the same 3 mm for
+# its wires that is 11 -- a catalogue-class figure, not a measured one.
+xhDepth = 6.75
+xhPinOffset = -0.525
+phDepth = 5.5
+phPinOffset = -0.55
+phHeight = 11.0
 powerSwitchBodies = {
     "P1": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
-    "P2": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
-    "P3": [(2.3, 2.3, 6.0, 0.0, 0.0, 0.0)],
+    "P3": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
+    "P4": [(3.9, 3.9, 12.0, 0.0, 0.0, 0.0)],
+    **{
+        f"J{n}": [(10.9, phDepth, phHeight, 3.0, phPinOffset, 0.0)]
+        for n in range(4, 10)
+    },
+    "J10": [(10.9, xhDepth, harnessHeight, 2.5, xhPinOffset, 0.0)],
     "F1": [
         (16.0, 6.74, 7.37, 4.96, -1.7, 0.0),
         (10.9, 3.8, 9.0, 4.96, -1.7, 7.37),
@@ -1553,8 +1534,8 @@ powerSwitchBodies = {
     "Q2": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
     "Q6": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
     "Q7": [(10.0, 4.4, 18.8, 2.54, 0.95, 0.0)],
-    "J2": [(13.4, 6.75, 12.8, 3.75, -0.525, 0.0)],
-    "J3": [(8.4, 6.75, 12.8, 1.25, -0.525, 0.0)],
+    "J2": [(13.4, xhDepth, harnessHeight, 3.75, xhPinOffset, 0.0)],
+    "J3": [(8.4, xhDepth, harnessHeight, 1.25, xhPinOffset, 0.0)],
 }
 
 # The bank's two cans, drawn round rather than as slabs because they are round and
@@ -1685,28 +1666,20 @@ batteryFoamLeadAir = 2.0
 def batteryFoam() -> list:
     """The foam round the block, drawn SQUEEZED, as it is with the deck down.
 
-    Eight pieces cut from one sheet, each pair front then rear: a pad over each
-    pack under the deck; a low strip down each pack's outer face, under its
-    connector, against the three low wall pads; a short high strip at the left
-    of each outer face against the high wall pad; and a pad on each pack's left
-    end against the wall -- two where there was one across both, because the
-    BMS's balance plug sits between them. The side strips were one tall strip a
-    side until 2026-10-05; cut to the pads, they leave the strip beside the
-    block clear from its face to the wall at the height the connector lies.
+    Four pieces cut from one sheet, each pair front then rear: a pad over each
+    pack under the deck, and a pad on each pack's left end against the wall --
+    two where there was one across both, because the BMS's balance plug sits
+    between them. There were four more until 2026-10-06, a low and a high strip
+    down each pack's outer face against the wall pads; the pads bear on the
+    block itself now.
 
-    The side strips go onto the block before it goes in and the end pads onto
-    the left wall. Drawn at the thickness each is squeezed to, touching what it
-    is squeezed between, so tools/gate_h.py sees every face it bears on as a
-    contact and anything else as a clash; tools/gate_f.py holds each thickness
-    to the free sheet, which is what says it still pushes.
+    The end pads go onto the left wall and the top pads under the deck. Drawn
+    at the thickness each is squeezed to, touching what it is squeezed between,
+    so tools/gate_h.py sees every face it bears on as a contact and anything
+    else as a clash; tools/gate_f.py holds each thickness to the free sheet,
+    which is what says it still pushes.
     """
     topLength = batteryPackBodyEndX - batteryFoamLeadAir - batteryPackLeftX
-    highLength = (
-        batteryConnectorLeftX - batteryLegReach - batteryFoamLeadAir - batteryPackLeftX
-    )
-    lowTopZ = batteryConnectorZ - 1.0
-    highZ = batteryPadHighZ - 1.0
-    highHeight = batteryPadHeight + 2.0
     pads = [
         slab(
             topLength,
@@ -1715,28 +1688,6 @@ def batteryFoam() -> list:
             batteryPackLeftX + topLength / 2,
             sy * (batteryPackGap / 2 + batteryPackThickness / 2),
             batteryPackTopZ,
-        )
-        for sy in (1, -1)
-    ]
-    low = [
-        slab(
-            topLength,
-            batteryFoamSide,
-            lowTopZ - lowerBandZ,
-            batteryPackLeftX + topLength / 2,
-            sy * (batteryPackOuterY + batteryFoamSide / 2),
-            lowerBandZ,
-        )
-        for sy in (1, -1)
-    ]
-    high = [
-        slab(
-            highLength,
-            batteryFoamSide,
-            highHeight,
-            batteryPackLeftX + highLength / 2,
-            sy * (batteryPackOuterY + batteryFoamSide / 2),
-            highZ,
         )
         for sy in (1, -1)
     ]
@@ -1751,7 +1702,7 @@ def batteryFoam() -> list:
         )
         for sy in (1, -1)
     ]
-    return [*pads, *low, *high, *endPads]
+    return [*pads, *endPads]
 
 
 # Where each pack's two main leads leave its end face: at mid-thickness, this far
@@ -1773,10 +1724,11 @@ def batteryHarness() -> list:
     the strip. Then, shared: the top of the bay gap, which the legs cross to the
     power bay and the balance and P- leads use too; the pack positive's run over
     the power switch board's inboard rear corner to its input, P1; the BMS's
-    lane out between the packs' lead ends and on to the distribution board's
-    inboard edge, which carries B-, P- and the NTC pair; P- up through the deck's
-    rear notch to the charge inlet; and the 7-way balance lead, from its plug at
-    the BMS's left end, over the board's top and out through the same lane.
+    lane out between the packs' lead ends and on to the power switch board's
+    inboard edge, which carries B- to its P4, P- and the NTC pair; P- up
+    through the deck's rear notch to the charge inlet; and the 7-way balance
+    lead, from its plug at the BMS's left end, over the board's top and out
+    through the same lane.
     """
     laneHalf = xt60Width / 2
     laneOuterY = batteryConnectorY + laneHalf
@@ -1856,7 +1808,7 @@ def batteryHarness() -> list:
             batteryLegLaneZ,
             legsTopZ,
         ),
-        # the BMS's lane: out between the lead ends and on to the bought board
+        # the BMS's lane: out between the lead ends and on to the power board
         box(
             batteryPackBodyEndX,
             powerSwitchLeftX - harnessAir,
@@ -1899,11 +1851,11 @@ def batteryHarness() -> list:
 # ---- what each group is, as a thing you can buy ------------------------------
 #
 # WHAT THE PARENTHESIS IN A TREE NODE MEANS. cad/scenes.py and tools/view.py name
-# every payload body by what it IS -- "distribution board", "on/off button" --
+# every payload body by what it IS -- "logic BEC", "on/off button" --
 # and that is the right name for a clearance to be reported against, but it is
 # not the name on an order. This table is the other half: the designation that
-# identifies the part, so a tree node reads "distribution board (SwiftWing
-# PDB-02-XT60)" and the thing on the bench can be matched to the thing in the
+# identifies the part, so a tree node reads "logic BEC (Matek BEC12S-PRO)"
+# and the thing on the bench can be matched to the thing in the
 # drawing without going back to docs/BOM.md.
 #
 # EVERY ENTRY IS docs/BOM.md's, and that file stays the authority -- quantities,
@@ -1933,13 +1885,10 @@ partNumbers = {
     "battery foam": "5 mm anti-static EVA sheet, cut to fit",
     "battery pack connectors": "2 x AMASS XT60, each pack's female mated with a male of the series harness",
     "battery leads": "XT60 2M1F series harness, its female cut off; the packs' and the BMS's own leads",
-    "distribution board": "SwiftWing PDB-02-XT60",
-    "distribution board standoffs": "M3 brass, 6 mm A/F x 3 mm",
-    "bus input socket": "AMASS XT60, factory-fitted",
-    "capacitor bank": "2 x Panasonic EEU-FR1V471B, 470 uF 35 V -- bank not sized",
-    "power switch board": "ours -- 50 x 50 mm two-layer PCB, electrical/power_pcb.py",
-    "power switch parts": "the fuse, the shunt and the switch -- electrical/power.py",
-    "power switch spacers": "printed PA12 tube, 6 x 3.4 x 8 mm, on M3 x 20 self-tapping",
+    "power switch standoffs": "M3 hex nut on a 0.5 mm washer, 2.9 mm",
+    "capacitor bank": "2 x Rubycon 35ZLH470M10X16, 470 uF 35 V -- bank not sized",
+    "power switch board": "ours -- 50 x 66 mm two-layer PCB, electrical/power_pcb.py",
+    "power switch parts": "the fuse, the switch and the outputs -- electrical/power.py",
     "bus monitor": "INA226, bus voltage only -- no external shunt",
     "logic BEC": "Matek BEC12S-PRO",
     "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
@@ -1991,7 +1940,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
         "battery packs": batteryPacks(),
         "battery foam": batteryFoam(),
         # EACH PACK'S XT60, mated with one male of the series harness, lying in
-        # the strip between that pack's side strip and the long wall, over the
+        # the strip between that pack's outer face and the long wall, over the
         # low wall pads. Drawn as the mated pair of housings; the stiff joint at
         # each end and everything that bends are battery leads, below.
         "battery pack connectors": [
@@ -2010,26 +1959,22 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # cannot be bent into a gap that was never left for it. One group, so the
         # leads may cross one another as real ones do. See batteryHarness().
         "battery leads": batteryHarness(),
-        # ---- power entry: a bought board and what stands on it ---------------
-        # THERE IS NO BUS TERMINAL HERE ANY MORE. It was a 24 x 10 x 12 block
-        # standing in for the strip the six motor branches landed on, and the
-        # distribution board's own copper is that strip -- six pairs of solder
-        # tabs on a direct battery bus. One bought part removed two drawn ones.
-        "distribution board standoffs": [
+        # ---- power entry: our own board and what stands on it ----------------
+        # THERE IS NO BOUGHT BOARD HERE ANY MORE, 2026-10-07. A SwiftWing
+        # distribution board stood on these nuts with the power switch board 8 mm
+        # over it on printed spacers, and every motor lead was soldered to it
+        # underneath. The power switch board stands on the nuts itself now and
+        # carries the motor outputs as plugs.
+        "power switch standoffs": [
             standoff(
                 standoffDiameter,
                 standoffHeight,
-                powerX + dx,
-                pdbY + dy,
+                atX,
+                atY,
                 lowerBandZ,
             )
-            for dx in (-pdbHolePitch / 2, pdbHolePitch / 2)
-            for dy in (-pdbHolePitch / 2, pdbHolePitch / 2)
+            for atX, atY in power_switch_screw_xy()
         ],
-        "distribution board": [distributionBoard()],
-        # The pack's own socket, on the board's inboard edge where the leads from
-        # the battery reach it.
-        "bus input socket": [slab(*_bus_input_socket_slab())],
         # The two cans the bill buys, standing on the power switch board. THIS
         # WAS FOUR RESERVED POSITIONS OF 16 x 25 until September 2026, against a
         # bill that has specified two 10 x 16 cans since the day it named a part.
@@ -2047,17 +1992,12 @@ def torsoElectronicsGroups() -> dict[str, list]:
             )
             for refdes in capacitorRefdes
         ],
-        # ---- the power switch board, on the bought board's own rear screws ----
+        # ---- the power switch board, on the posts' own four screws -----------
         #
         # THE FUSE HOLDER USED TO BE HERE, a 20 x 10 x 14 block taped to the
         # bought board's top face. It is a part ON this board now -- a mini blade
-        # holder soldered into it -- and so are the shunt, which had no mount at
-        # all, and the MOSFET switch, which had no home in the CAD because the
-        # bill had never bought one.
-        "power switch spacers": [
-            Pos(atX, atY, pdbTopZ) * powerSwitchSpacerPrint()
-            for atX, atY in power_switch_screw_xy()
-        ],
+        # holder soldered into it -- and so is the MOSFET switch, which had no home
+        # in the CAD because the bill had never bought one.
         "power switch board": [powerSwitchBoard()],
         "power switch parts": powerSwitchParts(),
         # ON THE CONTROLLER CARRIER, September 2026, on two M2 screws with nuts

@@ -20,10 +20,10 @@ from __future__ import annotations
 from build123d import Box, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude
 
 from cad.electronics import (
-    batteryFoamFaceY,
     batteryLeadEndAir,
     batteryPackBodyEndX,
     batteryPackLeadWidth,
+    batteryPackOuterY,
     batteryPackRightX,
     batteryPackWidth,
     batteryPadHeight,
@@ -226,15 +226,19 @@ batteryRailSillTopZ = (
 # three are taped into one block. The fences went because each stood on the floor
 # along the whole of its pack, which took the strip between the pack and the wall
 # from top to bottom -- and that strip is where each pack's XT60 has to lie, and
-# the back one is where the actuator harness runs along the floor. A pad bears on
-# the foam where a fence did and takes the strip only where it stands.
+# the back one is where the actuator harness runs along the floor. A pad bears
+# where a fence did and takes the strip only where it stands.
 #
-# EACH HAS A 45 DEGREE UNDERSIDE, from the foam face down to the wall, because the
+# THEY BEAR ON THE BLOCK ITSELF, since 2026-10-06, and not on foam: the owner's
+# call, so the front and rear pads' faces are the block's own 45 mm apart. The
+# 3 mm side strips went, and every pad reaches 3 mm further in from its wall.
+#
+# EACH HAS A 45 DEGREE UNDERSIDE, from the bearing face down to the wall, because the
 # pelvis prints upright and a flat shelf 9.5 mm deep would print as a bridge into
 # nothing. The low pads are set by that underside: where it comes nearest the
 # wall, over the actuator harness, it clears the harness by half a millimetre.
 # AND A 1.5 mm CHAMFER ON THE TOP OF THE BEARING FACE, because the block goes in
-# from above with its side strips already on, and a square edge would catch them.
+# from above between the two rows of pads, and a square edge would catch it.
 batteryPadLeadIn = 1.5
 
 # THE IMU SEAT. The one board in this torso small enough that no screw will fit
@@ -255,7 +259,9 @@ imuSeatHeight = 2.5
 # the board's standoffs sit on, and THE PATTERN IS THE BOARD'S RATHER THAN OURS:
 # a 45 mm square, read off the SwiftWing datasheet. That is the difference the
 # bought board makes to this part -- these four posts have to be where somebody
-# else decided, and if the board is ever swapped they move.
+# else decided, and if the board is ever swapped they move. It was, on
+# 2026-10-07, for the power switch board on its own, and that board kept the
+# square so that nothing here had to.
 #
 # This said they pass through the hip saddle and are left interpenetrating. They
 # do not: measured, they share no material with the saddle or anything else, and
@@ -337,12 +343,17 @@ def batteryRails() -> list:
 
 
 def _wallPad(atX: float, faceZ: float, sy: int):
-    """One pad off a long wall: a bearing face on the foam, a 45 degree underside
+    """One pad off a long wall: a bearing face on the block, a 45 degree underside
     down to the wall and a lead-in chamfer on top. It meets the wall's inner face
     face to face, as the deck ledges and cover bosses do, and is one body with
-    the shell once the piece is united for export."""
+    the shell once the piece is united for export.
+
+    The rear pad is the front one reflected, NOT the front profile drawn with its
+    y negated. Negating y reverses the profile's winding, which turns the face's
+    normal round, and the extrusion then runs towards -x: until 2026-10-06 every
+    rear pad stood a whole pad width to the left of the front one it faces."""
     wall = torsoInnerDepth / 2
-    face = batteryFoamFaceY
+    face = batteryPackOuterY
     topZ = faceZ + batteryPadHeight
     profile = [
         (wall, topZ),
@@ -351,15 +362,13 @@ def _wallPad(atX: float, faceZ: float, sy: int):
         (face, faceZ),
         (wall, faceZ - (wall - face)),
     ]
-    pad = extrude(
-        Plane.YZ * Polygon(*[(sy * y, z) for y, z in profile], align=None),
-        amount=batteryPadWidth,
-    )
-    return Pos(atX - batteryPadWidth / 2, 0, 0) * pad
+    pad = extrude(Plane.YZ * Polygon(*profile, align=None), amount=batteryPadWidth)
+    pad = Pos(atX - batteryPadWidth / 2, 0, 0) * pad
+    return pad if sy > 0 else mirrored(pad, Plane.XZ)
 
 
 def batteryPads() -> list:
-    """The pads off the two long walls that the block's side foam bears on.
+    """The pads off the two long walls that the battery block's faces bear on.
 
     Front wall then rear, and on each the three low pads from left to right and
     then the high one. They hang off the wall and stand on nothing, on purpose:
@@ -399,7 +408,7 @@ def imuSeat() -> list:
 
 
 def powerEntryPosts() -> list:
-    """Four posts from the shell floor to the distribution board's standoffs."""
+    """Four posts from the shell floor to the power switch board's standoffs."""
     postHeight = lowerBandZ - cavityBottomZ
     posts = []
     for sx in (1, -1):

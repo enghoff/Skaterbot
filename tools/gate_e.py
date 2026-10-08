@@ -214,14 +214,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         # that sit on top of it. Union one of those components on by accident and
         # the holes fill back in exactly as the rotor hub's did, with nothing to
         # report it but this count.
-        # THE BOUGHT BOARD, and it is here for a reason the others are not: its
-        # four holes are the only thing on this robot that a printed feature has
-        # to agree with and that NOBODY HERE CHOSE. cad/torso.py stands four
-        # posts on a 45 mm square because a datasheet says so, and if the board
-        # is ever swapped for another the posts move with it. Counting them on
-        # the drawn board is what keeps the two in step.
-        "pcb-distribution": [
-            ("M3 clearance holes on the datasheet's 45 mm square", m3Clearance / 2, 4),
+        # THE POWER SWITCH BOARD, on the four posts the bought distribution board
+        # stood on. That board is gone, 2026-10-07, but its four holes are why
+        # cad/torso.py stands its posts on a 45 mm square, and the board that
+        # took its place keeps the square so the pelvis did not change. Counting
+        # them on the drawn board is what keeps the two in step.
+        "pcb-power-switch": [
+            ("M3 clearance holes on the posts' 45 mm square", m3Clearance / 2, 4),
         ],
         "pcb-controller-carrier": [
             # SIX, where this row said four corners until September 2026: the
@@ -409,12 +408,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     rows["limb-105-unmirrored"] = [*rows["limb-105-unmirrored"], spotFaces]
     rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
 
-    # THE POWER SWITCH SPACER, printed since 2026-09-30: a tube, and the bore is
-    # the whole of what it is for.
-    rows["power-switch-spacer"] = [
-        ("M3 clearance bore for the M3 x 20", m3Clearance / 2, 1),
-    ]
-
     # THE WHEEL ADAPTER, which had no rows here until 6 October 2026 although it
     # carries the joint whose holes this gate was written for. It shares the
     # limbs' output disc, and it is three bodies left apart precisely because the
@@ -425,6 +418,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         wheelCapBore,
         wheelCapCounterbore,
         wheelKeyAccessDiameter,
+        wheelSpigotClearance,
         wheelSpigotInsertBore,
     )
 
@@ -436,7 +430,12 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             wheelKeyAccessDiameter / 2,
             6,
         ),
-        ("Ø6.4 bore the M5 insert is melted into", wheelSpigotInsertBore / 2, 1),
+        ("Ø6.4 pocket the M5 insert is melted into", wheelSpigotInsertBore / 2, 1),
+        (
+            "the screw's Ø5.5 on from the step the insert is pressed against",
+            wheelSpigotClearance / 2,
+            1,
+        ),
     ]
     # AND THE CAP THAT CLAMPS THE WHEEL, drawn the same day in place of the Ø30
     # penny washer: the screw's way through its floor, and the pocket the washer
@@ -519,7 +518,6 @@ def panel_openings() -> dict[str, list[tuple]]:
         deckZ,
         interiorHalfDepth,
         panelWallY,
-        powerSwitchSpacer,
         rearWallCutouts,
     )
     from cad.hardware import journalInnerX
@@ -666,33 +664,21 @@ def panel_openings() -> dict[str, list[tuple]]:
             "X",
         )
     ]
-    # And the printed spacer's, for the same reason: a tube whose bore closed
-    # over would still leave one cylindrical face to count.
-    spacer = [
-        (
-            "the power switch spacer's bore, open end to end for its M3 x 20",
-            (0.0, 0.0, powerSwitchSpacer / 2),
-            (2.2, 2.2, powerSwitchSpacer),
-            "Z",
-        )
-    ]
-
     # THE WHEEL CLAMP'S TWO BORES, open end to end. The adapter's runs through
     # spigot, plug and disc, and the cap's through its floor; both are what the
     # screw passes down, and a bore closed over still leaves one cylindrical
     # face for the count above. The probes are squares inside the circles.
-    from cad.wheel_adapter import insertInnerX, insertOuterX
-    from cad.wheeled_parameters import (
-        wheelCapFloor,
-        wheelCapInnerX,
-        wheelSpigotInsertDepth,
-    )
+    from cad.wheel_adapter import insertInnerX, spigotOuterX
+    from cad.wheeled_parameters import wheelCapFloor, wheelCapInnerX
 
+    # The bore is two diameters since the insert went in from the motor side --
+    # its Ø6.4 pocket and the screw's Ø5.5 on to the spigot's end -- so the
+    # probe is a square inside the smaller and runs the whole length of both.
     wheelAdapter = [
         (
-            "the insert's bore, open from the spigot's end to the disc's back",
-            ((insertInnerX + insertOuterX) / 2, 0.0, 0.0),
-            (wheelSpigotInsertDepth, 4.4, 4.4),
+            "the screw's way through, from the disc's back to the spigot's end",
+            ((insertInnerX + spigotOuterX) / 2, 0.0, 0.0),
+            (spigotOuterX - insertInnerX, 3.8, 3.8),
             "X",
         )
     ] + seatingFace(1, 0.0)
@@ -707,7 +693,6 @@ def panel_openings() -> dict[str, list[tuple]]:
 
     return {
         "journal-sleeve": sleeve,
-        "power-switch-spacer": spacer,
         "wheel-adapter": wheelAdapter,
         "wheel-cap": wheelCap,
         "pelvis-shell": pelvis,
@@ -777,7 +762,6 @@ def registry() -> dict[str, callable]:
         # Not a printed piece, and the only bought one here. See the note beside
         # its row in panel_openings().
         "journal-sleeve": hardware.journalSleeve,
-        "power-switch-spacer": electronics.powerSwitchSpacerPrint,
         "joint-stator-clevis": joint.statorClevis,
         "joint-rotor-hub": joint.rotorHub,
         "limb-105-unmirrored": shin.shinLeft,
@@ -786,7 +770,7 @@ def registry() -> dict[str, callable]:
         "thigh-105-mirrored": thigh.thighLeft,
         "pelvis-shell": torso.pelvisShell,
         "electronics-deck": deck.electronicsDeck,
-        "pcb-distribution": electronics.distributionBoard,
+        "pcb-power-switch": electronics.powerSwitchBoard,
         "pcb-controller-carrier": electronics.controllerCarrierBoard,
         "pcb-sbc": electronics.sbcBoard,
     }

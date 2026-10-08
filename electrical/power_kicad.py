@@ -162,8 +162,65 @@ def build(spec: dict) -> None:
 
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     pcbnew.SaveBoard(spec["board"], board)
+    write_stackup(spec["board"], spec["stackup"])
     with open(spec["pads_out"], "w", encoding="utf-8") as out:
         json.dump(placed, out, indent=1)
+
+
+# THE STACKUP IS WRITTEN INTO THE SAVED FILE, 2026-10-07, because KiCad's Python
+# does not wrap it: the board's stackup object comes back as a bare pointer. And it
+# has to be written, because without one KiCad assumes 1 oz copper, and the
+# gerber job file it exports then tells the fab 0.035 mm on a board whose zones
+# are sized for 2 oz. An outside review found that, not a check here.
+def write_stackup(path: str, stackup: dict) -> None:
+    copper = stackup["copper"]
+    mask = stackup["mask"]
+    core = round(stackup["board"] - 2 * copper - 2 * mask, 4)
+    layers = [
+        ("F.SilkS", "Top Silk Screen", None),
+        ("F.Paste", "Top Solder Paste", None),
+        ("F.Mask", "Top Solder Mask", mask),
+        ("F.Cu", "copper", copper),
+        ("dielectric 1", "core", core),
+        ("B.Cu", "copper", copper),
+        ("B.Mask", "Bottom Solder Mask", mask),
+        ("B.Paste", "Bottom Solder Paste", None),
+        ("B.SilkS", "Bottom Silk Screen", None),
+    ]
+    tab, newline = chr(9), chr(10)
+
+    def line(depth: int, text: str) -> str:
+        return tab * depth + text
+
+    lines = [line(2, "(stackup")]
+    for name, kind, thickness in layers:
+        lines.append(line(3, f'(layer "{name}"'))
+        lines.append(line(4, f'(type "{kind}")'))
+        if thickness is not None:
+            lines.append(line(4, f"(thickness {thickness})"))
+        if kind == "core":
+            lines += [
+                line(4, '(material "FR4")'),
+                line(4, "(epsilon_r 4.5)"),
+                line(4, "(loss_tangent 0.02)"),
+            ]
+        lines.append(line(3, ")"))
+    finish = stackup["finish"]
+    lines += [
+        line(3, f'(copper_finish "{finish}")'),
+        line(3, "(dielectric_constraints no)"),
+        line(2, ")"),
+    ]
+    with open(path, encoding="utf-8") as source:
+        text = source.read()
+    if "(stackup" in text:
+        raise SystemExit("the saved board already has a stackup; not writing a second")
+    marker = tab + "(setup" + newline
+    if marker not in text:
+        raise SystemExit("no (setup) section in the saved board to put the stackup in")
+    text = text.replace(marker, marker + newline.join(lines) + newline, 1)
+    with open(path, "w", encoding="utf-8", newline=newline) as out:
+        out.write(text)
 
 
 if __name__ == "__main__":

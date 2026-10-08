@@ -257,15 +257,14 @@ PARTS = [
     # which is the part that matters: an open-drain bus running 150 mm through a
     # torso is the classic way to lose an IMU to a locked-up monitor.
     #
-    # WHAT DID NOT COME UP IS THE SHUNT, and it cannot: it stands in the main bus
-    # path and carries the whole pack current. It stays at the distribution
-    # board, and the monitor's IN+ and IN- are its own screw terminals with a
-    # twisted pair run down to it. That pair carries about 75 mV at 25 V of
-    # common mode, so it is twisted, it is not on this board's copper anywhere,
-    # and it is the one measurement this move makes harder rather than easier.
+    # WHAT DID NOT COME UP WAS THE SHUNT, and it is gone altogether since
+    # 2026-09-16: the current measurement was deleted, and the monitor reads bus
+    # voltage only. Its two shunt inputs are tied to ground on this board since
+    # 2026-10-07, which is what the spare plug they had until then was to be
+    # linked to by hand.
     Part(
         "J1",
-        "battery bus in, from the distribution board",
+        "battery bus in, from the power switch board's J10",
         "JST-XH 2-pin",
         {"1": "VBAT", "2": "GND"},
     ),
@@ -293,15 +292,13 @@ PARTS = [
     # THE MONITOR LANDS ON ALL EIGHT OF ITS PINS, September 2026. It was drawn as
     # five of them into a header standing beside the module, which is not a thing
     # that can be built: a module's pins go where its pins are. All eight come
-    # down into this board now, its shunt inputs included, so the twisted pair
-    # from the shunt lands on J7 here rather than in the screw terminals on the
-    # module. REMOVE THE MODULE'S R100 (0.1 OHM) before connecting the external
-    # Kelvin pair. Otherwise sense-wire current corrupts the measurement;
-    # even ideal zero-ohm sense wires would cause about 0.99 percent error.
+    # down into this board, its shunt inputs included -- and with no shunt left
+    # to measure, those two go to ground here, so the module's own R100 carries
+    # nothing and can stay on.
     Part(
         "A3",
         "the bus monitor, on two M2 standoffs, landed on all eight of its pins; "
-        "its screw terminals are left empty and the shunt pair comes in on J7",
+        "its screw terminals are left empty and its shunt inputs go to ground",
         "INA226 breakout, on a 1 x 8 header",
         {
             "1": "VCC",
@@ -314,12 +311,20 @@ PARTS = [
             "8": "IN+",
         },
     ),
+    # THE POWER SWITCH BOARD'S HOLD AND BUTTON, 2026-10-07, which had nowhere to
+    # land on this board since that board was drawn. Four pins in the order its
+    # own J2 has them, so one ready-made lead runs straight between the two:
+    # the MCU's hold out, the button back in, ground -- and on pin 4 the SBC's
+    # hold, which passes this board by and leaves the lead for the SBC's 40-pin
+    # header before it gets here. FOUR AND NOT THREE because the power switch
+    # board's feed to J1 leaves that board on a three-pin plug, and a plug that
+    # carries the bus must not fit a socket wired to the MCU.
     Part(
         "J7",
-        "the shunt's sense pair, down to the shunt at the distribution board -- "
-        "twisted, and about 75 mV at pack common mode",
-        "JST-XH 2-pin",
-        {"1": "IN+", "2": "IN-"},
+        "the power switch board's hold lead: the MCU's hold out, the button back "
+        "in, ground; pin 4 is the SBC's hold and is not used here",
+        "JST-XH 4-pin",
+        {"1": "HOLD", "2": "SENSE", "3": "GND", "4": "SBC_HOLD"},
     ),
     Part(
         "J2",
@@ -416,6 +421,12 @@ MCU_SIGNALS = [
     ("IMU_INT", "PB5", "GPIO", "P1-20"),
     ("IMU_RST", "PB6", "GPIO", "P1-21"),
     ("INA_ALERT", "PB15", "GPIO", "P1-8"),
+    # The power switch board's hold and button, 2026-10-07: two of the spare
+    # pins on the core board's front row, beside the plug they come in on. NOT
+    # PC6, which is next to PB14 and free on the header but carries the core
+    # board's own blue LED -- firmware/policy blinks it.
+    ("HOLD", "PC11", "GPIO", "P1-17"),
+    ("SENSE", "PB14", "GPIO", "P1-7"),
     ("BOOT0", "PB8", "SYS", "P1-23"),
     ("NRST", "NRST", "SYS", "P2-19"),
 ]
@@ -502,6 +513,9 @@ NETS: dict[str, list[tuple[str, str]]] = {
         ("J5", "2"),
         ("J6", "2"),
         ("A3", "2"),
+        ("A3", "7"),
+        ("A3", "8"),
+        ("J7", "3"),
     ],
     "IMU_V": [("JP1", "2"), ("J6", "3")],
     # The three buses. Each one is a single line: a motor at one end, the
@@ -527,13 +541,12 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "IMU_INT": [("A1", "P1-20"), ("J6", "4")],
     "IMU_RST": [("A1", "P1-21"), ("J6", "5")],
     "INA_ALERT": [("A1", "P1-8"), ("A3", "5")],
-    # THE SHUNT'S SENSE PAIR, and it is the only differential measurement on this
-    # robot. It leaves on J7, twisted, down to the shunt in the main bus path at
-    # the distribution board, and it carries about 75 mV riding on pack voltage.
-    # Keep the two tracks beside each other over the plane: what they pick up
-    # between here and the connector is what the monitor reads as current.
-    "SHUNT_P": [("A3", "8"), ("J7", "1")],
-    "SHUNT_N": [("A3", "7"), ("J7", "2")],
+    # THE POWER SWITCH BOARD'S HOLD AND ITS BUTTON. The MCU drives HOLD high to
+    # keep the robot on and reads SENSE with its own pull-up: the button pulls it
+    # low through the power board's D7. The shunt's sense pair had J7 until
+    # 2026-10-07; the shunt went on 2026-09-16 and its two pins are ground now.
+    "HOLD": [("A1", "P1-17"), ("J7", "1")],
+    "SENSE": [("A1", "P1-7"), ("J7", "2")],
     # The SBC. A serial link rather than USB, and BOOT0 and reset travel with it
     # so the Banana Pi can drop the MCU into its own bootloader and reflash it
     # over the same wires. That matters on a robot whose controller sits under a
@@ -552,6 +565,10 @@ UNCONNECTED = {
     ("A1", f"P3-{n}"): "SWD header -- the ST-Link lands here, not on the carrier"
     for n in WEACT_P3
 }
+UNCONNECTED[("J7", "4")] = (
+    "the SBC's hold, on the power switch board's lead; it leaves for the SBC's "
+    "own header before the lead reaches this one"
+)
 UNCONNECTED.update(
     {
         ("A1", f"P1-{n}"): "spare"
@@ -745,7 +762,7 @@ def draw(path: Path) -> None:
         ("U1", "J2", "A", "hip", "CANA"),
     ]
     aside = [
-        ("J7", ["+3V3", "GND", "I2C_SCL", "I2C_SDA", "INA_ALERT"]),
+        ("J7", ["HOLD", "SENSE", "GND"]),
         ("J6", ["IMU_V", "GND", "I2C_SCL", "I2C_SDA", "IMU_INT", "IMU_RST"]),
         ("J5", ["GND", "SBC_MCU_TXD", "SBC_MCU_RXD", "BOOT0", "NRST"]),
         ("J1", ["+5V", "GND"]),
