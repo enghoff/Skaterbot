@@ -2908,3 +2908,25 @@ the gates hold everything else out of. None of it is proven against the real
 leads yet: the layout asks about 50 mm of each pack's 76 mm and about 100 mm of
 each harness leg. The pelvis is 9.1 g lighter and the deck 0.2 g, for
 1 976.2 g against the 2 300 g ceiling.
+
+## Separate positive landings for the battery and charge inlet — 8 October 2026
+
+P1 takes the series harness's positive and P5 takes the shell XT60's positive,
+each through its own 2.4 mm plated hole in a 4.4 mm pad. Both belong to BATT,
+before the main fuse and switch. P5 stands at torso (39, −21.5) beside P1 at
+(33, −21.5); the fuse holder moves 6 mm outboard and 1 mm rearward to make
+room and clear Q2's courtyard. The BATT pour
+extends with it and the VSRC pour starts farther outboard, leaving the gate
+band and its parts in place. The board outline and printed geometry do not
+change, so the printed mass delta is zero; the extra wire is part of the
+existing harness allowance.
+
+The negatives do not join at the charge inlet. The series harness's negative
+lands on P3 and BMS B− on P4, both GND. The inlet's negative goes only to BMS
+P−: joining it directly to board GND would bypass charge protection. The
+schematic passes netlist comparison and KiCad ERC, and the project build,
+lint and formatting checks pass. KiCad DRC reports zero errors and zero
+unconnected nets, with 12 silkscreen warnings. P1 to P5 measures 5.39 mm of
+copper at its narrowest against the 2 mm check; the existing motor and bank
+paths also pass. Gate I passes all 13 assembly steps. These are design checks,
+not bench results.

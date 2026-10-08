@@ -270,6 +270,7 @@ THT_RESISTOR = ("Resistor_THT", "R_Axial_DIN0204_L3.6mm_D1.6mm_P2.54mm_Vertical"
 THT_DIODE = ("Diode_THT", "D_DO-35_SOD27_P2.54mm_Vertical_AnodeUp", 5.5)
 FOOTPRINT_OF = {
     "P1": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
+    "P5": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
     "P3": ("Connector_Wire", "SolderWire-2.5sqmm_1x01_D2.4mm_OD4.4mm", 12.0),
     "P4": ("Connector_Wire", "SolderWire-1.5sqmm_1x01_D1.7mm_OD3.9mm", 12.0),
     "F1": ("Fuse", "Fuseholder_Blade_Mini_Keystone_3568", 7.37 + 9.0),
@@ -570,7 +571,9 @@ ZONES = [
         # still whole inside it.
         # AND ITS INBOARD EDGE CAME IN 0.5 mm, to 30.5, the same day, for the
         # ground corridor between it and the rear-left screw: P1 is still on it.
-        "rects": [(30.5, -24.0, 43.0, -18.6)],
+        # 2026-10-08: P5 lands beside P1 and F1 moves 6 mm outboard and 1 mm
+        # rearward to clear Q2. Extend raw copper to the fuse's new input.
+        "rects": [(30.5, -24.0, 48.2, -18.6)],
         "priority": 2,
     },
     {
@@ -580,7 +583,8 @@ ZONES = [
         # further, since 2026-10-07: past it is the bus's way back to the rear
         # strip, down Q2's drain riser.
         "rects": [
-            (48.5, -24.0, 61.95, -17.0),
+            # F1 moved outboard for P5; keep its raw input clear of this pour.
+            (51.5, -24.0, 61.95, -17.0),
             (53.9, -17.0, 56.3, -13.8),
             (59.8, -17.0, 61.95, -13.8),
         ],
@@ -1215,6 +1219,21 @@ def _track(grid: Grid, run, net: str, width: float):
 # the bus took the inboard column up to the front strip; with those down first,
 # the three of them were what was left over in every one of sixteen orders.
 ROUTE_FIRST = (
+    # The order that routed the two positive landings, 2026-10-08. Give the
+    # congested control nets their lanes before the easier short connections.
+    "HOLD_SBC",
+    "REF",
+    "EN_B",
+    "VSRC",
+    "VBUS",
+    "HOLD_CAP",
+    "FAST_B",
+    "HOLD_MCU",
+    "SENSE",
+    "EN",
+    "G1",
+    "HOLD_OR",
+    "UV_DIV",
     "RESET_C",
     "RESET_B",
     "MILLER",
@@ -1224,10 +1243,6 @@ ROUTE_FIRST = (
     "HOLD_REF",
     "GATE",
     "GND",
-    "VSRC",
-    "VBUS",
-    "EN",
-    "REF",
 )
 PASSES = 36
 
@@ -1682,6 +1697,7 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
 # single 0.8 mm via shows up as that via.
 MIN_POWER_PATH = 2.0
 POWER_PATHS = [
+    ("BATT", "charge inlet positive to battery", [("P5", "1")], [("P1", "1")]),
     *(
         (
             "GND",

@@ -220,6 +220,14 @@ PARTS = [
         "wire pad, 3.0 mm hole",
         {"1": "in"},
     ),
+    # Separate holes for the battery and the shell's charge inlet: both are
+    # on raw pack positive, before the main fuse and the MOSFET switch.
+    Part(
+        "P5",
+        "charge inlet positive, shell XT60 + -- 14 AWG soldered through",
+        "wire pad, 3.0 mm hole",
+        {"1": "in"},
+    ),
     Part(
         "F1",
         "the main fuse, moved onto this board from an in-line holder",
@@ -578,7 +586,7 @@ NETS: dict[str, list[tuple[str, str]]] = {
     # to separate, so the switched bus runs from the drains straight to the
     # outputs. C1 hangs off it as before -- the Miller capacitor watches the
     # drains, and the drains are the bus.
-    "BATT": [("P1", "1"), ("F1", "1")],
+    "BATT": [("P1", "1"), ("P5", "1"), ("F1", "1")],
     "VSRC": [
         ("F1", "2"),
         ("Q1", "3"),

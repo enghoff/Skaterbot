@@ -81,6 +81,7 @@ GRID = 1.27
 # becomes visible instead of being asserted.
 SYMBOL_OF = {
     "P1": "Connector_Generic:Conn_01x01",
+    "P5": "Connector_Generic:Conn_01x01",
     "P3": "Connector_Generic:Conn_01x01",
     "P4": "Connector_Generic:Conn_01x01",
     "F1": "Device:Fuse",
@@ -146,6 +147,7 @@ SYMBOL_OF.update({f"R{n}": "Device:R" for n in range(2, 27) if n != 24})
 PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
     # the power path
     "P1": [(1, 25.40, 45.72, 0, "y")],
+    "P5": [(1, 25.40, 60.96, 0, "y")],
     "F1": [(1, 45.72, 45.72, 90, None)],
     # FOUR SWITCHES SINCE 2026-09-22, and the two added ones sit side by side
     # below the pair that were here rather than continuing their column. Q7
@@ -245,7 +247,10 @@ PLACEMENT: dict[str, list[tuple[int, float, float, float, str | None]]] = {
 # from somewhere, since every part on this board is passive and the comparator's
 # two supply pins are not.
 NET_DRAW: dict[str, dict] = {
-    "BATT": {"trunks": [("h", 45.72, ["P1.1", "F1.1"])]},
+    "BATT": {
+        "trunks": [("h", 45.72, ["P1.1", "F1.1"])],
+        "labels": ["P5.1"],
+    },
     "VSRC": {
         # Q6 AND Q7 BY LABEL, LIKE THEIR DRAINS AND GATES. Running the source
         # trunk down the column to reach them put it through Q2's gate and

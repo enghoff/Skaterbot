@@ -857,9 +857,18 @@ same arithmetic applies wherever two holes are cut near each other.
 
 ### Charging, and what the BMS does and does not do
 
-The BMS added in September 2026 — a **Daly 6S 24V 20A**, chosen on the 13th — is **on the cell taps only**. It balances the six
-cells and monitors them; the bus still runs direct from the pack to the
-distribution board, so the board never sees more than the charge current. That is
+**Wiring at the power board, 2026-10-08:** the series harness's positive
+lands on P1 and the shell XT60's positive on P5, separate solder pads joined
+by raw BATT copper before the main fuse and switch. The series harness's
+negative lands on P3 and the BMS's B− on P4, both board GND. The shell XT60's
+negative connects only to the BMS's P− lead, so charge current passes through
+the BMS; do not join it directly to P3 or P4.
+
+The BMS added in September 2026 — a **Daly 6S 24V 20A**, chosen on the 13th — is
+**wired charge-only**. Its balance harness monitors and balances the six cells;
+its B− and P− leads carry the charge return. The running bus connects directly
+to the pack through the power switch board, so the BMS never sees more than
+the charge current. That is
 what lets it be small, and small is the only thing this torso has room for — the
 cavity was swept for free volume and the largest box left anywhere in it is
 38 × 64 × 12 mm.

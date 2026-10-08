@@ -1358,6 +1358,7 @@ def power_switch_screw_xy() -> list[tuple[float, float]]:
 #
 #   P1  the pack's positive in, soldered through, where the pack's own lead
 #       comes down behind the bay
+#   P5  the shell XT60's charge positive, on the same raw rail as P1
 #   F1  the fuse, in a mini-blade holder, with its blade clear of the pack leads'
 #       chase over the rear corner
 #   Q1  the switches, two rows of two, each row with its sources meeting in the
@@ -1385,7 +1386,8 @@ def power_switch_screw_xy() -> list[tuple[float, float]]:
 # against the drawn torso rather than trusting a note either way.
 powerSwitchStations = {
     "P1": (33.0, -21.5, 0),
-    "F1": (41.0, -19.5, 0),
+    "P5": (39.0, -21.5, 0),
+    "F1": (47.0, -20.5, 0),
     "Q1": (50.0, -15.0, 0),
     "Q2": (66.08, -15.0, 180),
     "Q6": (50.0, -6.0, 0),
@@ -1519,6 +1521,7 @@ phPinOffset = -0.55
 phHeight = 11.0
 powerSwitchBodies = {
     "P1": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
+    "P5": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
     "P3": [(4.4, 4.4, 12.0, 0.0, 0.0, 0.0)],
     "P4": [(3.9, 3.9, 12.0, 0.0, 0.0, 0.0)],
     **{

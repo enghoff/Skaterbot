@@ -395,6 +395,12 @@ post tops, and the keepout is gone from the layout.
   harness and comes down to P1; its negative to P3, and the BMS's B− to P4 beside
   it. All three are soldered, as the harness's own output was always cut off for
   room; the packs unplug at their own XT60s.
+* **The charge inlet's positive has its own pad, P5**, added 2026-10-08.
+  P1 and P5 share the raw BATT copper before F1 and the MOSFET switch, so
+  charging does not require the robot to be on. One 14 AWG lead goes in each
+  hole. The inlet's negative goes to the BMS's P− lead, not board ground:
+  battery negative goes to P3 and BMS B− to P4, which share GND. Connecting
+  inlet negative to P3 or P4 would bypass the BMS's charge protection.
 * **Every motor plugs in from above**, with the deck out, once this board is
   down. Nothing on it has to be soldered before anything else goes in.
 
