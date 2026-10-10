@@ -25,3 +25,13 @@ No hardware exists. Simulated and CAD results are not physical validation.
 - [x] Route and check the PCB: zero DRC errors and zero unconnected nets; 5.39 mm minimum charge-positive copper width.
 - [x] Pass all 13 torso assembly steps after moving the fuse holder.
 - [ ] Resolve 12 silkscreen warnings; bench-test the assembled charge path.
+
+
+### Antenna and button - 10 October 2026
+
+- [x] Return the button to its original rear-wall station and restore both lugs.
+- [x] Move the side SMA rearward to clear a 12 mm base by at least 2 mm.
+- [x] Keep the SMA D-flat down: 6.50 mm diameter, 6.00 mm flat-to-arc span.
+- [x] Reserve 9.5 mm for the internal SMA body; retain provisional 15 mm depth.
+- [ ] Confirm the purchased SMA body depth and mounting shoulder/nut arrangement.
+- [ ] Measure the full fitted antenna and check its fall-contact envelope.

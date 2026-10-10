@@ -712,62 +712,39 @@ FITS = [
     # number in this column means is "the part as AMASS draws it, where this file
     # puts it". Change either and the number changes with it, on purpose.
     (
-        "the button vs the deck below it",
+        "the rear button vs the deck below it",
         "on/off button",
         "deck plate",
         5.25,
-        "the whole reason this hardware stands above the deck rather than down "
-        "in the bay with the bus it used to break: below the plate the rear "
-        "wall is committed end to end and a bushing's nut fits nowhere. This is "
-        "the air between the switch's body and the top face of the plate its "
-        "two wires drop through, and it is what a lead needs to turn in. It is the nut's bottom edge and not the body's: the nut is Ø17.5 where the thread is 12.2, so the widest thing on the inside face is what comes closest",
+        "The button returns to its original rear-wall station.",
     ),
     (
-        "the button vs the core board in front of it",
+        "the rear button vs the core board",
         "on/off button",
         "WeAct core board",
         5.4,
-        "THE FIGURE THAT CHOSE THIS STATION. The wall was swept at the station "
-        "height for the depth a round bushing can reach before it meets "
-        "something, and the answer is 11.2 mm behind the disconnect's old x 18 "
-        "-- enough for a connector reaching 8.3 mm in and not enough for any "
-        "panel switch -- against 21.4 outboard of x -44, where what stands in "
-        "front is the core board on the far side of the carrier. The body "
-        "drawn here is 16 mm, which errs deep against the one part that has a "
-        "dimensioned drawing behind it -- a Daier GQ-12B/S is 21 mm from its dome to the tip of its terminal, and a 2.4 mm wall and its own dome come out of that before anything is behind the wall. Measure a real one: this gap is the margin it has to fit in",
+        "The original rear-wall body clearance to the core board.",
     ),
     (
         "the charge inlet vs the deck below it",
         "charge inlet",
         "deck plate",
         8.95,
-        "straight down from the XT60E-M's rear body, which is what the leads "
-        "leave from, a millimetre below the row since the inlet moved to x 59.0 "
-        "on 2026-10-05. It was 6.712 while the inlet was the female XT60E-F, "
-        "measured diagonally from its flange outside the wall",
+        "The rear charge inlet retains its existing station.",
     ),
     (
-        "the antenna vs the SBC in front of it",
+        "the side antenna vs the carrier",
         "antenna bulkhead",
-        "SBC board",
-        6.0,
-        "THE TIGHTEST FIGURE ON THIS WALL NOW, AND NO LAYOUT CAN MOVE IT: it is "
-        "the bushing's own 15 mm of depth against the board's rear edge, and it "
-        "is the same 6.00 at any x over the board. The antenna crossed to this "
-        "side of the disconnect when the charge socket became a 34 mm flange "
-        "and left no room for an 11 mm nut beyond it. The 1.5 mm nut to nut it "
-        "used to have with the GX16 is gone with the GX16",
+        "controller carrier board",
+        2.15,
+        "The 9.5 mm internal shoulder clears the carrier's top edge.",
     ),
     (
-        "the antenna vs the button beside it",
+        "the side antenna vs the core board",
         "antenna bulkhead",
-        "on/off button",
-        21.75,
-        "nut circle to nut circle, both on the inside face, and generous where "
-        "the disconnect's ear tip used to leave 7.0. The two are the only "
-        "things on this wall that mount on their own thread, and they are at "
-        "opposite ends of the free stretch of it: the button went outboard for "
-        "the depth behind it, which took it 36 mm away from the antenna",
+        "WeAct core board",
+        4.593446901,
+        "The coax bushing lies behind the core board on the left side.",
     ),
     # THE BMS HAD FIVE ROWS HERE while it stood on edge in the gap between the
     # two bays: its bay against the deck and its guides, and the board against
@@ -880,6 +857,7 @@ def check_fits(items: tuple) -> tuple[int, int]:
             for name in (
                 "IMU board",
                 "on/off button",
+                "controller carrier board",
                 "WeAct core board",
                 "charge inlet",
                 "antenna bulkhead",
@@ -1244,6 +1222,32 @@ def check_journal_fastening() -> tuple[int, int]:
     return len(checks), sum(not passed for _, passed, _ in checks)
 
 
+def check_antenna_base() -> tuple[int, int]:
+    """Check the owner's antenna diameter plus radial hand clearance."""
+    from build123d import Cylinder, Pos, Rot
+
+    from cad import electronics as e
+    from cad import torso
+    from cad.parameters import hoistLugProud
+
+    base = (
+        Pos(
+            -torso.torsoShellWidth / 2 - hoistLugProud / 2,
+            e.antennaSideY,
+            e.antennaSideZ,
+        )
+        * Rot(0, 90, 0)
+        * Cylinder(e.antennaBaseDiameter / 2, hoistLugProud)
+    )
+    gap, shared = measure([base], [torso.hoistLugs()[1]])
+    ok = gap >= e.antennaBaseClearance and shared <= CONTACT_MM3
+    print(
+        f" {'ok' if ok else 'FAIL'} 12 mm antenna base vs left hoist lug: "
+        f"{gap:.3f} mm clearance, wants >= {e.antennaBaseClearance:.1f} mm"
+    )
+    return 1, int(not ok)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1262,6 +1266,7 @@ def main() -> int:
             check_footings,
             check_no_clashes,
             check_journal_fastening,
+            check_antenna_base,
         ):
             more, wrong = stage()
             checked += more

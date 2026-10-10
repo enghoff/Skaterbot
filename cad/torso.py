@@ -20,6 +20,10 @@ from __future__ import annotations
 from build123d import Box, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude
 
 from cad.electronics import (
+    antennaHoleDiameter,
+    antennaHoleFlatSpan,
+    antennaSideY,
+    antennaSideZ,
     batteryLeadEndAir,
     batteryPackBodyEndX,
     batteryPackLeadWidth,
@@ -50,6 +54,7 @@ from cad.electronics import (
     pdbY,
     powerX,
     rearWallCutouts,
+    sideWallX,
 )
 from cad.geometry import mirrored
 from cad.joint import saddleHeight, statorClevis
@@ -554,6 +559,18 @@ def pelvisShell() -> list:
     # cad/electronics.py's table, which is why this is the one place that has to
     # tell them apart.
     panelCutouts = []
+    # Retain the lower circular segment: the flat faces down, 0.5 mm
+    # above the circle's bottom, with 6.0 mm to the opposite arc.
+    smaRound = (
+        Pos(-sideWallX, antennaSideY, antennaSideZ)
+        * Rot(0, 90, 0)
+        * Cylinder(antennaHoleDiameter / 2, shellWall + 4.0)
+    )
+    smaFlatZ = antennaSideZ - antennaHoleFlatSpan + antennaHoleDiameter / 2
+    smaBottom = Pos(-sideWallX, antennaSideY, smaFlatZ - antennaHoleDiameter / 2) * Box(
+        shellWall + 6.0, antennaHoleDiameter + 2.0, antennaHoleDiameter
+    )
+    panelCutouts.append(smaRound - smaBottom)
     for _, atX, atZ, width, height in rearWallCutouts():
         if width == height:
             panelCutouts.append(

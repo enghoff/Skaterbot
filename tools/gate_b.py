@@ -1048,6 +1048,14 @@ DEVIATIONS = {
         },
     ],
 }
+DEVIATIONS["pelvis-shell"].append(
+    {
+        "added_mm3": -10.4562948471,
+        "removed_mm3": -13.2732289597,
+        "why": "Keyed SMA hole moves to the left flank with clearance for a 12 mm antenna base. Button and charge inlet retain their original rear holes; both hoist lugs retain their original shape.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 

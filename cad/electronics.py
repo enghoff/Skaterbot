@@ -930,10 +930,17 @@ chargeInletInboardDepth = chargeInletEarThickness + chargeInletBodyDepth
 # this file. The nut is reserved 6 mm deep, which is the figure it inherited
 # from the GX16's and which errs deep for a 2 mm nut.
 antennaHoleDiameter = 6.5
+# Single D: flat to opposite arc, Amphenol 132203 panel drawing.
+antennaHoleFlatSpan = 6.0
+antennaBodyDiameter = 6.35
+antennaBodyFlatSpan = 5.85
 antennaNutDiameter = 11.0
 antennaNutDepth = 6.0
 antennaBodyDepth = 15.0
 antennaOutboardDepth = 8.0
+antennaInboardDiameter = 9.5
+antennaBaseDiameter = 12.0
+antennaBaseClearance = 2.0
 
 # THE THREE STATIONS, all at one height so the back of the robot reads as a row
 # rather than a scatter. z = 23.5 is the only band that works: a window 20 mm
@@ -972,16 +979,26 @@ antennaPanelX = -8.0
 # rear pads at y = -40, and the leading leg swings to +Y.
 panelWallY = -(torsoShellDepth / 2 - (shellWall / 2))
 
+# The SMA stays on the left flank, with 2 mm radial clearance for its 12 mm
+# antenna base. The button returns to the rear wall at its original station.
+antennaSideY = -21.5
+antennaSideZ = 21.0
+sideWallX = wheeledTorsoShellWidth / 2 - shellWall / 2
+
+
+def sideControlPlacement(name: str):
+    """Map the rear-wall SMA proxy to its left-side mounting station."""
+    if name != "antenna bulkhead":
+        raise ValueError(name)
+    return (
+        Pos(-wheeledTorsoShellWidth / 2, antennaSideY, antennaSideZ)
+        * Rot(0, 0, -90)
+        * Pos(-antennaPanelX, torsoShellDepth / 2, -panelHardwareZ)
+    )
+
 
 def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
-    """(what it is, centre x, centre z, width, height) for every hole in the wall.
-
-    One definition for three consumers: cad/torso.py cuts them, tools/gate_e.py
-    asserts each is open with material round it, and tools/gate_f.py places the
-    bought part that fills it. A round hole is square in this table -- width
-    equals height -- because a hole is a hole to everything that reads this, and
-    cad/torso.py is the one place that has to know the difference.
-    """
+    """Rear button and charge inlet; the keyed SMA is on the left side."""
     return [
         (
             "on/off button",
@@ -996,13 +1013,6 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
             chargeInletPanelZ,
             chargeInletCutWidth,
             chargeInletCutHeight,
-        ),
-        (
-            "SMA antenna bulkhead",
-            antennaPanelX,
-            panelHardwareZ,
-            antennaHoleDiameter,
-            antennaHoleDiameter,
         ),
     ]
 
@@ -2137,7 +2147,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # clear for one.
         "antenna bulkhead": [
             _bulkhead(
-                antennaHoleDiameter,
+                antennaBodyDiameter,
                 antennaOutboardDepth + antennaBodyDepth,
                 antennaPanelX,
                 outerWallY + ((antennaBodyDepth - antennaOutboardDepth) / 2),
@@ -2363,6 +2373,27 @@ def torsoElectronicsGroups() -> dict[str, list]:
         raise KeyError(
             "partNumbers names groups that do not exist: " + ", ".join(orphaned)
         )
+    for name in ("antenna bulkhead",):
+        placement = sideControlPlacement(name)
+        groups[name] = [placement * body for body in groups[name]]
+    flatZ = antennaSideZ - antennaBodyFlatSpan + antennaBodyDiameter / 2
+    groups["antenna bulkhead"][0] -= Pos(
+        -wheeledTorsoShellWidth / 2,
+        antennaSideY,
+        flatZ - antennaBodyDiameter / 2,
+    ) * Box(50.0, antennaBodyDiameter + 2.0, antennaBodyDiameter)
+    # User-supplied 9.5 mm internal body. Reserve the existing 15 mm inward
+    # depth beyond the inner face until the axial length is measured.
+    groups["antenna bulkhead"][0] += (
+        Pos(-interiorHalfWidth + antennaBodyDepth / 2, antennaSideY, antennaSideZ)
+        * Rot(0, 90, 0)
+        * Cylinder(antennaInboardDiameter / 2, antennaBodyDepth)
+    )
+    # A 9.5 mm inner shoulder cannot pass through the 6.5 mm D-hole.
+    # Insert this bulkhead from inside; its nut clamps the outside face.
+    groups["antenna bulkhead"][1] = (
+        Pos(-shellWall - antennaNutDepth, 0, 0) * groups["antenna bulkhead"][1]
+    )
     return groups
 
 

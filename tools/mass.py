@@ -208,7 +208,7 @@ EXPECTED_CHANGE_G = {
         "adapter's change exactly.",
     ),
     "cad/torso.py": (
-        +84.5,
+        +84.5 + 2.8169341759 * 0.00106,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "

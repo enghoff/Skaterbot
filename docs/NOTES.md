@@ -2930,3 +2930,27 @@ unconnected nets, with 12 silkscreen warnings. P1 to P5 measures 5.39 mm of
 copper at its narrowest against the 2 mm check; the existing motor and bank
 paths also pass. Gate I passes all 13 assembly steps. These are design checks,
 not bench results.
+
+
+## Antenna clearance and original button location - 10 October 2026
+
+The button is back in its original rear-wall hole (x -44, z 23.5), at the
+owner's request. Both hoist lugs are their original shape again. The SMA is on
+the left flank at y -21.5, z 21: 1.5 mm rearward of the first side station.
+A 12 mm antenna base clears the left lug by 2.262 mm over the full lug depth,
+including a conservative base starting at the shell face. The check reserves
+2 mm radial margin, equivalent to a 16 mm diameter envelope.
+
+The SMA opening remains a single D, flat down: 6.50 mm diameter, 6.00 mm
+flat-to-opposite-arc span, matching the Amphenol 132203 panel drawing:
+https://www.amphenolrf.com/en-us/assets/file/4065789559/
+The supplied 9.5 mm internal diameter is modelled as an inner shoulder with
+the existing provisional 15 mm inward depth. Its axial dimension still needs
+measurement. Such a shoulder cannot pass through the hole from outside:
+the SMA now installs from inside and the retaining nut goes outside. It goes
+in before the rear button body, which otherwise blocks its inward path.
+
+The united as-drawn shell is 2.817 mm3 (0.003 g PA12) heavier than the original
+rear-panel design; restoring the lug and button adds 0.082 g versus the first
+side-controls design. The fitted antenna's full length, angle and any larger
+hinge or collar still need checking for fall protection.

@@ -776,6 +776,48 @@ def registry() -> dict[str, callable]:
     }
 
 
+def side_control_features(part) -> int:
+    """Assert the side bores and retained D-flat on the united shell."""
+    from math import acos, sqrt
+
+    from build123d import Cylinder, Pos, Rot
+
+    from cad import electronics as e
+    from cad.parameters import shellWall
+
+    radius = e.antennaHoleDiameter / 2
+    flat = e.antennaHoleFlatSpan - radius
+    circle = (
+        Pos(-e.sideWallX, e.antennaSideY, e.antennaSideZ)
+        * Rot(0, 90, 0)
+        * Cylinder(radius, shellWall)
+    )
+    retained = part & circle
+    volume = retained.volume if retained is not None else 0.0
+    expected = (
+        radius**2 * acos(flat / radius) - flat * sqrt(radius**2 - flat**2)
+    ) * shellWall
+    flat_ok = abs(volume - expected) < 1e-6
+    # The retained lower segment's top face must sit at the specified flat.
+    flat_ok = (
+        flat_ok and abs(retained.bounding_box().max.Z - (e.antennaSideZ - flat)) < 1e-6
+    )
+    bore = (
+        Pos(e.buttonPanelX, e.panelWallY, e.panelHardwareZ)
+        * Rot(90, 0, 0)
+        * Cylinder(e.buttonHoleDiameter / 2, shellWall)
+    )
+    blocked = part & bore
+    button_ok = blocked is None or abs(blocked.volume) < 1e-6
+    print(
+        f" {'ok' if flat_ok else 'FAIL'} SMA single D: flat down, 6.5 mm circle, 6.0 mm flat-to-arc"
+    )
+    print(
+        f" {'ok' if button_ok else 'FAIL'} button rear bore open through the united shell"
+    )
+    return int(not flat_ok) + int(not button_ok)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pieces", nargs="*")
@@ -803,6 +845,8 @@ def main() -> int:
         # this gate is about are exactly the ones a merge can fill in, so the
         # question is asked of the merged solid rather than of any one body.
         part = united(built[name]())
+        if name == "pelvis-shell":
+            failures += side_control_features(part)
         found = cylinder_radii(part)
         print(name)
         for what, radius, count in rows:

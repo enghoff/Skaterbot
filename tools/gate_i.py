@@ -37,13 +37,11 @@ WHAT IT DOES NOT CHECK:
   the screws whose access has been looked at.
 * Anything not drawn, like every other gate.
 
-The order is the one the torso has to be built in, and the order is itself a
-finding: the rear-wall hardware goes in AFTER the deck, because the controller
-carrier cannot pass the button or the antenna bulkhead on the way down, and the
-deck cannot pass the charge inlet -- measured, each blocks it within 9 mm. So
-the deck also cannot come out until all three have. See docs/BUILD_REVIEW.md.
-The inlet is the one of the three that goes in from inside, since it became a
-male XT60E-M on 2026-10-05, and its station was chosen for that way in.
+The rear button and charge inlet go in after the deck. The side SMA has a
+9.5 mm internal shoulder, so it goes in from inside with its nut outside.
+Install the SMA before the button body, which otherwise blocks the inward
+installation path. The SMA moves 12 mm inward before lifting clear of the lid
+boss; this avoids the corner boss that blocked the old nut's straight drop.
 
     uv run tools/gate_i.py
 
@@ -153,22 +151,11 @@ def steps() -> list[tuple[str, list, list, bool]]:
         # the strip beside it from above.
         ("the packs' two XT60s", ["battery pack connectors"], [(UP, None)], False),
         ("the deck, with everything on it", DECK, [(UP, None)], False),
-        # THE REAR WALL'S NUTS GO IN FIRST, straight down against the wall, and
-        # are held there while what they fasten is threaded into them from
-        # outside. Put on the other way round -- the part through the wall, then
-        # its nut run up its thread from inside -- the button's and the
-        # antenna's nuts would have to start at the tips of their bushings, and
-        # with the deck in, the core board and the SBC are there. The part then
-        # threads through its own nut, so it is not measured against it.
+        # The rear button nut and side SMA nut go in after the deck.
+        # The bodies then thread into their own nuts from outside.
         (
             "on/off button's nut, held on the wall",
             [("on/off button", 2)],
-            [(UP, None)],
-            False,
-        ),
-        (
-            "antenna bulkhead's nut, held on the wall",
-            [("antenna bulkhead", 1)],
             [(UP, None)],
             False,
         ),
@@ -193,14 +180,20 @@ def steps() -> list[tuple[str, list, list, bool]]:
             False,
         ),
         (
-            "on/off button, into its nut from outside",
-            [("on/off button", 0), ("on/off button", 1)],
-            [(OUT, None)],
+            "SMA shoulder from inside, shank out through the wall",
+            [("antenna bulkhead", 0)],
+            [((1.0, 0.0, 0.0), 12.0), (UP, None)],
+            False,
+        ),
+        (
+            "SMA nut onto its shank from outside",
+            [("antenna bulkhead", 1)],
+            [((-1.0, 0.0, 0.0), None)],
             True,
         ),
         (
-            "antenna bulkhead, into its nut from outside",
-            [("antenna bulkhead", 0)],
+            "on/off button, into its nut from outside",
+            [("on/off button", 0), ("on/off button", 1)],
             [(OUT, None)],
             True,
         ),
@@ -274,6 +267,10 @@ def travel(moving, obstacles, path, shell_box) -> tuple[float, str | None, float
                 if dz > 0 and min(m.min.Z for m in moved) >= shell_box.max.Z + EXIT_MM:
                     break
                 if dy < 0 and max(m.max.Y for m in moved) <= shell_box.min.Y - EXIT_MM:
+                    break
+                if dx > 0 and min(m.min.X for m in moved) >= shell_box.max.X + EXIT_MM:
+                    break
+                if dx < 0 and max(m.max.X for m in moved) <= shell_box.min.X - EXIT_MM:
                     break
                 if t > 400.0:
                     return run + t, "nothing -- never left the shell", 0.0
