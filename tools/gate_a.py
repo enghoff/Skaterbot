@@ -832,6 +832,9 @@ ADDED = {
     "chargeInletNoseHeight": 6.7,
     "chargeInletCutWidth": 14.7,
     "chargeInletCutHeight": 7.2,
+    # Owner-selected trial curvature from the datasheet outline, 2026-10-12;
+    # not a manufacturer-specified radius, pending measurement of the part.
+    "chargeInletKeyRadius": 3.0,
     "chargeInletFixingPitch": 20.0,
     "chargeInletEarSpan": 27.0,
     "chargeInletEarWidth": 6.13,

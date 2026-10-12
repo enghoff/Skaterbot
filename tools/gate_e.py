@@ -332,7 +332,13 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # interpenetrating the flank the way everything else on this part
             # does, so a merge that swallowed one would read none here and
             # nothing else on the robot would notice until it was hung from it.
-            ("Ø6 eyes through the two hoist lugs", hoistLugHoleDiameter / 2, 2),
+            # Two whole hoist bores and two quarter-cylinder inlet corners now
+            # share R3; cylinder_radii counts faces, not their angular spans.
+            (
+                "two hoist eyes plus two R3 keyed-end inlet corners",
+                hoistLugHoleDiameter / 2,
+                4,
+            ),
         ],
         # THE ELECTRONICS DECK, which is the one piece on this robot with no
         # golden STEP behind it -- the KCL never had it, so gate B cannot say
@@ -492,7 +498,7 @@ def panel_openings() -> dict[str, list[tuple]]:
     cutout leaves four planar faces and not one arc, so a wall that closed back
     over one would pass every assertion above it in this file. The round holes in
     this wall are counted above, where their cylindrical faces can be; what is
-    left for here is the one cut in it that has no arc at all -- the XT60E-M
+    left for here is the partly rounded cut -- the XT60E-M
     charge inlet's nose; it was the XT60E-F's body until 2026-10-05, and the
     disconnect's nose beside it until 2026-09-16 -- and the chase through the
     electronics deck.
@@ -714,7 +720,12 @@ def panel_openings() -> dict[str, list[tuple]]:
 
 
 def opening_material(
-    part, centre, size, margin: float = 1.0, through: str = "Y"
+    part,
+    centre,
+    size,
+    margin: float = 1.0,
+    through: str = "Y",
+    keyed_radius: float = 0.0,
 ) -> tuple[float, float]:
     """(material standing in the opening, material in the frame around it), mm3.
 
@@ -734,8 +745,16 @@ def opening_material(
     # not mistaken for material.
     inner = [length - 0.2 for length in size]
     inner[axis] = size[axis]
+    probe = Box(*inner)
+    if keyed_radius:
+        from build123d import Axis, fillet
+
+        probe = fillet(
+            [edge for edge in probe.edges().filter_by(Axis.Y) if edge.center().X > 0],
+            keyed_radius - 0.1,
+        )
     return (
-        shared(Pos(*centre) * Box(*inner)),
+        shared(Pos(*centre) * probe),
         shared(
             (Pos(*centre) * Box(*[length + margin * 2 for length in size]))
             - (Pos(*centre) * Box(*inner))
@@ -863,7 +882,11 @@ def main() -> int:
             print(f" {mark} 360 deg at r{radius:<7.3f}  found {span:6.2f}   {what}")
         for what, centre, size, *axis in cuts:
             standing, frame = opening_material(
-                part, centre, size, through=axis[0] if axis else "Y"
+                part,
+                centre,
+                size,
+                through=axis[0] if axis else "Y",
+                keyed_radius=3.0 if what.startswith("XT60E-M charge inlet:") else 0.0,
             )
             ok = standing <= 1e-6 and frame > 1.0
             failures += 0 if ok else 1

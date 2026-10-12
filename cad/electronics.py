@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import math
 
-from build123d import Align, Box, Cylinder, Pos, Rot
+from build123d import Align, Axis, Box, Cylinder, Pos, Rot, fillet
 
 from cad.parameters import (
     m2NutAcrossFlats,
@@ -894,6 +894,10 @@ chargeInletNoseWidth = 14.2
 chargeInletNoseHeight = 6.7
 chargeInletCutWidth = 14.7
 chargeInletCutHeight = 7.2
+# Trial keyed-end radius selected by the owner, 2026-10-12, from the
+# AMASS XT60E-M drawing outline. Not dimensioned by AMASS; confirm on the part.
+# The keyed end faces +X. R3 leaves more cutout clearance than R3.5.
+chargeInletKeyRadius = 3.0
 chargeInletFixingPitch = 20.0
 # The ear plate, which is what actually holds the connector: 27.00 tip to tip,
 # 6.13 across and 3.20 thick, bearing on the inside face either side of the
@@ -1015,6 +1019,15 @@ def rearWallCutouts() -> list[tuple[str, float, float, float, float]]:
             chargeInletCutHeight,
         ),
     ]
+
+
+def chargeInletProfile(width: float, height: float, depth: float, radius: float):
+    """Centred inlet prism along Y, with the two +X corners rounded."""
+    body = Box(width, depth, height)
+    keyed_edges = [
+        edge for edge in body.edges().filter_by(Axis.Y) if edge.center().X > 0
+    ]
+    return fillet(keyed_edges, radius)
 
 
 def chargeInletFixings() -> list[tuple[float, float]]:
@@ -2099,13 +2112,16 @@ def torsoElectronicsGroups() -> dict[str, list]:
         "charge inlet": [
             # The nose, from where the charger's plug meets it to the wall's
             # inner face.
-            slab(
-                chargeInletNoseWidth,
-                chargeInletOutboardDepth + shellWall,
-                chargeInletNoseHeight,
+            Pos(
                 chargeInletPanelX,
                 outerWallY - (chargeInletOutboardDepth / 2) + (shellWall / 2),
-                chargeInletPanelZ - (chargeInletNoseHeight / 2),
+                chargeInletPanelZ,
+            )
+            * chargeInletProfile(
+                chargeInletNoseWidth,
+                chargeInletNoseHeight,
+                chargeInletOutboardDepth + shellWall,
+                chargeInletKeyRadius,
             ),
             # The ear plate, flat against the inside face.
             slab(

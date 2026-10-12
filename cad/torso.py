@@ -38,6 +38,8 @@ from cad.electronics import (
     batteryPadWidth,
     batteryRailStopHeight,
     chargeInletFixings,
+    chargeInletKeyRadius,
+    chargeInletProfile,
     deckLedgeDepth,
     deckLedgeHeight,
     deckLedgeWidth,
@@ -553,7 +555,7 @@ def pelvisShell() -> list:
     ]
 
     # WHAT THE REAR WALL IS CUT FOR, AND IT IS THE HARDWARE ITSELF NOW. One hole
-    # per bought part -- a round hole for the button's bushing, a rectangle for
+    # per bought part -- a round hole for the button's bushing, a keyed cut for
     # the XT60E-M charge inlet's nose, a round hole for the antenna's bushing --
     # plus two clearance holes for the XT60's screws. A round hole is square in
     # cad/electronics.py's table, which is why this is the one place that has to
@@ -580,7 +582,10 @@ def pelvisShell() -> list:
             )
         else:
             panelCutouts.append(
-                Pos(atX, panelWallY, atZ) * Box(width, shellWall + 4.0, height)
+                Pos(atX, panelWallY, atZ)
+                * chargeInletProfile(
+                    width, height, shellWall + 4.0, chargeInletKeyRadius
+                )
             )
 
     # The XT60's two screws, and they are M2 where everything else on this

@@ -208,7 +208,7 @@ EXPECTED_CHANGE_G = {
         "adapter's change exactly.",
     ),
     "cad/torso.py": (
-        +84.5 + 2.8169341759 * 0.00106,
+        +84.5 + (2.8169341759 + 9.2707993412) * 0.00106,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -348,7 +348,10 @@ EXPECTED_CHANGE_G = {
         "robot: the foam down the block's sides went, so each of the eight "
         "pads reaches 3 mm further off its wall to meet the block's own "
         "45 mm, and its 45 degree underside grows with it. 262.8 mm3 a pad, "
-        "2 102.4 mm3 on the eight, and gate B holds it exactly.",
+        "2 102.4 mm3 on the eight, and gate B holds it exactly. "
+        "R3 KEYED-END INLET CORNERS, 2026-10-12, return 9.2707993412 mm3 "
+        "to the rear wall, +0.0086 g at the current PA12 density. Trial "
+        "radius chosen by the owner, pending measurement of the connector.",
     ),
 }
 

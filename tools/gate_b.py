@@ -1056,6 +1056,13 @@ DEVIATIONS["pelvis-shell"].append(
     }
 )
 
+DEVIATIONS["pelvis-shell"].append(
+    {
+        "added_mm3": 9.2707993412,
+        "why": "Owner-selected R3 on the two keyed-end corners of the XT60E-M nose cutout, 2026-10-12. Two (3 mm square minus a quarter circle) regions return 9.2707993412 mm3 of the 2.4 mm wall; overall aperture size and screw spacing are unchanged. Trial radius pending measurement of the connector.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 
