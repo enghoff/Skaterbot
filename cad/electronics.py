@@ -51,11 +51,11 @@ import math
 from build123d import Align, Axis, Box, Cylinder, Pos, Rot, fillet
 
 from cad.parameters import (
-    m2NutAcrossFlats,
-    m2NutThickness,
     m3Clearance,
     m25CapHeadDiameter,
     m25CapHeadHeight,
+    m25NutAcrossFlats,
+    m25NutThickness,
     shellWall,
 )
 from cad.torso_shell import cablePortX, torsoShellDepth
@@ -804,11 +804,17 @@ panelX = powerX - 10.0
 # measure on a real switch. If a measured part is deeper than 18 mm this station
 # still works up to 21.4 and nothing beyond that does.
 #
-# M12 x 1 is the thread, the hole is that plus two tenths, and the nut is
-# reserved at 17 mm across corners, which errs large for an M12. The button
-# stands 10 mm proud, which covers the bushing left outside the wall and the
-# actuator on top of it.
-buttonHoleDiameter = 12.2
+# M12 x 1 is the thread, and the nut is reserved at 17 mm across corners, which
+# errs large for an M12 -- but the nut's size is on no drawing, so measure it.
+# The button stands 10 mm proud, which covers the bushing left outside the wall
+# and the actuator on top of it.
+#
+# THE HOLE IS Ø12.4, DAIER'S OWN PANEL CUTOUT, since 2026-10-12. It was the
+# thread plus two tenths, 12.2, which nobody had held against the maker's
+# drawing: the GQ-12B sheet Evelta links (408-GQ-12BJ-N.pdf) draws the cutout
+# Ø12.4 for a 1 to 6 mm panel, and the owner's printer takes about 0.2 mm off a
+# hole, so 12.2 would have printed about 12.0 round an M12 thread.
+buttonHoleDiameter = 12.4
 buttonNutDiameter = 17.5
 buttonNutDepth = 3.0
 buttonBodyDepth = 16.0
@@ -870,13 +876,32 @@ buttonClearDepth = 21.4
 # the body reaches 13.5 mm in, which this station has room for -- the female
 # reached 14.7 -- but the nose would want the ears on the outside instead.
 #
-# THE CUTOUT IS CUT TO THE NOSE, NOT TO THE BODY -- 14.20 x 6.70 plus half a
-# millimetre all round -- and that is forced rather than chosen. The ear holes
-# are 20.00 apart and the body is 15.50 long, so a cutout sized to the body would
-# run into them. AT 14.7 THERE IS 1.45 mm OF WALL BETWEEN THE CUTOUT AND EACH
-# SCREW HOLE, the thinnest bridge on this wall again, at M2 -- and M2 is forced
-# by the nuts, which cad/parameters.py sets out: each sits behind an ear, 2.25 mm
-# from the side of the body.
+# THE NOSE IS 15.3 x 8.0, MEASURED WITH CALIPERS ON THE PART IN HAND BY THE
+# OWNER, 2026-10-12, and the 14.20 x 6.70 this was drawn to until then was
+# wrong. It was attributed to "AMASS's dimensioned drawing", which was never
+# put in reference/ and cannot now be traced. The pelvis printed to it in PLA
+# came off with a 14.5 x 7.0 hole that the connector cannot enter. AMASS's own
+# catalogue (china-amass.com, page 14 of the copy Evelta serves as
+# 515-amass-connectors.pdf) dimensions the XT60E-M only overall -- 27.10 x
+# 12.10 x 16.70 -- and gives no separate nose at all, which agrees with a nose
+# the size of the 15.5 x 8.1 XT60 shell rather than one smaller than it.
+#
+# THE CUTOUT IS THE NOSE PLUS 0.2 mm ALL ROUND, the least air tools/gate_h.py
+# accepts between two parts that do not touch. On the owner's printer a hole
+# comes out about 0.1 mm a side small -- 14.7 x 7.2 printed 14.5 x 7.0 -- so
+# 15.7 x 8.4 should print about 15.5 x 8.2 and leave the nose 0.1 a side.
+#
+# AND THE STRIP OF WALL TO EACH SCREW IS WHAT THE NOSE'S EXTRA WIDTH CAME OUT
+# OF. The ear holes are 20.00 apart, so the wall between the cut and each screw
+# hole shrank by half the nose's growth. For a day that was answered with M2
+# holes drawn at 2.2, which had to be drilled out after printing. Since
+# 2026-10-12 the screws are M2.5 on the standard Ø2.9, which prints about 2.7
+# and passes one as printed, and each sits chargeInletScrewOffset outboard of
+# its ear hole's centre: 0.95 mm of wall to the cut, 0.05 under the 1.0
+# tools/printable.py holds a wall to, and registered in tools/gate_g.py as the
+# one place that is accepted -- the connector's own hole spacing and the
+# screw's own size leave nothing else to give. cad/parameters.py says why the
+# nut fits now.
 #
 # THE STATION MOVED 3.5 mm OUTBOARD, to x 59.0, AND 1 mm DOWN, AND IT IS THE WAY
 # IN THAT MOVED IT. The male goes in from inside: it comes down in front of the
@@ -887,18 +912,35 @@ buttonClearDepth = 21.4
 # rear right cover boss at that depth, has to pass inboard of the boss, which
 # starts at x 66.55. That leaves x 58.45 to 59.45 and nothing else on this wall:
 # at the female's 55.5 the ear plate sat 3 mm into those plugs, and tools/gate_i.py
-# could find no straight way in. 59.0 is the middle, half a millimetre from each.
+# could find no straight way in. 59.0 was the middle, half a millimetre from each.
 # It puts the rear body 0.2 mm under the boss in plan, which is what the
 # millimetre down clears; chargeInletPanelZ says so where it is set.
-chargeInletNoseWidth = 14.2
-chargeInletNoseHeight = 6.7
-chargeInletCutWidth = 14.7
-chargeInletCutHeight = 7.2
+#
+# x 58.7 SINCE 2026-10-12, AND THE WINDOW IS LESS THAN HALF WHAT IT WAS. The
+# measured nose is 1.1 mm wider than the drawn one, so its outboard edge meets
+# the boss 0.55 mm sooner: tools/gate_i.py passes from x 58.5 to 58.85 and fails
+# at 58.4 on the harness plugs and at 58.95 on the boss. 58.7 is the middle of
+# that, about 0.2 mm from each -- and the plugs it clears are a catalogue-class
+# envelope, not measured, so this is the first thing to re-check when they are.
+chargeInletNoseWidth = 15.3
+chargeInletNoseHeight = 8.0
+chargeInletCutAir = 0.2
+chargeInletCutWidth = chargeInletNoseWidth + 2 * chargeInletCutAir
+chargeInletCutHeight = chargeInletNoseHeight + 2 * chargeInletCutAir
 # Trial keyed-end radius selected by the owner, 2026-10-12, from the
 # AMASS XT60E-M drawing outline. Not dimensioned by AMASS; confirm on the part.
 # The keyed end faces +X. R3 leaves more cutout clearance than R3.5.
 chargeInletKeyRadius = 3.0
 chargeInletFixingPitch = 20.0
+# HOW FAR EACH SCREW STANDS OUTBOARD OF ITS EAR HOLE'S CENTRE, and it is all the
+# hole allows: an M2.5 in a Ø3.00 ear hole has 0.25 mm of play each side. It
+# buys two things at once. The nut behind the ear, 2.5 mm across half its flats,
+# lands on the side of the connector's body rather than 0.25 mm into it, so the
+# body holds it square; and the wall keeps 0.25 mm more between the hole and the
+# cut. BOTH FIGURES IT LEANS ON ARE THE DRAWING'S AND NOT MEASURED -- the ear
+# holes' Ø3.00 at 20.00 -- so check them on the part: a smaller ear hole would
+# not let the screw stand this far out.
+chargeInletScrewOffset = 0.25
 # The ear plate, which is what actually holds the connector: 27.00 tip to tip,
 # 6.13 across and 3.20 thick, bearing on the inside face either side of the
 # cutout. The rear body behind it is the 15.50 x 8.10 of the XT60 shell.
@@ -967,12 +1009,14 @@ antennaBaseClearance = 2.0
 # its cutout and its screws, 1.25 and 1.5, which the parts set and no layout can
 # change. Move one station and all three want re-checking -- tools/gate_f.py
 # measures the lot. THE CHARGE INLET MOVED TO x 59.0 when it became a male on
-# 2026-10-05, for its way in rather than for its place; its own block above says
-# why, and the bridge it binds is its own 1.45 again.
+# 2026-10-05, and to 58.7 when its nose was measured on 2026-10-12, both times
+# for its way in rather than for its place; its own block above says why. The
+# bridge it binds was its own 1.45 again, and is 1.05 since the same day.
 panelHardwareZ = 23.5
 buttonPanelX = -44.0
-chargeInletPanelX = 59.0
-# THE ONE STATION A MILLIMETRE OUT OF THE ROW, 2026-10-05. At x 59.0 the
+chargeInletPanelX = 58.7
+# THE ONE STATION A MILLIMETRE OUT OF THE ROW, 2026-10-05. At x 59.0, where it
+# stood until 2026-10-12, the
 # inlet's rear body stands 0.2 mm under the rear right cover boss, which comes
 # down to z 27.3, and at the row's height the body's top edge is 27.55. A millimetre
 # lower it is 0.75 clear, and the row the back of the robot reads as does not
@@ -1034,20 +1078,21 @@ def chargeInletFixings() -> list[tuple[float, float]]:
     """The XT60E-M's two ear screws, in the pelvis's own x and z.
 
     They are clearance holes and nothing else: the screw head takes the wall on
-    the outside, with a washer under it, the connector's own ear plate sits
-    against the inside face, and a nut behind the ear takes the load, so 2.4 mm
-    of wall is CLAMPED rather than threaded.
+    the outside, the connector's own ear plate sits against the inside face, and
+    a nut behind the ear takes the load, so 2.4 mm of wall is CLAMPED rather
+    than threaded.
 
-    M2, AND THE NUT IS WHY. Each ear hole is 2.25 mm from the side of the
-    connector's own body, and the nut sits in that gap: an M2's flats clear it by
-    a quarter of a millimetre, where an M2.5 fouls it by the same, and the body
-    then holds the nut square so the screw is turned from outside. No washer
-    fits under that nut, which is why the washer is under the head. The wall
-    keeps 1.45 mm between each screw and the nose cutout. The connector's own
-    holes are 3.00, which leaves an M2 half a millimetre of adjustment each side
-    -- the cutout, not the screws, is what locates the part.
+    M2.5 SINCE 2026-10-12, on holes that pass one as printed. Each stands
+    chargeInletScrewOffset outboard of its ear hole's centre, which is the play
+    an M2.5 has in the connector's Ø3.00 hole, so that its nut's flat lands on
+    the side of the body rather than in it; the body then holds the nut square
+    and the screw is turned from outside. The wall keeps 0.95 mm between each
+    hole and the nose cutout. NO WASHER UNDER THE HEAD: an M2.5 washer is Ø6
+    and would sit 0.4 mm over the nose, which stands 6 mm proud of the wall
+    beside it, where the Ø4.5 head clears it by 0.35. The cutout, not the
+    screws, is what locates the part.
     """
-    half = chargeInletFixingPitch / 2
+    half = chargeInletFixingPitch / 2 + chargeInletScrewOffset
     return [
         (chargeInletPanelX - half, chargeInletPanelZ),
         (chargeInletPanelX + half, chargeInletPanelZ),
@@ -2143,16 +2188,17 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 innerWallY + chargeInletEarThickness + (chargeInletBodyDepth / 2),
                 chargeInletPanelZ - (xt60Width / 2),
             ),
-            # Its two nuts, on the back of the ear plate beside the body -- the
-            # quarter of a millimetre between them is why these screws are M2.
+            # Its two nuts, on the back of the ear plate beside the body -- M2.5
+            # since 2026-10-12, each standing 0.25 mm outboard of its ear hole's
+            # centre so that its flat lands on the body rather than in it.
             *[
                 slab(
-                    m2NutAcrossFlats,
-                    m2NutThickness,
-                    m2NutAcrossFlats,
+                    m25NutAcrossFlats,
+                    m25NutThickness,
+                    m25NutAcrossFlats,
                     atX,
-                    innerWallY + chargeInletEarThickness + (m2NutThickness / 2),
-                    atZ - (m2NutAcrossFlats / 2),
+                    innerWallY + chargeInletEarThickness + (m25NutThickness / 2),
+                    atZ - (m25NutAcrossFlats / 2),
                 )
                 for atX, atZ in chargeInletFixings()
             ],

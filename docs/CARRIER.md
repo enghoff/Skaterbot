@@ -107,7 +107,7 @@ right hole spacing, and the footprints use it.
 | **J5** | 8-pin | the SBC: 1 and 2 `GND`, 3 and 4 `+5V`, 5 MCU→SBC, 6 SBC→MCU, 7 `BOOT0`, 8 `NRST` |
 | **J6** | 6-pin | IMU: 1 `SCL`, 2 `GND`, 3 supply, 4 `INT`, 5 `RST`, 6 `SDA` |
 | **J7** | 4-pin | **the power switch board's hold lead, since 2026-10-07**: 1 `HOLD` from PC11, 2 `SENSE` to PB14, 3 `GND`, 4 the SBC's hold, which is not used here. In the power switch board's own J2 order, so one double-ended lead joins them. At the front edge in front of the core board; its lead comes up through the deck's front opening beside J1 and along the edge. It was the shunt's 2-pin sense pair until then, and the monitor's two shunt inputs are tied to ground on the board now |
-| **JP1** | 3 pads | IMU supply link: bridge 1–2 for 5 V, 2–3 for 3.3 V |
+| **JP1** | 3 pads | **Fit a soldered wire link between 2–3 for 3.3 V on the ordered ES-12234 IMU.** 1–2 selects 5 V; leave it open. |
 
 **Three of these changed on 14 September 2026, when the BEC and the monitor came
 onto the board.** J1 was the 5 V coming in from a BEC mounted elsewhere and is
@@ -140,12 +140,29 @@ the logic level on every transceiver's `VIO`. That split is the whole reason the
 bill buys MCP2562FD rather than MCP2561FD — the 2561 has no separate I/O supply
 and would drive 5 V logic into a 3.3 V microcontroller.
 
-Two things about the core board's supply that are easy to be bitten by. Its
-regulator is small, so the 3.3 V rail is for the MCU, the `VIO` pins and the
-pull-ups and not for anything that draws real current — which is why the IMU's
-link defaults to 5 V. And `SB9` on the core board ties the rail you are feeding
-to the USB-C connector's `VBUS` pin, so either do not plug a host into the core
-board while the robot is powered, or cut `SB9`.
+The ordered 7Semi ES-12234 IMU uses the **3.3 V rail: fit JP1 2–3**.
+JP1 is three through-holes for a soldered wire link, not a fitted removable
+jumper. Leave 1–2 open; never bridge both pairs. The existing PCB already
+supports this setting, so no copper or footprint change is needed. The core
+board's regulator also supplies the MCU, `VIO` pins and pull-ups; confirm its
+remaining current and thermal margin during commissioning. `SB9` on the core
+board ties the rail you are feeding to the USB-C connector's `VBUS` pin, so
+either do not plug a host into the core board while the robot is powered, or
+cut `SB9`.
+
+The IMU has a **four-pin, 1.00 mm Qwiic/JST-SH-compatible connector**.
+Adapt it to J6 by signal: **SCL → J6-1, GND → J6-2, 3V3 → J6-3,
+SDA → J6-6**. Leave J6-4 (`INT`) and J6-5 (`RST`) disconnected; these are
+not exposed on the module's four-pin connector. Check continuity against
+the module labels before powering it; do not rely on cable colours.
+The ordered six-pin XH bare-ended lead is the carrier-side harness only;
+it does not plug into the IMU.
+
+Basis: [7Semi's ES-12234 pinout image](https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/original/image-manager/es-12234.jpg?t=1785842620)
+explicitly labels **3.3V Input**. The manufacturer's linked STEP model names
+the connector `QWIIC` and spaces the four contacts at 1.00 mm. Its product
+page's conflicting 3.6–5 V text is not the assembly instruction for this
+connector. Evidence is saved in `exports/imu-research/connector-identification.md`.
 
 Decoupling is nine capacitors: 100 nF at both `VDD` and `VIO` of every
 transceiver, one more on the 3.3 V beside the sensor connectors, 10 µF of bulk
@@ -678,10 +695,11 @@ beeping with a meter before ordering.**
   and reads the button on PB14 with its own pull-up. **No firmware does either
   yet**, so until it does the power switch board is held on by a shorting link on
   its own button plug, which is a bench arrangement rather than the robot's.
-- **Which IMU breakout.** The 7Semi BNO085 nano is listed at 3.6–5 V, so JP1
-  defaults to 5 V, and the pin order on J6 follows the names its listing uses
-  rather than a pinout anyone has read off the board. Confirm both against the
-  module in hand before crimping, and check which rail its I²C pull-ups go to.
+- **IMU commissioning.** ES-12234 is identified from the ordered listing;
+  its connector is four-pin Qwiic/JST-SH-compatible. The assembly setting is
+  **JP1 2–3, 3.3 V**, with the four-wire J6 adapter above. Verify the delivered
+  revision, harness continuity, pull-up rail and regulator margin before
+  powering it. The manufacturer's page still contains conflicting supply text.
 - **Which UART the SBC exposes.** J5 assumes a 3.3 V serial port on the Banana
   Pi's 40-pin header. Which one, and whether the OS leaves it free, has not been
   checked.

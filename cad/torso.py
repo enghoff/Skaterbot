@@ -61,7 +61,14 @@ from cad.electronics import (
 from cad.geometry import mirrored
 from cad.joint import saddleHeight, statorClevis
 from cad.parameters import (
+    bearingSeatBossThickness,
+    cheekDiameter,
     cheekThickness,
+    hipArmButtressDrop,
+    hipArmButtressRise,
+    hipArmGussetDrop,
+    hipArmGussetInnerY,
+    hipArmGussetReach,
     hipCenterX,
     hoistLugEyeChamfer,
     hoistLugHeight,
@@ -73,7 +80,7 @@ from cad.parameters import (
     hoistLugProud,
     hoistLugTaper,
     jointKeepOut,
-    m2Clearance,
+    m25Clearance,
     m25Pilot,
     rearCheekX,
     shellWall,
@@ -493,6 +500,62 @@ def hoistLugs() -> list:
     return [lug, mirrored(lug, Plane.YZ)]
 
 
+def hipArmBraces() -> list:
+    """Ribs on the two inboard hip arms, and a buttress outside each outboard one.
+
+    cad/parameters.py says why beside hipArmGussetReach, and how each is placed
+    to keep clear of the motor, its rear screws and the thigh. Every one laps
+    half the floor's thickness up into the floor and half an arm or a wall into
+    the arm or wall it stands on, so it shares real material with the shell and
+    unites with it rather than touching it face to face.
+
+    Drawn for the right hip and reflected for the left, like the clevis, which
+    keeps the forward-edge rib on the forward edge of both.
+    """
+    floorZ = shellFloorZ
+    lapZ = floorZ + floorThickness / 2
+
+    # The ribs, on the inboard arm's face towards the centre line: along the
+    # floor by the reach, down the arm by the drop.
+    armFace = hipCenterX + rearCheekX - cheekThickness / 2
+    ribProfile = [
+        (armFace + cheekThickness / 2, lapZ),
+        (armFace - hipArmGussetReach, lapZ),
+        (armFace - hipArmGussetReach, floorZ),
+        (armFace, floorZ - hipArmGussetDrop),
+        (armFace + cheekThickness / 2, floorZ - hipArmGussetDrop),
+    ]
+    rib = extrude(
+        Plane.XZ * Polygon(*ribProfile, align=None),
+        amount=cheekThickness / 2,
+        both=True,
+    )
+    forwardEdgeY = cheekDiameter / 2 - cheekThickness / 2
+    ribs = [
+        Pos(0, atY, 0) * rib
+        for atY in (-hipArmGussetInnerY, hipArmGussetInnerY, forwardEdgeY)
+    ]
+
+    # The buttress, on the outboard arm's outer face -- which is the flank's,
+    # since the shell is built on that plane -- across the arm's full width.
+    flankX = torsoShellWidth / 2
+    buttressProfile = [
+        (flankX - shellWall / 2, floorZ - hipArmButtressDrop),
+        (flankX, floorZ - hipArmButtressDrop),
+        (flankX + bearingSeatBossThickness, floorZ),
+        (flankX, floorZ + hipArmButtressRise),
+        (flankX - shellWall / 2, floorZ + hipArmButtressRise),
+    ]
+    buttress = extrude(
+        Plane.XZ * Polygon(*buttressProfile, align=None),
+        amount=cheekDiameter / 2,
+        both=True,
+    )
+
+    right = [*ribs, buttress]
+    return right + [mirrored(body, Plane.YZ) for body in right]
+
+
 def deckLedges() -> list:
     """Four pads on the front and rear walls, carrying cad/deck.py's plate.
 
@@ -523,7 +586,8 @@ def deckLedges() -> list:
 def pelvisShell() -> list:
     """The shell, its four cover bosses and both hip clevises: one printed part.
 
-    Twenty-five bodies now, drawn separately. KCL-SHAPED: the engine refused to
+    Thirty-six bodies now, drawn separately, eight of them the hip arms' braces
+    since 2026-10-12. KCL-SHAPED: the engine refused to
     union hollow boxes that meet at right angles, and the hip saddles are
     exactly that case, so the pieces were drawn -- and until September 2026
     exported -- as bodies laid into one another.
@@ -588,8 +652,8 @@ def pelvisShell() -> list:
                 )
             )
 
-    # The XT60's two screws, and they are M2 where everything else on this
-    # robot is M3. The connector is clamped to the wall by its own ears and a
+    # The XT60's two screws, and they are M2.5 since 2026-10-12, M2 before
+    # that, where most of this robot is M3. The connector is clamped to the wall by its own ears and a
     # nut, so this wall is clamped rather than threaded. That is
     # what a panel-mount part buys over a bonded one -- 2.4 mm of shell will not
     # hold a thread, and the printed panel that used to carry these needed 6 mm
@@ -599,15 +663,19 @@ def pelvisShell() -> list:
     # nuts sat 2.25 mm from its body, which an M2 cleared and an M2.5 did not,
     # and that pair is what set M2 for the whole wall. THE SAME PART IS BACK, as
     # the charge inlet since 2026-10-05, so the reason is too: the female socket
-    # it replaced would have taken an M2.5, and the male does not. So is the
-    # thinnest material on this wall, the 1.45 mm between each ear screw and the
-    # nose cutout, where the female's flange screws left 1.7. The button that
+    # it replaced would have taken an M2.5, and the male did not until each
+    # screw was stood 0.25 mm outboard in its ear hole. So is the
+    # thinnest material on this wall, the strip between each ear screw and the
+    # nose cutout: 1.45 mm until the nose was measured 15.3 wide on 2026-10-12,
+    # and 0.95 since, on M2.5 holes that pass the screw as printed --
+    # cad/parameters.py says why the screws are M2.5 now and tools/gate_g.py
+    # registers the 0.95. The female's flange screws left 1.7. The button that
     # replaced the disconnect needs no screws at all -- it clamps the wall with
     # its own nut -- so tools/gate_e.py counts two holes here and not four.
     panelFixings = [
         Pos(atX, panelWallY, atZ)
         * Rot(90, 0, 0)
-        * Cylinder(m2Clearance / 2, shellWall + 4.0)
+        * Cylinder(m25Clearance / 2, shellWall + 4.0)
         for atX, atZ in chargeInletFixings()
     ]
 
@@ -626,7 +694,13 @@ def pelvisShell() -> list:
     # as well -- so this hip's load enters the closed section through two faces
     # rather than one. It now STOPS in that wall's outer face rather than crossing
     # it: the wall is built on this plane, which is what makes the flank flush.
-    rightHipPitchJoint = Pos(hipCenterX, 0, hipPitchZ) * statorClevis()
+    #
+    # ITS ARMS ARE FILLED TO FULL WIDTH, 2026-10-12, where the thigh's clevis
+    # keeps its waist: the second PLA pelvis lost all four at the floor.
+    # Half the floor's thickness is how far the fill runs on into it.
+    rightHipPitchJoint = Pos(hipCenterX, 0, hipPitchZ) * statorClevis(
+        fullWidthInto=floorThickness / 2
+    )
 
     # The left hip is the right one reflected, not a second copy of it. The rear
     # cheek carries a relief cut on the actuator's connector flat, and a plain
@@ -650,6 +724,7 @@ def pelvisShell() -> list:
         *powerEntryPosts(),
         *deckLedges(),
         *hoistLugs(),
+        *hipArmBraces(),
         # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
         # printed feature in this cavity that stands inside its own reserved
         # volume, so that gate measures the IMU against the shell less this body.

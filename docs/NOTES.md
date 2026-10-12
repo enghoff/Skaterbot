@@ -2954,3 +2954,109 @@ The united as-drawn shell is 2.817 mm3 (0.003 g PA12) heavier than the original
 rear-panel design; restoring the lug and button adds 0.082 g versus the first
 side-controls design. The fitted antenna's full length, angle and any larger
 hinge or collar still need checking for fall protection.
+
+### IMU supply and harness — 12 October 2026
+
+The ordered Robocraze Nano listing matches 7Semi ES-12234. Seller and
+manufacturer photos show a fitted four-pin connector; the manufacturer STEP
+names it QWIIC and its contact centres are 1.00 mm apart. The earlier BOM's
+six-pin-to-IMU-pads harness description was incorrect.
+
+Assembly decision: fit a soldered wire link across JP1 2–3 for 3.3 V, leaving
+1–2 open. The existing carrier supports this; no PCB redesign or geometry
+change, hence no modelled mass delta. Manufacturer pinout labels 3.3V Input;
+the contradictory 3.6–5 V product text remains a vendor documentation issue.
+
+Map the four-wire adapter SCL/GND/3V3/SDA to J6 pins 1/2/3/6 respectively.
+J6 pins 4 (INT) and 5 (RST) are unused on this module connector. The purchased
+six-pin XH lead can serve the carrier side but cannot mate with the IMU.
+Adafruit 4397, a 150 mm Qwiic-to-individual-female-header cable, is suitable
+for direct BPI testing and is listed by Fab.to.Lab; it has not been ordered.
+
+Evidence: exports/imu-research/connector-identification.md and source images.
+Delivery revision, harness continuity, pull-up rail and core regulator margin
+still need commissioning verification. No physical assembly has been changed.
+
+## The charge inlet's nose was measured, and the pelvis did not fit it — 12 October 2026
+
+The first pelvis printed in PLA came off with a 14.5 × 7.0 hole for the charge
+inlet, 0.2 mm under the 14.7 × 7.2 drawn, and the XT60E-M's nose measures
+15.3 × 8.0 with calipers. The 14.20 × 6.70 it was cut to was attributed to an
+AMASS drawing that was never stored in `reference/` and cannot be traced, and
+the bill's instruction to measure the part before printing was not in the path
+to the printer.
+
+The cut is the measured nose plus 0.2 mm a side, 15.7 × 8.4. The two M2 holes
+are Ø2.2 where they were 2.4, because at 2.4 the wall between each and the wider
+cut would be 0.95 mm, under the 1.0 every wall is held to; they had to be
+drilled out after printing. **Later the same day they went to M2.5 on Ø2.9
+holes that pass the screw as printed**, at the owner's request. Each screw stands
+0.25 mm outboard in the connector's Ø3.00 ear hole, which is the play an M2.5 has
+there. That lands the M2.5 nut's flat on the connector's body instead of a
+quarter of a millimetre into it, which was why the inlet was M2 at all. The wall
+to the cut is 0.95 mm. That is the one wall on the robot under 1.0, and
+`tools/gate_g.py` now records it as accepted: the connector's 20 mm ear holes
+and the screw's size leave nothing else to give. There is no washer under the
+head, because an M2.5 washer is Ø6 and would sit on the nose. The screws are not
+in the model, so they were drawn in a scratch check. The head clears the nose by
+0.35 mm, and an M2.5 × 10 runs 3.6 mm into its nut even if the ear plate is the
+4.0 its drawing labels, with nothing within 0.5 mm of its tip. The inlet moved 0.3 mm inboard to x 58.7, because the wider nose
+meets the rear-right lid boss on its way in at 59.0, and the window it can enter
+by is now x 58.5 to 58.85. The button's hole is Daier's own Ø12.4 cutout where it
+was 12.2. Gates A to I pass. The rear wall is 81.8 mm³ lighter, 0.08 g, and the
+robot stays at 1 974.2 g.
+
+Gate A had been failing since the SMA moved to the left flank on 10 October,
+because that change added nine dimensions without declaring them. They are
+declared now.
+
+`docs/DIMENSION_AUDIT.md` is the pass over every other bought-part dimension that
+this prompted. Three more interfaces on the pelvis are unverified and could fail
+the same way: the inlet's ear plate, the antenna bulkhead's hole and the IMU's
+seat. The IMU board has its socket underneath, so the earlier note that it needs
+no geometry change is wrong. Two leg faults would stop a joint being assembled:
+the captive M5 nut can spin in its 9.3 mm pocket, and the printed journal sleeve
+is drawn line to line with its bearing's bore.
+
+## The hip arms broke off the second PLA pelvis, and are braced — 12 October 2026
+
+The second pelvis printed in PLA came off with all four hip arms broken where they
+meet the floor. The file did not cause it: each arm was one solid with the shell,
+and it met the shell through the same 3 × 24 mm neck, 72 mm² with a square inside
+corner, that every version since before the first print has had. Printed upright,
+as `print_up` declares, that neck is a layer seam, and it is the layer where the
+whole floor starts on support. On textbook figures for PLA across its layers it
+parts at a sideways push of 1 to 2 kg at the foot of an arm, which prising off the
+support reaches easily. Why the first print's arms survived is not recorded; a
+different orientation or gentler support removal are the likely reasons.
+
+Every arm is now filled out to its disc's full 52 mm from the axis up into the
+floor, where it used to waist in to 24. The inboard arms keep the relief on the
+motor's connector flat, so they meet the floor 45 mm wide. Each inboard arm also
+carries three ribs, 12 mm along the floor and 16 down the arm, on the face towards
+the centre line, where nothing in any scene comes near. Two stand 7 mm either side
+of centre and one is flush with the forward edge, which keeps all of them 3.25 mm
+clear of a key in the motor's four rear screws (drawn in a scratch check, since
+screws are not in the scenes). The outboard arms could not take a rib: the thigh
+swings through the inside corner, and a rib there would stop the hip short of 80°
+where the floor now allows 90, while outside there is no floor, only the flank
+wall the arm runs into. So each outboard arm takes a buttress outside, a ridge
+across its width that stands 3.5 mm proud at the floor line, no further than the
+bearing boss already stands, and runs out 8 mm above and below.
+
+At the floor seam each inboard arm and its ribs now measure 240 mm², and each
+outboard arm with its buttress 327 mm², where both were 72. For a sideways push at
+the foot of an arm, the weakest section is now about two and a half to three times
+as strong as the old neck, by section modulus, and it lies partway down the arm
+rather than on the seam. The arms are still 3 mm plates, and PLA is still weak
+across its layers. The thigh keeps its 1.0 mm through ±90° of hip and the motor its
+0.3 mm, so neither the joint nor its travel has changed. The thigh's knee clevis is
+drawn by the same function and is unchanged: it prints on its side, with its
+cheeks lying in the layers.
+
+Gates A to I pass; gate E still finds all eight rear screw holes and both bearing
+seats open, gate G prints the pelvis upright with nothing starting in mid-air, and
+gate B holds the 6 678.7 mm³ the printed part gains. That is +6.2 g on the pelvis in
+PA12 and about 8 g in PLA, and the roll-up, which counts overlapping bodies twice,
+puts the robot at 1 983.3 g, 9.1 g up and 316.7 g under the ceiling. The pelvis is
+re-exported and the simulation model rebuilt.

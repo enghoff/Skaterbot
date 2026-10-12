@@ -243,7 +243,7 @@ PARTS = [
     ),
     Part(
         "JP1",
-        "IMU supply link: bridge 1-2 for 5 V, 2-3 for 3.3 V",
+        "IMU supply link: fit 2-3 for 3.3 V (ES-12234); 1-2 is 5 V",
         "three holes on 2.54 mm, wire link",
         {"1": "+5V", "2": "IMU_V", "3": "+3V3"},
     ),
@@ -381,7 +381,7 @@ PARTS = [
     # with it in the middle of the row.
     Part(
         "J6",
-        "IMU",
+        "IMU: ES-12234 four-wire adapter; INT/RST unused",
         "JST-XH 6-pin",
         {"1": "SCL", "2": "GND", "3": "V", "4": "INT", "5": "RST", "6": "SDA"},
     ),

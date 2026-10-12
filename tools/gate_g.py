@@ -62,7 +62,24 @@ import printable  # noqa: E402
 # Findings accepted ON PURPOSE: (piece, rule) -> (the worst value measured, why).
 # `rule` is "wall", "gap" or "islands". The value is pinned, so the entry holds
 # only while the part measures exactly that; a thinner wall is a new finding.
-ACCEPTED: dict[tuple[str, str], tuple[float, str]] = {}
+ACCEPTED: dict[tuple[str, str], tuple[float, str]] = {
+    # THE ONE ACCEPTED WALL, 2026-10-12: the strip between the charge inlet's
+    # cutout and each of its two screw holes, four readings at x 49.9 and 67.5,
+    # z 22.5, both faces of the rear wall. Nothing else on this wall is under
+    # 1.0. It is the connector's own figures that set it: its ear holes are
+    # 20.00 apart, its nose measured 15.3 wide with 0.2 mm of air a side, and the
+    # owner wants holes that pass an M2.5 as printed, so Ø2.9 -- with each screw
+    # already stood the 0.25 mm outboard that the Ø3.00 ear hole allows. At M2
+    # on a Ø2.2 hole it was 1.05 and the holes had to be drilled. It carries no
+    # load of its own: the screw head clamps the wall to the connector's ear
+    # plate across it. On the owner's printer both holes come out about 0.1 mm
+    # a side small, so the strip prints nearer 1.15.
+    ("pelvis-shell", "wall"): (
+        0.95,
+        "the inlet's 15.7 mm cut and its two Ø2.9 M2.5 holes, set by the "
+        "connector's 20 mm ear holes; clamped, not loaded",
+    ),
+}
 
 
 def accepted(piece: str, rule: str, worst: float) -> str | None:

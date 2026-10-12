@@ -78,7 +78,7 @@ found three things:
   inside of the wall, so after the deck it comes down in front of the wall and
   goes back 8.5 mm until its nose is through, and only x 58.45 to 59.45 lets it
   do that: inboard, its ears meet the actuator harness plugs; outboard, its nose
-  meets the rear right cover boss. It sits at x 59.0, a millimetre below the
+  meets the rear right cover boss. It sits at x 58.7 (x 59.0 until its nose was measured on 2026-10-12), a millimetre below the
   other two so its body clears that boss, and its nuts go on behind its ears
   afterwards. Its pins are live at pack voltage whenever the cells are connected,
   with nothing fused behind them.

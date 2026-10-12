@@ -208,7 +208,15 @@ EXPECTED_CHANGE_G = {
         "adapter's change exactly.",
     ),
     "cad/torso.py": (
-        +84.5 + (2.8169341759 + 9.2707993412) * 0.00106,
+        +84.5
+        + (
+            2.8169341759
+            + 9.2707993412
+            - 68.3016632235
+            - 13.4585829280
+            + 9805.0214042657
+        )
+        * 0.00106,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
         "141 wide to carry a battery and a bought distribution board, with the "
         "ten features that hold them -- two rails under the packs, four posts on "
@@ -351,7 +359,22 @@ EXPECTED_CHANGE_G = {
         "2 102.4 mm3 on the eight, and gate B holds it exactly. "
         "R3 KEYED-END INLET CORNERS, 2026-10-12, return 9.2707993412 mm3 "
         "to the rear wall, +0.0086 g at the current PA12 density. Trial "
-        "radius chosen by the owner, pending measurement of the connector.",
+        "radius chosen by the owner, pending measurement of the connector. "
+        "THE INLET'S NOSE WAS MEASURED, 2026-10-12, 15.3 x 8.0 where it was "
+        "drawn 14.2 x 6.7, and the pelvis printed to the drawing would not "
+        "take it: the cut is 15.7 x 8.4, its two ear holes Ø2.2 where they "
+        "were Ø2.4 so the wall between keeps 1.05 mm, and the button's hole is "
+        "Daier's Ø12.4 where it was 12.2. 68.3 mm3 net out of the rear wall, "
+        "-0.07 g, and gate B holds the split. THE SAME DAY ITS SCREWS WENT TO "
+        "M2.5 on Ø2.9 holes that pass one as printed, each 0.25 mm outboard "
+        "in the connector's ear hole: 13.5 mm3 more out of the wall. "
+        "THE HIP ARMS ARE BRACED, 2026-10-12, after the second PLA pelvis "
+        "lost all four at the floor: each arm filled out to full width, "
+        "three ribs under the floor on each inboard arm and a buttress "
+        "outside each outboard one. 9 805.0 mm3 on the sum of the bodies, "
+        "+10.4 g at the baseline's density, of which 7 433.3 is the eight "
+        "braces with their laps into the shell and 2 371.7 the fill; the "
+        "union, which is what prints, gains 6 678.7 mm3, and gate B holds it.",
     ),
 }
 

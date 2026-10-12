@@ -131,7 +131,6 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         hoistLugHoleDiameter,
         journalScrewClearance,
         journalSeatDiameter,
-        m2Clearance,
         m3CapCounterbore,
         m3Clearance,
         m25Clearance,
@@ -311,7 +310,11 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # from the edge of its cutout -- the thinnest material on the wall,
             # where the female socket's flange screws left 1.7 at 25.00. If it
             # ever closes, the pair merges into the cutout and this reads none.
-            ("M2 clearances: the XT60E-M inlet's two ear screws", m2Clearance / 2, 2),
+            (
+                "M2.5 clearances: the XT60E-M inlet's two ear screws",
+                m25Clearance / 2,
+                2,
+            ),
             # THE ANTENNA'S BUSHING, counted here rather than as an opening below
             # because a round hole leaves a cylindrical face and this is what
             # reads those. One: a hole that closed back over would leave none,
@@ -325,7 +328,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
             # by a momentary switch that commands the power switch board, and a
             # switch mounts through a round hole on its own thread. One, for the
             # same reason the antenna's is one.
-            ("Ø12.2 for the on/off button's bushing", buttonHoleDiameter / 2, 1),
+            ("Ø12.4 for the on/off button's bushing", buttonHoleDiameter / 2, 1),
             # THE TWO HOIST LUGS' EYES, and TWO is the number that matters
             # rather than the radius. Each eye is bored through 30 mm of solid
             # lug and leaves one cylinder; the lug is a body of its own,

@@ -268,6 +268,57 @@ hoistLugHoleDrop = 8.0
 hoistLugEyeChamfer = 1.0
 
 # ---------------------------------------------------------------------------
+# The hip arms' roots -- braced after the second PLA pelvis, 12 October 2026
+#
+# THAT PRINT CAME OFF WITH ALL FOUR HIP ARMS BROKEN AT THE FLOOR. The file was
+# not at fault: each arm was one solid with the shell, through the 3 x 24 mm
+# neck cad/joint.py has always drawn, 72 mm2 with a square inside corner, and
+# the first print's arms were the same shape. But printed upright, as print_up
+# says, that neck is a layer seam, and it is the layer where the whole floor
+# starts on support. On textbook figures for PLA across its layers it parts at
+# a sideways push of 1 to 2 kg at the foot of an arm, which prising the support
+# off reaches easily. Why the first print's arms survived is not recorded.
+#
+# THREE CHANGES, each clear of the motors and of everything that moves:
+#
+# 1. Every arm is filled out to its disc's full 52 mm from the axis up into the
+#    floor, where it used to waist in to 24 -- cad/joint.py's
+#    statorClevis(fullWidthInto=...). The inboard arm keeps its relief on the
+#    motor's connector flat, so it meets the floor 45 mm wide. The fill is in
+#    the arm's own 3 mm slab, which nothing else enters: the motor stays 0.3 mm
+#    off the inboard arm and the thigh 1.0 mm off the outboard one.
+#
+# 2. The inboard arms carry three ribs each, on the face towards the centre line
+#    and under the floor. That space is empty in every scene -- the two arms are
+#    51.5 mm apart and nothing runs between them -- so the ribs answer only to
+#    the motor's four rear screws, whose heads are on that face 14.5 mm either
+#    side of the axis and above and below it. Two ribs stand hipArmGussetInnerY
+#    either side of centre, which leaves 6 mm from an upper screw's axis to the
+#    rib and 2.5 mm round its washer for the key. The third is flush with the
+#    arm's forward edge, 8.5 mm from the nearest screw; there is none on the rear
+#    edge, where the connector relief leaves 4.5 mm to one. 12 mm out from the
+#    arm stays under the long leg of an L-key, which turns about 19 mm off the
+#    face, and 16 mm down the arm against 12 along the floor puts their
+#    undersides at 53 degrees, so they print upright without support.
+#
+# 3. The outboard arms cannot take a rib on either side. Inside, the thigh swings
+#    through the corner: a rib reaching 8 mm below the floor would stop the hip
+#    short of 80 degrees where the floor lets it reach 90, and the hip's travel
+#    has never been settled. Outside there is no floor, only the flank wall the
+#    arm runs straight up into. So each takes a buttress outside instead, a ridge
+#    across the arm's full width that stands bearingSeatBossThickness proud at
+#    the floor line -- no further out than the bearing boss already stands -- and
+#    runs out to nothing hipArmButtressDrop below it and hipArmButtressRise up
+#    the wall. That makes the arm 6.5 mm thick where it bends, against 3. Its
+#    lower end stops 3 mm above the boss, so the boss stays the cylinder
+#    tools/gate_e.py counts and the journal's screw keeps its room.
+hipArmGussetReach = 12.0
+hipArmGussetDrop = 16.0
+hipArmGussetInnerY = 7.0
+hipArmButtressDrop = 8.0
+hipArmButtressRise = 8.0
+
+# ---------------------------------------------------------------------------
 # Stressed-shell limb architecture -- see PLAN.md
 #
 # The carbon tubes and their bonded sockets are gone. Each limb is now a closed
@@ -890,27 +941,36 @@ m3Clearance = 3.4
 m3CapCounterbore = 6.0
 m3CapCounterboreDepth = 3.2
 
-# M2 clearance, used in exactly one place: the two screws that clamp the XT60E-M
-# charge inlet to the rear wall. It was four while the main disconnect was an
-# XT60E-M too, and the inlet the female XT60E-F. THE SIZE IS FORCED BY THE
-# XT60E-M'S NUTS, not by the wall. Its ear holes are 2.25 mm from the side of
-# its own body, and that is where a nut behind the ear has to sit: an M2.5 nut is
-# 2.5 across half its flats and fouls the body by a quarter of a millimetre, an
-# M2.5 cap head is 2.25 and touches it, and an M2 nut at 2.0 clears it by 0.25 --
-# which also means the body stops the nut turning, so it is tightened from the
-# screw head outside. It was M2.5 for one revision, chosen for the wall alone,
-# before anybody asked where the nut went. The wall does better at M2 as well:
-# 1.45 mm between each screw and the cutout, against 0.95 at M3; the female
-# socket's flange screws left 1.7, and 1.2 at M3. Same 0.4 mm over nominal as
-# m3Clearance above, for the same reason: a printed hole comes out undersize.
-m2Clearance = 2.4
-# The nuts on those two screws, drawn because they sit inside the cavity beside
-# other hardware: an ISO 4032 M2 is 4.0 across flats and 1.6 thick. Drawn across
-# its flats and not its corners, because at the inlet the connector's own
-# body holds a flat square to it -- drawn across corners it would read as a
-# 0.06 mm clash with the part that is the reason it cannot turn.
-m2NutAcrossFlats = 4.0
-m2NutThickness = 1.6
+# THE XT60E-M CHARGE INLET IS CLAMPED BY M2.5 SINCE 2026-10-12, AND IT WAS M2
+# FOR THE REASON BELOW. The two screws pass the wall and the connector's ears,
+# and a nut behind each ear takes the load. Its ear holes are 2.25 mm from the
+# side of its own body, and that is where a nut behind the ear has to sit: an
+# M2.5 nut is 2.5 across half its flats and fouls the body by a quarter of a
+# millimetre, an M2.5 cap head is 2.25 and touches it, and an M2 nut at 2.0
+# clears it by 0.25 -- which also means the body stops the nut turning, so it is
+# tightened from the screw head outside. It was M2.5 for one revision, chosen for
+# the wall alone, before anybody asked where the nut went. The wall did better
+# at M2 as well: 1.45 mm between each screw and the old 14.7 mm cutout, against
+# 0.95 at M3; the female socket's flange screws left 1.7, and 1.2 at M3.
+#
+# WHAT CHANGED IS THAT THE M2 HOLES COULD NOT BE PRINTED TO PASS AN M2. The nose
+# measured 15.3 wide and the cut grew to 15.7, and an M2 clearance of 2.4 would
+# then have left 0.95 mm of wall to each screw, so for a day the holes were 2.2
+# -- m2Clearance -- and had to be drilled out after printing. The owner wants
+# holes that pass the screw as printed. So the screws are M2.5 on the standard
+# m25Clearance below, and the nut's quarter of a millimetre is found in the
+# connector's own ear holes: they are Ø3.00 for an M2.5's 2.5, so each screw
+# sits 0.25 mm outboard of its hole's centre -- cad/electronics.py's
+# chargeInletScrewOffset -- and the nut's flat lands on the body instead of in
+# it. The body still stops it turning. m2Clearance 2.2, m2NutAcrossFlats 4.0 and
+# m2NutThickness 1.6 are retired with the M2.
+#
+# The M2.5 nuts, drawn because they sit inside the cavity beside other
+# hardware: an ISO 4032 M2.5 is 5.0 across flats and 2.0 thick. Drawn across its
+# flats and not its corners, because at the inlet the connector's own body holds
+# a flat square to it.
+m25NutAcrossFlats = 5.0
+m25NutThickness = 2.0
 
 # M2.5, at the four screws that hold the electronics deck down onto its wall
 # ledges, September 2026. THEY WERE M3 AND THEY DID NOT FIT: the ledges are 5 mm
@@ -924,8 +984,11 @@ m2NutThickness = 1.6
 # machine screw that cuts its own thread, not a thread-forming screw for
 # plastic, whose pan head is too wide for this corner.
 #
-# Clearance 0.4 over nominal like m3Clearance and m2Clearance, for the same
-# reason; pilot in the same proportion to the thread as the Ø2.5 an M3 taps.
+# Clearance 0.4 over nominal like m3Clearance, for the same reason: a printed
+# hole comes out small, about 0.2 mm on the owner's printer, so 2.9 prints
+# about 2.7 and passes an M2.5 without a drill. The charge inlet's two screws
+# take it too, since 2026-10-12. Pilot in the same proportion to the thread as
+# the Ø2.5 an M3 taps.
 m25Clearance = 2.9
 m25Pilot = 2.1
 

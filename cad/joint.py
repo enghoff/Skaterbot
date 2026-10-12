@@ -133,8 +133,17 @@ def _disc(diameter: float, thickness: float, x: float = 0.0):
     return Pos(x, 0, 0) * Rot(0, 90, 0) * Cylinder(diameter / 2, thickness)
 
 
-def statorClevis():
-    """Two cheeks and a saddle, straddling the actuator, anchored on the rear pattern."""
+def statorClevis(fullWidthInto: float | None = None):
+    """Two cheeks and a saddle, straddling the actuator, anchored on the rear pattern.
+
+    `fullWidthInto` fills the waist out of both cheeks. Left as None, each cheek
+    is its Ø52 disc with a 24 mm neck rising out of it to the saddle, which is
+    how the thigh's knee clevis is still drawn. Given a depth, each cheek runs
+    straight up from the disc's full diameter instead, to the saddle's underside
+    and that far on into whatever the saddle is rooted in -- so the cheek meets
+    it 52 mm wide rather than 24. The pelvis asks for this; cad/parameters.py
+    says why beside hipArmGussetReach.
+    """
     saddleWidth = frontCheekX - rearCheekX + cheekThickness
     saddleCenterX = (frontCheekX + rearCheekX) / 2
     saddleCenterZ = jointKeepOut + saddleHeight / 2
@@ -147,6 +156,13 @@ def statorClevis():
     frontCheekNeck = Pos(frontCheekX, 0, statorEndHeight / 2) * Box(
         cheekThickness, cheekNeckWidth, statorEndHeight
     )
+
+    # The full-width waist, when it is asked for: a block the disc's own width
+    # from the axis up past the saddle's underside, added to each cheek's blank
+    # BEFORE the rear bolts and the bearing seat are cut, so neither is filled.
+    def waistFill(atX: float):
+        fillTop = jointKeepOut + fullWidthInto
+        return Pos(atX, 0, fillTop / 2) * Box(cheekThickness, cheekDiameter, fillTop)
 
     # The saddle is the only path the joint load has into the limb above, so it
     # is a closed box rather than a plate.
@@ -195,9 +211,17 @@ def statorClevis():
     # estimated plug keep-out at r 27. Only the rear cheek needs it: the saddle
     # reaches 15 mm either side and the front cheek is at the far end of the
     # actuator, so neither is in the way.
+    #
+    # It runs from the disc's bottom to the clevis's top, where it used to stop
+    # at the disc's rim, so that a cheek filled out to full width is cut on the
+    # same chord all the way up. Above the rim it crosses nothing an unfilled
+    # cheek has: the neck and the saddle stop 12 and 15 mm from the centre line.
+    reliefBottom = -cheekDiameter / 2
     rearFlatCutter = Pos(
-        rearCheekX, -(actuatorConnectorFlatOffset + cheekDiameter / 2), 0
-    ) * Box(cheekThickness + 4.0, cheekDiameter, cheekDiameter)
+        rearCheekX,
+        -(actuatorConnectorFlatOffset + cheekDiameter / 2),
+        (reliefBottom + statorEndHeight) / 2,
+    ) * Box(cheekThickness + 4.0, cheekDiameter, statorEndHeight - reliefBottom)
 
     # The front cheek is bored for the bearing itself. It held a Ø30.2 bore for a
     # turned aluminium carrier until that part was deleted for want of a supplier,
@@ -231,6 +255,8 @@ def statorClevis():
     # anything is unioned, because the engine rejected pockets cut out of a large
     # combined solid. OCCT does not care, but gate B does.
     rearCheekBlank = rearCheekDisc + rearCheekNeck
+    if fullWidthInto is not None:
+        rearCheekBlank += waistFill(rearCheekX)
     rearCheekAfterBolts = rearCheekBlank
     for bolt in rearBolts:
         rearCheekAfterBolts -= bolt
@@ -240,6 +266,8 @@ def statorClevis():
     # first and then unioned over is a bore filled back in, which is the failure
     # CLAUDE.md and gate E exist for.
     frontCheekBlank = frontCheekDisc + frontCheekNeck + frontSeatBoss
+    if fullWidthInto is not None:
+        frontCheekBlank += waistFill(frontCheekX)
     frontCheekFinished = frontCheekBlank - frontBearingSeat - frontShoulderBore
 
     return rearCheekFinished + frontCheekFinished + saddleRaw

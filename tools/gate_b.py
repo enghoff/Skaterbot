@@ -1063,6 +1063,53 @@ DEVIATIONS["pelvis-shell"].append(
     }
 )
 
+DEVIATIONS["pelvis-shell"].append(
+    {
+        # 68.3016632 mm3 net out of the rear wall: (15.7 x 8.4 - 14.7 x 7.2) x
+        # 2.4 = 62.496 for the cut, whose R3 corners are the same on both;
+        # pi x (6.2^2 - 6.1^2) x 2.4 = 9.2739815 for the button's hole; and
+        # 2 x pi x (1.2^2 - 1.1^2) x 2.4 = 3.4683183 back for the two ear holes
+        # coming down from 2.4 to 2.2. The cut and its holes also moved 0.3 mm
+        # inboard, to x 58.7, which moves material without changing the net.
+        # MEASURED AGAINST THE GOLDEN STEP, old openings against new: 73.5257 mm3
+        # of wall cut away, 9.5880 of it where the tethered pelvis had wall too,
+        # and 5.2240 put back, 0.4353 of it there. So 9.1526371 of golden
+        # material is taken off and this shell's own wall is 59.1490262 less.
+        "added_mm3": -59.1490261624,
+        "removed_mm3": 9.1526370614,
+        "why": "THE XT60E-M'S NOSE WAS MEASURED ON THE PART, 2026-10-12: 15.3 x 8.0 with calipers, where it was drawn 14.2 x 6.7 from a drawing nobody can now trace, and the pelvis printed to that came off with a 14.5 x 7.0 hole the connector cannot enter. The cut is the nose plus 0.2 mm a side, 15.7 x 8.4. The two ear holes come down from 2.4 to 2.2, because at 2.4 the wall between each and the wider cut would be 0.95 mm, under gate G's 1.0; they are drilled out after printing. And the on/off button's hole is 12.4, Daier's own panel cutout for the GQ-12B, where it was the thread plus two tenths. The inlet moved 0.3 mm inboard to x 58.7, because the wider nose meets the rear right cover boss on its way in at 59.0.",
+    }
+)
+
+DEVIATIONS["pelvis-shell"].append(
+    {
+        # 13.4585829 mm3 out: each Ø2.2 hole at 10.00 from the inlet's centre
+        # lies wholly inside the Ø2.9 at 10.25 that replaces it, so the change
+        # is 2 x (pi x 1.45^2 - pi x 1.1^2) x 2.4 and nothing comes back.
+        # Measured against the golden STEP, 1.1215486 of it is wall the tethered
+        # pelvis also had and 12.3370344 is this shell's own.
+        "added_mm3": -12.3370343506,
+        "removed_mm3": 1.1215485773,
+        "why": "THE INLET'S SCREWS ARE M2.5 ON HOLES THAT PASS ONE AS PRINTED, 2026-10-12, where for a day they were M2 on Ø2.2 holes that had to be drilled out. Ø2.9 is the standard M2.5 clearance and prints about 2.7. Each hole stands 0.25 mm outboard of the connector's ear hole, the play an M2.5 has in its Ø3.00, so the M2.5 nut behind the ear lands on the connector's body rather than in it. The wall to the cut is 0.95 mm, which tools/gate_g.py registers.",
+    }
+)
+
+DEVIATIONS["pelvis-shell"].append(
+    {
+        # 6 678.7214 mm3 on, all of it under the floor or outside the flanks:
+        # 2 038.7214 for the four arms filled out to full width, 1 728.0 for the
+        # six ribs (a 12 x 16 triangle, 3 mm thick, 288 each) and 2 912.0 for the
+        # two buttresses (16 mm tall and 3.5 proud, 28 mm2 across 52 mm each).
+        # MEASURED AGAINST THE GOLDEN STEP, old shell against new: 4 896.5496 of
+        # it is where the tethered pelvis had nothing, and 1 782.1718 lands
+        # where it had wall and floor that this shell did not, which is golden
+        # material put back -- hence the negative removal.
+        "added_mm3": 4896.5495588864,
+        "removed_mm3": -1782.1718478383,
+        "why": "THE HIP ARMS ARE BRACED, 2026-10-12, after the second PLA pelvis came off the printer with all four broken at the floor. Each arm met the shell through a 3 x 24 mm neck with a square inside corner, a layer seam where the floor starts on support when printed upright. Every arm is now filled out to its disc's full 52 mm up into the floor (45 on the inboard arms, which keep the connector relief); the inboard arms take three ribs each under the floor, placed round the motor's rear screws; and the outboard arms, which the thigh swings inside, take a buttress outside that stands no prouder than the bearing boss. cad/parameters.py carries the placing, beside hipArmGussetReach.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 

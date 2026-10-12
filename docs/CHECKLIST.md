@@ -35,3 +35,13 @@ No hardware exists. Simulated and CAD results are not physical validation.
 - [x] Reserve 9.5 mm for the internal SMA body; retain provisional 15 mm depth.
 - [ ] Confirm the purchased SMA body depth and mounting shoulder/nut arrangement.
 - [ ] Measure the full fitted antenna and check its fall-contact envelope.
+
+### IMU supply and harness — 12 October 2026
+
+- [x] Establish the advertised ES-12234 interface: four-pin Qwiic/JST-SH-compatible, 1.00 mm pitch.
+- [x] Set assembly documentation to JP1 2–3, 3.3 V; retain existing carrier copper and footprints.
+- [x] Correct harness mapping: SCL/GND/3V3/SDA to J6-1/2/3/6; J6-4/5 unused.
+- [ ] Verify delivered board revision and resolve manufacturer's contradictory supply text.
+- [ ] Obtain a mating four-pin SH lead; the ordered six-pin XH cable is carrier-side only.
+- [ ] Fit JP1 2–3 with power disconnected; check harness continuity and 3.3 V before connecting IMU.
+- [ ] Check IMU pull-up voltage and core regulator current/thermal margin during commissioning.

@@ -199,7 +199,7 @@ the motor termination switches supply normal termination.
 | Two 3S battery packs + Daly BMS | Lower battery block in `cad/electronics.py`; series 6S supply, charge-only BMS |
 | WeAct + Banana Pi + Matek BEC + INA226 | Carrier A1, SBC standoff pattern / J5, A2, A3; compute, logic power and bus voltage |
 | BNO085 Nano | IMU floor seat and carrier J6 |
-| Male XT60E-M + button + antenna bulkhead/antenna | Rear wall inlet ears, Ø12.2 button hole and Ø6.5 antenna hole |
+| Male XT60E-M + button + antenna bulkhead/antenna | Rear wall inlet ears and 15.7 × 8.4 nose cut, Ø12.4 button hole, and the Ø6.5 D antenna hole |
 | 14 AWG wire | Battery/series input, charge inlet P5, charge lead |
 | 16 AWG wire | Motor power extensions and BMS B− connection at P4 |
 | 26 AWG CAN wire | Three motor-pair CAN buses and harness extensions |

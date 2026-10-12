@@ -802,7 +802,9 @@ ADDED = {
     # take no panel switch at all. 21.4 is the most the wall offers anywhere,
     # outboard of x -44, and buttonClearDepth carries it so that a deeper
     # switch has something to be checked against.
-    "buttonHoleDiameter": 12.2,
+    # Daier's own Ø12.4 panel cutout since 2026-10-12; it was the thread plus
+    # two tenths, 12.2, which nobody had held against the maker's drawing.
+    "buttonHoleDiameter": 12.4,
     "buttonNutDiameter": 17.5,
     "buttonNutDepth": 3.0,
     "buttonBodyDepth": 16.0,
@@ -813,9 +815,14 @@ ADDED = {
     # sit 2.25 mm from its body, which an M2 clears by 0.25 and an M2.5 fouls by
     # the same. It was m25Clearance, 2.8, for one revision before anybody asked
     # where the nut went.
-    "m2Clearance": 2.4,
-    "m2NutAcrossFlats": 4.0,
-    "m2NutThickness": 1.6,
+    # THE M2 IS RETIRED, 2026-10-12. It was 2.4, then 2.2 for a day so the wall
+    # to the measured nose's wider cut kept 1.05 mm, at the price of drilling
+    # the holes out; m2NutAcrossFlats 4.0 and m2NutThickness 1.6 went with it.
+    # The inlet takes M2.5 on m25Clearance now, each screw 0.25 mm outboard in
+    # the connector's Ø3.00 ear hole so that the M2.5 nut's flat lands on its
+    # body. ISO 4032 M2.5: 5.0 across the flats, 2.0 thick.
+    "m25NutAcrossFlats": 5.0,
+    "m25NutThickness": 2.0,
     # THE CHARGE INLET IS AN XT60E-M, 2026-10-05, and its names say inlet
     # because it is no longer a socket. It was the female XT60E-F for three
     # weeks, and those nine names went with it: chargeSocketFlangeWidth 34.0,
@@ -828,14 +835,22 @@ ADDED = {
     # disconnect was drawn to until 2026-09-16, under the names xt60Panel*: the
     # same AMASS drawing, the same part, the same caveat that its three axial
     # sections are the view's proportions and not its labels.
-    "chargeInletNoseWidth": 14.2,
-    "chargeInletNoseHeight": 6.7,
-    "chargeInletCutWidth": 14.7,
-    "chargeInletCutHeight": 7.2,
+    # THE NOSE WAS MEASURED ON THE PART, 2026-10-12: 15.3 x 8.0 with calipers,
+    # where the untraceable drawing figure was 14.2 x 6.7 and the pelvis printed
+    # to it would not take the connector. The cutout is the nose plus the 0.2 mm
+    # a side gate H accepts, computed rather than typed.
+    "chargeInletNoseWidth": 15.3,
+    "chargeInletNoseHeight": 8.0,
+    "chargeInletCutAir": 0.2,
+    "chargeInletCutWidth": 15.3 + 2 * 0.2,
+    "chargeInletCutHeight": 8.0 + 2 * 0.2,
     # Owner-selected trial curvature from the datasheet outline, 2026-10-12;
     # not a manufacturer-specified radius, pending measurement of the part.
     "chargeInletKeyRadius": 3.0,
     "chargeInletFixingPitch": 20.0,
+    # The play an M2.5 has in the connector's Ø3.00 ear hole, all of it spent
+    # standing each screw outboard so its nut lands on the body, 2026-10-12.
+    "chargeInletScrewOffset": 0.25,
     "chargeInletEarSpan": 27.0,
     "chargeInletEarWidth": 6.13,
     "chargeInletEarThickness": 3.2,
@@ -850,6 +865,27 @@ ADDED = {
     "antennaNutDepth": 6.0,
     "antennaBodyDepth": 15.0,
     "antennaOutboardDepth": 8.0,
+    # THE SMA MOVED TO THE LEFT FLANK, 2026-10-10, with a D-flat facing down,
+    # and these nine went in without being declared here -- gate A failed from
+    # that commit until 2026-10-12, when the audit in docs/DIMENSION_AUDIT.md
+    # found it. Registered now with where each comes from. NONE IS MEASURED: the
+    # pigtail in hand is a generic u.FL-to-SMA bulkhead, not the Amphenol part
+    # the hole is drawn to, and a 1/4-36 thread with no flat will not pass a
+    # 6.0 mm D.
+    #   the D-hole's flat to the opposite arc, Amphenol 132203 panel drawing
+    "antennaHoleFlatSpan": 6.0,
+    #   1/4-36 UNS major diameter, and the flat on the bushing that keys in it
+    "antennaBodyDiameter": 6.35,
+    "antennaBodyFlatSpan": 5.85,
+    #   the owner's 9.5 mm for the body inside the wall, unmeasured
+    "antennaInboardDiameter": 9.5,
+    #   a 12 mm antenna base outside, with 2 mm round it to the flank
+    "antennaBaseDiameter": 12.0,
+    "antennaBaseClearance": 2.0,
+    #   where it stands on the left flank, and the flank's mid-wall plane
+    "antennaSideY": -21.5,
+    "antennaSideZ": 21.0,
+    "sideWallX": 75.75,
     "panelHardwareZ": 23.5,
     "buttonPanelX": -44.0,
     # BOTH OTHER STATIONS MOVED WITH THE CHARGE SOCKET, and were solved for:
@@ -859,8 +895,10 @@ ADDED = {
     # nothing fits beyond a 34 mm flange before the wall ends. The male inlet
     # went 3.5 further out on 2026-10-05, because it goes in from inside: at 55.5
     # its ear plate could not pass the actuator harness bank's plugs, and beyond
-    # 59.45 its nose cannot pass under the rear right cover boss.
-    "chargeInletPanelX": 59.0,
+    # 59.45 its nose cannot pass under the rear right cover boss. 58.7 since
+    # 2026-10-12: the measured nose is 1.1 mm wider, gate I passes 58.5 to 58.85
+    # and fails at 58.4 and 58.95, and this is the middle.
+    "chargeInletPanelX": 58.7,
     # And a millimetre below the row, because at 59.0 its rear body stands under
     # the rear right cover boss and at the row's 23.5 would meet it by 0.25.
     "chargeInletPanelZ": 22.5,
@@ -1061,6 +1099,19 @@ ADDED = {
     # robot is a seat or a clearance hole and wants it that way. This is the
     # one place a rope turns over a printed edge under load.
     "hoistLugEyeChamfer": 1.0,
+    # THE HIP ARMS' BRACES, 2026-10-12, after the second PLA pelvis came off
+    # the printer with all four hip arms broken at the floor, through the
+    # 3 x 24 mm neck every version of the clevis has had. The inboard arms take
+    # three ribs each under the floor, placed round the motor's rear screws; the
+    # outboard arms, which the thigh swings inside and the flank continues, take
+    # a buttress outside that stands no prouder than the bearing boss. None of
+    # these is measured from anything: they are sized to the room the screws,
+    # the key and the thigh leave, and cad/parameters.py carries that.
+    "hipArmGussetReach": 12.0,
+    "hipArmGussetDrop": 16.0,
+    "hipArmGussetInnerY": 7.0,
+    "hipArmButtressDrop": 8.0,
+    "hipArmButtressRise": 8.0,
 }
 
 
