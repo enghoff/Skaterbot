@@ -56,10 +56,10 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000114606409 0.0037078495 -0.0255679298" rpy="0 0 0"/>
+      <origin xyz="0.000114606406 0.00370583781 -0.0255682543" rpy="0 0 0"/>
       <mass value="1.004944"/>
-      <inertia ixx="3.646801532e-03" ixy="6.200865508e-07" ixz="-7.090697393e-08"
-               iyy="1.718697241e-03" iyz="-4.394031394e-05" izz="2.486586843e-03"/>
+      <inertia ixx="3.647008816e-03" ixy="5.495019565e-07" ixz="-8.229142873e-08"
+               iyy="1.718665568e-03" iyz="-4.386139766e-05" izz="2.486825800e-03"/>
     </inertial>
     <!-- pelvis shell, clevises and cover bosses — 171.4 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">

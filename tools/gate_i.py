@@ -37,7 +37,10 @@ WHAT IT DOES NOT CHECK:
   the screws whose access has been looked at.
 * Anything not drawn, like every other gate.
 
-The rear button and charge inlet go in after the deck. The side SMA has a
+The deck goes in with the actuator harness plugs disconnected. Fit the charge
+inlet, then connect the harness plugs: moving the inlet inward to clear the
+lid boss puts the mated plugs across its insertion path. The rear button goes
+in after the deck. The side SMA has a
 9.5 mm internal shoulder, so it goes in from inside with its nut outside.
 Install the SMA before the button body, which otherwise blocks the inward
 installation path. The SMA moves 12 mm inward before lifting clear of the lid
@@ -86,7 +89,6 @@ DECK = [
     "controller carrier board",
     "WeAct core board",
     "CAN transceivers",
-    "actuator harness bank",
     "SBC standoffs",
     "SBC board",
     "SBC 40-pin header",
@@ -150,15 +152,7 @@ def steps() -> list[tuple[str, list, list, bool]]:
         # Each pack's XT60 mated with its male of the series harness, laid into
         # the strip beside it from above.
         ("the packs' two XT60s", ["battery pack connectors"], [(UP, None)], False),
-        ("the deck, with everything on it", DECK, [(UP, None)], False),
-        # The rear button nut and side SMA nut go in after the deck.
-        # The bodies then thread into their own nuts from outside.
-        (
-            "on/off button's nut, held on the wall",
-            [("on/off button", 2)],
-            [(UP, None)],
-            False,
-        ),
+        ("the deck, harness plugs disconnected", DECK, [(UP, None)], False),
         # THE CHARGE INLET GOES IN FROM INSIDE, since it became an XT60E-M on
         # 2026-10-05: its ears bear on the inside face, so it comes down in
         # front of the wall and goes back until its nose is out through the
@@ -177,6 +171,21 @@ def steps() -> list[tuple[str, list, list, bool]]:
             "charge inlet's two nuts, behind its ears",
             [("charge inlet", 3), ("charge inlet", 4)],
             [(IN, 8.5), (UP, None)],
+            False,
+        ),
+        # The inlet moved inward to clear the lid boss, 2026-10-12. Fit it
+        # while the actuator harness plugs are disconnected, then bring the
+        # plugs in from above, clear of the flange.
+        (
+            "actuator harness plugs, after the inlet",
+            ["actuator harness bank"],
+            [(UP, None)],
+            False,
+        ),
+        (
+            "on/off button's nut, held on the wall",
+            [("on/off button", 2)],
+            [(UP, None)],
             False,
         ),
         (

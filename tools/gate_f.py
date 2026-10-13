@@ -729,8 +729,8 @@ FITS = [
         "the charge inlet vs the deck below it",
         "charge inlet",
         "deck plate",
-        8.95,
-        "The rear charge inlet retains its existing station.",
+        8.0,
+        "Owner-assumed 12 mm flange level with the button at z23.5; its lower edge is 8.0 mm above the deck.",
     ),
     (
         "the side antenna vs the carrier",
@@ -1248,6 +1248,22 @@ def check_antenna_base() -> tuple[int, int]:
     return 1, int(not ok)
 
 
+def check_charge_inlet_boss() -> tuple[int, int]:
+    """The full interior flange must clear the rear right lid screw boss."""
+    from cad import electronics as e
+    from cad import torso
+    from cad.torso_shell import coverBoss
+
+    boss = coverBoss(torso.bossX, -torso.bossY, torso.shellTopZ)
+    gap, shared = measure(e.torsoElectronicsGroups()["charge inlet"], [boss])
+    ok = gap >= e.chargeInletBossClearance - 1e-6 and shared <= CONTACT_MM3
+    print(
+        f" {'ok' if ok else 'FAIL'} XT60 interior flange vs lid screw boss: "
+        f"{gap:.3f} mm clearance, wants >= {e.chargeInletBossClearance:.1f} mm"
+    )
+    return 1, int(not ok)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1267,6 +1283,7 @@ def main() -> int:
             check_no_clashes,
             check_journal_fastening,
             check_antenna_base,
+            check_charge_inlet_boss,
         ):
             more, wrong = stage()
             checked += more

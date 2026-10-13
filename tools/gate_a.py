@@ -852,7 +852,9 @@ ADDED = {
     # standing each screw outboard so its nut lands on the body, 2026-10-12.
     "chargeInletScrewOffset": 0.25,
     "chargeInletEarSpan": 27.0,
-    "chargeInletEarWidth": 6.13,
+    # Owner assumes a 12 mm interior flange after the real part fouled the boss.
+    "chargeInletEarWidth": 12.0,
+    "chargeInletBossClearance": 0.5,
     "chargeInletEarThickness": 3.2,
     "chargeInletBodyWidth": 15.5,
     "chargeInletBodyDepth": 5.1,
@@ -898,10 +900,10 @@ ADDED = {
     # 59.45 its nose cannot pass under the rear right cover boss. 58.7 since
     # 2026-10-12: the measured nose is 1.1 mm wider, gate I passes 58.5 to 58.85
     # and fails at 58.4 and 58.95, and this is the middle.
-    "chargeInletPanelX": 58.7,
-    # And a millimetre below the row, because at 59.0 its rear body stands under
-    # the rear right cover boss and at the row's 23.5 would meet it by 0.25.
-    "chargeInletPanelZ": 22.5,
+    # Owner keeps it level with the button, moving the flange inboard to
+    # leave 0.55 mm laterally before the boss begins at x66.55.
+    "chargeInletPanelX": 52.5,
+    "chargeInletPanelZ": 23.5,
     "antennaPanelX": -8.0,
     # THE CHASE THROUGH THE ELECTRONICS DECK, cad/deck.py, and it is an old gap
     # being closed rather than a cost of the above. That plate has spanned the

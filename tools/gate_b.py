@@ -1110,6 +1110,14 @@ DEVIATIONS["pelvis-shell"].append(
     }
 )
 
+DEVIATIONS["pelvis-shell"].append(
+    {
+        "added_mm3": 13.0953498296,
+        "removed_mm3": 13.0953497376,
+        "why": "XT60 inlet level with the button at z23.5 and moved 6.2 mm inward to x52.5, 2026-10-12, for the owner's assumed 12 mm interior flange. Flange tip clears the lid boss laterally by 0.55 mm. The unchanged cut and both screw holes move together, preserving net volume. Against the golden STEP, 13.0953498 mm3 shifts from added material to removed material; gate A pins the station and gate F measures the boss clearance.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 

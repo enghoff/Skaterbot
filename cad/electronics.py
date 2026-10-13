@@ -942,10 +942,14 @@ chargeInletFixingPitch = 20.0
 # not let the screw stand this far out.
 chargeInletScrewOffset = 0.25
 # The ear plate, which is what actually holds the connector: 27.00 tip to tip,
-# 6.13 across and 3.20 thick, bearing on the inside face either side of the
+# originally 6.13 across and 3.20 thick, bearing on the inside face either side of the
 # cutout. The rear body behind it is the 15.50 x 8.10 of the XT60 shell.
 chargeInletEarSpan = 27.0
-chargeInletEarWidth = 6.13
+# Owner's assumed interior flange width, 2026-10-12: the real connector
+# fouls the lid screw boss where the narrower drawing envelope cleared it.
+# Use 12 mm across the flange until measured on the part.
+chargeInletEarWidth = 12.0
+chargeInletBossClearance = 0.5
 chargeInletEarThickness = 3.2
 chargeInletBodyWidth = 15.5
 chargeInletBodyDepth = 5.1
@@ -1014,14 +1018,18 @@ antennaBaseClearance = 2.0
 # bridge it binds was its own 1.45 again, and is 1.05 since the same day.
 panelHardwareZ = 23.5
 buttonPanelX = -44.0
-chargeInletPanelX = 58.7
+chargeInletPanelX = 52.5
 # THE ONE STATION A MILLIMETRE OUT OF THE ROW, 2026-10-05. At x 59.0, where it
 # stood until 2026-10-12, the
 # inlet's rear body stands 0.2 mm under the rear right cover boss, which comes
 # down to z 27.3, and at the row's height the body's top edge is 27.55. A millimetre
 # lower it is 0.75 clear, and the row the back of the robot reads as does not
 # notice a millimetre.
-chargeInletPanelZ = panelHardwareZ - 1.0
+# LEVEL WITH THE BUTTON AND MOVED INBOARD, owner's choice 2026-10-12.
+# At x52.5 the 27 mm flange's right tip is x66.0; the rear right lid boss
+# starts at x66.55, so 0.55 mm of air clears it laterally with the assumed
+# 12 mm flange. The nose cut and both screws follow this station together.
+chargeInletPanelZ = panelHardwareZ
 antennaPanelX = -8.0
 # Negative Y is the rear: the foot's front pressure pads sat at y = +51 and its
 # rear pads at y = -40, and the leading leg swings to +Y.
