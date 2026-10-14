@@ -14,7 +14,7 @@ uv run tools/gate_e.py    # the holes and pockets, counted on the solid
 uv run tools/gate_f.py    # the check scenes' poses and clearances
 uv run tools/gate_h.py    # every part against every other, in every scene
 uv run tools/gate_g.py    # every piece prints as one part, on any process
-uv run tools/gate_i.py    # the torso goes together, in order, part by part
+uv run tools/gate_i.py    # the torso and a wheel go together, in order, part by part
 ```
 
 All nine are free and offline. A to F take about a minute together; H and I take
@@ -28,8 +28,9 @@ found in an afternoon: a pelvis exported as twenty-two separate bodies, sixteen
 of which the printer never joined to the shell, and a lid whose lip sat on its
 own screw bosses. A to F prove the part is what was drawn. G proves what was
 drawn can be printed as one part by FDM, nylon powder or resin, and H proves the
-parts fit each other. I proves they can get there: it runs each torso part out
-along the way it goes in, in build order, against everything already in.
+parts fit each other. I proves they can get there: it runs each torso part, and
+each part of a wheel down to its six output screws, out along the way it goes
+in, in build order, against everything already in.
 
 Then:
 

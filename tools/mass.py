@@ -176,7 +176,7 @@ EXPECTED_CHANGE_G = {
         "what MISUMI's M3 x 14 did. Gate B holds it exactly.",
     ),
     "cad/wheel_adapter.py": (
-        -10.8,
+        -11.3,
         "THE Ø30.4 REGISTER POCKET IS RETIRED, and this is the first time this "
         "piece has been off the engine's figure at all. It shares "
         "cad/joint.py's output disc with the limbs, so it takes the correction "
@@ -205,7 +205,12 @@ EXPECTED_CHANGE_G = {
         "seat clamps the hub down in place of the Ø30 penny washer that could "
         "not be bought. The caps are a line of their own, 7.2 g on the pair, so "
         "the wheel's printed parts are 4.3 g lighter in all. Gate B holds the "
-        "adapter's change exactly.",
+        "adapter's change exactly. "
+        "AND THE SIX SCALLOPS ARE Ø6.5 WHERE THEY WERE Ø4.5, 14 October 2026, "
+        "which is the 0.5 g this line came DOWN by at the baseline's density and "
+        "0.4 g on the robot: they were sized for the key alone, and every output "
+        "screw goes down one head first. 215.37 mm3 an adapter, and gate B holds "
+        "it exactly.",
     ),
     "cad/torso.py": (
         # 84.45 and not 84.5 since 2026-10-14. The 84.5 was a figure given to a

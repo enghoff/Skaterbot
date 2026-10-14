@@ -118,15 +118,29 @@ skateWheelRidgeOuterX = skateWheelOuterX - skateWheelBearingSeatDepth
 # THE SIX SCALLOPS ARE NOT DECORATION. The actuator's own output screws sit on
 # Ø24, which is two millimetres bigger than the wheel bore that has to pass
 # over them, so a plain Ø22 spigot walls its own mounting screws in and the
-# adapter cannot be fitted to the motor at all. A 2.5 mm key is 2.89 mm across
-# corners, so at r12 its shaft sweeps r10.56 to r13.44 and the spigot's r11
-# surface stands a fraction of a millimetre inside that.
+# adapter cannot be fitted to the motor at all.
 #
 # Six axial scallops on the bolt centres open that path the whole length of the
 # spigot. What is left is 6 mm of Ø22 on six pads, which is plenty: the spigot
 # only centres the wheel, it does not drive it.
+#
+# THEY ARE Ø6.5 SINCE 14 OCTOBER 2026, AND AT Ø4.5 NO SCREW COULD GET IN. They
+# were sized for the 2.5 mm key alone -- 2.89 mm across corners, sweeping r10.56
+# to r13.44 at r12 -- as though the screws were already home. They are not: the
+# spigot is printed on the disc, so every screw goes down its scallop head
+# first, and the head is the widest thing that does. An ISO 4762 M3 cap head is
+# Ø5.5 (the counterbore at the bottom is Ø6 for it), so a Ø4.5 scallop let the
+# key through and stopped the screw. Spotted by eye in the viewer; no gate asked,
+# because no screw was drawn. tools/gate_i.py now runs each one in.
+#
+# Ø6.5 is the counterbore's Ø6 and half a millimetre more, so a head that enters
+# the counterbore has already passed the spigot, and the scallop's wall does not
+# line up with the counterbore's -- coincident walls are the boolean case
+# docs/KCL_GOTCHAS.md warns of, and gate E counts the two by their radii. At r12
+# it reaches r8.75, a quarter of a millimetre outside the plug's r8.5, and each
+# pad keeps about 29 degrees of the spigot's circumference.
 wheelSpigotDiameter = skateWheelBearingBore
-wheelKeyAccessDiameter = 4.5
+wheelKeyAccessDiameter = 6.5
 # The plug is what ties the spigot to the disc, and it has to stay inside r9.25
 # or it fills the screw heads' own counterbores back in -- the failure this
 # project has been caught by before, and the reason the adapter is left as

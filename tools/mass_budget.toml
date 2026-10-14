@@ -195,7 +195,7 @@ count = 1
 # adapter is not a handed part: every feature on it is either a cylinder on the
 # wheel axis or one of six spaced 60 degrees apart from +Y, so it has a mirror
 # plane through its own axis and the left hand is the right hand turned round.
-# That is measured and not asserted -- both hands come out at 13222.79 mm3, and
+# That is measured and not asserted -- both hands come out at 6999.28 mm3, and
 # the right given a half turn about Z differs from the left by 0.000000 mm3 of
 # symmetric difference -- and it is why there is no left-hand STEP to slice.
 #

@@ -10,7 +10,7 @@ from __future__ import annotations
 from build123d import Plane
 
 from cad.geometry import mirrored
-from cad.limb import limbAssembly
+from cad.limb import atUpperJoint, limbAssembly
 from cad.parameters import lowerLegLength
 
 
@@ -20,3 +20,12 @@ def shinRight() -> list:
 
 def shinLeft() -> list:
     return limbAssembly(lowerLegLength)
+
+
+def shinRightOutput(bodies: list) -> list:
+    """Joint-frame bodies carried to the right shin's knee disc, as it is drawn."""
+    return [mirrored(body, Plane.YZ) for body in shinLeftOutput(bodies)]
+
+
+def shinLeftOutput(bodies: list) -> list:
+    return atUpperJoint(bodies, lowerLegLength)

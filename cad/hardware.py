@@ -26,15 +26,22 @@ Four bought pieces at each straddled joint, then: the bearing, the sleeve, the
 screw and the nut. cad/parameters.py carries what the anchor is worth and what it
 is not, beside journalDiameter.
 
+AND THE SIX M3 AT EVERY MOTOR OUTPUT, since 14 October 2026, with the threads
+in the motor they go into. Every joint has them, straddled or not, and they are
+placed by boltedToOutput() wherever a disc is bolted to a motor in a scene.
+
 Positioned in the joint's own frame, like everything in cad/joint.py: joint
 centre at the origin, axis along X, actuator output towards +X.
 """
 
 from __future__ import annotations
 
-from build123d import Cylinder, Pos, Rot
+from build123d import Axis, Cylinder, Pos, Rot
 
 from cad.parameters import (
+    actuatorOutputBoltCircle,
+    actuatorOutputBoltCount,
+    actuatorOutputThreadDepth,
     bearingBore,
     bearingOuterDiameter,
     bearingWidth,
@@ -51,6 +58,11 @@ from cad.parameters import (
     journalScrewLength,
     journalSleeveBore,
     journalSleeveLength,
+    m3CapCounterboreDepth,
+    m3CapHeadDiameter,
+    m3CapHeadHeight,
+    m3ScrewDiameter,
+    outputScrewLength,
     rotorHubInnerX,
     rotorHubOuterX,
 )
@@ -161,3 +173,60 @@ def jointHardware() -> list:
     millimetre.
     """
     return [bearing(), journalSleeve(), journalScrew(), journalNut()]
+
+
+def outputScrews() -> list:
+    """The six M3 x 8 cap screws that hold an output disc to its motor.
+
+    Drawn on 14 October 2026, after the wheel adapter's spigot turned out to
+    have been printed over them with scallops that passed the key and stopped
+    the head -- which nothing could say while no screw existed. Each head sits
+    on its counterbore's floor and the shank runs on into the motor's thread.
+    tools/gate_i.py runs them in along their axis, and every scene places them
+    with boltedToOutput() below, so gate H measures them against everything.
+
+    Head and shank overlap by a millimetre inside the head rather than butting on
+    one plane, as cad/wheel.py's clamp screw does and for the same reason. The
+    socket is not drawn; nothing here asks about it.
+    """
+    seatX = rotorHubOuterX - m3CapCounterboreDepth
+    head = _disc(m3CapHeadDiameter, m3CapHeadHeight, seatX + m3CapHeadHeight / 2)
+    shankLength = outputScrewLength + 1.0
+    shank = _disc(m3ScrewDiameter, shankLength, seatX + 1.0 - shankLength / 2)
+    return _onOutputCircle(head + shank)
+
+
+def outputThreads() -> list:
+    """The motor's six output threads, as cutters to take out of the actuator.
+
+    Drawn at the thread's Ø3, which is the screw's own, so a screw in one
+    touches it rather than overlapping it, and 6.5 mm deep from the output
+    register's face, as the vendor STEP has them. A screw too long for its
+    thread runs into the floor, and gate H reports the overlap. Each cutter
+    stands a millimetre out past the face so none of its walls is coplanar with
+    one.
+    """
+    outer = rotorHubInnerX + 1.0
+    inner = rotorHubInnerX - actuatorOutputThreadDepth
+    return _onOutputCircle(_disc(m3ScrewDiameter, outer - inner, (outer + inner) / 2))
+
+
+def _onOutputCircle(body) -> list:
+    """Six of `body`, from +Y round the Ø24 circle, as the disc's holes are."""
+    first = Pos(0, actuatorOutputBoltCircle / 2, 0) * body
+    step = 360 / actuatorOutputBoltCount
+    return [first.rotate(Axis.X, i * step) for i in range(actuatorOutputBoltCount)]
+
+
+def boltedToOutput(motor: list, place) -> tuple[list, list]:
+    """A placed motor with its output threads cut, and the six screws in them.
+
+    THE THREADS GO WHERE THE DISC IS, NOT WHERE THE MOTOR IS. They are in the
+    output, which turns with the limb, so a knee at 110 degrees has them 110
+    degrees round from where the housing alone would put them. `place` is
+    whatever carries a body from the joint's own frame to the disc's place in
+    the scene -- the same placement the part bolted to this output gets -- and
+    both the cutters and the screws go through it, so the two cannot disagree.
+    """
+    threads = place(outputThreads())
+    return [body.cut(*threads) for body in motor], place(outputScrews())

@@ -2,7 +2,7 @@
 # requires-python = ">=3.11,<3.13"
 # dependencies = ["build123d==0.11.1", "cadquery-ocp-novtk==7.9.3.1.1"]
 # ///
-"""Gate I -- can the torso be put together, in order, by hand?
+"""Gate I -- can the torso and a wheel be put together, in order, by hand?
 
 WHY THIS GATE EXISTS. Gates E to H check the robot ASSEMBLED: every part where
 it ends up, clear of every other. None of them asks whether a part can GET
@@ -12,7 +12,16 @@ invisible to all of them, and the torso is the one assembly on this robot where
 that is likely: sixty-odd bought parts in a 149 x 67 x 81 mm box, put in from
 the top one layer at a time.
 
-So this gate walks the torso's build order. Each step names what goes in and
+AND THE WHEEL, since 14 October 2026, because it turned out to be the other
+one. The adapter's spigot is printed on the output disc, over the six screws
+that hold the disc to the motor, and its scallops were drawn to pass the key
+and not the head: Ø4.5 down to a Ø5.5 head. Every gate passed it, because no
+screw was drawn. So the six screws are drawn now (cad/hardware.py's
+outputScrews) and the wheel module is walked here in its build order too --
+adapter, screws, wheel, cap, clamp -- which fails at Ø4.5 and passes at the
+Ø6.5 the scallops are now.
+
+So this gate walks each build order. Each step names what goes in and
 the path it comes in on, and the gate runs that path BACKWARDS -- from where
 the part ends up, out to free air -- in steps of STEP_MM, measuring the moving
 part against everything that went in before it. A path is clear if the moving
@@ -31,10 +40,13 @@ WHAT IT DOES NOT CHECK:
   connect, and are left out of every step.
 * The legs, and the hip actuators under the pelvis floor. Those joints were
   worked through for assembly one at a time in docs/NOTES.md (see "The joint
-  could not be assembled, so the journal is bought again").
+  could not be assembled, so the journal is bought again"). Their output
+  screws are drawn now, and walking each joint here is the next step.
 * Hands and tools. A clear path for the part says nothing about room for the
   fingers holding it or the key turning its screw; docs/BUILD_REVIEW.md lists
-  the screws whose access has been looked at.
+  the screws whose access has been looked at. Where a screw goes in head first
+  down a bore, as the wheel's output screws do, the head is wider than the key
+  that follows it, so the screw's own path answers for the key's.
 * Anything not drawn, like every other gate.
 
 The deck goes in with the actuator harness plugs disconnected. Fit the charge
@@ -108,11 +120,12 @@ DECK = [
 ]
 
 
-def steps() -> list[tuple[str, list, list, bool]]:
-    """(what goes in, what moves, its path out, whether it threads onto its own
-    group) in build order. A path is a list of legs, (direction, distance), run
-    from the part's final place outwards; a distance of None means until the
-    part is clear of the shell."""
+def steps() -> list[tuple[str, list, list, tuple]]:
+    """(what goes in, what moves, its path out, the groups it threads into) in
+    build order. A path is a list of legs, (direction, distance), run from the
+    part's final place outwards; a distance of None means until the part is
+    clear of the shell. What a part threads into is left out of what it is
+    measured against, because a thread is drawn as an overlap."""
     return [
         # ONE BOARD IN THE POWER BAY since 2026-10-07, on its nuts, where a
         # bought distribution board went in first and this one followed it on
@@ -135,7 +148,7 @@ def steps() -> list[tuple[str, list, list, bool]]:
                 "capacitor bank",
             ],
             [(UP, 5.0), (INBOARD, 30.0), (UP, None)],
-            False,
+            (),
         ),
         # The end pads go onto the left wall first. Then the battery goes in as
         # ONE BLOCK, since 2026-10-05: both packs and the BMS between them,
@@ -145,7 +158,7 @@ def steps() -> list[tuple[str, list, list, bool]]:
             "end pads onto the left wall",
             [("battery foam", 2), ("battery foam", 3)],
             [(UP, None)],
-            False,
+            (),
         ),
         (
             "the battery block",
@@ -155,12 +168,12 @@ def steps() -> list[tuple[str, list, list, bool]]:
                 "BMS board",
             ],
             [(UP, None)],
-            False,
+            (),
         ),
         # Each pack's XT60 mated with its male of the series harness, laid into
         # the strip beside it from above.
-        ("the packs' two XT60s", ["battery pack connectors"], [(UP, None)], False),
-        ("the deck, harness plugs disconnected", DECK, [(UP, None)], False),
+        ("the packs' two XT60s", ["battery pack connectors"], [(UP, None)], ()),
+        ("the deck, harness plugs disconnected", DECK, [(UP, None)], ()),
         # THE CHARGE INLET GOES IN FROM INSIDE, since it became an XT60E-M on
         # 2026-10-05: its ears bear on the inside face, so it comes down in
         # front of the wall and goes back until its nose is out through the
@@ -169,7 +182,7 @@ def steps() -> list[tuple[str, list, list, bool]]:
             "charge inlet, nose out through the wall",
             [("charge inlet", 0), ("charge inlet", 1), ("charge inlet", 2)],
             [(IN, 8.5), (UP, None)],
-            False,
+            (),
         ),
         # Then its nuts onto the back of its ears, beside its body, held there
         # while the screws come in from outside. They come down in front of the
@@ -179,7 +192,7 @@ def steps() -> list[tuple[str, list, list, bool]]:
             "charge inlet's two nuts, behind its ears",
             [("charge inlet", 3), ("charge inlet", 4)],
             [(IN, 8.5), (UP, None)],
-            False,
+            (),
         ),
         # The inlet moved inward to clear the lid boss, 2026-10-12. Fit it
         # while the actuator harness plugs are disconnected, then bring the
@@ -188,33 +201,33 @@ def steps() -> list[tuple[str, list, list, bool]]:
             "actuator harness plugs, after the inlet",
             ["actuator harness bank"],
             [(UP, None)],
-            False,
+            (),
         ),
         (
             "on/off button's nut, held on the wall",
             [("on/off button", 2)],
             [(UP, None)],
-            False,
+            (),
         ),
         (
             "SMA shoulder from inside, shank out through the wall",
             [("antenna bulkhead", 0)],
             [((1.0, 0.0, 0.0), 12.0), (UP, None)],
-            False,
+            (),
         ),
         (
             "SMA nut onto its shank from outside",
             [("antenna bulkhead", 1)],
             [((-1.0, 0.0, 0.0), None)],
-            True,
+            ("antenna bulkhead",),
         ),
         (
             "on/off button, into its nut from outside",
             [("on/off button", 0), ("on/off button", 1)],
             [(OUT, None)],
-            True,
+            ("on/off button",),
         ),
-        ("the lid", ["cover"], [(UP, None)], False),
+        ("the lid", ["cover"], [(UP, None)], ()),
     ]
 
 
@@ -228,6 +241,71 @@ def parts() -> dict[str, list]:
     groups["deck"] = deck.electronicsDeck()
     groups["cover"] = [torso.torsoCover()]
     return groups
+
+
+OUTBOARD = (1.0, 0.0, 0.0)  # off the wheel motor's output face, in joint axes
+
+
+def wheel_steps() -> list[tuple[str, list, list, tuple]]:
+    """The right wheel onto its motor, in the joint's own frame, as steps()."""
+    return [
+        # The insert is melted in from the motor side on the bench, so it rides
+        # in with the adapter.
+        (
+            "adapter, insert in, onto the motor",
+            ["wheel adapter", "M5 insert"],
+            [(OUTBOARD, None)],
+            (),
+        ),
+        # HEAD FIRST DOWN THE SPIGOT'S SCALLOPS, which is the step that was
+        # missing: at Ø4.5 they passed the key and stopped the Ø5.5 head. The
+        # motor's threads are drawn at the screw's own Ø3, so the screws slide
+        # out of them touching and are measured against the motor like anything
+        # else.
+        (
+            "six output screws, down the scallops",
+            ["output screws"],
+            [(OUTBOARD, None)],
+            (),
+        ),
+        # The hub covers the screws, so the screws are in first.
+        ("the wheel, onto the spigot", ["skate wheel"], [(OUTBOARD, None)], ()),
+        ("the cap, into the outboard seat", ["wheel cap"], [(OUTBOARD, None)], ()),
+        ("the washer, into the cap", ["clamp washer"], [(OUTBOARD, None)], ()),
+        (
+            "the M5 clamp screw, into the insert",
+            ["clamp screw"],
+            [(OUTBOARD, None)],
+            ("M5 insert",),
+        ),
+    ]
+
+
+def wheel_parts() -> dict[str, list]:
+    """The right wheel module's parts, joint-local, by group name."""
+    from build123d import Rot
+
+    from cad import wheel
+    from cad.actuator import actuatorAssembly
+    from cad.hardware import boltedToOutput
+    from cad.wheel_adapter import wheelAdapterRight
+    from cad.wheel_cap import wheelCapRight
+
+    # Turned onto +X, as cad/scenes.py's wheel module turns it, and threaded
+    # where the adapter's holes are.
+    motor, screws = boltedToOutput(
+        [Rot(0, 90, 0) * b for b in actuatorAssembly()], wheel.wheelRightOutput
+    )
+    return {
+        "motor": motor,
+        "wheel adapter": wheelAdapterRight(),
+        "M5 insert": [wheel.heatSetInsert()],
+        "output screws": screws,
+        "skate wheel": wheel.wheelRightGroups()["skate wheel"],
+        "wheel cap": [wheelCapRight()],
+        "clamp washer": [wheel.clampWasher()],
+        "clamp screw": [wheel.clampScrew()],
+    }
 
 
 def bodies_of(groups: dict, names: list) -> list[tuple[str, object]]:
@@ -310,25 +388,29 @@ def travel(moving, obstacles, path, shell_box) -> tuple[float, str | None, float
     return run, None, 0.0
 
 
-def main() -> int:
-    print("THE TORSO, PUT TOGETHER IN ORDER")
-    print(
-        "each part is run out along its way in, against everything already in; "
-        "it may slide on what it touches and may not pass through anything"
-    )
-    started = time.time()
-    groups = parts()
-    shell_box = groups["pelvis"][0].bounding_box()
-    installed = [("pelvis", b) for b in groups["pelvis"]]
+def _envelope(bodies):
+    """One bounding box round all of `bodies`."""
+    from build123d import Compound
+
+    return Compound([b for _, b in bodies]).bounding_box()
+
+
+def walk(title: str, groups: dict, first: str, sequence: list) -> int:
+    """Put one assembly together in order, and return how many steps were blocked.
+
+    A part's way out ends once it is clear of the pelvis, which everything in
+    the torso goes inside; for an assembly built outwards along an axis, like
+    the wheel, it ends once it is clear of everything already in."""
+    print(title)
+    installed = [(first, b) for b in groups[first]]
+    pelvis_box = groups["pelvis"][0].bounding_box() if first == "pelvis" else None
     failed = 0
-    for what, names, path, threads in steps():
+    for what, names, path, into in sequence:
         moving = bodies_of(groups, names)
-        own = {group for group, _ in moving}
-        obstacles = [
-            (name, b) for name, b in installed if not (threads and name in own)
-        ]
+        obstacles = [(name, b) for name, b in installed if name not in into]
         tick = time.time()
-        run, met, shared = travel(moving, obstacles, path, shell_box)
+        exit_box = pelvis_box or _envelope(installed)
+        run, met, shared = travel(moving, obstacles, path, exit_box)
         if met is None:
             print(
                 f"   ok   {what:<38} clear over {run:5.0f} mm ({time.time() - tick:.0f}s)"
@@ -340,9 +422,23 @@ def main() -> int:
                 f"{shared:.2f} mm3"
             )
         installed.extend(moving)
-
     print()
-    total = len(steps())
+    return failed
+
+
+def main() -> int:
+    print(
+        "each part is run out along its way in, against everything already in; "
+        "it may slide on what it touches and may not pass through anything"
+    )
+    print()
+    started = time.time()
+    failed = walk("THE TORSO, PUT TOGETHER IN ORDER", parts(), "pelvis", steps())
+    failed += walk(
+        "A WHEEL ONTO ITS MOTOR, IN ORDER", wheel_parts(), "motor", wheel_steps()
+    )
+
+    total = len(steps()) + len(wheel_steps())
     if failed:
         print(
             f"gate I: FAIL -- {failed} of {total} steps blocked ({time.time() - started:.0f}s)"

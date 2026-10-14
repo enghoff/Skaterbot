@@ -95,11 +95,18 @@ the lid was not on. So:
   cannot get there is invisible to every other gate. It found that the rear
   wall's three parts have to go in after the deck, into nuts held against the
   inside of the wall, and that the deck cannot come out until they do. A new
-  torso part is covered by being given a step.
-- **What none of them can see is anything not drawn.** Screws are not in the
-  scenes, so a head that meets a wall passes, and neither are the looms and
+  torso part is covered by being given a step. It walks a wheel onto its motor
+  too, down to the six output screws, since the wheel adapter's scallops were
+  found to pass the key and stop the screw heads.
+- **What none of them can see is anything not drawn.** Most screws are not in
+  the scenes, so a head that meets a wall passes, and neither are the looms and
   leads, so a connector with no route to its mate passes too. Draw a fastener or
-  a lead before trusting its fit.
+  a lead before trusting its fit — and where a screw goes in through a printed
+  part, give it a gate I step, because a screw that fits where it ends up can
+  still have no way in. The six M3 at every motor output are drawn, since
+  October 2026, with the motor's threads cut where the disc puts them
+  (`cad/hardware.py`'s `boltedToOutput`), so gate H holds each screw against
+  its disc, its thread's floor, and whatever lands over its head.
 - **A bought part is its listing until one is measured.** The battery bay was
   drawn for a pack of a size nobody makes, and nothing could have caught that
   but reading the listings. Where a part's size comes from, and whether it is in
@@ -151,7 +158,7 @@ Nine gates, all free:
 | F | the check scenes' poses against the frozen reference, and their clearances measured |
 | G | every printed piece as the file a printer gets: one solid, walls, gaps, and its print orientation |
 | H | every part against every other in every scene: no shared volume, no gap under 0.2 mm |
-| I | the torso put together in build order: each part run out along its way in, clear of everything already in |
+| I | the torso and a wheel put together in build order: each part run out along its way in, clear of everything already in |
 
 Gates A and B mean the geometry has not drifted from what was built and printed.
 Gates E to I are written against the **drawing intent** instead, so they can

@@ -435,7 +435,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
         ("M3 clearance holes on the Ø24 output circle", m3Clearance / 2, 6),
         ("cap counterbores over them, clear of the plug", m3CapCounterbore / 2, 6),
         (
-            "key-access scallops down the spigot over each output screw",
+            "scallops down the spigot that pass each output screw's head",
             wheelKeyAccessDiameter / 2,
             6,
         ),

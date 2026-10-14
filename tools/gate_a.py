@@ -462,6 +462,17 @@ ADDED = {
     # 4762 catalogue figures.
     "m25CapHeadDiameter": 4.5,
     "m25CapHeadHeight": 2.5,
+    # cad/parameters.py: the M3 output screw, drawn since 14 October 2026 so
+    # that tools/gate_i.py can run it in. The wheel adapter's scallops had been
+    # drawn for the key and stopped the head. ISO 4762 catalogue figures, and
+    # the M3 x 8 docs/BOM.md chooses.
+    "m3CapHeadDiameter": 5.5,
+    "m3CapHeadHeight": 3.0,
+    "m3ScrewDiameter": 3.0,
+    "outputScrewLength": 8.0,
+    # And the motor's output threads they go into, drawn the same day so that a
+    # screw too long for them meets their floor: 6.5 deep in the vendor STEP.
+    "actuatorOutputThreadDepth": 6.5,
     # cad/electronics.py: the pack, in TORSO axes rather than catalogue axes,
     # because the packs are stood on edge and the two frames do not agree. It was
     # "a Gens Ace class 3S 2200 mAh brick, 76 x 33 x 25", which does not exist:
@@ -1438,6 +1449,14 @@ CHANGED = {
         2.0,
         1.5,
         "the plain M5 washer's 1.5 mm, as fastdep lists it",
+    ),
+    # ---- THE OUTPUT SCREWS CAN GET IN, 14 October 2026 ----------------------
+    "wheelKeyAccessDiameter": (
+        4.5,
+        6.5,
+        "each M3 goes down its scallop head first, and the Ø4.5 drawn for the "
+        "key alone stopped its Ø5.5 head: the counterbore's Ø6 and half a "
+        "millimetre more",
     ),
     # ---- THE IMU LEAVES THE FLOOR, 14 October 2026 ---------------------------
     #

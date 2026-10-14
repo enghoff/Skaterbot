@@ -401,3 +401,14 @@ def limbAssembly(limbLength: float, lowerEnd: str = "plate") -> list:
         arches.append(archBlank - tunnel)
 
     return [waistPlate, gussetFront, gussetRear, upperDisc, lowerJoint, *arches]
+
+
+def atUpperJoint(bodies: list, limbLength: float) -> list:
+    """Bodies drawn in a joint's own frame, carried to this limb's output disc.
+
+    The disc is placed by nothing more than the shift to the upper joint centre,
+    which is what limbAssembly() does to it above; anything bolted to it -- the
+    six output screws, and the motor's threads they go into -- goes the same
+    way, so the scenes never have to work out where a limb's disc is.
+    """
+    return [Pos(0, 0, limbLength / 2) * body for body in bodies]

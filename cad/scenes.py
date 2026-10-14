@@ -40,7 +40,7 @@ from build123d import Axis, Pos
 from cad.actuator import actuatorAssembly
 from cad.deck import electronicsDeck
 from cad.electronics import torsoElectronicsGroups, torsoReservations
-from cad.hardware import jointHardware
+from cad.hardware import boltedToOutput, jointHardware
 from cad.parameters import hipCenterX, kneeOutboardOffset, upperLegLength
 from cad.poses import (
     knee_limit_check,
@@ -48,10 +48,16 @@ from cad.poses import (
     pose_check,
     squat_check,
 )
-from cad.shin import shinLeft, shinRight
-from cad.thigh import thighLeft, thighRight
+from cad.shin import shinLeft, shinLeftOutput, shinRight, shinRightOutput
+from cad.thigh import thighLeft, thighLeftOutput, thighRight, thighRightOutput
 from cad.torso import pelvisShell, torsoCover
-from cad.wheel import wheelLeft, wheelRight, wheelRightGroups
+from cad.wheel import (
+    wheelLeft,
+    wheelLeftOutput,
+    wheelRight,
+    wheelRightGroups,
+    wheelRightOutput,
+)
 from cad.wheeled_parameters import wheeledTorsoCenterHeight
 
 
@@ -106,18 +112,63 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
     hipAngle = pose.get(f"{hand}HipAngle", pose.get("squatHipAngle"))
     shinAngle = pose.get(f"{hand}ShinAngle", pose.get("squatShinAngle"))
 
-    thigh = thighLeft if hand == "left" else thighRight
-    shin = shinLeft if hand == "left" else shinRight
-    wheel = wheelLeft if hand == "left" else wheelRight
+    left = hand == "left"
+    thigh = thighLeft if left else thighRight
+    shin = shinLeft if left else shinRight
+    wheel = wheelLeft if left else wheelRight
+    thighOutput = thighLeftOutput if left else thighRightOutput
+    shinOutput = shinLeftOutput if left else shinRightOutput
+    wheelOutput = wheelLeftOutput if left else wheelRightOutput
+
+    # Where each limb goes, as a function, because the output screws and the
+    # motor's threads have to go exactly where the limb's disc does: they turn
+    # with it, not with the motor's housing.
+    def atThigh(bodies: list) -> list:
+        return _turned(
+            bodies,
+            Axis.X,
+            hipAngle,
+            x=x,
+            y=named("thighCenterY"),
+            z=named("thighCenterZ"),
+        )
+
+    def atShin(bodies: list) -> list:
+        return _turned(
+            bodies,
+            Axis.X,
+            shinAngle,
+            x=kneeX,
+            y=named("shinCenterY"),
+            z=named("shinCenterZ"),
+        )
+
+    def atWheel(bodies: list) -> list:
+        return _at(bodies, x=kneeX, y=wheelY, z=wheelZ)
+
+    hipMotor, hipScrews = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, -spin, x=x, z=hipZ),
+        lambda bodies: atThigh(thighOutput(bodies)),
+    )
+    kneeMotor, kneeScrews = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, spin, x=kneeX, y=kneeY, z=kneeZ),
+        lambda bodies: atShin(shinOutput(bodies)),
+    )
+    wheelMotor, wheelScrews = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, -spin, x=kneeX, y=wheelY, z=wheelZ),
+        lambda bodies: atWheel(wheelOutput(bodies)),
+    )
 
     return {
-        f"{hand} hip motor": _turned(actuatorAssembly(), Axis.Y, -spin, x=x, z=hipZ),
-        f"{hand} knee motor": _turned(
-            actuatorAssembly(), Axis.Y, spin, x=kneeX, y=kneeY, z=kneeZ
-        ),
-        f"{hand} wheel motor": _turned(
-            actuatorAssembly(), Axis.Y, -spin, x=kneeX, y=wheelY, z=wheelZ
-        ),
+        f"{hand} hip motor": hipMotor,
+        f"{hand} knee motor": kneeMotor,
+        f"{hand} wheel motor": wheelMotor,
+        # The six M3 that hold each output disc to its motor, a group to a joint
+        # so that gate H measures them against the disc, the motor and whatever
+        # lands over their heads.
+        f"{hand} hip screws": hipScrews,
+        f"{hand} knee screws": kneeScrews,
+        f"{hand} wheel screws": wheelScrews,
         # The bearing and journal that close each hip pitch joint. They hang off
         # the stationary side, so they do not move with the thigh.
         f"{hand} hip hardware": _turned(
@@ -136,26 +187,12 @@ def _leg_groups(pose: dict, hand: str) -> dict[str, list]:
             y=kneeY,
             z=kneeZ,
         ),
-        f"{hand} thigh": _turned(
-            thigh(),
-            Axis.X,
-            hipAngle,
-            x=x,
-            y=named("thighCenterY"),
-            z=named("thighCenterZ"),
-        ),
-        f"{hand} shin": _turned(
-            shin(),
-            Axis.X,
-            shinAngle,
-            x=kneeX,
-            y=named("shinCenterY"),
-            z=named("shinCenterZ"),
-        ),
+        f"{hand} thigh": atThigh(thigh()),
+        f"{hand} shin": atShin(shin()),
         # The wheel is a solid of revolution bolted to its motor's output, so how
         # far it has turned changes nothing anyone can measure off a scene: it is
         # placed, not rotated.
-        f"{hand} wheel": _at(wheel(), x=kneeX, y=wheelY, z=wheelZ),
+        f"{hand} wheel": atWheel(wheel()),
     }
 
 
@@ -225,20 +262,29 @@ def _knee_review_groups(pose: dict, kneeAngle: float) -> dict[str, list]:
     its own frame the motor, the far bearing and the shin all sit at that
     offset.
     """
-    return {
-        "motor": _turned(actuatorAssembly(), Axis.Y, -90, x=kneeOutboardOffset),
-        # The far bearing and its journal, on the knee axis. This is the right
-        # knee, so the set is turned like the right knee's in the full assembly.
-        "hardware": _turned(jointHardware(), Axis.Z, 180, x=kneeOutboardOffset),
-        "thigh": _at(thighRight(), z=pose["upperLinkCenterZ"]),
-        "shin": _turned(
-            shinRight(),
+
+    def atShin(bodies: list) -> list:
+        return _turned(
+            bodies,
             Axis.X,
             -kneeAngle,
             x=kneeOutboardOffset,
             y=pose["lowerLinkCenterY"],
             z=pose["lowerLinkCenterZ"],
-        ),
+        )
+
+    motor, screws = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, -90, x=kneeOutboardOffset),
+        lambda bodies: atShin(shinRightOutput(bodies)),
+    )
+    return {
+        "motor": motor,
+        "output screws": screws,
+        # The far bearing and its journal, on the knee axis. This is the right
+        # knee, so the set is turned like the right knee's in the full assembly.
+        "hardware": _turned(jointHardware(), Axis.Z, 180, x=kneeOutboardOffset),
+        "thigh": _at(thighRight(), z=pose["upperLinkCenterZ"]),
+        "shin": atShin(shinRight()),
     }
 
 
@@ -279,6 +325,13 @@ def limbCheckGroups() -> dict[str, list]:
     actuators and 30.5 mm from each joint axis, so each of them has a Ø46 body
     to miss and tools/gate_f.py now measures both.
     """
+    # The motor above is the hip's, and the thigh's disc is bolted to it, so it
+    # has its threads and its six screws. The knee motor below has no shin on
+    # it in this scene, so nothing is bolted to it and it is left plain.
+    motorAbove, screwsAbove = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, 90, z=upperLegLength / 2),
+        thighRightOutput,
+    )
     return {
         "limb": thighRight(),
         # The knee motor and its far bearing stand kneeOutboardOffset out along
@@ -291,7 +344,8 @@ def limbCheckGroups() -> dict[str, list]:
             x=kneeOutboardOffset,
             z=-upperLegLength / 2,
         ),
-        "motor above": _turned(actuatorAssembly(), Axis.Y, 90, z=upperLegLength / 2),
+        "motor above": motorAbove,
+        "screws above": screwsAbove,
         "hardware": _turned(
             jointHardware(), Axis.Z, 180, x=kneeOutboardOffset, z=-upperLegLength / 2
         ),
@@ -316,8 +370,12 @@ def wheelModuleGroups() -> dict[str, list]:
     keep each wheel whole, because what they look at is the wheel against the
     leg.
     """
+    motor, screws = boltedToOutput(
+        _turned(actuatorAssembly(), Axis.Y, 90), wheelRightOutput
+    )
     return {
-        "motor": _turned(actuatorAssembly(), Axis.Y, 90),
+        "motor": motor,
+        "output screws": screws,
         **wheelRightGroups(),
     }
 

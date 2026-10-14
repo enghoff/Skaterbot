@@ -236,13 +236,19 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     from cad.actuator import actuatorAssembly
     from cad.deck import electronicsDeck
     from cad.electronics import labelled, torsoElectronicsGroups
-    from cad.hardware import jointHardware
+    from cad.hardware import boltedToOutput, jointHardware
     from cad.parameters import hipCenterX, kneeOutboardOffset
-    from cad.shin import shinLeft, shinRight
+    from cad.shin import shinLeft, shinLeftOutput, shinRight, shinRightOutput
     from cad.skate_wheel import skateWheelHub, skateWheelTread
-    from cad.thigh import thighLeft, thighRight
+    from cad.thigh import thighLeft, thighLeftOutput, thighRight, thighRightOutput
     from cad.torso import pelvisShell, torsoCover
-    from cad.wheel import clampScrew, clampWasher, heatSetInsert
+    from cad.wheel import (
+        clampScrew,
+        clampWasher,
+        heatSetInsert,
+        wheelLeftOutput,
+        wheelRightOutput,
+    )
     from cad.wheel_adapter import wheelAdapterLeft, wheelAdapterRight
     from cad.wheel_cap import wheelCapLeft, wheelCapRight
     from cad.wheeled_parameters import (
@@ -260,8 +266,18 @@ def whole_robot(finished: bool = False, size: float = 0.5):
     adapter_of = {-1: wheelAdapterLeft, 1: wheelAdapterRight}
     cap_of = {-1: wheelCapLeft, 1: wheelCapRight}
 
-    def motor(x, z, spin):
-        return [Pos(x, 0, z) * b.rotate(Axis.Y, spin) for b in actuatorAssembly()]
+    def motor(x, z, spin, output_x, output_z, output):
+        """One actuator, with its output threads cut and the six M3 in them.
+
+        The threads and screws go where the part bolted to the output goes --
+        `output` carries a joint-frame body to that part's disc, and the
+        station is the part's own -- so they turn with the limb, not the
+        housing. Returns (motor, screws).
+        """
+        return boltedToOutput(
+            [Pos(x, 0, z) * b.rotate(Axis.Y, spin) for b in actuatorAssembly()],
+            lambda bodies: [Pos(output_x, 0, output_z) * b for b in output(bodies)],
+        )
 
     # The printed pieces are gathered before anything is assembled, and kept
     # piece by piece, because the finish pass has to know where each piece ends:
@@ -344,8 +360,9 @@ def whole_robot(finished: bool = False, size: float = 0.5):
             label=label,
         )
 
-    def wheel_module(leg, sign):
-        """The printed adapter and cap, the skate wheel they carry, and its clamp."""
+    def wheel_module(leg, sign, output_screws):
+        """The printed adapter and cap, the skate wheel they carry, its clamp,
+        and the six M3 that hold the adapter to the wheel motor."""
         at = Pos(sign * (hipCenterX + kneeOutboardOffset), 0, prototypeWheelAxisHeight)
         hub, tread = skateWheelHub(), skateWheelTread()
         # Named one by one rather than as a bag of "clamp hardware": these are
@@ -362,6 +379,7 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         return Compound(
             children=[
                 _piece("adapter", printed[leg, "wheel adapter"], P.printedOrange),
+                _piece("output screws", output_screws, P.bearingSteel),
                 _piece("cap", printed[leg, "wheel cap"], P.printedOrange),
                 _piece("hub", [at * hub], P.printedDark),
                 _piece("tyre", [at * tread], P.soleBlack),
@@ -380,13 +398,34 @@ def whole_robot(finished: bool = False, size: float = 0.5):
         """Hip to tyre, in the order the joints are stacked."""
         x = sign * hipCenterX
         knee_x = sign * (hipCenterX + kneeOutboardOffset)
+        left = sign < 0
+        hip, hip_screws = motor(
+            x,
+            wheeledHipPitchAxisHeight,
+            sign * 90,
+            x,
+            wheeledThighCenterZ,
+            thighLeftOutput if left else thighRightOutput,
+        )
+        knee, knee_screws = motor(
+            knee_x,
+            wheeledKneeAxisHeight,
+            -sign * 90,
+            knee_x,
+            wheeledShinCenterZ,
+            shinLeftOutput if left else shinRightOutput,
+        )
+        wheel, wheel_screws = motor(
+            knee_x,
+            prototypeWheelAxisHeight,
+            sign * 90,
+            knee_x,
+            prototypeWheelAxisHeight,
+            wheelLeftOutput if left else wheelRightOutput,
+        )
         return Compound(
             children=[
-                _piece(
-                    "hip pitch actuator",
-                    motor(x, wheeledHipPitchAxisHeight, sign * 90),
-                    P.motorGrey,
-                ),
+                _piece("hip pitch actuator", hip, P.motorGrey),
                 joint_hardware(
                     sign,
                     wheeledHipPitchAxisHeight,
@@ -394,11 +433,8 @@ def whole_robot(finished: bool = False, size: float = 0.5):
                     turned=sign < 0,
                 ),
                 _piece("thigh", printed[leg, "thigh"], P.printedOrange),
-                _piece(
-                    "knee actuator",
-                    motor(knee_x, wheeledKneeAxisHeight, -sign * 90),
-                    P.motorGrey,
-                ),
+                _piece("hip output screws", hip_screws, P.bearingSteel),
+                _piece("knee actuator", knee, P.motorGrey),
                 joint_hardware(
                     sign,
                     wheeledKneeAxisHeight,
@@ -407,12 +443,9 @@ def whole_robot(finished: bool = False, size: float = 0.5):
                     x=knee_x,
                 ),
                 _piece("shin", printed[leg, "shin"], P.printedOrange),
-                _piece(
-                    "wheel actuator",
-                    motor(knee_x, prototypeWheelAxisHeight, sign * 90),
-                    P.motorGrey,
-                ),
-                wheel_module(leg, sign),
+                _piece("knee output screws", knee_screws, P.bearingSteel),
+                _piece("wheel actuator", wheel, P.motorGrey),
+                wheel_module(leg, sign, wheel_screws),
             ],
             label=leg,
         )

@@ -40,6 +40,8 @@ Torque crosses that **clamped face**, not the spigot. An M5 at a modest 1 kN pre
 
 The spigot carries six axial scallops on the output bolt centres, and they are not decoration. The actuator's own mounting screws sit on Ø24; the wheel bore that has to pass over them is Ø22. A plain spigot walls its own mounting screws in and **the adapter cannot be fitted to the motor at all**. A 2.5 mm hex key is 2.89 mm across corners, so at r12 its shaft sweeps r10.56 to r13.44 and the spigot's r11 surface stands a fraction of a millimetre inside that. The scallops open the path down the spigot's whole length; what is left is 19 mm of Ø22 on six pads, which is ample, because the spigot only centres the wheel.
 
+*Corrected 14 October 2026:* sizing them for the key was the mistake. The spigot is printed on the disc, so every screw goes down its scallop head first, and at Ø4.5 they stopped the Ø5.5 cap heads. They are Ø6.5 now, and `tools/gate_i.py` runs each screw in.
+
 ---
 
 ## 3. What was verified, and how

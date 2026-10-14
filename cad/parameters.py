@@ -941,6 +941,32 @@ m3Clearance = 3.4
 m3CapCounterbore = 6.0
 m3CapCounterboreDepth = 3.2
 
+# THE M3 SOCKET HEAD, drawn since 14 October 2026, and the six output screws
+# with it. Nothing drew them before, so nothing could ask whether they go in, and
+# on the wheel adapter they did not: its spigot's scallops passed the key and
+# stopped the Ø5.5 head -- cad/wheeled_parameters.py beside
+# wheelKeyAccessDiameter. tools/gate_i.py runs each one in along its axis now.
+#
+# PROVENANCE: ISO 4762 (DIN 912) socket cap screw, M3 -- head Ø5.5 x 3.0 across
+# a 2.5 mm hex socket. A catalogue part built to the same table by every maker,
+# so it is not in reference/. The shank is drawn at the nominal Ø3, unthreaded.
+m3CapHeadDiameter = 5.5
+m3CapHeadHeight = 3.0
+m3ScrewDiameter = 3.0
+# The M3 x 8 docs/BOM.md section 10 chooses for every output circle: 2.8 mm of
+# disc under the counterbore and 5.2 into the motor's 6.5 mm thread, which is
+# the vendor STEP's figure and still unmeasured on a real motor.
+outputScrewLength = 8.0
+# HOW DEEP THE MOTOR'S OWN OUTPUT THREADS GO, drawn into the actuator proxy since
+# 14 October 2026 so that a screw too long for them runs into their floor where
+# gate H can see it. PROVENANCE: reference/dm_3507_3d-241021.STEP, read
+# 2026-10-14 -- six Ø2.50 tap-drill holes on the Ø24 circle, 6.50 deep from the
+# output register's face, each with a Ø5.0 x 0.65 relief at its mouth. They are
+# drawn at the thread's Ø3 rather than the drill's Ø2.5, so a screw in one
+# touches it where it engages instead of overlapping it, and the relief is left
+# out. Still a vendor model's figure until the first motor is measured.
+actuatorOutputThreadDepth = 6.5
+
 # THE XT60E-M CHARGE INLET IS CLAMPED BY M2.5 SINCE 2026-10-12, AND IT WAS M2
 # FOR THE REASON BELOW. The two screws pass the wall and the connector's ears,
 # and a nut behind each ear takes the load. Its ear holes are 2.25 mm from the

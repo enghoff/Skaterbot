@@ -351,6 +351,19 @@ DEVIATIONS = {
                 "the 45.04 noted above."
             ),
         },
+        {
+            "removed_mm3": 215.3652960,
+            "why": (
+                "THE SIX SCALLOPS ARE Ø6.5 WHERE THEY WERE Ø4.5, 14 October 2026, "
+                "because at Ø4.5 no output screw could be fitted. They were sized "
+                "for the 2.5 mm key alone, but the spigot is printed on the disc, "
+                "so each M3 goes down its scallop head first, and its Ø5.5 cap head "
+                "is the widest thing that does. Ø6.5 is the counterbore's Ø6 and "
+                "half a millimetre more. The spigot's six pads lose 215.37 mm3 "
+                "between them, and that is the whole change: the plug at r8.5 "
+                "stays a quarter of a millimetre inside the scallops' r8.75."
+            ),
+        },
     ],
     "joint-stator-clevis": [
         {

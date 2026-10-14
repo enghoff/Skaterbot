@@ -198,7 +198,12 @@ listing:
 - **Motor lead lengths.** The 300 mm pigtails have not been laid along a leg to
   the carrier.
 - **The legs are not in gate I.** Their joints were worked through for assembly
-  by hand in `docs/NOTES.md` on 14 September, but no gate repeats it.
+  by hand in `docs/NOTES.md` on 14 September, but no gate repeats it. *The
+  wheel is, since 14 October:* its adapter's scallops let the hex key through
+  but not the M3 heads that have to go down them first, which nothing caught
+  because no screw was drawn. The six output screws are drawn now, the scallops
+  are Ø6.5, and gate I fits adapter, screws, wheel, cap and clamp in order. The
+  same screws at the hip and knee are the next thing to walk.
 
 **The distribution board is out of stock.** Robu, its only seller, showed the
 SwiftWing PDB-02-XT60 out of stock at ₹450 when read in a browser later on

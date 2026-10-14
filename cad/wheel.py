@@ -164,3 +164,13 @@ def wheelLeft() -> list:
         wheelCapLeft(),
         *[mirrored(body, Plane.YZ) for body in donor],
     ]
+
+
+def wheelRightOutput(bodies: list) -> list:
+    """Joint-frame bodies at the right wheel's output disc: the adapter is drawn
+    in the joint's own frame, so they are already there."""
+    return list(bodies)
+
+
+def wheelLeftOutput(bodies: list) -> list:
+    return [mirrored(body, Plane.YZ) for body in bodies]

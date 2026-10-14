@@ -34,12 +34,16 @@ The reserved volumes are not parts -- they are the space a board is allowed, and
 a board stands inside its own by design -- so they are left out here; gate F
 holds them against the shell.
 
-WHAT THIS CANNOT SEE is anything not drawn. The screws are not in these scenes,
-so a screw head that does not fit its counterbore, or meets a wall, passes
-here. The deck-ledge screws were the known case -- every standard M3 head
+WHAT THIS CANNOT SEE is anything not drawn. Most screws are not in these
+scenes, so a screw head that does not fit its counterbore, or meets a wall,
+passes here. The deck-ledge screws were the known case -- every standard M3 head
 reached 0.25 mm into the shell wall -- until they became M2.5s placed by their
-heads. Drawing the fasteners is the next step, and until then their fit is
-arithmetic in the part files and in docs/BOM.md's fastener schedule.
+heads. THE SIX M3 AT EVERY MOTOR OUTPUT ARE DRAWN, since 14 October 2026, a
+group to a joint, in the motor's threads (cad/hardware.py's boltedToOutput):
+each touches its counterbore and its thread, and a screw too long for the
+thread shares volume with the motor and fails here -- an M3 x 10 shares 29.69
+mm3 across the six. The rest is still arithmetic in the part files and in
+docs/BOM.md's fastener schedule.
 
 An overlap or a tight gap that is right ON PURPOSE is registered in INTENDED
 with its measured value and its reason, pinned both ends like gate B's

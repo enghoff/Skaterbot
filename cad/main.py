@@ -6,7 +6,8 @@ six DM-J3507 actuators in total, on a robot that used to carry eight and stand
 in a shell floor that came down 51 mm to meet it, so nothing below the hip moved.
 Thigh and shin are still 105 mm and the wheel axle is still 40 mm off the floor.
 
-WHAT IS IN HERE THAT IS NOT PRINTED. The six actuators, the bearing and journal
+WHAT IS IN HERE THAT IS NOT PRINTED. The six actuators, the six M3 that hold
+each output disc to its actuator, the bearing and journal
 that close each of the four straddled joints -- two hips and, since the knee was
 given its second support, two knees -- and the four reserved payload volumes
 standing in the pelvis. None of them is made here -- they are bought or
@@ -26,12 +27,12 @@ from build123d import Axis, Pos
 from cad.actuator import actuatorAssembly
 from cad.deck import electronicsDeck
 from cad.electronics import torsoElectronicsGroups, torsoReservations
-from cad.hardware import jointHardware
+from cad.hardware import boltedToOutput, jointHardware
 from cad.parameters import hipCenterX, kneeOutboardOffset
-from cad.shin import shinLeft, shinRight
-from cad.thigh import thighLeft, thighRight
+from cad.shin import shinLeft, shinLeftOutput, shinRight, shinRightOutput
+from cad.thigh import thighLeft, thighLeftOutput, thighRight, thighRightOutput
 from cad.torso import pelvisShell, torsoCover
-from cad.wheel import wheelLeft, wheelRight
+from cad.wheel import wheelLeft, wheelLeftOutput, wheelRight, wheelRightOutput
 from cad.wheeled_parameters import (
     prototypeWheelAxisHeight,
     wheeledHipPitchAxisHeight,
@@ -70,12 +71,62 @@ def robotAssemblyGroups() -> dict[str, list]:
     # the knee actuator and everything it carries -- shin, wheel motor, wheel --
     # share the offset and every printed part keeps its shape.
     kneeX = hipCenterX + kneeOutboardOffset
-    groups["left hip motor"] = _motor(-hipCenterX, wheeledHipPitchAxisHeight, -90)
-    groups["left knee motor"] = _motor(-kneeX, wheeledKneeAxisHeight, 90)
-    groups["left wheel motor"] = _motor(-kneeX, prototypeWheelAxisHeight, -90)
-    groups["right hip motor"] = _motor(hipCenterX, wheeledHipPitchAxisHeight, 90)
-    groups["right knee motor"] = _motor(kneeX, wheeledKneeAxisHeight, -90)
-    groups["right wheel motor"] = _motor(kneeX, prototypeWheelAxisHeight, 90)
+
+    #
+    # EACH WITH ITS SIX OUTPUT SCREWS, since 14 October 2026, and the threads in
+    # its output that they go into. Both are placed exactly as the disc bolted to
+    # that output is, which is the limb's own placement below.
+    def at(x: float, z: float, output) -> callable:
+        return lambda bodies: [Pos(x, 0, z) * b for b in output(bodies)]
+
+    stations = (
+        (
+            "left hip",
+            -hipCenterX,
+            wheeledHipPitchAxisHeight,
+            -90,
+            at(-hipCenterX, wheeledThighCenterZ, thighLeftOutput),
+        ),
+        (
+            "left knee",
+            -kneeX,
+            wheeledKneeAxisHeight,
+            90,
+            at(-kneeX, wheeledShinCenterZ, shinLeftOutput),
+        ),
+        (
+            "left wheel",
+            -kneeX,
+            prototypeWheelAxisHeight,
+            -90,
+            at(-kneeX, prototypeWheelAxisHeight, wheelLeftOutput),
+        ),
+        (
+            "right hip",
+            hipCenterX,
+            wheeledHipPitchAxisHeight,
+            90,
+            at(hipCenterX, wheeledThighCenterZ, thighRightOutput),
+        ),
+        (
+            "right knee",
+            kneeX,
+            wheeledKneeAxisHeight,
+            -90,
+            at(kneeX, wheeledShinCenterZ, shinRightOutput),
+        ),
+        (
+            "right wheel",
+            kneeX,
+            prototypeWheelAxisHeight,
+            90,
+            at(kneeX, prototypeWheelAxisHeight, wheelRightOutput),
+        ),
+    )
+    for joint, x, z, spin, place in stations:
+        motor, screws = boltedToOutput(_motor(x, z, spin), place)
+        groups[f"{joint} motor"] = motor
+        groups[f"{joint} screws"] = screws
 
     # There is no hip carrier. The clevis that holds each hip pitch actuator is
     # part of the pelvis now, so the printed chain from torso to wheel is torso,
