@@ -344,13 +344,23 @@ ADDED = {
     "journalScrewLength": 12.0,
     "journalScrewHeadDiameter": 9.5,
     "journalScrewHeadHeight": 2.75,
+    # An ordinary DIN 934 M5 nut as bought since 14 October 2026, drawn at the
+    # 4.0 that standard allows at most, where it was a 2.7 mm thin one filed
+    # down. The smallest
+    # nut's flats and corners are what tools/gate_f.py turns in the pocket to
+    # show it cannot spin, which a 9.3 pocket let it do until that day.
     "journalNutAcrossFlats": 8.0,
-    "journalNutThickness": 2.7,
-    # 1.3 mm over the nut's flats, not 0.3: cad/finish.py chamfers the floor of
-    # this pocket, being all flat faces, and 0.5 mm round its perimeter left the
-    # nut sitting on the chamfer rather than on the seat.
-    "journalNutPocketFlats": 9.3,
-    "journalNutPocketDepth": 3.3,
+    "journalNutAcrossFlatsMin": 7.78,
+    "journalNutAcrossCornersMin": 8.79,
+    "journalNutThickness": 4.0,
+    # 0.3 mm over the nut's flats, under its corners, and deep enough for the
+    # whole nut with a 1.7 mm web. Its corners and floor are rounded, which is
+    # what keeps cad/finish.py's chamfer off the floor; it was opened to 9.3 for
+    # that, and the nut turned in it.
+    "journalNutPocketFlats": 8.3,
+    "journalNutPocketDepth": 4.3,
+    "journalNutPocketCornerRadius": 0.4,
+    "journalNutPocketFloorRadius": 0.15,
     # cad/hardware.py: the stations those put on the joint axis. The sleeve lands
     # on the rotor disc's outer face and ends flush with the bearing's outer face
     # -- the same 5 mm of Ø10 the dowel and the stub both ran in -- and the nut
@@ -368,7 +378,7 @@ ADDED = {
     "journalInnerX": 24.95,
     # A millimetre further out since the sleeve took the washer's place.
     "journalOuterX": 31.95,
-    "journalNutOuterX": 22.25,
+    "journalNutOuterX": 23.25,
     # cad/poses.py: how far the knee may fold. It was 110 degrees, inherited from
     # the walking robot and never disputed by the geometry because the flat limbs
     # left thigh and shin in disjoint planes. Straddling the knee puts the

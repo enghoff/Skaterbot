@@ -3147,3 +3147,43 @@ deck and pelvis are re-exported and the simulation model rebuilt.
 Still unmeasured: the chip's height and the socket's, which are 7Semi's STEP and
 JST's catalogue; the socket has 0.5 of air over it for being taller than that.
 Nothing draws the lead past the notch, and nothing on the bill buys its SH end.
+
+## The journal nut goes in as bought, and cannot turn — 14 October 2026
+
+The captive M5 nut at every hip and knee could turn freely in its pocket. The
+pocket was 9.3 mm across its flats, opened from 8.3 so the finishing chamfer
+would leave the nut a flat seat, and an M5 nut is at most 9.24 across its
+corners. The motor closes the pocket and the screw is driven from the far side,
+so nothing would have held the nut and no joint could have been tightened. The
+scenes draw the nut as an 8 mm cylinder, which has no corners, so every gate
+passed it.
+
+The pocket is 8.3 across the flats again, which the smallest nut's 8.79 corners
+cannot pass. The chamfer is kept off it by drawing its inside edges round: the
+hexagon's corners at 0.4 in its sketch, and the floor at 0.15, which is where
+the largest nut's face ends. `cad/finish.py` leaves a concave round alone.
+Rounding all twelve edges of the sharp hexagon was tried first, and the patches
+OCCT blends where three rounds meet tessellated with holes round them; gate G
+failed the thighs and shins on it.
+
+It is also 4.3 deep where it was 3.3, so the nut goes in as bought and is no
+longer filed to 2.7. It is cut for the DIN 934 nuts fastdep delivered, which
+measure 7.8 across the flats, 8.9 across the corners and 3.9 thick: DIN 934 is
+never thicker than 4.0, and the pocket has the same 0.3 over that as over the
+flats. An ISO 4032 nut, 4.4 to 4.7 thick, would stand proud of the face the
+motor closes, and does not fit. For a few hours the pocket was 5.0 deep for
+one, behind a 1.0 mm web; drawn to the nut in hand, the web is 1.7. Either way
+it reverses the judgment that 2.7 mm of web was worth more than a full nut's
+thread: the web is never asked to bend, because the sleeve's Ø10 rim backs the
+nut's whole face from the other side, and what crushes first is the plastic
+under the nut's face, which is the same area however thick the web is. The
+screw's tip has not moved, and it takes 3.3 mm of thread where it had 2.3. None
+of this has been tested on a part.
+
+Gate F now seats the largest nut in the finished disc and turns the smallest at
+30 degrees, both as chamfered hexagons. It fails the old 9.3 pocket and a
+sharp-cornered 8.3 one. Gates A to I pass. Each limb is 14.8 mm³ heavier, and
+the robot is 0.5 g heavier at 1 983.6 g, mostly because a whole nut weighs more
+than a filed one. In PLA, which prints a hole about 0.2 mm small, the delivered
+nuts will go in with a little play and still cannot turn. The thighs and shins
+are re-exported and the simulation model rebuilt.

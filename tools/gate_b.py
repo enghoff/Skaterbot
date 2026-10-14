@@ -169,8 +169,8 @@ DEVIATIONS = {
             ),
         },
         {
-            "added_mm3": 92.2586125,
-            "removed_mm3": 169.1744699,
+            "added_mm3": 92.8222646,
+            "removed_mm3": 154.9831023,
             "why": (
                 "THE DISC CARRIES THE JOURNAL'S ANCHOR, NOT THE JOURNAL. The "
                 "golden's Ø10.2 x 2.2 blind seat took a bonded dowel; a printed "
@@ -198,7 +198,17 @@ DEVIATIONS = {
                 "so the nut sits 1.2 mm further in, its pocket's first 1.2 mm lies "
                 "where the golden's register pocket already was -- void in both -- "
                 "and it cuts 26.13 mm3 less of the golden's plate away. The web the "
-                "sleeve clamps against goes from 1.5 mm to 2.7 for it."
+                "sleeve clamps against goes from 1.5 mm to 2.7 for it. "
+                "AND FROM 92.26 ADDED AND 169.17 REMOVED TO 92.82 AND 154.98 on "
+                "14 October 2026, when the pocket went from 9.3 across the flats "
+                "and 3.3 deep to 8.3 and 4.3, its corners and floor rounded: the nut "
+                "turned freely in the old one, and is an ordinary DIN 934 M5 as bought "
+                "now rather than one filed to 2.7. The narrower hexagon gives "
+                "back 18.35 mm3 where the golden's register pocket was and 32.11 "
+                "of the golden's plate; the deeper floor takes 17.93 more of that "
+                "plate and 17.93 of what used to fill the golden's blind seat; "
+                "the floor's round returns 0.14. Net +14.75 mm3 a limb, which is "
+                "the pocket's own change in volume."
             ),
         },
         {

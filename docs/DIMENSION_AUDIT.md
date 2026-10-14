@@ -129,6 +129,17 @@ cylinder and says "Ø8 is the circle it sweeps", but it sweeps up to 9.24, so th
 gates measure it 0.6 mm small. The pocket needs to be smaller than the nut's
 corners, with the floor chamfer handled some other way.
 
+*Fixed 14 October 2026.* The pocket is 8.3 across the flats, so the smallest M5
+nut's 8.79 corners cannot turn in it, and its corners and floor are drawn
+rounded, which the finishing chamfer leaves alone. It is also 4.3 deep where it
+was 3.3, so a DIN 934 nut goes in as bought and is no longer filed to 2.7; the
+web behind it is 1.7 mm and the screw takes 3.3 mm of thread instead of 2.3.
+The fastdep nuts measure 7.8 across the flats, 8.9 across the corners and 3.9
+thick. Gate F now seats the largest DIN 934 nut in the finished disc and turns
+the smallest one in it, as hexagons, and fails both the old 9.3 pocket and a
+sharp-cornered 8.3 one. In PLA, which prints a hole about 0.2 mm small, the
+delivered nuts go in with a little play and still cannot turn.
+
 **The journal sleeve cannot enter its bearing as drawn.** The sleeve is
 printed (it is in `mass_budget.toml` as four prints), Ø10.0, into a 6800 whose
 bore is Ø10.0 with a 0 to −0.008 tolerance. That is line to line in nylon and

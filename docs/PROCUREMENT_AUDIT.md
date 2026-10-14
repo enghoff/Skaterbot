@@ -95,7 +95,7 @@ they require confirmation in the seller's current cart before an actual order.
 | M2 nuts | 8 | Two inlet nuts + six on INA226 (two under each hole, one above) | 25 |
 | M2.5 plain washers | 2 | Under the two inlet screw heads; no washers behind its ears | 25 |
 | M5 × 12 ISO 7380 button-head screws | 4 | Hip/knee journal screws in `cad/hardware.py`; already recorded separately from obsolete clamp screws | Deduct secured journal screws first |
-| M5 nuts, filed to 2.7 mm | 4 | Captive journal nut pockets, hip/knee | 25 |
+| M5 nuts, as bought (unfiled since 2026-10-14) | 4 | Captive journal nut pockets, hip/knee | 25 |
 | M5 × 30 SHCS, 12.9 | 2 | One wheel cap/adapter clamp per side | 10 |
 | M5 plain washer, Ø11 × 1.5 | 2 | Under wheel clamp heads, inside printed caps | 25 |
 | M5 heat-set inserts, Ø7 knurl | 2 | Back-fed wheel adapter insert pockets | Deduct the confirmed ten-pack first |

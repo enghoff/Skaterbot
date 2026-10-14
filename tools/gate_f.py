@@ -398,18 +398,21 @@ CLEARANCES = (
         # 14 September 2026, so this row was measuring against a motor that
         # stopped 1.0 mm short of its own output face. The real figure is
         # journalNutPocketDepth less journalNutThickness: the nut is pulled up
-        # against the outboard end of a 3.3 mm pocket and is 2.7 mm thick, so
-        # 0.6 mm of that pocket is empty and the register closes the mouth of it
-        # 0.6 mm from the nut's face. That is not a clearance anybody chose and
+        # against the outboard end of a 4.3 mm pocket and is 4.0 mm thick, so
+        # 0.3 mm of that pocket is empty and the register closes the mouth of it
+        # 0.3 mm from the nut's face. That is not a clearance anybody chose and
         # it is not free air either -- it is what makes the nut captive, and the
         # nut has never been anywhere else. Asked a shade under the nominal
-        # 0.6, as the clevis row below is asked a shade under its 0.3.
+        # 0.3, as the clevis row below is asked a shade under its 0.3. It was
+        # 0.6 of a 3.3 mm pocket round a 2.7 mm nut until 14 October 2026, when
+        # the pocket was deepened for an ordinary DIN 934 nut as bought; the
+        # nut is drawn at that standard's 4.0, so the 3.9 delivered leaves 0.4.
         "knee_limit_check",
         "the hardware against the knee actuator it straddles",
         ("hardware",),
         ("motor",),
         "clear",
-        0.55,
+        0.25,
     ),
     (
         "wheel_module_check",
@@ -1252,7 +1255,7 @@ def check_journal_fastening() -> tuple[int, int]:
     bearing_air, clash = measure([screw], [h.bearing()])
     seat_gap, seat_shared = measure([screw], [h.journalSleeve()])
     checks = [
-        ("nut engagement >= 2 mm", engaged >= 2.0 - 1e-6, engaged),
+        ("nut engagement >= 3.0 mm", engaged >= 3.0 - 1e-6, engaged),
         ("screw tip air >= 0.8 mm", tip_air >= 0.8 - 1e-6, tip_air),
         (
             "screw clears bearing by 0.5 mm",
@@ -1268,6 +1271,123 @@ def check_journal_fastening() -> tuple[int, int]:
     print("\nJOURNAL FASTENING")
     for label, passed, value in checks:
         print(f"  {'ok' if passed else 'FAIL'}  {label}: {value:.3f} mm")
+    return len(checks), sum(not passed for _, passed, _ in checks)
+
+
+def check_journal_nut_pocket() -> tuple[int, int]:
+    """Check the journal's nut against its pocket as the hexagon it is.
+
+    THE SCENES CANNOT ASK THIS. They draw the nut as a Ø8 cylinder, because they
+    do not turn a joint's hardware with its limb, and a cylinder has no corners:
+    so they passed a nut that spun freely in a pocket 9.3 across its flats, with
+    corners of at most 9.24, until 14 October 2026. In a pocket the motor closes
+    and on a screw driven from the far side, a nut that turns is a joint that
+    cannot be tightened.
+
+    So the disc is built on its own and the nuts are drawn here as hexagons, in
+    the disc's frame, the pocket's way round. The largest DIN 934 M5 nut, seated
+    on the floor, must share nothing with it: that is the nut going in, and
+    landing on the floor rather than on anything standing in it, which is how
+    cad/finish.py's chamfer once took the seat. The smallest, turned 30 degrees so
+    its corners face the flats, must not fit at all: a nut that cannot be there
+    cannot turn through there. It is the narrowest nut a turn has to pass, 8.79
+    across its corners against 8.3 across the flats, and no sideways slop helps
+    it, because it is that wide across every pair of flats at once. Both are
+    asked of the disc as drawn and of the finished disc a printer gets.
+
+    THE NUTS HAVE THEIR FACE CHAMFERS, because every ISO 4032 nut does and the
+    seat depends on it. The bearing face is a circle no wider than the flats, and
+    the corners rise off it at the chamfer's angle, so a nut's corners never
+    reach the floor. A sharp hexagon would put them there, on the floor's round,
+    and fail this by five microns of nothing real. Each nut gets the chamfer that
+    is hardest on its question: the largest the shallowest, 15 degrees from a
+    face as wide as its flats, so it keeps the most corner to seat; the smallest
+    the steepest, 30 degrees from the narrowest face the standard allows, so it
+    keeps the least corner to be stopped by.
+    """
+    from math import radians, tan
+
+    from build123d import (
+        Axis,
+        BuildSketch,
+        Cone,
+        Cylinder,
+        Plane,
+        Pos,
+        RegularPolygon,
+        Rot,
+        extrude,
+    )
+
+    from cad.finish import one_solid
+    from cad.joint import outputDisc
+    from cad.parameters import (
+        journalNutAcrossCornersMin,
+        journalNutAcrossFlats,
+        journalNutAcrossFlatsMin,
+        journalNutPocketDepth,
+        journalNutThickness,
+        rotorHubInnerX,
+    )
+
+    # ISO 4032 M5: the bearing face is at least 6.9 across, and the face chamfer
+    # runs 15 to 30 degrees. A catalogue table, like the nut's other figures in
+    # cad/parameters.py.
+    bearingFaceMin = 6.9
+    floor = rotorHubInnerX + journalNutPocketDepth
+    t = journalNutThickness
+
+    def hexNut(acrossFlats: float, face: float, chamfer: float):
+        with BuildSketch(Plane.YZ) as profile:
+            RegularPolygon(acrossFlats / 2, 6, major_radius=False)
+        nut = Pos(floor - t, 0, 0) * extrude(profile.sketch, amount=t)
+        # A cone from each face, widening at the chamfer's angle off the face
+        # and still wider than the corners at the other one.
+        flare = face / 2 + t / tan(radians(chamfer))
+        for at, turn in ((floor - t / 2, 90), (floor - t / 2, -90)):
+            nut = nut & (Pos(at, 0, 0) * Rot(0, turn, 0) * Cone(face / 2, flare, t))
+        return nut
+
+    largest = hexNut(journalNutAcrossFlats, journalNutAcrossFlats, 15)
+    corners = (
+        Pos(floor - t / 2, 0, 0)
+        * Rot(0, 90, 0)
+        * Cylinder(journalNutAcrossCornersMin / 2, t)
+    )
+    smallest = hexNut(journalNutAcrossFlatsMin, bearingFaceMin, 30) & corners
+    smallest = smallest.rotate(Axis.X, 30)
+
+    drawn = outputDisc(journalAnchor=True)
+    finished, _, _ = one_solid([drawn])
+    checks = []
+    for which, disc in (("as drawn", drawn), ("finished", finished)):
+        seat, shared = measure([largest], [disc])
+        checks.append(
+            (
+                f"{which}: largest nut seats on the floor, sharing nothing",
+                seat < 1e-6 and shared < CONTACT_MM3,
+                shared,
+            )
+        )
+        _, blocked = measure([smallest], [disc])
+        checks.append(
+            (
+                f"{which}: smallest nut cannot turn, sharing > 1 mm3 at 30 deg",
+                blocked > 1.0,
+                blocked,
+            )
+        )
+    proud = journalNutPocketDepth - journalNutThickness
+    checks.append(
+        (
+            "largest nut stays under the seating face, mm",
+            proud >= 0.2 - 1e-6,
+            proud,
+        )
+    )
+    print("\nJOURNAL NUT IN ITS POCKET")
+    for label, passed, value in checks:
+        print(f"  {'ok' if passed else 'FAIL'}  {label}: {value:.3f}")
     return len(checks), sum(not passed for _, passed, _ in checks)
 
 
@@ -1331,6 +1451,7 @@ def main() -> int:
             check_footings,
             check_no_clashes,
             check_journal_fastening,
+            check_journal_nut_pocket,
             check_antenna_base,
             check_charge_inlet_boss,
         ):

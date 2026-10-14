@@ -125,7 +125,9 @@ fasteners nobody stocks are designed out:
   They are printed now, four PA12 tubes.
 
 The M5 thin nut is an ordinary M5 nut filed to 2.7 mm. MISUMI is off the bill,
-and the fastdep and Robu carts match it.
+and the fastdep and Robu carts match it. (Since 14 October 2026 the nut is not
+filed at all: the pocket is 4.3 mm deep and 8.3 across the flats, which takes a
+DIN 934 nut whole and stops it turning.)
 
 **The wheel's heat-set insert was the wrong size.** The bore is drawn Ø6.4 × 12,
 which is the melt-in hole for a 7 mm knurl. The BOM named an 8 mm insert, 1.5 mm

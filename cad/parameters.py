@@ -782,9 +782,12 @@ journalScrewDiameter = 5.0
 # 1.5 mm, so M5 x 10 reached only 1.3 mm into the nut. M5 x 12 with a 1 mm
 # washer under its head reaches 2.3 mm and stops 1 mm short of the motor, and
 # since 2026-09-30 that millimetre is the sleeve's own -- journalSleeveProud
-# above -- so there is no washer. Allow +/-0.2 mm each on the printed sleeve
-# and web and +/-0.3 on screw length: at least 1.5 mm engagement and 0.2 mm
-# tip air. This is a prototype clamp, not a full-strength M5 bolted connection.
+# above -- so there is no washer. The web went to 1.7 mm on 14 October 2026,
+# for a DIN 934 nut as bought, which leaves the tip where it was -- 5 mm into
+# the disc and 1 mm short of the motor -- and gives it 3.3 mm of thread instead
+# of 2.3. Allow +/-0.2 mm each on the printed sleeve and disc and +/-0.3 on
+# screw length: at least 2.6 mm engagement and 0.3 mm tip air. This is a
+# prototype clamp, not a full-strength M5 bolted connection.
 journalScrewLength = 12.0
 # An ISO 7380 button head rather than a cap head, and the head diameter is why:
 # Ø9.5 lands wholly on the Ø10 sleeve and touches neither the bearing's inner
@@ -792,35 +795,73 @@ journalScrewLength = 12.0
 # boss, where a cap head would stand 3.5.
 journalScrewHeadDiameter = 9.5
 journalScrewHeadHeight = 2.75
-# The nut is an ISO 4035 thin hex, captive in a pocket in the disc's motor-side
-# face -- AND IT IS BOUGHT AS AN ORDINARY M5 NUT AND FILED, since 2026-09-30.
-# Nobody on an Indian shelf sells the thin one in less than a fifty-pack, so an
-# ISO 4032 / DIN 934 M5 nut, 4 to 4.7 mm, is filed flat on one face to 2.7. It had to be a thin one when the register pocket took 1.2 mm of the
-# disc's 6: the 4.8 that was left had to hold the nut AND leave a web for the
-# sleeve to clamp against, which was 2.7 of nut and 1.5 of web. The pocket is a
-# rim outboard of nothing now -- it is cut inboard of the seating face -- so the
-# full 6 mm is available and the split is 2.7 of nut, 0.6 of empty pocket and
-# 2.7 of web. The thin nut stays: the web is what the sleeve clamps against and
-# 2.7 mm of it is worth more than a standard nut's extra thread.
+# The nut is AN ORDINARY M5 HEX NUT, AS BOUGHT, since 14 October 2026, captive
+# in a pocket in the disc's motor-side face: A DIN 934 ONE, 4.0 mm thick at the
+# most. PROVENANCE: DIN 934 / ISO 4032 M5 -- 8.00 mm across the flats (7.78
+# min), 8.79 mm across the corners at the least; DIN 934 is 4.0 thick with a
+# tolerance that only takes away (3.7 to 4.0), and ISO 4032 is the same hexagon
+# 4.4 to 4.7 thick. A catalogue part built to the same table by every maker, so
+# it is not in reference/. AN ISO 4032 NUT DOES NOT FIT: it would stand up to
+# 0.4 mm proud of the face the motor closes, and the disc would not seat. The
+# pocket was drawn for one for the first few hours of this design, 5.0 deep
+# behind a 1.0 mm web, and was brought up to the nut actually delivered.
 #
-# THE POCKET IS CUT 1.3 mm OVER THE FLATS, AND THE FINISHING PASS IS WHY.
-# 8.3 was the number this was drawn with -- 0.3 over the nut, meant to be pushed
-# in, since SLS holds about +/-0.2 mm and a nominal fit is a nut that will not go
-# in as often as it is one that rattles. Then the pocket was measured on the
-# FINISHED piece: cad/finish.py breaks every edge whose faces are flat, the floor
-# of a hex pocket is one of those, and a 0.5 mm chamfer round its perimeter took
-# the seat from 35.9 mm2 to 22.3 against a nut face of 31.6. The nut would have
-# landed on the chamfer rather than on the floor, on the one joint in this
-# assembly whose preload is already the weak thing about it.
+# MEASURED, 14 October 2026: the fastdep nuts delivered are 7.8 across the flats,
+# 8.9 across the corners and 3.9 thick, by the owner's caliper. The flats are the
+# bottom of ISO 4032's range, so the nut in hand is the smallest one
+# tools/gate_f.py turns in the pocket and finds stopped; its corners are 0.6 over
+# the pocket's flats, which is what stops it. 3.9 is a DIN 934 nut, so it sits
+# 1.1 mm under the seating face, and the screw's tip reaches 0.1 past it: the
+# whole 3.9 mm of its thread is engaged. That was in the 5.0 mm pocket drawn for
+# an ISO 4032 nut; the pocket is 4.3 now, for this one, which sits 0.4 mm under
+# the seating face and has 3.3 mm of its thread engaged.
 #
-# 9.3 leaves 8.3 mm of flat floor across the flats once the chamfer has been cut,
-# which is the fit the pocket was meant to have in the first place. What it costs
-# is 0.65 mm of lateral slop on a nut that the screw centres anyway and that only
-# has to be stopped from turning.
+# IT WAS AN ISO 4035 THIN NUT, 2.7 mm, AND THEN A STANDARD ONE FILED TO 2.7, until
+# 14 October 2026. The thin nut was forced while the register pocket took 1.2 mm
+# of the disc's 6; when that pocket was retired it was kept, on the argument that
+# a 2.7 mm web for the sleeve to clamp against was worth more than a standard
+# nut's extra thread. It is not, because the web is never asked to bend: the
+# sleeve's Ø10 rim covers the nut's whole face from the other side, so the
+# clamp goes straight through it in compression, and what that crushes first is
+# the plastic under the nut's face, which is the same area however thick the web
+# is. Against that, the thin nut took 2.3 mm of thread and a filing step on every
+# nut. The pocket is 4.3 deep now -- the DIN 934 nut's 4.0 and the same 0.3 the
+# flats are given -- and the web 1.7; the screw has the same reach and takes
+# 3.3 mm of thread; and a nut held by its own flats in a close pocket carries
+# the sleeve's side load into the disc over its full height, where the old one
+# had 0.65 mm of slop to take up first.
+#
+# THE POCKET IS 0.3 mm OVER THE FLATS, and below the corners, which is the whole
+# job of a nut pocket. It was 9.3 until 14 October 2026 -- opened from 8.3 so
+# that cad/finish.py's chamfer round the floor would leave the nut a flat seat --
+# and an M5 nut is at most 9.24 across its corners, so it turned freely in it,
+# in a pocket the motor closes, on the end of a screw driven from the other side:
+# the joint could not have been tightened. 8.3 is the nut's 8.00 plus 0.3 to
+# push it in against SLS's +/-0.2, and the smallest nut's 8.79 corners cannot
+# pass its 8.3 flats.
+#
+# THE FLOOR KEEPS ITS SEAT BY BEING ROUNDED, NOT BY BEING OPENED. The hexagon's
+# six corners are rounded in its sketch, and the one edge that then runs round
+# the floor is a round of its own. cad/finish.py breaks only edges between flat
+# or convex faces, so a concave round is a fit to it and is left alone -- which
+# is the right reading, and what keeps the 0.5 mm chamfer off the floor and out
+# of the corners, where it would have stood in the nut's way. The floor's round
+# is 0.15, the pocket's half-clearance, so it starts exactly where the largest
+# nut's face ends at its flats and takes nothing from its seat. The corners'
+# 0.4 is what a 0.4 mm nozzle leaves in them anyway, and still clears the
+# sharpest nut's corners by 0.11. They are two edges and not twelve because
+# twelve rounds meet three at a time at the floor's corners, and the patch OCCT
+# blends there tessellated with a hole round it: the printer's file came out
+# open. tools/gate_f.py seats the largest nut in the finished disc and turns
+# the smallest one in it, rather than trusting this arithmetic.
 journalNutAcrossFlats = 8.0
-journalNutThickness = 2.7
-journalNutPocketFlats = 9.3
-journalNutPocketDepth = 3.3
+journalNutAcrossFlatsMin = 7.78
+journalNutAcrossCornersMin = 8.79
+journalNutThickness = 4.0
+journalNutPocketFlats = 8.3
+journalNutPocketDepth = 4.3
+journalNutPocketCornerRadius = 0.4
+journalNutPocketFloorRadius = 0.15
 bearingBore = 10.0
 bearingOuterDiameter = 19.0
 bearingWidth = 5.0

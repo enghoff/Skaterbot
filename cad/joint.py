@@ -55,6 +55,7 @@ from build123d import (
     RegularPolygon,
     Rot,
     extrude,
+    fillet,
     make_face,
 )
 
@@ -71,8 +72,10 @@ from cad.parameters import (
     cheekThickness,
     frontCheekX,
     jointKeepOut,
+    journalNutPocketCornerRadius,
     journalNutPocketDepth,
     journalNutPocketFlats,
+    journalNutPocketFloorRadius,
     journalScrewClearance,
     journalSeatDepth,
     journalSeatDiameter,
@@ -334,14 +337,31 @@ def _nutPocket():
     is the same rule the bearing seat is cut to in the clevis above: a cut that
     ends coplanar with a face it does not mean to touch is a cut waiting to leave
     a zero-thickness sliver.
+
+    ITS INSIDE EDGES ARE ROUNDED, up the corners and round the floor, and the
+    reason is cad/finish.py rather than the printer. The finishing pass breaks
+    every edge between flat faces, and the inside edges of a hex pocket are all of
+    that kind, so drawn sharp they each came back with 0.5 mm of chamfer standing
+    in them: round the floor, where the nut has to seat, and up the corners, where
+    its own corners go. A concave round is a fit to that pass and is left alone.
+
+    The corners are rounded in the sketch and the floor afterwards, so the floor's
+    round runs once round a smooth outline. Rounding all twelve edges of a sharp
+    hexagon instead meets three rounds at each floor corner, and the patch OCCT
+    blends there tessellates with a hole round it -- the printer's file comes out
+    open, and tools/gate_g.py fails it. cad/parameters.py beside
+    journalNutPocketFloorRadius says why each radius is what it is.
     """
     mouth = rotorHubInnerX
     overshoot = 1.0
     with BuildSketch(Plane.YZ) as hexProfile:
         RegularPolygon(journalNutPocketFlats / 2, 6, major_radius=False)
-    return Pos(mouth - overshoot, 0, 0) * extrude(
+        fillet(hexProfile.vertices(), journalNutPocketCornerRadius)
+    cutter = Pos(mouth - overshoot, 0, 0) * extrude(
         hexProfile.sketch, amount=journalNutPocketDepth + overshoot
     )
+    # The floor is the cutter's +X end: the extrusion runs outboard from the mouth.
+    return fillet(cutter.edges().group_by(Axis.X)[-1], journalNutPocketFloorRadius)
 
 
 def outputDisc(journalAnchor: bool = False):

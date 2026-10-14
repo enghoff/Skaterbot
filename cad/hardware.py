@@ -91,7 +91,9 @@ journalOuterX = rotorHubOuterX + journalSleeveLength
 # it and closes it -- which is what makes the nut captive. It used to be 1.2 mm
 # outboard of that face, on the floor of a register pocket that has since been
 # retired, so the nut sits 1.2 mm further in than it did and the web goes from
-# 1.5 mm to 2.7.
+# 1.5 mm to 2.7. And to 1.7 on 14 October 2026, when the pocket was deepened to
+# take an ordinary DIN 934 nut as bought: the pocket's floor moved out, and the
+# nut with it.
 journalNutOuterX = rotorHubInnerX + journalNutPocketDepth
 
 
@@ -146,14 +148,20 @@ def journalScrew():
 
 
 def journalNut():
-    """The M5 thin nut captive in the disc, drawn as the circle it turns inside.
+    """The M5 nut captive in the disc, drawn as the largest circle inside it.
 
     A CYLINDER AND NOT A HEXAGON, deliberately. The nut is the one piece of this
     hardware whose shape has an orientation, and cad/scenes.py places a joint's
     hardware without turning it to match the limb's own rotation -- so a drawn
     hexagon would read as interfering with its pocket in every flexed pose and
-    say nothing true about the part. Ø8 is the nut across its flats, which is the
-    circle it sweeps and what has to fit the pocket whichever way it went in.
+    say nothing true about the part. Ø8 is the nut across its flats, the circle
+    wholly inside it, so the scenes see less nut than there is.
+
+    THIS USED TO SAY Ø8 WAS THE CIRCLE THE NUT SWEEPS, and that was the mistake
+    that hid a nut free to spin. A hexagon sweeps its corners, up to 9.24 on an
+    M5, and the pocket was 9.3 across its flats. So the nut's fit in its pocket
+    is not measured off this body at all: tools/gate_f.py seats a hexagon of the
+    largest nut in the finished disc and turns one of the smallest.
     """
     blank = _disc(
         journalNutAcrossFlats,

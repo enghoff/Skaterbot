@@ -77,7 +77,14 @@ TOLERANCE_G = 0.05
 # phase 3, and not for silencing a row.
 EXPECTED_CHANGE_G = {
     "cad/thigh.py": (
-        +21.9,
+        # 21.94 and not 21.9, plus the journal nut's pocket, since 2026-10-14.
+        # The pocket went to 8.3 across the flats and 4.3 deep for a DIN 934 nut,
+        # which is 14.75 mm3 more plate a limb, twice over on the pair -- gate B
+        # holds the figure. That alone is 0.03 g, but the 21.9 it lands on was a
+        # figure to a tenth whose own measurement was 21.94, so the sum rounds
+        # to 22.0 and fell outside the 0.05 band. The same correction the
+        # torso's 84.45 below carries.
+        +21.94 + 2 * 14.75 * 0.00106,
         "THE JOURNAL IS NOT PART OF THIS PRINT AND CANNOT BE, which is -0.2 g of "
         "the figure. It was a bonded dowel, then a printed stub worth 1.4 g on "
         "the pair, and neither can be assembled: both stand proud of the output "
@@ -85,8 +92,10 @@ EXPECTED_CHANGE_G = {
         "are 4.7 mm closer together than the motor and disc that have to enter "
         "it. So the journal is a Ø10 sleeve printed on its own and "
         "fitted from outside at the end, and this print carries what it screws into -- no seat, a Ø5.5 hole "
-        "and a hex pocket for a captive M5 nut, which take 103 mm3 more out of "
-        "each limb than the old blind seat did. cad/parameters.py carries the "
+        "and a hex pocket for a captive M5 nut, which take 62 mm3 more out of "
+        "each limb than the old blind seat did -- gate B's figure since the "
+        "pocket was deepened for an ordinary DIN 934 nut on 14 October 2026, and 103 "
+        "before the register pocket went. cad/parameters.py carries the "
         "interference and what the anchor is worth against the stub. "
         "THE KNEE IS STRADDLED, which is 19.2 g of the figure and 9.6 g a "
         "thigh: the flat plate on the knee motor's rear cover is cad/joint.py's "
