@@ -158,6 +158,18 @@ the module labels before powering it; do not rely on cable colours.
 The ordered six-pin XH bare-ended lead is the carrier-side harness only;
 it does not plug into the IMU.
 
+**The IMU hangs under the deck, since 2026-10-14**, over the power bay at x 38,
+chip down in two printed rails with its connector facing forward. Its lead runs
+forward under the deck and comes up through the deck's front cable notch at
+x 32 to 44, then has to reach J6 on this board's rear edge at x −14.5: about
+75 mm in a straight line from the notch, so make the SH-to-XH lead up long enough
+to dress round what stands on this board, with some slack. Fit the IMU and plug
+its lead in with the deck out of the pelvis. For an afternoon on 2026-10-14 it
+lay on the deck under this board instead, 0.32 mm under it; `carrier_pcb.py`
+gained a check of the solder tails under this board for that, which stays.
+**Trim every lead on this board to 1.5 mm**, which is the length that check
+assumes.
+
 Basis: [7Semi's ES-12234 pinout image](https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/original/image-manager/es-12234.jpg?t=1785842620)
 explicitly labels **3.3V Input**. The manufacturer's linked STEP model names
 the connector `QWIIC` and spaces the four contacts at 1.00 mm. Its product
@@ -443,8 +455,10 @@ now, by asking the deck solid itself rather than the notch's dimensions, so a
 second opening cut later counts without this being rewritten. What it finds is
 that bus A's and bus B's connectors sit squarely over the chase, bus C's is
 2 mm short of its western end, and the IMU's is 24 mm short of it. Those two
-looms come up the chase and are dressed westward along the 3 mm under the carrier
-before they reach their plugs. It is still far better than what it replaced: on
+looms came up the chase and were dressed westward along the 3 mm under the
+carrier before they reached their plugs; since 2026-10-14 the IMU's lead comes
+up through the deck's front notch from under the deck instead, and only bus C's
+does. It is still far better than what it replaced: on
 the 76 mm board every connector was at the far outboard end and the loom came up
 the chase and then crossed the entire torso, which is most of half a metre of
 wire that is not made now.
@@ -662,9 +676,10 @@ beeping with a meter before ordering.**
   the wires over the plate, outside the carrier outline, then down the notch.
 - **The carrier's own standoffs are drawn at 3 mm and nobody stocks that.** The
   shortest brass pillar on an Indian shelf is 5 or 6 mm, and every millimetre
-  under the carrier lifts the SBC with it — the reserved volume over the SBC has
-  2 mm of air under the lid, so a 6 mm pillar spends all of it. Cut spacers, or
-  move the whole stack down, but do not buy 6 mm pillars and hope.
+  under the carrier lifts the SBC with it — the reserved volume over the SBC
+  already reaches the lid, measured 2026-10-14, so any pillar taller than 3 mm
+  makes the torso taller. Cut spacers, or move the whole stack down, but do not
+  buy 6 mm pillars and hope.
 - **0.85 mm is the tightest thing on this board**, between the IMU's plug and the
   antenna bulkhead in the shell wall. It is a real clearance rather than a
   computed one, but both ends of it are bought parts nobody has measured — a

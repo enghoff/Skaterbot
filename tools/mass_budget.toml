@@ -273,8 +273,8 @@ count = 1
 name = "electronics-deck"
 export = "electronicsDeck"
 prints = 1
-bodies = 1  # one plate
-print_up = "-Z"  # the plate on the bed, its top face down
+bodies = 4  # the plate, and the IMU's two rails and its post on its underside
+print_up = "-Z"  # the plate on the bed, its top face down, and the IMU's rails standing up off its underside
 note = "Carries the controller carrier and the SBC over the battery, and holds the packs down: since 2026-09-30 through foam under the plate, where until then it was said to bear on a 3 mm gap that nothing filled. For a day it also hung two fences and a fin down beside and between the packs; they stand on the pelvis now, because from here they had to find the gap between two packs blind. Its underside was the top half of the BMS's mount until 2026-10-05, two slotted guides over two in the cavity floor; the board went between the battery packs that day and the guides came off. It printed the SBC's four posts until September 2026; the SBC stands on bought standoffs on the controller carrier now, so the deck carries it only at one remove."
 
 # THE SECOND PIECE WITH NO GOLDEN STEP, and it exists for a plain finding rather

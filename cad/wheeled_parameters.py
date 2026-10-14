@@ -292,8 +292,9 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # * 9 mm of hip pitch saddle. The clevises stand that far proud of the floor
 # across |x| = 26 to 60, so only the 51.5 mm between them is clear at this
 # level. Nothing reserved is narrow enough to use it except the IMU, which
-# goes there -- it is the stiffest spot in the pelvis, directly between the
-# two hip joints, which is where an IMU wants to be anyway.
+# went there -- it is the stiffest spot in the pelvis, directly between the
+# two hip joints -- until 2026-10-14, when it moved under the deck because its
+# socket is on its underside. The square is empty now; the 9 mm is the saddle's.
 # * 39 mm for the battery, 78 x 54 x 39, which was drawn for two 3S 2200 mAh
 # bricks ON EDGE side by side -- a size of brick nobody makes, it turned out on
 # 2026-09-30, so the bay now holds two 1000 mAh packs and the foam round them.

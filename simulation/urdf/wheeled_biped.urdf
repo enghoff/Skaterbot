@@ -56,10 +56,10 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000114606406 0.00370583781 -0.0255682543" rpy="0 0 0"/>
-      <mass value="1.004944"/>
-      <inertia ixx="3.647008816e-03" ixy="5.495019565e-07" ixz="-8.229142873e-08"
-               iyy="1.718665568e-03" iyz="-4.386139766e-05" izz="2.486825800e-03"/>
+      <origin xyz="0.000130655512 0.0035804189 -0.0254355154" rpy="0 0 0"/>
+      <mass value="1.005231"/>
+      <inertia ixx="3.654798284e-03" ixy="1.207761839e-06" ixz="-5.301018408e-07"
+               iyy="1.720853184e-03" iyz="-3.978440602e-05" izz="2.492392633e-03"/>
     </inertial>
     <!-- pelvis shell, clevises and cover bosses — 171.4 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
@@ -77,7 +77,7 @@
       </geometry>
       <material name="printedOrange"/>
     </visual>
-    <!-- electronics deck — 25.2 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
+    <!-- electronics deck — 25.5 g, measured: cad/deck.py:electronicsDeck, plate and four SBC posts -->
     <visual name="electronics_deck">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -143,9 +143,9 @@
     </visual>
     <!-- IMU — 3.0 g, assumption: BNO085 nano breakout -->
     <visual name="imu">
-      <origin xyz="0 0 -0.0385" rpy="0 0 0"/>
+      <origin xyz="0.005 -0.038 0.003185" rpy="0 0 0"/>
       <geometry>
-        <box size="0.022 0.022 0.006"/>
+        <box size="0.01 0.0105 0.00563"/>
       </geometry>
       <material name="sensorBlue"/>
     </visual>

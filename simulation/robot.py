@@ -460,7 +460,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             0.0,
             d["upperBandZ"],
         ),
-        "imu": (d["imuWidth"], d["imuDepth"], d["imuHeight"], 0.0, 0.0, d["floorZ"]),
+        # Under the deck over the power bay since 2026-10-14, where it was on
+        # the shell floor between the hip saddles; its reservation is the board.
+        "imu": (
+            d["imuWidth"],
+            d["imuDepth"],
+            d["imuHeight"],
+            d["imuX"],
+            d["imuY"],
+            d["imuZ"],
+        ),
         # THE BOARD RATHER THAN A BAY, unlike every other line here, and that
         # is what a chosen part buys. The other five are reserved volumes with a
         # mass assumed spread through them because nobody knows the outline yet.

@@ -1939,6 +1939,118 @@ def check_against_cad(report: Report, parts: list[Placed]) -> None:
         report.notes.append(f"{label}: {gap:.2f} mm from the {name}")
 
 
+# THE UNDERSIDE OF THIS BOARD, WHICH NOTHING HERE DRAWS. Every body above stands
+# on the top face, but every through-hole lead comes out of the bottom one as a
+# soldered tail, and every hole that is not a pin -- a cable tie's, or a bought
+# module's screw -- has a head or a nut under it. None of them is in any scene,
+# so the gates cannot see them, and nothing needed to while the carrier's spacers
+# left plain air over the deck. On 2026-10-14 the IMU stood in that air for an
+# afternoon, 0.32 mm under this board, before it went under the deck instead; this
+# was written for it, and stays, so that the next thing put there is measured.
+#
+# NEITHER FIGURE IS MEASURED. A tail is taken as trimmed to 1.5 mm under the
+# board, the size of its pad across, and a head as 2.4 mm deep and 1.5 mm
+# round its hole, which is the BEC's cable-tie heads (see the BEC above) and more
+# than the bus monitor's M2 heads. Trim every lead to 1.5 mm.
+SOLDER_TAIL = 1.5
+UNDERSIDE_HEAD_DEPTH = 2.4
+UNDERSIDE_HEAD_MARGIN = 1.5
+
+
+def underside(part: Placed) -> list[tuple[str, tuple[float, ...]]]:
+    """Every solder tail and every head under this part, as boxes on the board."""
+    below = -e.pcbThickness
+    boxes = []
+    for pad, x, y, w, h in part.pads():
+        boxes.append(
+            (
+                f"pin {pad.name} tail",
+                (
+                    x - w / 2,
+                    y - h / 2,
+                    x + w / 2,
+                    y + h / 2,
+                    below - SOLDER_TAIL,
+                    below,
+                ),
+            )
+        )
+    for x, y, d in part.holes():
+        r = d / 2 + UNDERSIDE_HEAD_MARGIN
+        boxes.append(
+            (
+                "head under its hole",
+                (x - r, y - r, x + r, y + r, below - UNDERSIDE_HEAD_DEPTH, below),
+            )
+        )
+    return boxes
+
+
+def check_underside(report: Report, parts: list[Placed]) -> None:
+    """Every tail and head under this board against everything drawn below it.
+
+    A shared volume is a fault. Otherwise one note per thing in the torso: how
+    near the nearest tail or head comes to it, if within REACH.
+    """
+    from build123d import Align, Box, Pos
+
+    from cad import deck
+
+    groups = {
+        name: bodies
+        for name, bodies in e.torsoElectronicsGroups().items()
+        if name not in CARRIER_STAND_INS
+    }
+    groups["deck"] = deck.electronicsDeck()
+
+    def solid(box):
+        x0, y0, x1, y1, z0, z1 = box
+        return Pos(
+            (x0 + x1) / 2 + ORIGIN_X, (y0 + y1) / 2 + ORIGIN_Y, z0 + TOP_Z
+        ) * Box(
+            x1 - x0, y1 - y0, z1 - z0, align=(Align.CENTER, Align.CENTER, Align.MIN)
+        )
+
+    reach = 3.0
+    tails = [
+        (f"{part.refdes} {what}", box, solid(box))
+        for part in parts
+        for what, box in underside(part)
+    ]
+    for name, bodies in groups.items():
+        nearest = (reach, "")
+        for other in bodies:
+            bb = other.bounding_box()
+            for label, box, mine in tails:
+                if not (
+                    box[0] + ORIGIN_X < bb.max.X + reach
+                    and bb.min.X - reach < box[2] + ORIGIN_X
+                    and box[1] + ORIGIN_Y < bb.max.Y + reach
+                    and bb.min.Y - reach < box[3] + ORIGIN_Y
+                    and box[4] + TOP_Z < bb.max.Z + reach
+                    and bb.min.Z - reach < box[5] + TOP_Z
+                ):
+                    continue
+                common = mine & other
+                try:
+                    shared = abs(common.volume)
+                except (ValueError, AttributeError, TypeError):
+                    shared = 0.0
+                if shared > 1e-6:
+                    report.faults.append(
+                        f"{label} under the board shares {shared:.2f} mm3 with the {name}"
+                    )
+                    continue
+                gap = mine.distance_to(other)
+                if gap < nearest[0]:
+                    nearest = (gap, label)
+        if nearest[1]:
+            report.notes.append(
+                f"{name}: {nearest[0]:.2f} mm from the nearest tail or head under "
+                f"the board ({nearest[1]})"
+            )
+
+
 # THE TWO PLUGS ON THIS BOARD WHOSE LEADS DO NOT GO STRAIGHT DOWN. J5 runs up to
 # the SBC standing 10 mm above it on its own standoffs, so the deck under J5 is
 # nothing to do with J5. J7, since 2026-10-07, is the power switch board's hold
@@ -2254,6 +2366,7 @@ def main() -> int:
     parts, tracks, vias, items = lay_out(report)
     if not args.no_cad:
         check_against_cad(report, parts)
+        check_underside(report, parts)
         check_leads_down(report, parts)
 
     if args.png:

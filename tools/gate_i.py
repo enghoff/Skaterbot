@@ -85,6 +85,15 @@ DECK = [
     "deck",
     ("battery foam", 0),
     ("battery foam", 1),
+    # The IMU since 2026-10-14, slid into the rails under the plate and plugged
+    # in before the deck goes in, and hanging under it into the power bay as it
+    # does. It went in first of everything, onto its floor seat, until then. Its
+    # lead is left out, as every lead is.
+    "IMU board",
+    "IMU jumpers",
+    "IMU sensor",
+    "IMU socket",
+    "IMU plug",
     "controller standoffs",
     "controller carrier board",
     "WeAct core board",
@@ -105,7 +114,6 @@ def steps() -> list[tuple[str, list, list, bool]]:
     from the part's final place outwards; a distance of None means until the
     part is clear of the shell."""
     return [
-        ("IMU onto its seat", ["IMU board", "IMU sensor"], [(UP, None)], False),
         # ONE BOARD IN THE POWER BAY since 2026-10-07, on its nuts, where a
         # bought distribution board went in first and this one followed it on
         # spacers. The nuts go down with it, each held on its screw.

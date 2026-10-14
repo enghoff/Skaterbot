@@ -573,10 +573,11 @@ def check_packing() -> tuple[int, int]:
     them and hold them -- is asserted face by face in
     check_battery_hold_down().
 
-    WHAT THIS GIVES UP is worth writing down. The 22 x 22 reservation used to say
-    that any breakout up to that size would fit, and the seat is cut to 11 x 10.
-    The reservation still holds the headroom, but spending it now means
-    reprinting the pelvis, because the ribs are part of it.
+    THE IMU'S ROW WAS THE FIRST SUCH CASE, measured without the floor seat it
+    stood in, until the IMU went under the deck on 2026-10-14. Its reservation is
+    the board hanging under the deck now, nowhere near the shell, and is measured
+    against all of it. The empty seat is still the pelvis's last body, which is
+    what the power switch board's slice below relies on.
     """
     from cad import scenes, torso
     from cad.wheeled_parameters import wheeledTorsoCenterHeight
@@ -590,7 +591,6 @@ def check_packing() -> tuple[int, int]:
     # is measured without its OWN mount and against everything else. Sliced
     # rather than named so that a new feature on the pelvis cannot quietly drop
     # out of this check as well.
-    shellLessImuSeat = shell[:-1]
     shellLessPowerSwitchPad = shell[:-2] + shell[-1:]
     # The rails and then the wall pads come straight after the shell, its four
     # cover bosses and its two hip clevises -- the seven check_no_clashes()
@@ -610,7 +610,6 @@ def check_packing() -> tuple[int, int]:
     items = ("battery", "power entry", "controller carrier", "SBC", "IMU", "BMS")
     checked = failed = 0
     without = {
-        "IMU": shellLessImuSeat,
         "power entry": shellLessPowerSwitchPad,
         "battery": shellLessRails,
     }
@@ -692,14 +691,9 @@ FITS = [
         "chose. The shell is as wide as the hip clevises make it, which is "
         "12.9 mm more than the payload needs, and neither bay spends any of it",
     ),
-    (
-        "IMU vs the battery over it",
-        "IMU",
-        "battery",
-        3.0,
-        "the IMU stays on the shell floor with the battery above it, which is "
-        "why cad/torso.py's rails run across the robot rather than along it",
-    ),
+    # "IMU vs the battery over it", 3.0, stood here while the IMU was on the
+    # shell floor under the battery. It went under the deck on 2026-10-14, and
+    # its rows are at the end of this table.
     # THE PANEL HARDWARE, AND WHAT IT HAS TO MISS. There are no bond lines in
     # this robot any more: every one of these three parts holds itself into the
     # wall, so what matters is no longer a gap of exactly half a millimetre but
@@ -821,14 +815,64 @@ FITS = [
         "since the board came down 9.6 mm onto the posts. The two switches "
         "beside them are what governs this bay's height, at 15.6",
     ),
+    # THE IMU UNDER THE DECK, 2026-10-14. It was a board in a three-rib seat on
+    # the shell floor, "IMU board vs the ribs that aim it" at 0.2, until its
+    # socket was found to be on its underside. These are the whole of how it is
+    # held now: it hangs chip down in two grooved rails off the deck's
+    # underside, the deck's post on its socket face and the socket itself clear.
     (
-        "IMU board vs the ribs that aim it",
+        "IMU socket under the deck",
+        "IMU socket",
+        "deck plate",
+        0.5,
+        "the socket's 2.95 is JST's catalogue and not measured, and the deck's "
+        "grooves set the board's height, so the socket stands this far off the "
+        "plate rather than on it: a socket taller than drawn would otherwise jam "
+        "the board in its grooves. It bore on the plate for its first afternoon",
+    ),
+    (
+        "IMU board against its post",
         "IMU board",
-        "IMU seat",
-        0.2,
-        "the one board too small to take a screw, so a printed seat decides "
-        "where it points and adhesive holds it down. Any looser than this and "
-        "it can turn in its own seat, which is the whole thing the seat is for",
+        "IMU post",
+        0.0,
+        "and the deck's post bears on its socket face at the rear, so that the "
+        "board hangs flat",
+    ),
+    (
+        "IMU board in its rails",
+        "IMU board",
+        "IMU rails",
+        0.0,
+        "the lips are drawn TOUCHING the board's chip face and the stops its "
+        "rear edge, which is what holds it without glue: a gap here is a board "
+        "that rattles or has not gone home. Its sides stand 0.2 off the walls, "
+        "which is what the 2 degrees of yaw the firmware expects comes from",
+    ),
+    (
+        "IMU board under its ledges",
+        "IMU board",
+        "IMU ledges",
+        0.0,
+        "and the ledges over the lips are drawn touching its socket face, so "
+        "that each side is held in a groove on both faces",
+    ),
+    (
+        "IMU jumpers vs the short ledge",
+        "IMU jumpers",
+        "IMU ledges",
+        0.3,
+        "the left-hand ledge stands between the ADD pad and the 0 and 1 blobs, "
+        "which are off a photograph to a tenth; less than this and a ledge "
+        "lands on solder and tilts the board",
+    ),
+    (
+        "IMU chip vs the capacitor bank under it",
+        "IMU sensor",
+        "capacitor bank",
+        12.27,
+        "what is under the IMU's chip, and the warmest thing that is: the power "
+        "switch board's two TO-220 switches are further over, at x 47.5 and "
+        "beyond, which is why the IMU is at x 38 and not over them",
     ),
 ]
 
@@ -851,11 +895,18 @@ def check_fits(items: tuple) -> tuple[int, int]:
         # deck now includes the two guides that come down BESIDE the board, and
         # measuring the air OVER it has to ignore them.
         "deck plate": [deck.electronicsDeck()[0]],
-        "IMU seat": torso.imuSeat(),
+        # And the IMU's two rails and its post, which follow the plate.
+        "IMU rails": deck.electronicsDeck()[1:3],
+        "IMU post": deck.electronicsDeck()[3:],
+        # The rails' two ledges on their own, which are part of the rails above.
+        "IMU ledges": [deck.imuLedge(-1), deck.imuLedge(1)],
         **{
             name: electronics.torsoElectronicsGroups()[name]
             for name in (
                 "IMU board",
+                "IMU jumpers",
+                "IMU sensor",
+                "IMU socket",
                 "on/off button",
                 "controller carrier board",
                 "WeAct core board",

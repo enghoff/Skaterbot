@@ -222,16 +222,82 @@ controllerNotchDepth = 5.0
 sbcWidth = 85.0
 sbcDepth = 58.0
 sbcHeight = 16.0
-imuWidth = 22.0
-imuDepth = 22.0
-imuHeight = 6.0
-# The board inside that reservation, and it is a named dimension now rather than
-# a number typed into a drawing function, for the reason every board's outline
-# here is one: cad/torso.py prints a seat to it. A 7Semi-class BNO085 Nano
-# breakout is about 11 x 10 mm, which is too small to carry a screw -- see the
-# seat in cad/torso.py for what holds it instead.
-imuBoardWidth = 11.0
+# THE IMU, 7Semi's ES-12234 BNO085 Nano breakout, AND SINCE 2026-10-14 IT HANGS
+# UNDER THE DECK, chip down, over the power bay, not on the shell floor. Its
+# socket is on its underside, so it could never sit flat in the floor seat
+# cad/torso.py prints (docs/DIMENSION_AUDIT.md, item 3). Over the deck, under the
+# carrier, it needed either a slot through the deck for the socket or the carrier
+# 3 mm higher, and the SBC rides on the carrier and the space reserved over it
+# already reaches the lid. Under the deck over the power bay there is 15.6 mm of
+# air, and nothing else has to move. Nothing glues it: it slides into two rails
+# hanging off the deck's underside (cad/deck.py).
+#
+# The board: 10.5 along the edge its plug goes in through and 10.0 the other way,
+# off 7Semi's own STEP (exports/imu-research/10297.STEP), and 1.50 thick by the
+# owner's calipers on the board in hand, 2026-10-14, where that STEP draws 1.64.
+# It was 11 x 10 here, a guess, until the STEP was measured.
+imuBoardWidth = 10.5
 imuBoardDepth = 10.0
+imuBoardThickness = 1.5
+# The BNO085 itself, the tallest thing on the board's top face, which faces down
+# here: 3.8 x 5.2 x 1.18, its centre 0.37 mm left of and 0.64 mm behind the
+# board's middle as it hangs, chip down with its plug forward. 7Semi's STEP; not
+# measured.
+imuChipWidth = 3.8
+imuChipDepth = 5.2
+imuChipHeight = 1.18
+imuChipOffsetX = -0.37
+imuChipOffsetY = -0.64
+# Its plug socket, a JST SM04B-SRSS-TB side-entry header, centred along one
+# 10.5 mm edge and opening through it. JST's SH catalogue: 7.0 wide over its
+# fixing tabs, 4.25 deep, 2.9 tall on a 0.05 standoff, 0.7 of solder tails behind.
+# 7Semi's STEP draws the body 6.0 wide and sets its mouth 0.6 mm in from the
+# board's edge; the width drawn is JST's, which the product photograph agrees with.
+imuSocketWidth = 7.0
+imuSocketDepth = 4.25
+imuSocketTail = 0.7
+imuSocketHeight = 2.95
+imuSocketInset = 0.6
+# The Qwiic lead's plug in it, a JST SHR-04V-S-B: 7.0 wide over its latch
+# protrusions, standing 2.0 out of the socket's mouth, which is JST's mated length
+# of 6.25 less the header's 4.25, and drawn the 2.95 of JST's mated envelope, from
+# the board to the deck's underside; the housing alone is 2.8. Its four AWG 28
+# wires, 0.4 to 0.8 mm over the insulation by JST's table, are drawn as one strip
+# 4.0 wide and 1.0 tall.
+imuPlugWidth = 7.0
+imuPlugThickness = 2.95
+imuPlugLength = 2.0
+imuLeadWidth = 4.0
+imuLeadHeight = 1.0
+# THE RESERVATION IS THE BOARD NOW, from the bottom of its socket to the top of
+# its chip. It was 22 x 22 x 6 on the shell floor while it promised that any
+# breakout up to that size would fit there.
+imuWidth = imuBoardWidth
+imuDepth = imuBoardDepth
+imuHeight = imuSocketHeight + imuBoardThickness + imuChipHeight
+# THE ADDRESS JUMPERS on the socket face, which is the face up as it hangs, and
+# the only things near that face's two 10 mm sides. Both are on the left-hand
+# side as it hangs, plug forward. The split "ADD" pad, tinned and open, is 0.65
+# in from that side and 2.5 to 3.5 behind the plug edge; the "0" and "1" pads
+# behind it carry solder blobs 0.85 to 2.2 in and 7.3 to 9.7 behind. Off the
+# seller's photograph of the socket face (exports/imu-research/robocraze-nano.png;
+# 7Semi's pinout image is the same photograph), scaled by the board's outline at
+# about 78 pixels to the millimetre, so good to a tenth or so. The heights are
+# guesses, 0.1 for a tinned pad and 0.5 for a blob, and 7Semi's STEP draws
+# neither. The deck's rail on that side has its ledge between the two.
+#
+# The ADD pad is drawn in to where the socket's block begins, 1.75 from the side,
+# and the photograph has it to 1.9: the socket is drawn its 7.0 over its tabs for
+# its whole length, and its tabs are at its ends.
+imuAddPadFrom = 2.5
+imuAddPadTo = 3.5
+imuAddPadInset = 0.65
+imuAddPadHeight = 0.1
+imuJumperFrom = 7.3
+imuJumperTo = 9.7
+imuJumperInset = 0.85
+imuJumperReach = 2.2
+imuJumperHeight = 0.5
 
 # The deck is a printed plate, so its thickness is a structural number and not a
 # reservation. 3 mm of PA12-CF spanning 130 mm and carrying two boards and the
@@ -270,6 +336,36 @@ bayGap = (powerX - powerWidth / 2) - (batteryX + batteryWidth / 2)
 lowerBandZ = saddleTopZ
 deckZ = lowerBandZ + batteryHeight
 deckBandZ = deckZ + deckThickness
+
+# WHERE THE IMU HANGS, under the deck over the power bay, its socket up towards
+# the plate and its chip down, with its plug edge FORWARD: away from the deck screws
+# and the wall ledges they go into, which are at the walls at x +/-52, and
+# towards the deck's front cable notch at x 32 to 44, which its lead goes up
+# through to reach the carrier's J6. Centred at x 38, which keeps it off the power
+# switch board's two TO-220 switches, the parts below that run warm, at x 47.5 to
+# 68.5; what is under it here is the capacitor bank, 12 mm below its chip. y 5
+# puts the board over the bay's middle, clear of the battery leads that cross
+# under the deck's rear half at x 15.5 to 34.8.
+#
+# THE SOCKET STANDS imuSocketAir OFF THE PLATE, where for its first afternoon it
+# was drawn bearing on it. Its 2.95 is JST's catalogue and not measured, and the
+# grooves in the deck's rails fix the board's height on their own, so a socket
+# any taller than drawn would have jammed the board in them. The grooves and the
+# post hold the board now, and the socket touches nothing.
+#
+# The lead runs forward along the deck's underside from the back of the plug,
+# drawn for imuLeadRun to just short of the front notch, where it turns up
+# through the notch; it is not drawn past that.
+imuSocketAir = 0.5
+imuX = 38.0
+imuY = 5.0
+# The board's socket face, which is its top face as it hangs.
+imuSocketFaceZ = deckZ - imuSocketAir - imuSocketHeight
+imuZ = imuSocketFaceZ - imuBoardThickness - imuChipHeight
+imuLeadRun = 15.0
+imuSocketMouthY = imuY + (imuBoardDepth / 2) - imuSocketInset
+imuPlugBackY = imuSocketMouthY + imuPlugLength
+imuLeadExitY = imuPlugBackY + imuLeadRun
 # upperBandZ, the plane the SBC sits on, is below the standoffs: it was
 # deckBandZ + controllerHeight + bandGap while the SBC stood on the deck's own
 # posts, and it is the carrier's top face plus a bought standoff now.
@@ -999,6 +1095,7 @@ antennaBaseClearance = 2.0
 # until the torso grew 3 mm under the deck on 2026-10-05, and 23.5 is the same
 # place relative to the deck and the cover: this frame is the torso's centre,
 # which rose by half of it.
+
 #
 # THE x FIGURES WERE SOLVED FOR, NOT LAID OUT BY HAND, September 2026. With the
 # disconnect held where it was gated, the charge socket and the antenna were swept
@@ -1980,7 +2077,8 @@ partNumbers = {
     "WeAct core board": "WeAct STM32G474CEU6",
     "SBC board": "Banana Pi BPI-M4 Zero",
     "BMS board": "Daly Li-ion NMC 6S 24V 20A, 58 x 33 x 8.2 mm, 40 g -- balancing, wired charge-only",
-    "IMU board": "BNO085 Nano breakout",
+    "IMU board": "7Semi ES-12234 BNO085 Nano breakout",
+    "IMU lead": "Qwiic 4-pin JST SH lead, its far end adapted to J6",
 }
 
 
@@ -2392,20 +2490,94 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 bmsBoardBottomZ,
             )
         ],
-        # ---- IMU, in the clear floor between the two hip saddles ------------
-        # A BNO085 Nano breakout at 11 x 10, too small to carry a screw, so
-        # there is no pattern to cut and cad/torso.py prints it a three-sided
-        # SEAT instead: adhesive holds it down and the seat decides where it
-        # points, which for this one board is the half that matters. An IMU
-        # bedded on tape alone is an IMU whose yaw is whatever the tape allowed.
-        # It stays on the floor with the battery over it: the shell floor
-        # between the hip saddles is the stiffest spot in the pelvis and that has
-        # not changed, and cad/torso.py's battery rails are laid across the robot
-        # rather than along it so that this square of floor is still open.
+        # ---- IMU, hanging under the deck over the power bay ----------------
+        # It was on the shell floor between the hip saddles, in a three-rib seat
+        # with adhesive under it, until 2026-10-14 -- see imuX above for why it
+        # moved. It hangs chip down in the deck's two grooved rails, the deck's
+        # post on its socket face and its socket 0.5 under the plate. The plug
+        # and the first of its lead lie between the board and the plate, forward
+        # of it; the lead
+        # turns up through the deck's front notch and runs to the carrier's J6,
+        # which is not drawn.
+        #
+        # ITS AXES ARE NOT THE ROBOT'S: it is upside down with its plug edge
+        # forward, so the firmware maps the board's axes onto the robot's rather
+        # than the board being turned to suit.
         "IMU board": [
-            slab(imuBoardWidth, imuBoardDepth, pcbThickness, 0.0, 0.0, floorZ)
+            slab(
+                imuBoardWidth,
+                imuBoardDepth,
+                imuBoardThickness,
+                imuX,
+                imuY,
+                imuSocketFaceZ - imuBoardThickness,
+            )
         ],
-        "IMU sensor": [slab(4.0, 4.0, 1.2, 0.0, 0.0, floorZ + pcbThickness)],
+        "IMU sensor": [
+            slab(
+                imuChipWidth,
+                imuChipDepth,
+                imuChipHeight,
+                imuX + imuChipOffsetX,
+                imuY + imuChipOffsetY,
+                imuZ,
+            )
+        ],
+        # The address jumpers on the socket face, its left-hand side as it
+        # hangs: the ADD pad, then the "0" and "1" blobs as one block.
+        "IMU jumpers": [
+            slab(
+                (imuBoardWidth - imuSocketWidth) / 2 - imuAddPadInset,
+                imuAddPadTo - imuAddPadFrom,
+                imuAddPadHeight,
+                imuX
+                - imuBoardWidth / 2
+                + (imuAddPadInset + (imuBoardWidth - imuSocketWidth) / 2) / 2,
+                imuY + imuBoardDepth / 2 - (imuAddPadFrom + imuAddPadTo) / 2,
+                imuSocketFaceZ,
+            ),
+            slab(
+                imuJumperReach - imuJumperInset,
+                imuJumperTo - imuJumperFrom,
+                imuJumperHeight,
+                imuX - imuBoardWidth / 2 + (imuJumperInset + imuJumperReach) / 2,
+                imuY + imuBoardDepth / 2 - (imuJumperFrom + imuJumperTo) / 2,
+                imuSocketFaceZ,
+            ),
+        ],
+        # The socket's body and its solder tails behind it, as one block.
+        "IMU socket": [
+            slab(
+                imuSocketWidth,
+                imuSocketDepth + imuSocketTail,
+                imuSocketHeight,
+                imuX,
+                imuSocketMouthY - (imuSocketDepth + imuSocketTail) / 2,
+                imuSocketFaceZ,
+            )
+        ],
+        # The part of the plug standing out of the socket's mouth, on the board
+        # as the socket is and as far under the plate.
+        "IMU plug": [
+            slab(
+                imuPlugWidth,
+                imuPlugLength,
+                imuPlugThickness,
+                imuX,
+                imuSocketMouthY + imuPlugLength / 2,
+                imuSocketFaceZ,
+            )
+        ],
+        "IMU lead": [
+            slab(
+                imuLeadWidth,
+                imuLeadExitY - imuPlugBackY,
+                imuLeadHeight,
+                imuX,
+                (imuPlugBackY + imuLeadExitY) / 2,
+                deckZ - imuLeadHeight,
+            )
+        ],
         # ---- the looms, as chases ------------------------------------------
         # Six actuator harnesses in two bundles of three, up through the two
         # floor cable ports and along the back of the cavity under the battery,
@@ -2496,7 +2668,10 @@ def torsoReservations() -> list:
         )
         * Box(controllerNotchWidth, controllerNotchDepth, controllerHeight * 3),
         slab(sbcWidth, sbcDepth, sbcHeight, 0.0, 0.0, upperBandZ),
-        slab(imuWidth, imuDepth, imuHeight, 0.0, 0.0, floorZ),
+        # Under the deck since 2026-10-14, in the top of the power bay's own
+        # band, which nothing in the bay reaches: like the BMS below, a board
+        # that needs no bay of its own, so this marks where its mass is.
+        slab(imuWidth, imuDepth, imuHeight, imuX, imuY, imuZ),
         # Appended rather than slotted in beside the other lower-band bays, and
         # deliberately: tools/gate_f.py and simulation/robot.py both read this
         # list positionally, so a new envelope goes on the end where it cannot

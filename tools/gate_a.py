@@ -935,11 +935,89 @@ ADDED = {
     # points and adhesive holds it down; the fourth side is open to the rear for
     # its flylead. The board's own outline is a named dimension now for the
     # reason every board's is: a printed feature has to agree with it.
-    "imuBoardWidth": 11.0,
-    "imuBoardDepth": 10.0,
+    #
+    # THE SEAT IS EMPTY SINCE 2026-10-14 and stays in the pelvis until it is next
+    # redrawn, with the 11 x 10 it was cut for kept as its own two names, so that
+    # the board's real outline can move without moving the shell.
+    "imuSeatBoardWidth": 11.0,
+    "imuSeatBoardDepth": 10.0,
     "imuSeatClearance": 0.2,
     "imuSeatWall": 1.5,
     "imuSeatHeight": 2.5,
+    # THE IMU UNDER THE DECK, 2026-10-14, cad/electronics.py. The board is
+    # 7Semi's ES-12234: 10.5 x 10 off 7Semi's STEP (exports/imu-research/
+    # 10297.STEP), where it was an 11 x 10 guess, and 1.50 thick by the owner's
+    # calipers. The chip's outline and offset are that STEP's; the socket, plug
+    # and lead are JST's SH catalogue. It hangs chip down under the deck over the
+    # power bay at x 38, y 5, its socket 0.5 under the plate and its plug edge
+    # forward, away from the deck screws and wall ledges at x +/-52; the lead
+    # runs 15 mm forward under the plate to the front notch. The socket's 0.5 of
+    # air is so that a socket taller than JST's catalogue cannot jam the board in
+    # the deck's grooves, which set its height; it bore on the plate until then.
+    "imuBoardWidth": 10.5,
+    "imuBoardDepth": 10.0,
+    "imuBoardThickness": 1.5,
+    "imuChipWidth": 3.8,
+    "imuChipDepth": 5.2,
+    "imuChipHeight": 1.18,
+    "imuChipOffsetX": -0.37,
+    "imuChipOffsetY": -0.64,
+    "imuSocketWidth": 7.0,
+    "imuSocketDepth": 4.25,
+    "imuSocketTail": 0.7,
+    "imuSocketHeight": 2.95,
+    "imuSocketInset": 0.6,
+    "imuPlugWidth": 7.0,
+    "imuPlugThickness": 2.95,
+    "imuPlugLength": 2.0,
+    "imuLeadWidth": 4.0,
+    "imuLeadHeight": 1.0,
+    "imuX": 38.0,
+    "imuY": 5.0,
+    "imuSocketAir": 0.5,
+    "imuSocketFaceZ": 3.05,
+    "imuZ": 0.3699999999999999,
+    "imuLeadRun": 15.0,
+    "imuSocketMouthY": 9.4,
+    "imuPlugBackY": 11.4,
+    "imuLeadExitY": 26.4,
+    # Its address jumpers, the ADD pad and the 0 and 1 blobs, on the socket face
+    # near its left-hand side as it hangs: off the seller's photograph of that
+    # face, scaled by the board's outline. Drawn so that the rail on that side
+    # can be measured clear of them; the heights are guesses.
+    "imuAddPadFrom": 2.5,
+    "imuAddPadTo": 3.5,
+    "imuAddPadInset": 0.65,
+    "imuAddPadHeight": 0.1,
+    "imuJumperFrom": 7.3,
+    "imuJumperTo": 9.7,
+    "imuJumperInset": 0.85,
+    "imuJumperReach": 2.2,
+    "imuJumperHeight": 0.5,
+    # And the rails it hangs in, cad/deck.py: a 1.5 wall 0.2 off each 10 mm
+    # side, a 1.2 lip along the bottom reaching 1.0 in from the groove -- 0.8
+    # under the board, which keeps 0.3 flat on it after the finishing chamfer --
+    # a stop behind each rear corner reaching 1.5, and a 3 x 3 post over the
+    # middle of the rear edge, 0.5 in from it, reaching from the board's socket
+    # face to the plate. The walls, stops and post lap 0.5 into the plate.
+    "deckImuRailClearance": 0.2,
+    "deckImuRailWall": 1.5,
+    "deckImuRailLip": 1.0,
+    "deckImuRailLipThickness": 1.2,
+    "deckImuRailStop": 1.0,
+    "deckImuRailStopReach": 1.5,
+    "deckImuPostWidth": 3.0,
+    "deckImuPostLength": 3.0,
+    "deckImuPostInset": 0.5,
+    "deckImuLap": 0.5,
+    # And the ledge over each lip that makes each rail a groove, the same
+    # afternoon: full length on the right, and on the left between the jumpers,
+    # this far short of each.
+    "deckImuLedgeMargin": 0.3,
+    # The 22 mm square of floor the battery rails stand either side of, which was
+    # the IMU's reservation until it left the floor. Its own name now, so that the
+    # rails -- and the pelvis -- stay where they were.
+    "floorSquareDepth": 22.0,
     # THE BATTERY STRAP SLOTS -- strapSlotWidth 16.0, strapSlotHeight 3.0 -- went
     # on 2026-09-30 with the straps. Neither strap route was ever open: one led
     # into the hip saddle and the other into the CAN loom and the harness runs.
@@ -1373,6 +1451,19 @@ CHANGED = {
         2.0,
         1.5,
         "the plain M5 washer's 1.5 mm, as fastdep lists it",
+    ),
+    # ---- THE IMU LEAVES THE FLOOR, 14 October 2026 ---------------------------
+    #
+    # Its reservation was 22 x 22 x 6 on the shell floor, room for any breakout
+    # up to that size. The board is chosen and hangs under the deck now, and the
+    # reservation is the board itself: its outline, and from the top of its
+    # socket to the bottom of its chip.
+    "imuWidth": (22.0, 10.5, "the board's own 10.5, see imuBoardWidth"),
+    "imuDepth": (22.0, 10.0, "the board's own 10.0, see imuBoardDepth"),
+    "imuHeight": (
+        6.0,
+        5.63,
+        "socket 2.95, board 1.5 and chip 1.18: the board hanging under the deck",
     ),
 }
 

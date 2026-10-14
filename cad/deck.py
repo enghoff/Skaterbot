@@ -17,8 +17,9 @@ the power block by 1 mm, and that pair of numbers is what set the shell's depth 
 cad/torso_shell.py records it. They are a millimetre deeper since 2026-09-30,
 for plastic round the screws, and clear both bays by 0.6.
 
-WHAT IT CARRIES. The controller carrier on six standoffs, and the foam pads
-that hold the battery down. Until 2026-09-30 this said the plate landed on 2 mm
+WHAT IT CARRIES. The controller carrier on six standoffs, the foam pads that
+hold the battery down, and since 2026-10-14 the IMU, slid into two rails that
+hang off the plate's underside over the power bay. Until 2026-09-30 this said the plate landed on 2 mm
 of squeeze over the packs, and it landed on nothing: the gap was air. For a day
 after that it also hung two fences and a fin down beside and between the packs,
 and they had to find the gap between two packs blind as the plate came down;
@@ -43,13 +44,21 @@ deck to the torso by its wiring, and the deck is the assembly that has to come
 straight out. It went to two pads on the pelvis's rear wall, and since
 September 2026 it rides on the controller carrier, with every lead it takes down
 into the bay on a plug. This plate still lifts off with nothing of its own
-attached below it.
+wired into the bay below it. The IMU has hung under it since 2026-10-14, and that
+is not the same mistake: its only lead comes up through the front notch to the
+carrier, which comes out with the plate.
 
-One solid, the plate, since the guides went. It was three groups containing
-five solids -- the plate and two ribs per guide that only touched its
-underside -- and a piece handed to a printer that way is not one part, which is
-why tools/export.py unites every piece before anything is written and
-tools/check.py fails the edit that leaves a body that would not unite.
+One solid, the plate, from when the guides went until 2026-10-14, and four
+bodies since: the plate, and the IMU's two rails and its post hanging off its
+underside. It was
+three groups containing five solids -- the plate and two ribs per guide that
+only touched its underside -- and a piece handed to a printer that way is not
+one part, which is why tools/export.py unites every piece before anything is
+written and tools/check.py fails the edit that leaves a body that would not
+unite.
+
+IT PRINTS TOP FACE DOWN, as it always has, and the IMU's rails stand up off its
+underside as it prints, their lips overhanging by a millimetre.
 
 It has no golden STEP and it never will: the KCL had no such part, so gate B has
 nothing to compare it against and does not list it. Gate E does -- every hole in
@@ -69,6 +78,14 @@ from cad.electronics import (
     deckScrewY,
     deckThickness,
     deckZ,
+    imuAddPadTo,
+    imuBoardDepth,
+    imuBoardThickness,
+    imuBoardWidth,
+    imuJumperFrom,
+    imuSocketFaceZ,
+    imuX,
+    imuY,
     interiorHalfDepth,
     interiorHalfWidth,
 )
@@ -101,10 +118,172 @@ deckChaseX = 22.0
 # 2026-09-15: full pin-row width plus dressing clearance at the actual
 # carrier connectors. The notches stop at y +/-27.2, outboard of the battery's
 # fences at +/-22.5, and clear the wall ledges beginning at x +/-46.
+#
+# THE "IMU" NOTCH OUTLIVED ITS LEAD on 2026-10-14. It is under the carrier's J6
+# and took the IMU's lead down to the shell floor; the IMU is on this plate now,
+# so the lead runs along the top of it instead. It stays because
+# electrical/carrier_pcb.py holds every plugged connector it does not list as
+# leading up to a clear opening under it, and filling it is a change to that
+# check as well as to this plate.
 deckImuChaseX = -20.8
 deckImuChaseWidth = 18.0
 deckPowerChaseX = 38.0
 deckPowerChaseWidth = 12.0
+
+
+# THE IMU'S RAILS AND POST, 2026-10-14. The IMU hangs under this plate, chip
+# down, over the power bay, and slides into two rails hanging off the plate's
+# underside; nothing glues it. cad/electronics.py's imuX says why it is here.
+#
+# ITS SOCKET STANDS 0.5 OFF THE PLATE. The socket is on the board's underside,
+# 2.95 mm tall by JST's catalogue, so hung chip down it faces the plate, and the
+# board hangs 0.5 further down than that so that a socket taller than its
+# catalogue does not jam the board in its grooves; cad/electronics.py's
+# imuSocketAir. It bore on the plate for its first afternoon. A post over the
+# middle of the board's rear edge bears on the socket face, and the grooves hold
+# the rest. The plug goes in from the front, between the board and the plate.
+#
+# THE RAILS run along the board's two 10 mm sides, which are the two with room on
+# them: 1.1 mm from the edge to the nearest part on the chip face, by 7Semi's
+# STEP, where the other two have 0.56 and 0.83, and one of those is the socket's.
+# Each is a wall 0.2 off the board's edge, which sets its yaw to about 2 degrees,
+# with a lip along the bottom that the board's chip face rests on, and a stop
+# behind its rear corner.
+#
+# AND EACH IS A GROOVE, since the same afternoon: a ledge down from the plate
+# bears on the socket face over the lip, so that each side is held on both faces
+# and not only from below. On the right-hand side as it hangs it runs the board's
+# whole length. On the left it is short, between the address jumpers -- the ADD
+# pad 0.65 in from that side near the front, and the 0 and 1 blobs 0.85 in at the
+# rear (cad/electronics.py) -- and stops deckImuLedgeMargin short of each, which
+# leaves it 3.2 long. It reaches as far as the lip, for the same reason.
+#
+# IT GOES IN FROM THE FRONT, with the deck out of the pelvis and upside down or
+# on its side: slide the board's two sides into the grooves, its socket face
+# running along the post, until it meets the stops; then plug the lead
+# in from the front, which pushes it home rather than out. Nothing but the lips'
+# grip and the lead stops it sliding forward again, so dress the lead with some
+# slack. The stops are at the rear, between the board and the deck screws and
+# wall ledges behind it, and the nearest of those is 26 mm away.
+#
+# THE LIP AND LEDGE ARE DRAWN TOUCHING THE BOARD, a 1.50 mm groove for a board
+# measured at 1.50, so that it holds rather than rattles. If a printed groove
+# holds the board too hard to slide, ease its lip with a file.
+#
+# AND THE RAILS ARE DRAWN FOR THE FINISHING CHAMFER, which cad/finish.py puts on
+# every outer edge. Each lip and ledge reaches 1.0 from its wall, 0.8 over the
+# board as drawn, so that 0.3 of it is still flat on the board once the chamfer
+# has taken 0.5 off its tip, and it is 1.2 thick rather than 1.0 so that the chamfers on its
+# two faces leave a face between them. The walls are 1.5, and the walls, stops
+# and post lap 0.5 into the plate rather than meeting its face, as the pelvis's
+# hoist lugs lap into its wall: a 1 mm wall meeting the plate's face was left
+# joined to it along a line once both its edges there were chamfered.
+deckImuRailClearance = 0.2
+deckImuRailWall = 1.5
+deckImuRailLip = 1.0
+deckImuRailLipThickness = 1.2
+deckImuRailStop = 1.0
+# How far in from the wall the stop reaches, half a millimetre past the lip's tip
+# so that the two do not share a face.
+deckImuRailStopReach = 1.5
+# The post: 3 x 3 over the middle of the board's rear edge and 0.5 in from it,
+# where the socket face is bare -- 0.95 behind the socket's solder tails, and
+# clear of the jumper's pads, which are at a corner.
+deckImuPostWidth = 3.0
+deckImuPostLength = 3.0
+deckImuPostInset = 0.5
+deckImuLap = 0.5
+# How far the short ledge stops short of each jumper: their places are read off a
+# photograph to about a tenth, and gate H wants 0.2 of air between parts that do
+# not touch.
+deckImuLedgeMargin = 0.3
+
+
+def _block(x0, x1, y0, y1, z0, z1):
+    """An axis-aligned box between two corners, either way round."""
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    z0, z1 = sorted((z0, z1))
+    return Pos((x0 + x1) / 2, (y0 + y1) / 2, z0) * Box(
+        x1 - x0, y1 - y0, z1 - z0, align=(Align.CENTER, Align.CENTER, Align.MIN)
+    )
+
+
+def imuRails() -> list:
+    """The two rails the IMU hangs in, each its wall, its lip and its stop."""
+    boardRearY = imuY - imuBoardDepth / 2
+    boardFrontY = imuY + imuBoardDepth / 2
+    plateUnderZ = deckZ
+    boardChipFaceZ = imuSocketFaceZ - imuBoardThickness
+    railBottomZ = boardChipFaceZ - deckImuRailLipThickness
+    rear = boardRearY - deckImuRailStop
+    rails = []
+    for side in (-1, 1):
+        groove = imuX + side * (imuBoardWidth / 2 + deckImuRailClearance)
+        wall = _block(
+            groove,
+            groove + side * deckImuRailWall,
+            rear,
+            boardFrontY,
+            railBottomZ,
+            plateUnderZ + deckImuLap,
+        )
+        lip = _block(
+            groove - side * deckImuRailLip,
+            groove,
+            rear,
+            boardFrontY,
+            railBottomZ,
+            boardChipFaceZ,
+        )
+        stop = _block(
+            groove - side * deckImuRailStopReach,
+            groove,
+            rear,
+            boardRearY,
+            railBottomZ,
+            plateUnderZ + deckImuLap,
+        )
+        rails.append(wall + lip + stop + imuLedge(side))
+    return rails
+
+
+def imuLedge(side: int):
+    """The ledge over the IMU's socket face along one side: -1 left, +1 right.
+
+    With the lip under it, it makes that rail a groove. Full length on the right;
+    on the left, between the address jumpers.
+    """
+    boardFrontY = imuY + imuBoardDepth / 2
+    plateUnderZ = deckZ
+    groove = imuX + side * (imuBoardWidth / 2 + deckImuRailClearance)
+    if side > 0:
+        front, back = boardFrontY, imuY - imuBoardDepth / 2
+    else:
+        front = boardFrontY - imuAddPadTo - deckImuLedgeMargin
+        back = boardFrontY - imuJumperFrom + deckImuLedgeMargin
+    return _block(
+        groove - side * deckImuRailLip,
+        groove,
+        back,
+        front,
+        imuSocketFaceZ,
+        plateUnderZ + deckImuLap,
+    )
+
+
+def imuPost():
+    """The post over the middle of the IMU's rear edge, between it and the plate."""
+    boardRearY = imuY - imuBoardDepth / 2
+    plateUnderZ = deckZ
+    return _block(
+        imuX - deckImuPostWidth / 2,
+        imuX + deckImuPostWidth / 2,
+        boardRearY + deckImuPostInset,
+        boardRearY + deckImuPostInset + deckImuPostLength,
+        imuSocketFaceZ,
+        plateUnderZ + deckImuLap,
+    )
 
 
 def cable_notches():
@@ -194,6 +373,12 @@ def _plate():
 
 
 def electronicsDeck() -> list:
-    """The deck as printed: one plate. It carried the BMS's two top guides until
-    2026-10-05, when the board went between the battery packs."""
-    return [_plate()]
+    """The deck as printed: the plate, the IMU's two rails, then its post.
+
+    The plate comes first, and tools/gate_f.py and electrical/carrier_pcb.py
+    both take it by that place. It carried the BMS's two top guides until
+    2026-10-05, when the board went between the battery packs, and has carried
+    the IMU's rails and post since 2026-10-14; tools/export.py unites them into
+    one part.
+    """
+    return [_plate(), *imuRails(), imuPost()]

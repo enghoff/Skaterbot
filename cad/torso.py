@@ -47,9 +47,6 @@ from cad.electronics import (
     deckLedgeY,
     deckScrewY,
     deckZ,
-    imuBoardDepth,
-    imuBoardWidth,
-    imuDepth,
     lowerBandZ,
     panelWallY,
     pdbHolePitch,
@@ -191,6 +188,11 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # Since the BMS went between the packs on 2026-10-05 they are under the packs'
 # own centre lines to a tenth of a millimetre.
 #
+# THE IMU LEFT THE FLOOR ON 2026-10-14, for the underside of the deck
+# (cad/electronics.py, imuX), and the rails stayed where they were. The 22 mm
+# square they stand either side of is that old reservation's, kept as its own
+# number so that the pelvis does not move when the IMU's reservation does.
+#
 # AND THEY START AT THE LEFT HIP SADDLE'S INBOARD FACE, not at the left wall. The
 # saddle's top is the band's floor for its whole length and carries the packs
 # itself; under that top the saddle is hollow, drained through its two walls,
@@ -205,7 +207,8 @@ cavityLength = shellTopZ + 2.0 - cavityBottomZ
 # standing 14 mm off the floor on its own is a lever, and on the sill it is the
 # end of a beam.
 batteryRailThickness = 3.0
-batteryRailY = (imuDepth + batteryRailThickness) / 2
+floorSquareDepth = 22.0
+batteryRailY = (floorSquareDepth + batteryRailThickness) / 2
 batteryRailStartX = -(hipCenterX + rearCheekX - cheekThickness / 2)
 # The stop's own length along the pack. It was whatever the pack left of the
 # bay, 1.5 mm, until the measured pack's lead end came out to the bay's end; it
@@ -264,6 +267,15 @@ batteryPadLeadIn = 1.5
 # It sits in the square of floor between the two hip saddles, which is the
 # stiffest spot in the pelvis and the reason the battery rails were laid across
 # the robot rather than along it.
+#
+# EMPTY SINCE 2026-10-14. The IMU went under the deck: its socket is on its
+# underside, so the board could never have sat flat in here, and the 11 x 10 it
+# was cut for was a guess at a board that measured 10.5 x 10. The seat stays
+# until the pelvis is next redrawn for another reason, so that the shell already
+# exported for printing is still the current one. It holds nothing and is in the
+# way of nothing; its own numbers are kept here rather than read off the board.
+imuSeatBoardWidth = 11.0
+imuSeatBoardDepth = 10.0
 imuSeatClearance = 0.2
 imuSeatWall = 1.5
 imuSeatHeight = 2.5
@@ -399,14 +411,15 @@ def batteryPads() -> list:
 
 
 def imuSeat() -> list:
-    """Three ribs on the shell floor that decide which way the IMU faces.
+    """Three ribs on the shell floor that decided which way the IMU faced.
 
     One body, and it is a block with a pocket taken out of it rather than three
     ribs drawn separately: the pocket runs out through the rear face, which is
-    what leaves that side open for the flylead.
+    what leaves that side open for the flylead. Empty since 2026-10-14, when the
+    IMU went under the deck; see imuSeatBoardWidth.
     """
-    pocketWidth = imuBoardWidth + (imuSeatClearance * 2)
-    pocketDepth = imuBoardDepth + (imuSeatClearance * 2)
+    pocketWidth = imuSeatBoardWidth + (imuSeatClearance * 2)
+    pocketDepth = imuSeatBoardDepth + (imuSeatClearance * 2)
     blockDepth = pocketDepth + imuSeatWall
     blockCenterY = (pocketDepth + imuSeatWall) / 2 - (pocketDepth / 2)
     block = Pos(0, blockCenterY, cavityBottomZ + (imuSeatHeight / 2)) * Box(

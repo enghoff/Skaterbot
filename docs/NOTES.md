@@ -3060,3 +3060,89 @@ gate B holds the 6 678.7 mm³ the printed part gains. That is +6.2 g on the pelv
 PA12 and about 8 g in PLA, and the roll-up, which counts overlapping bodies twice,
 puts the robot at 1 983.3 g, 9.1 g up and 316.7 g under the ceiling. The pelvis is
 re-exported and the simulation model rebuilt.
+
+## The IMU goes under the deck — 14 October 2026
+
+The IMU that was ordered, 7Semi's ES-12234, has its plug socket on its
+underside, so it could never have sat flat in the three-rib seat on the shell
+floor (DIMENSION_AUDIT.md, item 3). It hangs chip down under the electronics
+deck now, over the power bay, with its socket 0.5 under the deck's underside. Under
+the deck on that side there is 15.6 mm of air down to the power switch board's
+two TO-220 switches, and more everywhere else; the IMU needs 6.13. Nothing else
+moved: the carrier is on its 3 mm spacers and the torso is 89 mm.
+
+TWO OTHER PLACES WERE TRIED THE SAME DAY. Lying on the deck under the carrier, the
+socket either went down a slot through the 3 mm deck, which left 0.32 mm over the
+chip (0.22 as built) and put the plug and lead inside the plate, or the carrier
+went onto 6 mm standoffs, which left 0.37 but cost 3 mm of torso, because the SBC
+rides on the carrier and the space reserved over it already reaches the lid. The
+owner chose the underside.
+
+IT IS AT x 38, y 5, CONNECTOR FORWARD: away from the deck screws and the wall
+ledges they go into at x +/-52, and towards the deck's front cable notch at x 32
+to 44, which its lead comes up through on its way to the carrier's J6. x 38 keeps
+it off the two TO-220 switches, which are the parts below that run warm, at x 47.5
+and beyond; what is under its chip is the capacitor bank, 12.27 mm down. y 5 keeps
+it clear of the battery leads that cross under the deck's rear half. Its mount is
+17.6 mm from the nearest wall ledge and 7.1 from the nearest carrier screw.
+
+NOTHING GLUES IT: IT SLIDES INTO TWO RAILS hanging off the deck's underside, which
+grip the board's two 10 mm sides — the two with room on them, 1.1 mm from the
+edge to the nearest part on the chip face, where the other two have 0.56 and 0.83
+and one of those is the socket's. Each rail is a 1.5 mm wall 0.2 off the board's
+edge, which sets its yaw to about 2 degrees, a lip along the bottom that the
+chip face rests on, drawn touching it so that it holds rather than rattles, and a
+stop behind its rear corner. A post over the middle of the rear edge bears on the
+socket face, and the socket itself is clear. It goes in from the front
+with the deck out of the pelvis, until it meets the stops, and the plug then goes
+in from the front and pushes it home. Nothing but the lips and the lead stops it
+sliding forward again, so the lead is dressed with slack. The firmware maps its
+axes onto the robot's, since it is upside down with its connector forward.
+
+EACH RAIL IS A GROOVE, since later the same day, so that each side is held on
+both faces: a ledge down from the plate bears on the socket face over each lip,
+drawn touching it as the lip is. The socket face is bare along the right-hand
+side as it hangs, so that ledge runs the board's length. Along the left it
+carries the address jumpers, the ADD pad 0.65 in from the edge near the front and
+the 0 and 1 solder blobs 0.85 in at the rear, so that ledge is 3.2 long between
+them and stands 0.3 off each. 7Semi's STEP draws neither, so they were read off
+the seller's photograph of that face, scaled by the board's outline, and are
+drawn now so that gates F and H can measure them; their heights are guesses.
+
+AND THE SOCKET STANDS 0.5 OFF THE PLATE, where it was drawn bearing on it until
+the grooves went in. Its 2.95 is JST's catalogue and not measured, and with the
+board's height set by the grooves on both faces a socket any taller than that
+would have jammed the board in them. The board, the grooves and the post moved
+0.5 down together, and the socket and plug touch nothing above.
+
+THE RAILS ARE DRAWN FOR THE FINISHING CHAMFER, which took three tries. Each lip
+reaches 1.0 from its wall so that 0.3 of it is still flat on the board once the
+0.5 mm chamfer has taken its tip, and is 1.2 thick so that the chamfers on its two
+faces leave a face between them; at 1.0 they met. The walls, the stops and the
+post lap 0.5 into the plate, as the pelvis's hoist lugs lap into its wall, where
+standing on its face a chamfered 1 mm wall was joined to it along a line and came
+out of the tessellator as a loose piece.
+
+The deck still lifts out as one assembly: the IMU's only lead goes up to the
+carrier, which comes out with it. It goes in with the IMU hanging 6.13 mm under
+it into the power bay, and gate I runs that path.
+
+The pelvis does not change. The floor seat is empty and stays until the pelvis is
+next redrawn for some other reason, so the shell already exported for printing
+is still the current one; the battery rails, which stood either side of the old
+22 x 22 reservation, keep that 22 as a number of their own. The deck's rear notch
+under J6, which took the IMU's lead down to the floor, also stays, because
+electrical/carrier_pcb.py requires an opening under every plug whose lead it
+believes goes down. That file also gained a check of the solder tails and screw
+heads under the carrier while the IMU stood there, which stays; it assumes every
+lead is trimmed to 1.5 mm.
+
+Gate F holds the board against its post, in its rails and under its ledges,
+all at 0.00, the socket 0.50 under the plate, the jumpers 0.30 off the short
+ledge, and the chip 12.27 over the capacitor bank. The deck gains its rails, ledges
+and post, and the robot rolls up at 1 983.6 g, 316.4 g under the ceiling. The
+deck is re-exported and the simulation model rebuilt.
+
+Still unmeasured: the chip's height and the socket's, which are 7Semi's STEP and
+JST's catalogue; the socket has 0.5 of air over it for being taller than that.
+Nothing draws the lead past the notch, and nothing on the bill buys its SH end.

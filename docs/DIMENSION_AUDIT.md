@@ -59,6 +59,15 @@ note added to NOTES.md today, which says the IMU change needs no geometry
 change, is wrong. The seat needs redrawing, and which way the board faces is a
 decision.
 
+**Settled 2026-10-14, by moving the IMU off the pelvis.** It hangs chip down
+under the deck over the power bay now, in two grooved printed rails, with a
+printed post on its socket face and its socket 0.5 clear of the deck's underside;
+nothing else had to move. The floor
+seat is empty and stays until the pelvis is next redrawn. That takes this item
+off the pelvis's list. The board is 10.5 × 10 off 7Semi's STEP and 1.50 thick
+by calipers; the chip height, 1.18, and the socket's, 2.95, are still the STEP's
+and JST's; the socket has 0.5 mm of air over it in case it is taller. See NOTES.md, 14 October.
+
 **4. Fits that this printer will close up.** Every fit below was drawn with
 0.2 mm or less a side, which suits powder-bed nylon at about ±0.2. The
 prototype is FDM PLA, and the inlet hole shows this printer takes about 0.1 mm

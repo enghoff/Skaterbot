@@ -327,8 +327,9 @@ def torsoPackingGroups() -> dict[str, list]:
 
     The 65 mm torso is sized by its contents rather than by a round number, so
     "does it fit" is a question about this scene and not about a table. From the
-    bottom up: the IMU on the shell floor, in the 51.5 mm of clear floor between
-    the two hip pitch saddles; the power-entry block and the controller carrier
+    bottom up -- the IMU stood first, on the shell floor between the two hip pitch
+    saddles, until 2026-10-14, and hangs under the deck over the power bay now --
+    the power-entry block and the controller carrier
     side by side on the saddle tops, which is why the shell is 125 mm wide rather
     than 118; and the SBC over both of them, because at 85 mm it is wider than the
     gap either leaves.
