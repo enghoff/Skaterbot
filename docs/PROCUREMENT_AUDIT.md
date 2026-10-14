@@ -25,12 +25,12 @@ live; quantities are what the cart then held.
 | Amazon.in | The six lines moved from "saved for later" into the cart, each in stock; the unrelated USB-C cable left saved; no inserts present | Loctite 638 and 243, ESD foam, Kapton, 3M acrylic foam tape, tie mounts, one each: ₹2,458.10 |
 | Robu (then unplaced) | None | Two JST-SH 8-pin leads, six 1N4148: ₹108.22. Correct only if the one lead and three diodes from order #3736678 are in hand. **Ordered by the owner the same day**; see [ORDERS.md](ORDERS.md#robu--2026-10-08) |
 | Indian Hobby Center | None | **Ordered, owner confirmed 2026-10-08**; [purchase record](ORDERS.md#indian-hobby-center--2026-10-08). Reviewed basket: five DIP-8 sockets, one jumper set, XH leads 2-pin × 3, 3-pin × 2, 4-pin × 4, 4-pin double-ended × 2, 6-pin × 2, 8-pin × 1: ₹227. Delivery not yet reported. |
-| element14 | None. Minimums read on each product page: ten for every resistor, C315, R82 and MMK5; five for BZX79-C15; one for 3568, PR01 and MCP2562FD | **Ordered by the owner 2026-10-08**; [order record](ORDERS.md#element14-india--2026-10-08). Last reviewed basket: 17 lines, no C320, ₹2,552.98 before GST. Delivery not yet reported. |
+| element14 | None. Minimums read on each product page: ten for every resistor, C315, R82 and MMK5; five for BZX79-C15; one for 3568, PR01 and MCP2562FD | **Ordered by the owner 2026-10-08 and cancelled by element14, reported 2026-10-13**; [order record](ORDERS.md#element14-india--2026-10-08). Its parts were ordered from Robu and LionCircuits on 2026-10-13. |
 | Evelta | None | **Ordered by the owner, confirmed 2026-10-08**; [order record](ORDERS.md#evelta--2026-10-08). Reviewed cart: two Daier buttons and two XT60E-M male inlets, ₹472 before GST. Delivery not yet reported. |
 | Robocraze | None | One BNO085 Nano: ₹2,095. **Ordered by the owner the same day**; see [ORDERS.md](ORDERS.md#robocraze--2026-10-08) |
 | Probots | None | No cart in this browser session |
 
-**Latest remaining carts without a recorded placed order:** ThinkRobotics standoffs and Amazon.in supplies. Indian Hobby Center, Evelta and element14 are now ordered.
+**Latest remaining carts without a recorded placed order:** ThinkRobotics standoffs and Amazon.in supplies. Indian Hobby Center and Evelta are ordered; element14 was ordered and then cancelled, and its parts are on the Robu and LionCircuits orders of 2026-10-13.
 
 ## Quantity rule
 
@@ -48,7 +48,7 @@ they require confirmation in the seller's current cart before an actual order.
 
 ## Changes to make to any remaining carts
 
-**Element14 was ordered on 2026-10-08, confirmed by the owner.** Its allocations below are incoming stock, not remaining cart edits or additional purchase requests. Invoice quantities and delivery are not yet recorded.
+**element14 cancelled its 2026-10-08 order, reported by the owner 2026-10-13.** Its lines are allocated below to the Robu and LionCircuits orders placed that day instead: incoming stock, not purchase requests. Do not reorder them.
 
 | Store | Item | Design requirement and action |
 |---|---|---|
@@ -65,12 +65,13 @@ they require confirmation in the seller's current cart before an actual order.
 | Robu | 1N4148 | Seven fitted, target eight or nine total. Six additional units are justified only if exactly three are already secured; target then is nine, with two spare. |
 | Indian Hobby Center | DIP-8 sockets | Four fitted: carrier U1–U3 + power U1. Five total gives one spare. They are not five installed sockets. **Allocated to the Indian Hobby Center order confirmed 2026-10-08; do not reorder.** |
 | Indian Hobby Center | XH plug leads and jumper set | Retain only quantities allocated in the harness table below, deducting confirmed stock/incoming leads. The recorded quantities give one spare per lead type, not unallocated duplicates. **Allocated to the Indian Hobby Center order confirmed 2026-10-08; do not reorder.** |
-| element14 | Four MCP2562FD-E/P | Three fitted on carrier U1–U3, one spare. |
-| element14 | Ten C315 100 nF | Eight fitted across both boards, two spare; this complies directly. Remove any C320 substitutes: their bodies do not match the reserved carrier footprint. |
-| element14 | Five BZX79-C15 | One fitted at power D1; four excess units are allowed only because the saved minimum is five. Confirm that minimum before retaining five. |
-| element14 | Two Keystone 3568 / two PR01 1 kΩ 1 W | One holder and one R26 fitted, one spare each. |
-| element14 | Ten of each 0204 resistor value | 23 fitted in total; larger quantities are justified only by the saved ten-per-value minimum. The ten values and circuit references are listed below. |
-| element14 | Ten R82 220 nF / ten MMK5 2.2 µF | One each fitted at power C1 / C7. Nine excess of each require the saved minimum of ten, not a general desire for spares. |
+| LionCircuits | Four MCP2562FD-E/P | Three fitted on carrier U1–U3, one spare. **Ordered 2026-10-13.** |
+| LionCircuits | Ten C315 100 nF | Eight fitted across both boards, two spare; ten cost less than nine. **Ordered 2026-10-13.** |
+| LionCircuits | Two Keystone 3568 | One fitted, one spare. **Ordered 2026-10-13.** |
+| LionCircuits | Three R82 220 nF | One fitted at power C1; three is the shop's minimum. **Ordered 2026-10-13.** |
+| Robu | Two 1N5245B zeners | One fitted at power D1, one spare; replaces the BZX79-C15. **Ordered 2026-10-13.** |
+| Robu | Two 2.2 µF 35 V tantalums | One fitted at power C7, + to VSRC, one spare; replaces the MMK5 film. **Ordered 2026-10-13.** |
+| Robu | Ten resistor values, 0207 bodies | 23 fitted plus R26; quantities are Robu's ₹10 line minimum, not spares by choice. R3 and R7 stand over their second hole. **Ordered 2026-10-13.** |
 | Evelta | Buttons / XT60E-M inlet | One fitted of each, one spare of each is allowed. XT60E-F female inlets have no current design use. **Evelta order placed, owner confirmed 2026-10-08: allocate the reviewed selections to that order; do not reorder.** |
 | Robocraze | BNO085 Nano | One installed on the shell's adhesive seat. One extra is permitted but the recorded one-unit selection already covers the design. Use the Nano, not the larger Adafruit board. |
 | Amazon | Adhesives / foam / tape / tie mounts | One bottle each of Loctite 638 and 243, one foam pack, one Kapton roll, one acrylic foam tape roll and one minimum tie-mount pack. The six items all have uses below. Leave unrelated household items untouched. |

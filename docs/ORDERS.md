@@ -104,12 +104,15 @@ Cart total **₹2,095.00**; shipping, if any, is not recorded. One fitted, no sp
 ## element14 India — 2026-10-08
 
 - **Placed:** reported by the owner on 2026-10-08.
-- **Status:** ordered; delivery not yet reported.
+- **Status:** **cancelled by element14**, reported by the owner on 2026-10-13.
+  Nothing from it is coming.
 - **Source:** owner's explicit confirmation in this conversation: “element14 order has been placed”.
 - **Order number and final invoice:** not yet supplied.
 
-The reviewed element14 selections are allocated to this incoming order and
-must not be reordered. The following are the quantities in the last reviewed
+Its parts were re-sourced from shops that sell to an individual without a
+GSTIN and ordered on 2026-10-13: see [Robu](#robu--2026-10-13) and
+[LionCircuits](#lioncircuits--2026-10-13). The table is what this order held,
+kept as a record. The following are the quantities in the last reviewed
 17-line basket, not independently verified invoice quantities. The two film
 capacitor lines were also shown at ten each in the owner's cart screenshot.
 
@@ -179,3 +182,62 @@ have not been independently verified.
 
 Last reviewed basket subtotal: **₹227**, plus shipping. The final charged
 amount and delivery are not yet reported.
+
+## Robu — 2026-10-13
+
+- **Placed:** reported by the owner on 2026-10-13; order number not yet recorded.
+- **Status:** delivery not yet recorded.
+- **Source:** the cart as read in the browser on 2026-10-13, before the owner
+  placed it; the placed order itself has not been seen.
+
+Half of the cancelled element14 order. Each part went to whichever of Robu and
+LionCircuits was cheaper with GST, except the 220 nF film, which went to
+LionCircuits because only the KEMET part is known to fit C1. None is on both
+orders.
+
+| Item as in the cart | Quantity | Unit price | Line amount |
+|---|---:|---:|---:|
+| onsemi 1N5245BTR, 15 V 500 mW zener, DO-35 | 2 | ₹11.00 | ₹22.00 |
+| 2.2 µF 35 V tantalum capacitor, dipped, generic | 2 | ₹15.00 | ₹30.00 |
+| Yageo MFR-25FRF52-10R, 1 % metal film | 10 | ₹1.08 | ₹10.80 |
+| Yageo MFR-25FRF52-10K | 5 | ₹2.45 | ₹12.25 |
+| Yageo MFR-25FRF52-15K | 10 | ₹1.08 | ₹10.80 |
+| Yageo MFR-25FRF52-22K | 4 | ₹2.52 | ₹10.08 |
+| Yageo MFR-25FRF52-47K | 10 | ₹1.08 | ₹10.80 |
+| Yageo MFR-25FRF52-100K | 10 | ₹1.08 | ₹10.80 |
+| Yageo MFR-25FRF52-1M | 10 | ₹1.08 | ₹10.80 |
+| Multicomp Pro MCF 0.25 W 1K, 5 % metal film | 5 | ₹2.12 | ₹10.60 |
+| Multicomp Pro MCF 0.25 W 470K, 5 % | 6 | ₹1.89 | ₹11.34 |
+| Multicomp Pro MCF 0.25 W 10M, 5 % | 11 | ₹0.99 | ₹10.89 |
+
+Cart total **₹161.16** including GST. Under Robu's ₹999 free-delivery
+threshold, so shipping is charged; the amount is not recorded.
+
+**Robu will not check out a line worth under ₹10**, so each resistor line is the
+smallest count that reaches it rather than fitted plus one spare. Three parts
+here are substitutes, recorded in their BOM rows: the zener for the BZX79-C15
+(D1), the tantalum for the KEMET MMK5 film (C7, + to VSRC), and 0207 bodies for
+the 0204 resistors, with R3 and R7 stood over their second hole. The 1 kΩ line
+covers R18 and R26.
+
+## LionCircuits — 2026-10-13
+
+- **Placed:** reported by the owner on 2026-10-13; order number not yet recorded.
+- **Status:** delivery not yet recorded; every line read “In Stock, ships in
+  7–10 days”, which is stock at LionCircuits' own suppliers.
+- **Source:** the cart as read in the browser on 2026-10-13, before the owner
+  placed it; the placed order itself has not been seen.
+
+The other half of the cancelled element14 order.
+
+| Item as in the cart | Quantity | Unit price before GST | Line amount |
+|---|---:|---:|---:|
+| Microchip MCP2562FD-E/P CAN-FD transceiver, PDIP-8 | 4 | ₹175.89 | ₹703.55 |
+| Keystone 3568 mini blade fuse holder | 2 | ₹141.38 | ₹282.76 |
+| KEMET C315C104K5R5TA 100 nF 50 V X7R | 10 | ₹27.43 | ₹274.30 |
+| KEMET R82DC3220AA60K 220 nF 63 V film | 3 | ₹36.38 | ₹109.13 |
+
+Components **₹1,369.74**, GST ₹246.55, shipping free; **total ₹1,616.00**.
+
+Three R82s because LionCircuits' minimum is three. Ten C315s because ten cost
+₹274.30 where nine cost ₹788.36; eight are fitted.
