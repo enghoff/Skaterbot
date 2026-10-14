@@ -63,7 +63,7 @@ decision.
 under the deck over the power bay now, in two grooved printed rails, with a
 printed post on its socket face and its socket 0.5 clear of the deck's underside;
 nothing else had to move. The floor
-seat is empty and stays until the pelvis is next redrawn. That takes this item
+seat came off the pelvis the same day, before it was reprinted. That takes this item
 off the pelvis's list. The board is 10.5 × 10 off 7Semi's STEP and 1.50 thick
 by calipers; the chip height, 1.18, and the socket's, 2.95, are still the STEP's
 and JST's; the socket has 0.5 mm of air over it in case it is taller. See NOTES.md, 14 October.

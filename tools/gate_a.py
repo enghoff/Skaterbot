@@ -929,21 +929,8 @@ ADDED = {
     # own corner notches off the cover bosses by.
     "fixingPilotDepth": 5.0,
     "ledgeNotchClearance": 0.4,
-    # THE IMU SEAT, cad/torso.py. The BNO085 Nano breakout is 11 x 10 and too
-    # small to carry a screw, so it had no mount at all -- and it is the one
-    # board whose ORIENTATION is half its worth. Three ribs decide where it
-    # points and adhesive holds it down; the fourth side is open to the rear for
-    # its flylead. The board's own outline is a named dimension now for the
-    # reason every board's is: a printed feature has to agree with it.
-    #
-    # THE SEAT IS EMPTY SINCE 2026-10-14 and stays in the pelvis until it is next
-    # redrawn, with the 11 x 10 it was cut for kept as its own two names, so that
-    # the board's real outline can move without moving the shell.
-    "imuSeatBoardWidth": 11.0,
-    "imuSeatBoardDepth": 10.0,
-    "imuSeatClearance": 0.2,
-    "imuSeatWall": 1.5,
-    "imuSeatHeight": 2.5,
+    # THE IMU SEAT, three ribs on the shell floor with its five names here, came
+    # off the pelvis on 2026-10-14, when the IMU went under the deck.
     # THE IMU UNDER THE DECK, 2026-10-14, cad/electronics.py. The board is
     # 7Semi's ES-12234: 10.5 x 10 off 7Semi's STEP (exports/imu-research/
     # 10297.STEP), where it was an 11 x 10 guess, and 1.50 thick by the owner's

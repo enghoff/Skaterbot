@@ -3127,10 +3127,11 @@ The deck still lifts out as one assembly: the IMU's only lead goes up to the
 carrier, which comes out with it. It goes in with the IMU hanging 6.13 mm under
 it into the power bay, and gate I runs that path.
 
-The pelvis does not change. The floor seat is empty and stays until the pelvis is
-next redrawn for some other reason, so the shell already exported for printing
-is still the current one; the battery rails, which stood either side of the old
-22 x 22 reservation, keep that 22 as a number of their own. The deck's rear notch
+THE FLOOR SEAT CAME OFF THE PELVIS the same day, before the shell was reprinted:
+it stood empty for the afternoon so that the file already in the print cart
+stayed current, and then went, 132 mm3 and 0.14 g, which gate B holds. The
+pelvis is otherwise as it was; the battery rails, which stood either side of the
+old 22 x 22 reservation, keep that 22 as a number of their own. The deck's rear notch
 under J6, which took the IMU's lead down to the floor, also stays, because
 electrical/carrier_pcb.py requires an opening under every plug whose lead it
 believes goes down. That file also gained a check of the solder tails and screw
@@ -3140,8 +3141,8 @@ lead is trimmed to 1.5 mm.
 Gate F holds the board against its post, in its rails and under its ledges,
 all at 0.00, the socket 0.50 under the plate, the jumpers 0.30 off the short
 ledge, and the chip 12.27 over the capacitor bank. The deck gains its rails, ledges
-and post, and the robot rolls up at 1 983.6 g, 316.4 g under the ceiling. The
-deck is re-exported and the simulation model rebuilt.
+and post, the pelvis loses its seat, and the robot rolls up at 1 983.5 g, 316.5 g under the ceiling. The
+deck and pelvis are re-exported and the simulation model rebuilt.
 
 Still unmeasured: the chip's height and the socket's, which are 7Semi's STEP and
 JST's catalogue; the socket has 0.5 of air over it for being taller than that.

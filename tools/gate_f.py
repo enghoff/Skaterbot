@@ -561,8 +561,12 @@ def check_packing() -> tuple[int, int]:
     THE POWER SWITCH BOARD'S PAD IS THE SECOND SUCH CASE, September 2026, and for
     the same reason: it is a pad off the right-hand wall carrying a board that
     lives INSIDE the power bay, so it stands in that bay's own reserved volume by
-    definition. Its row is measured against the shell less that pad, and the fit
-    that matters -- the board sitting on it -- is asserted in FITS below.
+    definition. Its row was measured against the shell less that pad, and the fit
+    that matters -- the board sitting on it -- is asserted in FITS below. The pad
+    came off when the board took the bought board's four posts, and the slice that
+    left it out went on leaving out whatever body was second to last: a hoist lug,
+    then a hip-arm brace, neither of them anywhere near the bay. Its row is
+    measured against the whole shell since 2026-10-14.
 
     THE BATTERY'S RAILS ARE THE THIRD, 2026-09-30. The packs shrank inside a
     bay that did not, so the stop on each rail's end, which catches the foot of
@@ -576,8 +580,7 @@ def check_packing() -> tuple[int, int]:
     THE IMU'S ROW WAS THE FIRST SUCH CASE, measured without the floor seat it
     stood in, until the IMU went under the deck on 2026-10-14. Its reservation is
     the board hanging under the deck now, nowhere near the shell, and is measured
-    against all of it. The empty seat is still the pelvis's last body, which is
-    what the power switch board's slice below relies on.
+    against all of it; the seat came off the pelvis the same day.
     """
     from cad import scenes, torso
     from cad.wheeled_parameters import wheeledTorsoCenterHeight
@@ -586,12 +589,10 @@ def check_packing() -> tuple[int, int]:
     print("WHAT STANDS IN THE TORSO, AND WHETHER IT FITS")
     groups = scenes.GROUPS["torso_packing_check"]()
     shell = groups["pelvis"]
-    # cad/torso.py returns the IMU's seat last and the power switch board's wall
-    # pad immediately before it, and the docstring above says why a reservation
-    # is measured without its OWN mount and against everything else. Sliced
-    # rather than named so that a new feature on the pelvis cannot quietly drop
-    # out of this check as well.
-    shellLessPowerSwitchPad = shell[:-2] + shell[-1:]
+    # The docstring above says why a reservation is measured without its OWN
+    # mount and against everything else. Sliced rather than named so that a new
+    # feature on the pelvis cannot quietly drop out of this check as well.
+    #
     # The rails and then the wall pads come straight after the shell, its four
     # cover bosses and its two hip clevises -- the seven check_no_clashes()
     # calls the pelvis proper.
@@ -610,7 +611,6 @@ def check_packing() -> tuple[int, int]:
     items = ("battery", "power entry", "controller carrier", "SBC", "IMU", "BMS")
     checked = failed = 0
     without = {
-        "power entry": shellLessPowerSwitchPad,
         "battery": shellLessRails,
     }
     for name, item in zip(items, groups["reservations"]):
@@ -1169,7 +1169,6 @@ def check_footings() -> tuple[int, int]:
             (f"power board post {i + 1}", post)
             for i, post in enumerate(torso.powerEntryPosts())
         ),
-        ("IMU seat", torso.imuSeat()[0]),
     ]
     checked = failed = 0
     for what, body in features:
@@ -1209,7 +1208,6 @@ def check_no_clashes() -> tuple[int, int]:
     groups["battery pads"] = torso.batteryPads()
     groups["board posts"] = torso.powerEntryPosts()
     groups["deck ledges"] = torso.deckLedges()
-    groups["IMU seat"] = torso.imuSeat()
     # The shell WITHOUT the four feature sets listed above it, because
     # pelvisShell() returns all of them in one list and comparing a part with
     # its own features is not a finding. Seven bodies: the shell, four cover

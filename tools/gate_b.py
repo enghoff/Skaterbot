@@ -1118,6 +1118,17 @@ DEVIATIONS["pelvis-shell"].append(
     }
 )
 
+DEVIATIONS["pelvis-shell"].append(
+    {
+        # 132.0 mm3 off: the seat was a 14.4 x 11.9 x 2.5 block less an
+        # 11.4 x 10.4 pocket run out through its rear face, standing on the
+        # cavity floor face to face, and all of it where the tethered pelvis had
+        # nothing.
+        "added_mm3": -131.9999999511,
+        "why": "THE IMU SEAT CAME OFF THE FLOOR, 2026-10-14. The IMU bought has its socket on its underside, so it could never have sat flat in the three ribs, and it hangs under the electronics deck instead, in two grooved rails printed on the deck. The seat stood empty for the afternoon and came off before the pelvis was reprinted.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 

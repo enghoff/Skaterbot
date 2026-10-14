@@ -294,7 +294,8 @@ wheeledThighCenterZ = (wheeledHipPitchAxisHeight + wheeledKneeAxisHeight) / 2
 # level. Nothing reserved is narrow enough to use it except the IMU, which
 # went there -- it is the stiffest spot in the pelvis, directly between the
 # two hip joints -- until 2026-10-14, when it moved under the deck because its
-# socket is on its underside. The square is empty now; the 9 mm is the saddle's.
+# socket is on its underside, and its seat came off the floor the same day. The
+# square is empty now; the 9 mm is the saddle's.
 # * 39 mm for the battery, 78 x 54 x 39, which was drawn for two 3S 2200 mAh
 # bricks ON EDGE side by side -- a size of brick nobody makes, it turned out on
 # 2026-09-30, so the bay now holds two 1000 mAh packs and the foam round them.

@@ -258,27 +258,12 @@ batteryRailSillTopZ = (
 # from above between the two rows of pads, and a square edge would catch it.
 batteryPadLeadIn = 1.5
 
-# THE IMU SEAT. The one board in this torso small enough that no screw will fit
-# it -- a BNO085 Nano breakout is 11 x 10 -- and the one board whose ORIENTATION
-# is half its value. Adhesive holds it down and three ribs decide where it
-# points; the fourth side is left open to the rear, which is where its flylead
-# leaves to join the harness run along the back of the cavity.
-#
-# It sits in the square of floor between the two hip saddles, which is the
-# stiffest spot in the pelvis and the reason the battery rails were laid across
-# the robot rather than along it.
-#
-# EMPTY SINCE 2026-10-14. The IMU went under the deck: its socket is on its
-# underside, so the board could never have sat flat in here, and the 11 x 10 it
-# was cut for was a guess at a board that measured 10.5 x 10. The seat stays
-# until the pelvis is next redrawn for another reason, so that the shell already
-# exported for printing is still the current one. It holds nothing and is in the
-# way of nothing; its own numbers are kept here rather than read off the board.
-imuSeatBoardWidth = 11.0
-imuSeatBoardDepth = 10.0
-imuSeatClearance = 0.2
-imuSeatWall = 1.5
-imuSeatHeight = 2.5
+# THE IMU SEAT CAME OFF THE FLOOR, 2026-10-14. Three ribs 2.5 mm tall on the
+# square of floor between the hip saddles held the IMU, with adhesive under it,
+# until the board bought turned out to have its socket on its underside, so it
+# could never have sat flat there. It hangs under the electronics deck now
+# (cad/deck.py), and the seat stood empty for an afternoon before it went with
+# the pelvis's next reprint.
 
 
 # THE DISTRIBUTION-BOARD POSTS. Four, standing from the shell floor to the plane
@@ -408,30 +393,6 @@ def batteryPads() -> list:
             (batteryPadHighX, batteryPadHighZ),
         )
     ]
-
-
-def imuSeat() -> list:
-    """Three ribs on the shell floor that decided which way the IMU faced.
-
-    One body, and it is a block with a pocket taken out of it rather than three
-    ribs drawn separately: the pocket runs out through the rear face, which is
-    what leaves that side open for the flylead. Empty since 2026-10-14, when the
-    IMU went under the deck; see imuSeatBoardWidth.
-    """
-    pocketWidth = imuSeatBoardWidth + (imuSeatClearance * 2)
-    pocketDepth = imuSeatBoardDepth + (imuSeatClearance * 2)
-    blockDepth = pocketDepth + imuSeatWall
-    blockCenterY = (pocketDepth + imuSeatWall) / 2 - (pocketDepth / 2)
-    block = Pos(0, blockCenterY, cavityBottomZ + (imuSeatHeight / 2)) * Box(
-        pocketWidth + (imuSeatWall * 2), blockDepth, imuSeatHeight
-    )
-    # Taken out towards -Y and beyond the block, so the rear rib is never drawn.
-    pocket = Pos(
-        0,
-        (pocketDepth / 2) - (pocketDepth + blockDepth) / 2,
-        cavityBottomZ + (imuSeatHeight / 2),
-    ) * Box(pocketWidth, pocketDepth + blockDepth, imuSeatHeight + 2.0)
-    return [block - pocket]
 
 
 def powerEntryPosts() -> list:
@@ -599,9 +560,10 @@ def deckLedges() -> list:
 def pelvisShell() -> list:
     """The shell, its four cover bosses and both hip clevises: one printed part.
 
-    Thirty-six bodies now, drawn separately, eight of them the hip arms' braces
-    since 2026-10-12. KCL-SHAPED: the engine refused to
-    union hollow boxes that meet at right angles, and the hip saddles are
+    Thirty-five bodies now, drawn separately, eight of them the hip arms' braces
+    since 2026-10-12; the IMU's seat came off on 2026-10-14. KCL-SHAPED: the
+    engine refused to union hollow boxes that meet at right angles, and the hip
+    saddles are
     exactly that case, so the pieces were drawn -- and until September 2026
     exported -- as bodies laid into one another.
 
@@ -738,10 +700,6 @@ def pelvisShell() -> list:
         *deckLedges(),
         *hoistLugs(),
         *hipArmBraces(),
-        # LAST, AND tools/gate_f.py RELIES ON IT. The IMU's seat is the one
-        # printed feature in this cavity that stands inside its own reserved
-        # volume, so that gate measures the IMU against the shell less this body.
-        *imuSeat(),
     ]
 
 
