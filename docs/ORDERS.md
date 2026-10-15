@@ -7,7 +7,8 @@ the robot.
 ## QuartzComponents — order #433538
 
 - **Confirmed:** 2026-10-05.
-- **Status shown:** on its way, 2026-10-06 at 4:43 pm; delivery not yet recorded.
+- **Status:** received, reported by the owner on 2026-10-15.
+- **Previous shipping status:** on its way, 2026-10-06 at 4:43 pm.
 - **Courier:** Delhivery, tracking **57996610232772**.
 - **Source:** order screenshots supplied by the owner on 2026-10-08.
 
@@ -47,7 +48,7 @@ Insert dimensions and installation strength have not yet been measured or tested
 ## fastdep — 2026-10-08
 
 - **Placed:** 2026-10-08, reported by the owner; order number not yet recorded.
-- **Status:** delivery not yet recorded.
+- **Status:** received, reported by the owner on 2026-10-15.
 - **Source:** checkout summary supplied by the owner on 2026-10-08.
 
 | Item as ordered | Quantity | Line amount |
@@ -73,7 +74,7 @@ M3 × 12 can stand in for a lid screw, not for a motor stator screw.
 ## Robu — 2026-10-08
 
 - **Placed:** 2026-10-08, reported by the owner; order number not yet recorded.
-- **Status:** delivery not yet recorded.
+- **Status:** received, reported by the owner on 2026-10-15.
 - **Source:** the cart as read in the browser on 2026-10-08, before the owner
   placed it; the placed order itself has not been seen.
 
@@ -91,7 +92,7 @@ These quantities assume the one JST-SH lead and three 1N4148s from order
 ## Robocraze — 2026-10-08
 
 - **Placed:** 2026-10-08, reported by the owner; order number not yet recorded.
-- **Status:** delivery not yet recorded.
+- **Status:** received, reported by the owner on 2026-10-15.
 - **Source:** the cart as read in the browser on 2026-10-08, before the owner
   placed it; the placed order itself has not been seen.
 
@@ -143,13 +144,13 @@ be recorded; order placement does not establish delivery.
 ## Evelta — 2026-10-08
 
 - **Placed:** reported by the owner on 2026-10-08.
-- **Status:** ordered; delivery not yet reported.
+- **Status:** received, reported by the owner on 2026-10-15.
 - **Source:** owner's confirmation in this conversation: “the Evelta order has been placed”.
 - **Order number and final invoice:** not yet supplied.
 
 The last reviewed cart held two Daier GQ-12B/S 12 mm momentary buttons and
 two AMASS XT60E-M.G.Y male panel-mount inlets: one installed and one spare of
-each. These selections are allocated to the incoming Evelta order and must
+each. These selections belong to the received Evelta order and must
 not be reordered. Quantities have not been independently checked against the
 placed-order invoice.
 
@@ -160,13 +161,13 @@ are not yet recorded. Order placement does not establish delivery.
 ## Indian Hobby Center — 2026-10-08
 
 - **Placed:** reported by the owner on 2026-10-08.
-- **Status:** ordered; delivery not yet reported.
+- **Status:** received, reported by the owner on 2026-10-15.
 - **Source:** owner's confirmation in this conversation: “the indian hobby shop order has been placed”.
 - **Order number and final invoice:** not yet supplied.
 
 This is the leads and sockets order, separate from the earlier battery and wire
 order. The last reviewed basket contained the following selections, now
-allocated to this incoming order; do not reorder them. Invoice quantities
+allocated to this received order; do not reorder them. Invoice quantities
 have not been independently verified.
 
 | Reviewed selection | Basket quantity |
@@ -181,7 +182,7 @@ have not been independently verified.
 | JST-XH 8-pin bare-ended lead | 1 |
 
 Last reviewed basket subtotal: **₹227**, plus shipping. The final charged
-amount and delivery are not yet reported.
+amount is not yet reported. Receipt was confirmed by the owner on 2026-10-15.
 
 ## Robu — 2026-10-13
 
