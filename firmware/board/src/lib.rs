@@ -19,6 +19,10 @@
 //! does not clear, and the next ordinary start takes it out for the firmware to
 //! report ([`last_crash`]).
 //!
+//! On the robot it also holds the power on: [`early_init`] raises the power
+//! switch board's HOLD before anything else, and [`power`] turns a long press
+//! of the robot's button into a request to turn off.
+//!
 //! The button still works whatever an image does, because the option bytes that
 //! give it that job are left alone.
 
@@ -126,6 +130,7 @@ pub fn usb_config(product: &'static str) -> embassy_usb::Config<'static> {
 /// otherwise takes any crash record out of the backup registers for
 /// [`last_crash`].
 pub fn early_init() {
+    power::hold_early();
     restart_if_started_by_bootloader();
 
     // The flags accumulate across resets until cleared, and the bootloader
@@ -217,6 +222,145 @@ pub fn reset_cause(out: &mut impl Write) -> fmt::Result {
         out.write_str("none")?;
     }
     Ok(())
+}
+
+// --------------------------------------------------------------------------
+// Power
+
+pub mod power {
+    //! The power switch board's hold and its button, on the carrier's J7.
+    //!
+    //! The button closes the switch directly while it is pressed. The board
+    //! then keeps it closed only while a hold is present -- this MCU's on PC11,
+    //! or the SBC's -- and opens it about 0.9 s after the last one goes, or when
+    //! the pack falls below its cutoff (docs/POWER_SWITCH.md). So a press has
+    //! to last until this firmware raises HOLD, which [`super::early_init`]
+    //! does first of all, and the button can then be let go.
+    //!
+    //! The same button reaches PB14 through the power board's D7, pulling it
+    //! low against the MCU's own pull-up. A press of [`OFF_PRESS`] or more
+    //! asks for the robot to be turned off: [`Power::update`] says so once, and
+    //! the image decides what to do first -- put the robot down, tell the SBC
+    //! -- before it calls [`Power::release`]. The press that turned the robot
+    //! on is still held when the firmware starts, and is not one.
+    //!
+    //! With no power board on J7, SENSE reads high and nothing happens, and
+    //! HOLD drives an open pin.
+
+    use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
+    use embassy_stm32::{Peri, pac, peripherals};
+    use embassy_time::{Duration, Instant, Timer};
+
+    /// How long the button must be held to ask for the robot to turn off.
+    pub const OFF_PRESS: Duration = Duration::from_secs(2);
+
+    /// HOLD, PC11, J7-1.
+    const HOLD_PIN: usize = 11;
+
+    /// Raises HOLD from the reset state, before clocks or embassy: the button
+    /// has to be held until this runs, so it runs first. embassy's start-up
+    /// turns the GPIO clocks on and leaves the ports alone, so it stays raised
+    /// until [`Power::new`] takes the pin over at the same level.
+    pub(crate) fn hold_early() {
+        pac::RCC.ahb2enr().modify(|w| w.set_gpiocen(true));
+        let port = pac::GPIOC;
+        port.bsrr().write(|w| w.set_bs(HOLD_PIN, true));
+        port.moder()
+            .modify(|w| w.set_moder(HOLD_PIN, pac::gpio::vals::Moder::OUTPUT));
+    }
+
+    enum Button {
+        /// Still held from turning the robot on.
+        Starting,
+        Up,
+        Down(Instant),
+        /// The off request has been made; nothing more is said.
+        Spent,
+    }
+
+    /// HOLD and the button, owned by the image. Keep it for as long as the
+    /// image runs: dropping it lets go of HOLD.
+    pub struct Power<'d> {
+        hold: Output<'d>,
+        sense: Input<'d>,
+        button: Button,
+    }
+
+    impl<'d> Power<'d> {
+        pub fn new(hold: Peri<'d, peripherals::PC11>, sense: Peri<'d, peripherals::PB14>) -> Self {
+            Self {
+                hold: Output::new(hold, Level::High, Speed::Low),
+                sense: Input::new(sense, Pull::Up),
+                button: Button::Starting,
+            }
+        }
+
+        /// Whether HOLD is high at the pin, read back rather than remembered.
+        pub fn held(&self) -> bool {
+            pac::GPIOC.idr().read().idr(HOLD_PIN) == pac::gpio::vals::Idr::HIGH
+        }
+
+        pub fn pressed(&self) -> bool {
+            self.sense.is_low()
+        }
+
+        /// Call often, every few milliseconds. True once, when the button
+        /// has been held for [`OFF_PRESS`].
+        pub fn update(&mut self) -> bool {
+            let pressed = self.pressed();
+            let now = Instant::now();
+            match self.button {
+                Button::Starting | Button::Down(_) if !pressed => self.button = Button::Up,
+                Button::Up if pressed => self.button = Button::Down(now),
+                Button::Down(since) if now - since >= OFF_PRESS => {
+                    self.button = Button::Spent;
+                    return true;
+                }
+                _ => {}
+            }
+            false
+        }
+
+        /// Waits for an off request, for an image with nothing else to poll.
+        pub async fn off_requested(&mut self) {
+            while !self.update() {
+                Timer::after_millis(10).await;
+            }
+        }
+
+        /// Lets go of HOLD. The robot turns off about 0.9 s later, once the
+        /// button is up -- unless the SBC is holding it on as well.
+        pub fn release(&mut self) {
+            self.hold.set_low();
+        }
+    }
+}
+
+// --------------------------------------------------------------------------
+// Heartbeat
+
+/// The Banana Pi's heartbeat, on an LED of this board: two 70 ms flashes, the
+/// second a quarter of a period after the first, then dark to the end of it.
+///
+/// It is Linux's own heartbeat trigger (drivers/leds/trigger/ledtrig-heartbeat.c),
+/// which the Pi's red status LED runs. The kernel stretches the period with the
+/// one-minute load average -- 300 + 6720 / (5 x load + 7) ms, so 1260 ms idle,
+/// 860 at a load of 1, 510 at 5 -- and this board has no load average, so it
+/// beats at the idle period, as the Pi does with nothing to do. Two boards that
+/// both beat are two boards both running.
+pub async fn heartbeat(led: &mut embassy_stm32::gpio::Output<'_>) -> ! {
+    const PERIOD_MS: u64 = 300 + 6720 / 7;
+    const FLASH_MS: u64 = 70;
+    loop {
+        led.set_high();
+        Timer::after_millis(FLASH_MS).await;
+        led.set_low();
+        Timer::after_millis(PERIOD_MS / 4 - FLASH_MS).await;
+        led.set_high();
+        Timer::after_millis(FLASH_MS).await;
+        led.set_low();
+        Timer::after_millis(PERIOD_MS - PERIOD_MS / 4 - FLASH_MS).await;
+    }
 }
 
 // --------------------------------------------------------------------------

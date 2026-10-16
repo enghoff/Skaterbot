@@ -413,7 +413,12 @@ post tops, and the keepout is gone from the layout.
 * **The hold lead lands on the carrier's J7 since 2026-10-07**, in the same
   pin order as J2 here, so one double-ended lead joins them. The SBC's hold on
   pin 4 leaves that lead for a GPIO on its 40-pin header, and which GPIO has not
-  been chosen. No firmware drives the hold yet.
+  been chosen. **The MCU's half is in firmware since 2026-10-16**
+  (`firmware/board`, module `power`): HOLD high in the first instructions after
+  reset, so the button need only be held about half a second; a press of 2 s
+  while running asks to turn off, and the press that turned the robot on does
+  not count. Without the SBC's hold, reflashing the MCU on the robot turns it
+  off, since the bootloader holds nothing.
 * **Nothing isolates the pack any more, and this is the open item to weigh.**
   The loop key was deleted on 2026-09-16 and its button took the wall station,
   so the only break in the pack's positive lead is this board's two transistors
