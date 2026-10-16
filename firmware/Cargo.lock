@@ -923,6 +923,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_check"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "cortex-m",
+ "cortex-m-rt",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-time",
+ "embedded-hal-nb",
+ "heapless 0.9.3",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

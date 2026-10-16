@@ -1,0 +1,27 @@
+// UART4 on header pins 8 and 10 (PI13, PI14) of the BPI-M4 Zero, where the
+// carrier's J5 brings the MCU's USART1.
+//
+// Armbian's board tree (sun50i-h618-bananapi-m4-zero.dtb, Armbian 26.8.3) gives
+// the pin group uart4-pi-pins the function "uart2", which PI13 and PI14 do not
+// have, so the kernel drops the group at boot -- "there is not valid maps for
+// state default" -- and UART4 runs with no pins. Its own
+// bananapi-m4-pi-13-14-uart4 overlay switches the port on and leaves the group
+// as it is. This puts the right function on it; keep both.
+//
+// On the Pi, as root:
+//     dtc -@ -I dts -O dtb -o /boot/overlay-user/uart4-fix.dtbo uart4-fix.dts
+//     and add uart4-fix to user_overlays= in /boot/armbianEnv.txt, then reboot.
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "allwinner,sun50i-h616";
+
+	fragment@0 {
+		target = <&uart4_pi_pins>;
+		__overlay__ {
+			function = "uart4";
+		};
+	};
+};

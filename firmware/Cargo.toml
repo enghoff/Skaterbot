@@ -4,11 +4,14 @@
 #             USB bootloader, which is how the board is reflashed without anyone
 #             at it
 #   policy    the trained policy, run on the board for the host to check
+#   serial_check
+#             the serial link to the Banana Pi through the carrier's J5, and
+#             the first image flashed over it, by sbc/flash_mcu.py
 #
-# flash.ps1 builds one and writes it to the board.
+# flash.ps1 builds one and writes it to the board over USB.
 [workspace]
 resolver = "3"
-members = ["board", "policy"]
+members = ["board", "policy", "serial_check"]
 
 # Released embassy crates, matched to each other by their 2026-03-10 releases.
 # The chip feature is the exact part on the WeAct board: STM32G474, 48 pins,
@@ -27,6 +30,7 @@ embassy-futures = "0.1.2"
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.0"
 heapless = { version = "0.9", default-features = false }
+embedded-hal-nb = "1.0.0"
 libm = "0.2.16"
 
 [profile.release]

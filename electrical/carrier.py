@@ -37,7 +37,10 @@ PROVENANCE. Every pin number here came off a vendor document, read on
   * which STM32G474 pin can carry which peripheral, from Zephyr's hal_stm32,
     dts/st/g4/stm32g474c(b-c-e)tx-pinctrl.dtsi, generated from ST's own database;
   * the motor's connector and its default bus speed, from
-    reference/DM-J3507-2EC_manual_V1.0_EN.pdf.
+    reference/DM-J3507-2EC_manual_V1.0_EN.pdf;
+  * the Banana Pi's 40-pin header, from Banana Pi's own docs page for the
+    BPI-M4 Zero, "GPIO Pin Define", read 2026-10-15 -- the wiki's copy of the
+    same table has its headings and no rows.
 """
 
 from __future__ import annotations
@@ -558,6 +561,78 @@ NETS: dict[str, list[tuple[str, str]]] = {
     "NRST": [("A1", "P2-19"), ("J5", "8")],
 }
 
+# ---- where J5 lands on the Banana Pi ----------------------------------------
+#
+# The other end of the SBC's lead, settled 2026-10-16. The carrier's end has been
+# fixed since the netlist was first drawn; this is which of the BPI-M4 Zero's 40
+# header pins each wire goes to, so that the Pi's software and the harness are
+# made to one table rather than to two memories of it.
+#
+# The first twelve header pins, as Banana Pi's docs page gives them: the port
+# first, then the functions the page lists for it. Every line J5 carries lands
+# in this block, so a lead made up to it is a run of pins at one end of the
+# header. Extend the table if another line ever comes here.
+BPI_HEADER = {
+    1: ("3V3",),
+    2: ("5V",),
+    3: ("PI6", "TWI0_SDA"),
+    4: ("5V",),
+    5: ("PI5", "TWI0_SCL"),
+    6: ("GND",),
+    7: ("PI12", "PWM2"),
+    8: ("PI13", "UART4_TX"),
+    9: ("GND",),
+    10: ("PI14", "UART4_RX"),
+    11: ("PH2", "UART5_TX"),
+    12: ("PI1", "I2S0_BCLK"),
+}
+
+# What each J5 net has to meet at the Pi. The MCU's transmit goes to the Pi's
+# receive and the other way about, which is the swap this table exists to stop.
+#
+# UART4 ON PINS 8 AND 10 because the Pi's serial console is UART0, on a 3-pin
+# debug header of its own, so this port is not the console. Whether the OS image
+# brings UART4 up, or needs an overlay to, has not been checked.
+#
+# BOOT0 ON PI12 IS SAFE WHILE THE PI BOOTS. The core board holds PB8 low through
+# its own 10 kOhm (R2 on reference/WeAct_STM32G474CoreBoard_SCH.pdf), so a Pi pin
+# that floats until Linux claims it leaves the MCU booting from flash. The Pi
+# drives it high only to drop the MCU into its ROM bootloader.
+#
+# NRST ON PH2 IS OPEN DRAIN: driven low, or left as an input, and never driven
+# high. The core board's reset button shorts NRST to ground and the MCU pulls its
+# own NRST low on a watchdog or brown-out reset, and a pin driven high fights
+# both. Nothing else holds it up: the board's 10 kOhm pull-up (R3) is marked not
+# fitted, so it is the MCU's internal pull-up and C2's 100 nF. PH2 is also
+# UART5_TX, so UART5 stays off.
+SBC_NEEDS = {
+    "GND": "GND",
+    "+5V": "5V",
+    "SBC_MCU_TXD": "UART4_RX",
+    "SBC_MCU_RXD": "UART4_TX",
+    "BOOT0": "GPIO",
+    "NRST": "GPIO",
+}
+
+# J5 pin -> Banana Pi header pin. The two pins of each pair land on two header
+# pins of the same kind, so neither the Pi's 5 V nor its ground hangs on one wire.
+#
+# THE WIRES ARE SOLDERED TO THE HEADER PINS, not plugged onto them. A Dupont
+# housing on the header stands about 16.5 mm over the Pi's top face, before its
+# wire has turned, and the lid is 16.4 mm over that face; a wire soldered to the
+# pin and laid flat is about 10. The JST plug at J5 is where the lead comes off.
+SBC_HEADER = {
+    "1": 6,
+    "2": 9,
+    "3": 2,
+    "4": 4,
+    "5": 10,
+    "6": 8,
+    "7": 7,
+    "8": 11,
+}
+
+
 # Pins left unconnected on purpose, and why. check() reports every pin that is
 # on neither a net nor this list, so a pin that was forgotten cannot hide among
 # the pins that were left out deliberately.
@@ -650,6 +725,39 @@ def check() -> list[str]:
                 name = parts[refdes].pins[pin]
                 faults.append(f"{refdes} {name} is not on {rail}")
 
+    # 6. J5 at the Banana Pi. Every J5 pin lands on one header pin, no header
+    #    pin takes two wires, and each lands on a pin that can be what its net
+    #    needs there: ground on ground, 5 V on 5 V, the MCU's transmit on the
+    #    Pi's receive, and the two control lines on a plain port pin.
+    net_of = {
+        endpoint: net for net, endpoints in NETS.items() for endpoint in endpoints
+    }
+    if set(SBC_HEADER) != set(parts["J5"].pins):
+        faults.append("J5: SBC_HEADER does not give every J5 pin a header pin")
+    taken: dict[int, str] = {}
+    for pin, header in SBC_HEADER.items():
+        net = net_of.get(("J5", pin), "--")
+        need = SBC_NEEDS.get(net)
+        names = BPI_HEADER.get(header)
+        if names is None:
+            faults.append(f"J5-{pin}: header pin {header} is not in BPI_HEADER")
+        elif need is None:
+            faults.append(f"J5-{pin}: nothing says what {net} needs at the Pi")
+        elif need == "GPIO":
+            if names[0][:2] not in ("PH", "PI") or not names[0][2:].isdigit():
+                faults.append(
+                    f"J5-{pin} {net}: header pin {header} is {names[0]}, not a port pin"
+                )
+        elif need not in names:
+            faults.append(
+                f"J5-{pin} {net}: header pin {header} is {'/'.join(names)}, not {need}"
+            )
+        if header in taken:
+            faults.append(
+                f"header pin {header}: takes both J5-{taken[header]} and J5-{pin}"
+            )
+        taken[header] = pin
+
     return faults
 
 
@@ -681,6 +789,19 @@ def connectors() -> str:
             lines.append(f"      {pin}  {name:<8}{net}")
         lines.append("")
     return "\n".join(lines).rstrip()
+
+
+def sbc_header() -> str:
+    lines = ["J5 at the Banana Pi's 40-pin header", ""]
+    net_of = {
+        endpoint: net for net, endpoints in NETS.items() for endpoint in endpoints
+    }
+    lines.append(f"  {'J5':<6}{'net':<14}{'header':<9}there")
+    for pin, header in SBC_HEADER.items():
+        net = net_of.get(("J5", pin), "--")
+        there = " / ".join(BPI_HEADER[header])
+        lines.append(f"  {pin:<6}{net:<14}{header:<9}{there}")
+    return "\n".join(lines)
 
 
 def netlist() -> str:
@@ -1017,6 +1138,8 @@ def main() -> int:
     print(pin_map())
     print()
     print(connectors())
+    print()
+    print(sbc_header())
     print()
     print(netlist())
     print()

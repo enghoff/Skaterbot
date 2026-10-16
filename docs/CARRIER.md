@@ -130,6 +130,54 @@ it over the same three wires. On a robot whose controller lives under a
 screwed-down lid, that is the difference between a firmware update and a
 teardown.
 
+### J5 at the Banana Pi, settled 2026-10-16
+
+The other end of the SBC lead, on the BPI-M4 Zero's 40-pin header. It is a table
+in [`electrical/carrier.py`](../electrical/carrier.py) and the check holds it to
+the header as Banana Pi's docs page gives it: ground on ground, 5 V on 5 V, the
+MCU's transmit on the Pi's receive, and no header pin taking two wires. A swapped
+serial pair, 5 V on a ground pin and a pin used twice were each fed to it, and it
+named every one.
+
+| J5 | Signal | Header pin | There |
+|---|---|---|---|
+| 1, 2 | `GND` | 6, 9 | GND |
+| 3, 4 | `+5V` | 2, 4 | 5V |
+| 5 | MCU → SBC | 10 | PI14, UART4_RX |
+| 6 | SBC → MCU | 8 | PI13, UART4_TX |
+| 7 | `BOOT0` | 7 | PI12 |
+| 8 | `NRST` | 11 | PH2 |
+
+**UART4 and not the console.** The Pi's console is UART0, on a 3-pin debug
+header of its own, so pins 8 and 10 are free of it. **Armbian does not give it
+its pins**: the board's device tree marks PI13/PI14 as `uart2`, which they do
+not have, so the port ran with nothing on it until
+[`sbc/uart4-fix.dts`](../sbc/uart4-fix.dts) corrected the function.
+[`sbc/setup_flash.sh`](../sbc/setup_flash.sh) installs that and Armbian's own
+UART4 overlay, and lets the Pi drive BOOT0 and NRST without root.
+
+**Flashing over it works, 2026-10-16.** [`sbc/flash_mcu.py`](../sbc/flash_mcu.py)
+on the Pi holds BOOT0, pulses NRST and wrote `firmware/serial_check` through ST's
+ROM bootloader: product ID 0x469, 14 232 bytes erased, written and read back,
+then the image's lines heard at 115 200 baud, reset by the pin, and its echo of
+what the Pi sent.
+
+**BOOT0 can float while the Pi boots.** The core board holds PB8 low through its
+own 10 kΩ (R2 on WeAct's schematic), so the MCU boots from flash until the Pi
+drives PI12 high on purpose.
+
+**NRST is open drain: pulled low or let go, never driven high.** The core board's
+reset button shorts it to ground and the MCU pulls its own NRST low on a watchdog
+or brown-out reset, and a pin driven high fights both. Its 10 kΩ pull-up (R3) is
+marked not fitted, so the MCU's internal pull-up and the board's 100 nF hold it.
+PH2 is also UART5_TX, so UART5 stays off.
+
+**The wires are soldered to the header pins, not plugged onto them.** A Dupont
+housing on the header stands about 16.5 mm over the Pi's top face before its
+wire has turned, and the lid is 16.4 mm over that face; nothing caught it because
+the lead is not drawn in the CAD. A wire soldered to a pin and laid flat is about
+10 mm. The JST plug at J5 is where the lead comes off.
+
 ## Power
 
 The raw pack bus arrives on J1, passes through a 1.85 A resettable fuse and a
@@ -707,17 +755,19 @@ beeping with a meter before ordering.**
 ## What is not settled
 
 - **The hold lead has landed, 2026-10-07**, on J7: the MCU drives `HOLD` on PC11
-  and reads the button on PB14 with its own pull-up. **No firmware does either
-  yet**, so until it does the power switch board is held on by a shorting link on
-  its own button plug, which is a bench arrangement rather than the robot's.
+  and reads the button on PB14 with its own pull-up. **Every firmware image does
+  both since 2026-10-16**: the shared `board` crate raises HOLD in its first
+  instructions and turns a 2 s press into an off request, after which the image
+  lets go. Read back at the pin on the carrier; no power board exists to hold
+  yet. **The SBC's hold is the open half**: pin 4 of the lead still has no GPIO
+  on the Pi, and until it has one, flashing the MCU on the robot drops the power
+  — the ROM bootloader does not hold, and the Pi's own supply comes through the
+  switch.
 - **IMU commissioning.** ES-12234 is identified from the ordered listing;
   its connector is four-pin Qwiic/JST-SH-compatible. The assembly setting is
   **JP1 2–3, 3.3 V**, with the four-wire J6 adapter above. Verify the delivered
   revision, harness continuity, pull-up rail and regulator margin before
   powering it. The manufacturer's page still contains conflicting supply text.
-- **Which UART the SBC exposes.** J5 assumes a 3.3 V serial port on the Banana
-  Pi's 40-pin header. Which one, and whether the OS leaves it free, has not been
-  checked.
 - **The INA226's alert.** Wired to a GPIO because it costs nothing to wire, not
   because a threshold has been chosen.
 - **Nothing here has been built.** Every number in this document came off a
