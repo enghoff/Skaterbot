@@ -16,6 +16,18 @@ pieces without building anything; `--pieces a,b` exports only those;
 `--as-drawn` leaves every arris sharp, which is the form gate B compares against
 `reference/golden/step` and not the form to send to a printer.
 
+**Anything sent to a bureau is a release:** `--release` writes the set into
+`exports/releases/<commit>/`, each file named for the commit it was built from
+(`pelvis-shell_8c6cfe4.step`), so the name a bureau's cart shows back says which
+geometry it holds. It refuses while `cad/` or the mass budget has uncommitted
+changes, refuses to write over a file already released, and releases nothing if
+any piece is refused. It ends with a table of file, prints, way up, volume and
+SHA-256 for [docs/ORDERS.md](../../docs/ORDERS.md), where the order is recorded
+with the bureau's settings — read off the cart when it is built. `--verify --out
+exports/releases/<commit>` re-checks a release, including that each file is
+still the one its manifest hashed. Every manifest, release or not, names the
+commit its files were built from, with `+uncommitted` when `cad/` had moved.
+
 The finish pass used to be the flag rather than the default, which meant the
 files in `exports/` were the unfinished part unless somebody remembered to ask.
 Nobody should have to remember.

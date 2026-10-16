@@ -15,6 +15,7 @@ Which pieces those are lives in mass_budget.toml beside this file, in the
     uv run tools/export.py --format stl --out simulation/meshes
     uv run tools/export.py --list                       # what there is to export
     uv run tools/export.py --verify                     # re-read what is already written
+    uv run tools/export.py --release                    # a versioned set, for a bureau
 
 Free and offline. This used to be the most expensive tool in the repository: one
 metered engine execution per piece, plus a generated wrapper scene per piece to
@@ -35,7 +36,20 @@ for itself whether its arrises were broken -- you would have to measure it -- so
 every run writes a manifest.json beside the files saying, piece by piece, which
 form was written, what the chamfer was set to and how many arrises it took. That
 is what `--verify` reads, and what anything downstream should read rather than
-assume.
+assume. It also says which commit each file was built from, and the file's
+SHA-256.
+
+A RELEASE IS WHAT GOES TO A BUREAU, and it is versioned by the commit it was
+built from. exports/ is a working directory that every run rewrites, so a file
+uploaded from it says nothing about which geometry it held by the time a quote
+comes back. `--release` writes the set into exports/releases/<commit>/ instead,
+every file named for that commit -- pelvis-shell_8c6cfe4.step -- because the
+file name is the one thing a bureau's cart shows back. It is refused from a tree
+whose cad/ or mass budget has uncommitted changes, since a commit that does not
+hold the geometry cannot version it; it is all or nothing, so one refused piece
+releases nothing; and it never writes over a file already released, because
+that file may be the one a bureau has. docs/ORDERS.md is where the version sent
+is recorded, with the settings it was printed at.
 
 EVERY FILE IS ONE SOLID. The pieces are still DRAWN as several interpenetrating
 bodies -- that is what the KCL engine forced, and the `bodies` counts in the
@@ -79,6 +93,7 @@ actually gone wrong here:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib
 import json
 import os
@@ -100,9 +115,59 @@ DEFAULT_OUT = ROOT / "exports"
 # docstring: the file itself cannot answer that question.
 MANIFEST = "manifest.json"
 
+# Where `--release` writes, under the output directory, one folder per version.
+RELEASES = "releases"
+
+# What the geometry is built from, so what has to be committed before a release
+# can name it: the drawing, and the register of which pieces there are and which
+# way up they print.
+SOURCES = ("cad", "tools/mass_budget.toml")
+
 sys.path.insert(0, str(ROOT))
 
 FORMATS = ("step", "stl")
+
+
+def git(*args: str) -> str | None:
+    """One git query's output, or None outside a checkout or without git."""
+    try:
+        done = subprocess.run(
+            ["git", *args], capture_output=True, text=True, cwd=ROOT, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    # Trailing only: a porcelain status line starts with a space that matters.
+    return done.stdout.rstrip()
+
+
+def source() -> dict:
+    """The commit the geometry is built from, and what in it has moved since.
+
+    `version` is the short commit, with `+uncommitted` on it when cad/ or the
+    budget has changes the commit does not hold -- a file built then is not
+    the commit's geometry, and must not be mistaken for it.
+    """
+    commit = git("rev-parse", "HEAD")
+    if not commit:
+        return {"commit": None, "version": None, "uncommitted": None}
+    changed = git("status", "--porcelain", "--", *SOURCES) or ""
+    moved = [line[3:] for line in changed.splitlines()]
+    short = git("rev-parse", "--short", "HEAD") or commit[:7]
+    return {
+        "commit": commit,
+        "committed": git("show", "-s", "--format=%cI", "HEAD"),
+        "version": short + ("+uncommitted" if moved else ""),
+        "uncommitted": moved,
+    }
+
+
+def filename(piece: dict, fmt: str, version: str | None = None) -> str:
+    """`pelvis-shell.step`, or `pelvis-shell_8c6cfe4.step` in a release."""
+    return f"{piece['name']}_{version}.{fmt}" if version else f"{piece['name']}.{fmt}"
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def pieces_from_budget() -> list[dict]:
@@ -356,7 +421,16 @@ def main() -> int:
         "--verify",
         action="store_true",
         help="re-read the files already in the output directory and check each"
-        " is one printable solid, without rebuilding",
+        " is one printable solid, without rebuilding. A release is verified by"
+        " naming its folder with --out",
+    )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="write a versioned set for a print order into"
+        " <out>/releases/<commit>/, every file named for the commit it was built"
+        " from. Refused if cad/ or the mass budget has uncommitted changes, and"
+        " never writes over a file already released",
     )
     # The child process's entry point, with --out naming the FILE; see produce().
     parser.add_argument("--worker", help=argparse.SUPPRESS)
@@ -384,14 +458,62 @@ def main() -> int:
             )
         return 0
 
+    origin = source()
+    out = args.out
+    version = None
+    if args.release:
+        if args.as_drawn or args.verify:
+            print(
+                "a release is the finished part, written fresh: not with"
+                " --as-drawn or --verify"
+            )
+            return 2
+        if not origin["commit"]:
+            print("no git commit to version a release by -- is this a checkout?")
+            return 2
+        if origin["uncommitted"]:
+            print(
+                "not released: a release is named for the commit it was built"
+                " from, and these have changes that commit does not hold --"
+                " commit them first:"
+            )
+            for path in origin["uncommitted"]:
+                print(f"  {path}")
+            return 2
+        version = origin["version"]
+        out = args.out / RELEASES / version
+        already = [
+            name
+            for name in (filename(p, args.format, version) for p in pieces)
+            if (out / name).exists()
+        ]
+        if already:
+            print(
+                f"not released: {out} already holds {', '.join(already)}. A"
+                " released file is never written over, because it may be the one"
+                " a bureau has; delete it by hand only if it was never sent."
+            )
+            return 2
+
     finished = not args.as_drawn
     size = chamfer_size() if finished and not args.verify else None
 
     rows: list[tuple] = []
     bad: list[str] = []
-    recorded = read_manifest(args.out) if args.verify else {}
+    recorded = read_manifest(out) if args.verify else {}
     written: dict = {}
     broke_total = sharp_total = 0
+
+    def target(piece: dict) -> Path:
+        """Where this piece is. In --verify, wherever the manifest says it was
+        written, which is how a release's versioned names are found again."""
+        if args.verify:
+            for name, known in recorded.items():
+                if known.get("piece") == piece["name"] and name.endswith(
+                    f".{args.format}"
+                ):
+                    return out / name
+        return out / filename(piece, args.format, version)
 
     # Each piece is its own process, so they run side by side: most of a
     # child's time is starting Python and OCCT, and none of it is shared.
@@ -402,11 +524,7 @@ def main() -> int:
         with ThreadPoolExecutor(max_workers=max(1, (os.cpu_count() or 2) // 2)) as pool:
             futures = {
                 piece["name"]: pool.submit(
-                    produce,
-                    piece,
-                    args.out / f"{piece['name']}.{args.format}",
-                    args.format,
-                    finished,
+                    produce, piece, target(piece), args.format, finished
                 )
                 for piece in pieces
             }
@@ -414,15 +532,16 @@ def main() -> int:
             # G holds a piece to -- walls, gaps, and nothing starting in mid-air
             # -- and not only to being one solid. Asked here, while the children
             # build the files. The STLs are the simulation's, and a part too
-            # thin to print still has a mass to simulate.
-            if args.format == "step" and finished:
+            # thin to print still has a mass to simulate -- unless they are a
+            # release, which some bureaus take in place of the STEP.
+            if finished and (args.format == "step" or args.release):
                 import gate_g
 
                 shapes = {p["name"]: gate_g.check_shape(p) for p in pieces}
             produced = {name: future.result() for name, future in futures.items()}
 
     for piece in pieces:
-        path = args.out / f"{piece['name']}.{args.format}"
+        path = target(piece)
         box = ""
         found: list[str] = []
 
@@ -443,6 +562,10 @@ def main() -> int:
                 broken = known.get("arrises_broken", "?")
                 sharp = known.get("arrises_left_sharp", "?")
             if path.exists():
+                if known and known.get("sha256") not in (None, sha256(path)):
+                    found.append(
+                        "not the file the manifest recorded: its SHA-256 differs"
+                    )
                 found += verify(path, args.format)
         else:
             result = produced[piece["name"]]
@@ -468,6 +591,7 @@ def main() -> int:
                         if "FAIL" in text or text.startswith("          ")
                     ]
             if not found:
+                volume = result.get("volume")
                 written[path.name] = {
                     "piece": piece["name"],
                     "form": "finished" if finished else "as drawn",
@@ -476,7 +600,13 @@ def main() -> int:
                     "arrises_left_sharp": sharp if finished else None,
                     "bodies_drawn": bodies,
                     "solids": 1,
+                    "prints": piece.get("prints", 1),
                     "print_up": piece.get("print_up"),
+                    "volume_cm3": round(volume / 1000, 2) if volume else None,
+                    "version": origin["version"],
+                    "commit": origin["commit"],
+                    "uncommitted": origin["uncommitted"],
+                    "sha256": sha256(path),
                     "written": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 }
                 if finished:
@@ -495,13 +625,27 @@ def main() -> int:
             for problem in found:
                 print(f"  {piece['name']}: {problem}")
 
-    write_manifest(args.out, written)
+    if args.release and bad:
+        # All or nothing: a set with a piece missing is not a release of the
+        # commit, and leaving its other files would block the one that is.
+        for name in written:
+            (out / name).unlink(missing_ok=True)
+        written = {}
+        if out.exists() and not any(out.iterdir()):
+            out.rmdir()
+    write_manifest(out, written)
 
     if rows:
         print()
         report(rows)
         print()
-        print(f"{len(rows)} file(s) in {args.out}")
+        print(f"{len(rows)} file(s) in {out}")
+        if origin["uncommitted"] and not args.verify:
+            print(
+                f"built from {origin['version']}: cad/ or the budget had changes"
+                " that commit does not hold, so this is not a version of anything"
+                " -- a print order wants --release"
+            )
         if args.verify:
             print(
                 f"form as {MANIFEST} records it; a file it does not name has to"
@@ -517,11 +661,36 @@ def main() -> int:
                 "AS DRAWN: every arris left sharp. This is the form gate B"
                 " compares against reference/golden/step, not the form to print."
             )
+        if args.release and not bad:
+            release_table(out, written, origin)
 
     if bad:
         print(f"\nREFUSED: {', '.join(sorted(set(bad)))}")
+        if args.release:
+            print("nothing released: a release is every piece asked for, or none")
         return 1
     return 0
+
+
+def release_table(out: Path, written: dict, origin: dict) -> None:
+    """What was released, as the table docs/ORDERS.md records an order against.
+
+    The bureau's settings go beside it there, read off the cart when it is
+    built: nothing in a STEP says what infill or layer height it was quoted at.
+    """
+    print(
+        f"\nrelease {origin['version']}, commit {origin['commit']}"
+        f" of {origin['committed']}, in {out}\n"
+    )
+    print("| File | Prints | Up | cm³ | SHA-256 |")
+    print("|---|---:|---|---:|---|")
+    for name, record in sorted(written.items()):
+        print(
+            f"| {name} | {record['prints']} | {record['print_up']} |"
+            f" {record['volume_cm3']} | {record['sha256'][:12]} |"
+        )
+    total = sum(record["prints"] for record in written.values())
+    print(f"\n{total} prints from {len(written)} files")
 
 
 if __name__ == "__main__":

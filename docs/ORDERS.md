@@ -4,6 +4,38 @@ These records preserve what was actually ordered, including items that may not
 match the current BOM. An order does not establish delivery or suitability for
 the robot.
 
+## Recording a 3D print order
+
+A print cart is recorded **when it is built**, read off the bureau's page, and
+not after it is placed. A Zbotic print cart was cleared unplaced on 2026-10-14
+because nothing recorded the infill and quality it had been set to, and a STEP
+file carries neither.
+
+**The default, unless the owner asks for something else for an order:** black
+PLA, FDM at a 0.12 mm layer (Zbotic's "FDM 0.12mm High Quality"), 100 % infill.
+Set by the owner on 2026-10-14. The mass roll-up still prices the parts in
+PA12 at 0.93 g/cm³; solid PLA at about 1.24 makes the printed structure
+roughly a third heavier, about 140 g on the 430 g it counts, which leaves the
+robot near 175 g under its ceiling rather than 317.
+
+Every print order here records:
+
+- **The release it was built from.** Upload only files written by
+  `uv run tools/export.py --release`, which writes them into
+  `exports/releases/<commit>/` named for the commit they were built from, such
+  as `pelvis-shell_8c6cfe4.step`, and refuses while `cad/` has uncommitted
+  changes. Paste the table it prints: file, prints, which way up, volume and
+  SHA-256. A file from `exports/` itself is a working copy and is not a version
+  of anything.
+- **The settings, per file where they differ:** process and machine (FDM, SLA,
+  SLS, MJF), material and colour, layer height or the bureau's quality preset
+  by its own name, infill percentage and pattern, wall or perimeter count, top
+  and bottom layers, supports, orientation if the bureau asks, and finishing.
+  Where the page offers a setting and it was left at its default, record the
+  default's value, not "default".
+- **Quantity, unit and line price, GST, shipping, and the quoted lead time,**
+  as for any other order.
+
 ## QuartzComponents — order #433538
 
 - **Confirmed:** 2026-10-05.

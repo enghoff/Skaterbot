@@ -1099,9 +1099,13 @@ quote comes back against it.
 
 ### What is being sent out
 
-**Thirteen prints from nine STEP files**, which `uv run tools/export.py` writes into
-`exports/`. Two handed thighs, two handed shins, two identical wheel adapters, four
-journal sleeves, the pelvis shell, the torso cover and the electronics deck.
+**Fifteen prints from ten STEP files** as the CAD stood on 2026-10-14: two handed
+thighs, two handed shins, two identical wheel adapters, two wheel caps, four journal
+sleeves, the pelvis shell, the torso cover and the electronics deck. **Send only a
+release**: `uv run tools/export.py --release` writes the set into
+`exports/releases/<commit>/` with each file named for the commit it was built from,
+and prints the count and the table that [ORDERS.md](ORDERS.md#recording-a-3d-print-order)
+records the order against, with the bureau's settings.
 
 | | |
 |---|---|

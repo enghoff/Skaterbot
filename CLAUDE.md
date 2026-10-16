@@ -126,7 +126,7 @@ six are free and offline.**
 | `/check` | `tools/check.py` | build every part and scene, then lint and format-check `cad/`, `tools/` and `simulation/`. A few seconds. |
 | `/gates` | `tools/gate_[a-i].py` | the nine gates the CAD is held to: dimensions, solid identity, mass, kinematics, features, clearances, printability, fit, assembly order. About seven minutes. |
 | `/mass` | `tools/mass.py` | measure the printed parts and roll the robot's mass up against its 2 300 g ceiling, with the delta from the committed baseline. |
-| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads. Each file is the piece united into one solid, read back and checked by OCCT and by trimesh, and refused if it is not. Pieces come out as they would be printed, arrises broken; `--as-drawn` is the form the gates compare. |
+| `/step` | `tools/export.py` | write one STEP file per printable piece into `exports/`, or the STLs the simulation reads. Each file is the piece united into one solid, read back and checked by OCCT and by trimesh, and refused if it is not. Pieces come out as they would be printed, arrises broken; `--as-drawn` is the form the gates compare. `--release` is what goes to a bureau: a set in `exports/releases/<commit>/`, every file named for the commit, refused while `cad/` is uncommitted, and recorded in `docs/ORDERS.md` with the print settings when the cart is built. |
 | `/view` | `tools/view.py` | show a model in the OCP CAD Viewer, tessellated locally. |
 | `/urdf` | `simulation/build_urdf.py` | regenerate the simulation URDF from the CAD and check it against the pose scenes. |
 
