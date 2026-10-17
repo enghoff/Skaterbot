@@ -2058,6 +2058,10 @@ def drc(report: Report) -> None:
 # ---- the drawing -----------------------------------------------------------------------
 
 
+DIODE_COLOUR = "#8e24aa"
+ZENER_COLOUR = "#2e7d32"
+
+
 def draw(path: Path, parts: list[Placed], tracks=(), vias=()) -> None:
     import matplotlib
 
@@ -2123,12 +2127,68 @@ def draw(path: Path, parts: list[Placed], tracks=(), vias=()) -> None:
         )
     for via in vias:
         ax.add_patch(Circle((via["x"], via["y"]), VIA_PAD / 2, color="#333"))
+    # WHICH WAY EACH DIODE GOES, drawn over its two pads as the schematic symbol:
+    # standing on end, a diode is two round pads on the board and nothing says
+    # which is which. The roles come from electrical/power.py, not from the pad
+    # numbers. Above the copper and below the pads' net names, so both still read.
+    # A zener is drawn apart from the rest, since it is the one that conducts
+    # backwards on purpose and goes in looking exactly like the others.
+    netlist = {part.refdes: part for part in power.PARTS}
+    for part in parts:
+        listed = netlist.get(part.refdes)
+        pins = listed.pins if listed else {}
+        if sorted(pins.values()) != ["A", "K"]:
+            continue
+        zener = "zener" in listed.partNumber.lower()
+        colour = ZENER_COLOUR if zener else DIODE_COLOUR
+        at = {pad.name: (x, y) for pad, x, y, _, _ in part.pads()}
+        (ax_, ay), (kx, ky) = (
+            at[next(n for n, role in pins.items() if role == r)] for r in ("A", "K")
+        )
+        length = math.hypot(kx - ax_, ky - ay)
+        ux, uy = (kx - ax_) / length, (ky - ay) / length
+        nx, ny = -uy, ux
+        half = 0.9
+        ax.add_patch(
+            Polygon(
+                [
+                    (ax_ + nx * half, ay + ny * half),
+                    (ax_ - nx * half, ay - ny * half),
+                    (kx, ky),
+                ],
+                closed=True,
+                facecolor=colour,
+                edgecolor=colour,
+                alpha=0.55,
+                lw=1.0,
+                zorder=2.5,
+            )
+        )
+        bar = [(kx + nx * half, ky + ny * half), (kx - nx * half, ky - ny * half)]
+        if zener:
+            # The bar's ends bent opposite ways, as the zener symbol draws it.
+            tip = 0.45
+            bar = [
+                (bar[0][0] - ux * tip, bar[0][1] - uy * tip),
+                *bar,
+                (bar[1][0] + ux * tip, bar[1][1] + uy * tip),
+            ]
+        ax.plot(
+            [p[0] for p in bar],
+            [p[1] for p in bar],
+            color=colour,
+            lw=2.5,
+            solid_capstyle="butt",
+            zorder=2.5,
+        )
     ax.set_xlim(X_MIN - 1, X_MAX + 1)
     ax.set_ylim(Y_MIN - 1, Y_MAX + 1)
     ax.set_aspect("equal")
     ax.grid(True, lw=0.3, alpha=0.5)
     ax.set_title(
-        "power switch board from above, torso x and y in mm -- red top, blue bottom"
+        "power switch board from above, torso x and y in mm -- red top, blue bottom\n"
+        "purple: each diode, anode triangle to cathode bar, green if a zener -- "
+        "the body stands on the bar's pad, band down"
     )
     fig.tight_layout()
     fig.savefig(path)
