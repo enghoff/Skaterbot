@@ -107,6 +107,17 @@ the lid was not on. So:
   October 2026, with the motor's threads cut where the disc puts them
   (`cad/hardware.py`'s `boltedToOutput`), so gate H holds each screw against
   its disc, its thread's floor, and whatever lands over its head.
+- **A nut is never a spacer.** A nut is the thread a screw ends in, and nothing
+  else. Run up a screw to hold a board off, it is threaded to that screw: it
+  clamps tight as the screw is driven, and the screw stops on the nut instead of
+  pulling the joint together or cutting its thread in the print. Both torso
+  boards stood on M3 nuts and the bus monitor on stacked M2 nuts until October
+  2026. Whatever a board stands on is an unthreaded spacer or a threaded
+  standoff, drawn as a group of its own whose name ends in `standoffs`, with its
+  designation in `cad/electronics.py`'s `partNumbers`; building the torso refuses
+  any such group that is not designated, or is designated as a nut, so `/check`
+  fails where one is written. A height set by an offset and no drawn spacer is
+  how the bus monitor's nuts escaped, so draw it.
 - **A bought part is its listing until one is measured.** The battery bay was
   drawn for a pack of a size nobody makes, and nothing could have caught that
   but reading the listings. Where a part's size comes from, and whether it is in

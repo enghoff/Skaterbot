@@ -273,7 +273,9 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         ),
     ]
     # THE POWER SWITCH BOARD'S FOUR PRINTED SPACERS WENT on 2026-10-07 with the
-    # bought distribution board they stood on: the board sits on its nuts now.
+    # bought distribution board they stood on: the board sits on four 3 mm
+    # unthreaded spacers now, which are bought and inside the electronics
+    # allowance like the nuts they replaced.
 
     # The two hip pitch actuators. Their housings are held by the pelvis
     # clevises, so their mass is the pelvis's even though their output drives

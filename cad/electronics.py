@@ -47,6 +47,7 @@ are bought ones that bolt or clamp themselves to it.
 from __future__ import annotations
 
 import math
+import re
 
 from build123d import Align, Axis, Box, Cylinder, Pos, Rot, fillet
 
@@ -228,8 +229,9 @@ sbcHeight = 16.0
 # cad/torso.py prints (docs/DIMENSION_AUDIT.md, item 3). Over the deck, under the
 # carrier, it needed either a slot through the deck for the socket or the carrier
 # 3 mm higher, and the SBC rides on the carrier and the space reserved over it
-# already reaches the lid. Under the deck over the power bay there is 15.6 mm of
-# air, and nothing else has to move. Nothing glues it: it slides into two rails
+# already reaches the lid. Under the deck over the power bay there is 14.1 mm of
+# air -- 15.6 until the board's posts were raised on 2026-10-17 -- and nothing
+# else has to move. Nothing glues it: it slides into two rails
 # hanging off the deck's underside (cad/deck.py).
 #
 # The board: 10.5 along the edge its plug goes in through and 10.0 the other way,
@@ -804,7 +806,15 @@ batteryLegLaneZ = batteryConnectorZ + xt60Span + 1.0
 # the panel-hardware section further down, where that is measured rather than
 # asserted.
 pdbY = 0.0
-pdbBoardZ = lowerBandZ + standoffHeight
+# THE FOUR POSTS STAND 1.5 mm PROUD OF THE SADDLE TOP, the owner's call,
+# 2026-10-17. Until then they stopped level with it, so the board's underside
+# was its spacers' 3 mm over the right hip saddle, and a through-hole board's
+# trimmed leads, 2 mm long, left a millimetre of air over the shell. Raising the
+# posts raises the board and everything on it by the same 1.5 mm, which comes
+# out of the air over the board's parts to the deck.
+powerPostRise = 1.5
+powerPostTopZ = lowerBandZ + powerPostRise
+pdbBoardZ = powerPostTopZ + standoffHeight
 pdbTopZ = pdbBoardZ + pdbThickness
 # A RULE LEARNED IN THIS WALL AND WORTH KEEPING THOUGH ITS OCCASION HAS GONE.
 # While the connectors were bonded into a printed panel, each opening was its
@@ -1402,6 +1412,16 @@ def carrier_screw_xy() -> list[tuple[float, float]]:
     return [onCarrier(x, y) for x, y in board]
 
 
+def bus_sense_screw_xy() -> list[tuple[float, float]]:
+    """The bus monitor's two screws, in torso coordinates.
+
+    The outer pair of its four holes, busSenseHoleInset in from its outboard
+    edge -- the pair electrical/carrier_pcb.py drills through the carrier.
+    """
+    atX = busSenseX + busSenseWidth / 2 - busSenseHoleInset
+    return [(atX, busSenseY + sy * busSenseHolePitch / 2) for sy in (-1, 1)]
+
+
 # The three CAN transceivers, stacked in a column at board x 90.
 transceiverX, transceiverY = onCarrier(90.0, 23.0)
 transceiverPitch = 11.0
@@ -1443,12 +1463,19 @@ harnessHeight = 12.8
 # other plug on both boards is XH, at 2.5 mm against PH's 2.0 -- so a motor's
 # power lead cannot go into a signal socket.
 #
-# HOW IT IS HELD. Four M3 self-tapping screws from above, which is the only
-# direction a screwdriver has in this bay, through an M3 nut on a washer that
-# stands the board 3 mm off each printed post: the bought board's own four
+# HOW IT IS HELD. Four M3 x 8 self-tapping screws from above, which is the only
+# direction a screwdriver has in this bay, each through a 3 mm unthreaded plastic
+# spacer that stands the board off its printed post: the bought board's own four
 # screws and posts, on the same 45 mm square, so the pelvis does not change at
 # all. They were M3 x 20 through an 8 mm spacer and both boards while there were
-# two; one board on the nuts takes the M3 x 8 the bought board took alone.
+# two.
+#
+# IT STOOD ON AN M3 NUT AND A WASHER UNTIL 2026-10-15, which is the one way it
+# must not be held. A nut run up a screw to hold a board off is threaded to that
+# screw, so it clamps tight as the screw is driven and the screw stops on it,
+# short of pulling the board down and cutting its thread in the post. An
+# unthreaded spacer carries the clamp and nothing else. torsoElectronicsGroups()
+# refuses a nut in any group a board stands on.
 #
 # THE BOARD IS 9.6 mm LOWER THAN IT WAS, which is the bought board and the
 # spacer, and the room went where it was short: the two TO-220 rows had 1.1 mm
@@ -2061,7 +2088,7 @@ partNumbers = {
     "battery foam": "5 mm anti-static EVA sheet, cut to fit",
     "battery pack connectors": "2 x AMASS XT60, each pack's female mated with a male of the series harness",
     "battery leads": "XT60 2M1F series harness, its female cut off; the packs' and the BMS's own leads",
-    "power switch standoffs": "M3 hex nut on a 0.5 mm washer, 2.9 mm",
+    "power switch standoffs": "3 mm unthreaded plastic spacer, 3.5 bore x 6 OD, OnlyScrews CS3.53P",
     "capacitor bank": "2 x Rubycon 35ZLH470M10X16, 470 uF 35 V -- bank not sized",
     "power switch board": "ours -- 50 x 66 mm two-layer PCB, electrical/power_pcb.py",
     "power switch parts": "the fuse, the switch and the outputs -- electrical/power.py",
@@ -2070,7 +2097,8 @@ partNumbers = {
     "on/off button": "12 mm panel-mount momentary push button, M12 x 1 bushing",
     "charge inlet": "AMASS XT60E-M panel mount, pin contacts",
     "antenna bulkhead": "SMA or RP-SMA bulkhead jack on a u.FL pigtail",
-    "controller standoffs": "M3 brass, 6 mm A/F x 3 mm",
+    "controller standoffs": "3 mm unthreaded plastic spacer, 3.5 bore x 6 OD, OnlyScrews CS3.53P",
+    "bus monitor standoffs": "the same 3 mm unthreaded spacer, on an M2 screw",
     "controller carrier board": "ours -- 140 x 46 mm two-layer PCB, electrical/carrier_pcb.py",
     "SBC standoffs": "M2.5 x 10 female-female hex standoff, 5 mm A/F, on M2.5 x 6 SHCS",
     "CAN transceivers": "MCP2562FD-E/P, 8-pin PDIP, in sockets",
@@ -2138,9 +2166,10 @@ def torsoElectronicsGroups() -> dict[str, list]:
         "battery leads": batteryHarness(),
         # ---- power entry: our own board and what stands on it ----------------
         # THERE IS NO BOUGHT BOARD HERE ANY MORE, 2026-10-07. A SwiftWing
-        # distribution board stood on these nuts with the power switch board 8 mm
-        # over it on printed spacers, and every motor lead was soldered to it
-        # underneath. The power switch board stands on the nuts itself now and
+        # distribution board stood on these posts with the power switch board
+        # 8 mm over it on printed spacers, and every motor lead was soldered to
+        # it underneath. The power switch board stands on the posts itself now,
+        # on 3 mm unthreaded spacers since 2026-10-15 where it stood on nuts, and
         # carries the motor outputs as plugs.
         "power switch standoffs": [
             standoff(
@@ -2148,7 +2177,7 @@ def torsoElectronicsGroups() -> dict[str, list]:
                 standoffHeight,
                 atX,
                 atY,
-                lowerBandZ,
+                powerPostTopZ,
             )
             for atX, atY in power_switch_screw_xy()
         ],
@@ -2177,11 +2206,23 @@ def torsoElectronicsGroups() -> dict[str, list]:
         # in the CAD because the bill had never bought one.
         "power switch board": [powerSwitchBoard()],
         "power switch parts": powerSwitchParts(),
-        # ON THE CONTROLLER CARRIER, September 2026, on two M2 screws with nuts
-        # for standoffs. It lay on the distribution board held by tape, then hung
-        # from the deck, then sat on two pads off the rear wall; the dimension
-        # block says what its photographs showed, and electrical/carrier_pcb.py
-        # places it.
+        # ON THE CONTROLLER CARRIER, September 2026, on two M2 x 10 up through
+        # the carrier, each through a 3 mm unthreaded spacer and the monitor, with
+        # a nut on top. Two nuts stacked on each screw stood it off until
+        # 2026-10-17, and a nut is never a spacer. It lay on the distribution
+        # board held by tape, then hung from the deck, then sat on two pads off
+        # the rear wall; the dimension block says what its photographs showed,
+        # and electrical/carrier_pcb.py places it.
+        "bus monitor standoffs": [
+            standoff(
+                standoffDiameter,
+                busSenseStandoff,
+                atX,
+                atY,
+                controllerBoardZ + pcbThickness,
+            )
+            for atX, atY in bus_sense_screw_xy()
+        ],
         "bus monitor": [
             slab(
                 busSenseWidth,
@@ -2615,6 +2656,24 @@ def torsoElectronicsGroups() -> dict[str, list]:
         raise KeyError(
             "partNumbers names groups that do not exist: " + ", ".join(orphaned)
         )
+    # A NUT IS NEVER A SPACER, 2026-10-17. Whatever a board stands on is a group
+    # of its own, named for its standoffs, with a designation here -- and that
+    # designation may not be a nut. A nut run up a screw to hold something off is
+    # threaded to the screw, so it clamps tight as the screw is driven and the
+    # screw stops on it rather than pulling the joint together. Both boards in
+    # this torso and the bus monitor stood on nuts until the bill replaced them;
+    # this refuses the next one where it is written. CLAUDE.md has the rule.
+    for name in groups:
+        if not name.endswith(("standoffs", "spacers")):
+            continue
+        number = partNumbers.get(name)
+        if number is None:
+            raise KeyError(f"{name} has no designation, so nothing says what it is")
+        if re.search(r"\bnuts?\b", number, re.IGNORECASE):
+            raise ValueError(
+                f"{name} is designated {number!r}: a nut is never a spacer -- "
+                "stand it on an unthreaded spacer or a threaded standoff"
+            )
     for name in ("antenna bulkhead",):
         placement = sideControlPlacement(name)
         groups[name] = [placement * body for body in groups[name]]

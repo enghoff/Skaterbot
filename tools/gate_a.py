@@ -185,8 +185,8 @@ ADDED = {
     # printed pad on the wall, so powerSwitchPadScrewY, powerSwitchPadHeight and
     # powerSwitchPadWidth are gone with it.
     #
-    # AND THE BOUGHT BOARD WENT, 2026-10-07. This board stands on its nuts where
-    # it stood, 9.6 mm lower, and carries the six motor outputs and the carrier's
+    # AND THE BOUGHT BOARD WENT, 2026-10-07. This board stands on its spacers
+    # where it stood, 9.6 mm lower, and carries the six motor outputs and the carrier's
     # feed on JST-XH headers, so it reaches both long walls: 50 x 66 on the same
     # four holes, powerSwitchWallGap off each wall. powerSwitchSpacer and
     # powerSwitchSpacerDiameter went with the spacers. xhDepth and xhPinOffset
@@ -194,7 +194,14 @@ ADDED = {
     # on the board shares and which the two that stood there before typed out;
     # phDepth, phPinOffset and phHeight are the same for the JST-PH motor
     # outputs.
-    "powerSwitchBoardZ": -29.5,
+    #
+    # AND IT CAME UP 1.5 mm, 2026-10-17, on posts that stand that far proud of
+    # the hip saddle's top rather than level with it: the owner's call, for air
+    # between the board's trimmed leads and the shell. powerPostRise is the
+    # figure and powerPostTopZ the plane the spacers stand on.
+    "powerSwitchBoardZ": -28.0,
+    "powerPostRise": 1.5,
+    "powerPostTopZ": -31.0,
     "powerSwitchRightX": 71.55,
     "powerSwitchRearY": -33.0,
     "powerSwitchFrontY": 33.0,
@@ -578,8 +585,8 @@ ADDED = {
     "pdbThickness": 1.6,
     "pdbHolePitch": 45.0,
     "pdbY": 0.0,
-    "pdbBoardZ": -29.5,
-    "pdbTopZ": -27.9,
+    "pdbBoardZ": -28.0,
+    "pdbTopZ": -26.4,
     "bayGap": 15.099999999999994,
     "panelX": 36.55,
     # The Matek 12S Pro BEC, which replaced the generic buck module this file
@@ -1318,11 +1325,12 @@ CHANGED = {
     ),
     "capacitorZ": (
         -18.9,
-        -27.9,
+        -26.4,
         "the bank stands on the power switch board, not on the bought one: a 16 "
         "mm can on the bought board would have been inside a board 8 mm above it. "
-        "And that board stands where the bought one stood since 2026-10-07, on its "
-        "nuts on the posts, so the cans came down 9.6 mm with it from -18.3",
+        "And that board stands where the bought one stood since 2026-10-07, on "
+        "spacers on the posts, so the cans came down 9.6 mm with it from -18.3, "
+        "and back up 1.5 to -26.4 when the posts were raised on 2026-10-17",
     ),
     "capacitorDiameter": (
         16.0,

@@ -569,7 +569,10 @@ def check_packing() -> tuple[int, int]:
     came off when the board took the bought board's four posts, and the slice that
     left it out went on leaving out whatever body was second to last: a hoist lug,
     then a hip-arm brace, neither of them anywhere near the bay. Its row is
-    measured against the whole shell since 2026-10-14.
+    measured against the whole shell since 2026-10-14 -- and against the shell
+    less the board's four posts since 2026-10-17, when they were raised 1.5 mm
+    proud of the hip saddle and so into the bay. The fit that matters, the
+    spacers standing on them, is asserted in FITS below.
 
     THE BATTERY'S RAILS ARE THE THIRD, 2026-09-30. The packs shrank inside a
     bay that did not, so the stop on each rail's end, which catches the foot of
@@ -601,6 +604,9 @@ def check_packing() -> tuple[int, int]:
     # calls the pelvis proper.
     rails = len(torso.batteryRails()) + len(torso.batteryPads())
     shellLessRails = shell[:7] + shell[7 + rails :]
+    # And the power board's four posts, which come straight after them.
+    posts = len(torso.powerEntryPosts())
+    shellLessPosts = shell[: 7 + rails] + shell[7 + rails + posts :]
 
     # The cavity, in the robot's frame: the shell's inner walls, its cavity floor
     # and the underside of the lid.
@@ -615,6 +621,7 @@ def check_packing() -> tuple[int, int]:
     checked = failed = 0
     without = {
         "battery": shellLessRails,
+        "power entry": shellLessPosts,
     }
     for name, item in zip(items, groups["reservations"]):
         against = without.get(name, shell)
@@ -753,6 +760,17 @@ FITS = [
     # electrical/carrier_pcb.py measures it there against everything in this
     # torso, so the rows went with the pads.
     #
+    # ITS SPACERS ARE DRAWN SINCE 2026-10-17, when two M2 nuts stacked on each
+    # screw stopped standing in for them: a nut is never a spacer.
+    (
+        "bus monitor on its two spacers",
+        "bus monitor",
+        "bus monitor standoffs",
+        0.0,
+        "the monitor SITS ON its spacers, so any gap here means it is hanging on "
+        "its screws, or that its header and its spacers disagree on its height",
+    ),
+    #
     # THE SBC ON ITS STANDOFFS, September 2026, when it came off the deck's
     # printed posts and onto bought M2.5 x 10 pillars on the controller carrier.
     (
@@ -775,28 +793,39 @@ FITS = [
     ),
     # THE POWER SWITCH BOARD, September 2026, and its numbers are the whole of
     # how it is held and what it has to miss. Four screws go down through it and
-    # an M3 nut on a washer into the printed posts. It stood 8 mm over a bought
-    # distribution board on printed spacers until 2026-10-07; that board went,
-    # and this one stands on the nuts where it stood and carries the motor
+    # a 3 mm unthreaded spacer into the printed posts; it stood on an M3 nut and
+    # a washer until 2026-10-15, and a nut is never a spacer. It stood 8 mm over
+    # a bought distribution board on printed spacers until 2026-10-07; that
+    # board went, and this one stands where it stood and carries the motor
     # outputs itself.
     (
         "power switch board on its standoffs",
         "power switch board",
         "power switch standoffs",
         0.0,
-        "the board SITS ON the four nuts, so any gap here means it is hanging on "
-        "its screws -- the same test the packs on their rails get. They are the "
-        "bought board's own four posts on its 45 mm square, so the pelvis did "
+        "the board SITS ON the four spacers, so any gap here means it is hanging "
+        "on its screws -- the same test the packs on their rails get. They are "
+        "the bought board's own four posts on its 45 mm square, so the pelvis did "
         "not change when that board went",
+    ),
+    (
+        "power switch spacers on the posts",
+        "power switch standoffs",
+        "posts",
+        0.0,
+        "the spacers STAND ON the four printed posts, 1.5 mm proud of the hip "
+        "saddle since 2026-10-17. Any gap here means the spacers and the posts "
+        "disagree about the plane the board stands on",
     ),
     (
         "the power switch parts vs the deck",
         "power switch parts",
         "deck plate",
-        15.6,
+        14.1,
         "THE TWO TO-220 SWITCHES ARE THE TALLEST THING ON THIS BOARD AGAIN, "
-        "standing 18.8 mm on their leads and leaving 15.6 mm under the deck "
-        "since the board came down onto the posts on 2026-10-07; it was 6.0 "
+        "standing 18.8 mm on their leads and leaving 14.1 mm under the deck "
+        "since the posts were raised 1.5 mm on 2026-10-17, and 15.6 from the "
+        "day the board came down onto the posts, 2026-10-07; it was 6.0 "
         "while it stood over the bought distribution board. "
         "It was 1.1 mm while the PBV-F1 Kelvin shunt stood here at 20.7 mm "
         "installed, and that shunt went with the current measurement on "
@@ -813,10 +842,11 @@ FITS = [
         "the capacitor bank vs the deck plate over it",
         "capacitor bank",
         "deck plate",
-        18.4,
-        "a 16 mm can standing on this board, under a deck 34.4 mm above it "
-        "since the board came down 9.6 mm onto the posts. The two switches "
-        "beside them are what governs this bay's height, at 15.6",
+        16.9,
+        "a 16 mm can standing on this board, under a deck 32.9 mm above it "
+        "since the posts were raised 1.5 mm on 2026-10-17, and 34.4 from when "
+        "the board came down 9.6 mm onto them. The two switches beside them are "
+        "what governs this bay's height, at 14.1",
     ),
     # THE IMU UNDER THE DECK, 2026-10-14. It was a board in a three-rib seat on
     # the shell floor, "IMU board vs the ribs that aim it" at 0.2, until its
@@ -872,10 +902,11 @@ FITS = [
         "IMU chip vs the capacitor bank under it",
         "IMU sensor",
         "capacitor bank",
-        12.27,
+        10.77,
         "what is under the IMU's chip, and the warmest thing that is: the power "
         "switch board's two TO-220 switches are further over, at x 47.5 and "
-        "beyond, which is why the IMU is at x 38 and not over them",
+        "beyond, which is why the IMU is at x 38 and not over them. 12.27 until "
+        "the board came up 1.5 mm with its posts, 2026-10-17",
     ),
 ]
 
@@ -890,6 +921,7 @@ def check_fits(items: tuple) -> tuple[int, int]:
     # them instead of the millimetre and a half that is actually in question.
     bodies = {
         "ledges": torso.deckLedges(),
+        "posts": torso.powerEntryPosts(),
         "rails": torso.batteryRails(),
         "packs": electronics.batteryPacks(),
         "deck": deck.electronicsDeck(),
@@ -919,6 +951,7 @@ def check_fits(items: tuple) -> tuple[int, int]:
                 "SBC standoffs",
                 "BMS board",
                 "bus monitor",
+                "bus monitor standoffs",
                 "capacitor bank",
                 "power switch board",
                 "power switch parts",

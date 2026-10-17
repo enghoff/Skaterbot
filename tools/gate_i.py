@@ -115,6 +115,7 @@ DECK = [
     "SBC 40-pin header",
     "SBC ports",
     "SBC microSD slot",
+    "bus monitor standoffs",
     "bus monitor",
     "logic BEC",
 ]
@@ -127,22 +128,31 @@ def steps() -> list[tuple[str, list, list, tuple]]:
     clear of the shell. What a part threads into is left out of what it is
     measured against, because a thread is drawn as an overlap."""
     return [
-        # ONE BOARD IN THE POWER BAY since 2026-10-07, on its nuts, where a
-        # bought distribution board went in first and this one followed it on
-        # spacers. The nuts go down with it, each held on its screw.
+        # ONE BOARD IN THE POWER BAY since 2026-10-07, where a bought
+        # distribution board went in first and this one followed it on spacers.
         #
-        # AND IT DOES NOT GO STRAIGHT DOWN. It reaches both long walls, under
-        # the deck's two ledges on this side, and its outboard corners stand
-        # under the lid's two screw bosses. It goes in SIDEWAYS instead, while
-        # the battery bay beside it is still empty: down 30 mm inboard of its
-        # station, outboard under the ledges and the bosses, and the last 5 mm
-        # down onto the nuts, which is enough for the screws' tips to come out
-        # of the posts. Run backwards, that is this path. It was notched round
-        # the ledges for a day so that it could drop past them, 2026-10-07.
+        # ITS FOUR SPACERS GO IN FIRST, each dropped onto its post, since
+        # 2026-10-15. The board stood on four nuts until then, which went down
+        # with it threaded on its screws -- and a nut is never a spacer. An
+        # unthreaded spacer will not stay on a screw pointing down, so it is
+        # put on the post and the board comes down onto it.
         (
-            "power switch board on its nuts",
+            "power switch spacers onto the posts",
+            ["power switch standoffs"],
+            [(UP, None)],
+            (),
+        ),
+        # AND THE BOARD DOES NOT GO STRAIGHT DOWN. It reaches both long walls,
+        # under the deck's two ledges on this side, and its outboard corners
+        # stand under the lid's two screw bosses. It goes in SIDEWAYS instead,
+        # while the battery bay beside it is still empty: down 30 mm inboard of
+        # its station, outboard under the ledges and the bosses, and the last
+        # 5 mm down onto the spacers. The screws go in from above after it.
+        # Run backwards, that is this path. It was notched round the ledges for
+        # a day so that it could drop past them, 2026-10-07.
+        (
+            "power switch board onto its spacers",
             [
-                "power switch standoffs",
                 "power switch board",
                 "power switch parts",
                 "capacitor bank",

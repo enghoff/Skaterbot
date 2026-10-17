@@ -236,6 +236,7 @@ EXPECTED_CHANGE_G = {
             - 13.4585829280
             + 9805.0214042657
             - 132.0
+            + 354.5475688734
         )
         * 0.00106,
         "the torso grew from 125 x 68 x 65 to 153.9 x 72 x 86 in two steps: to "
@@ -398,7 +399,10 @@ EXPECTED_CHANGE_G = {
         "union, which is what prints, gains 6 678.7 mm3, and gate B holds it. "
         "THE IMU SEAT CAME OFF THE FLOOR, 2026-10-14, 132.0 mm3 and -0.14 g: "
         "the IMU bought has its socket on its underside and hangs under the "
-        "electronics deck instead, and gate B holds the removal.",
+        "electronics deck instead, and gate B holds the removal. "
+        "THE POWER BOARD'S FOUR POSTS GREW 1.5 mm, 2026-10-17, 354.5 mm3 and "
+        "+0.38 g, so that they stand that far proud of the hip saddle and the "
+        "board's trimmed leads have air over the shell; gate B holds it.",
     ),
 }
 

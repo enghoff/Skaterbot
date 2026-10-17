@@ -1152,6 +1152,21 @@ DEVIATIONS["pelvis-shell"].append(
     }
 )
 
+DEVIATIONS["pelvis-shell"].append(
+    {
+        # 354.5476 mm3 on: each of the four posts 1.5 mm taller, 8 x 8 less its
+        # Ø2.5 pilot, which runs on down with it -- 4 x 1.5 x (64 - pi x 1.25^2)
+        # = 354.5476, and the gate measures the same. MEASURED AGAINST THE
+        # GOLDEN STEP, post by post: the two outboard posts' 177.2738 stand
+        # where the tethered pelvis had nothing, and the two inboard posts'
+        # 177.2738 where it had material this shell did not, which is golden
+        # material put back -- hence the negative removal.
+        "added_mm3": 177.2737844363,
+        "removed_mm3": -177.2737844363,
+        "why": "THE POWER BOARD'S FOUR POSTS STAND 1.5 mm PROUD OF THE HIP SADDLE, 2026-10-17, where they stopped level with its top: the owner's call. The board's underside was 3 mm over the saddle on its spacers, and a through-hole board's trimmed leads hang 2 mm under it, which left a millimetre of air over the shell. Now 2.5. The board and everything on it come up the same 1.5 mm, out of the air over its parts to the deck.",
+    }
+)
+
 DEVIATIONS["limb-105-mirrored"] = DEVIATIONS["limb-105-unmirrored"]
 DEVIATIONS["wheel-adapter-left"] = DEVIATIONS["wheel-adapter-right"]
 

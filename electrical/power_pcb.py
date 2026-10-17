@@ -383,10 +383,12 @@ EDGE_CLEARANCE = 0.4
 VIA_PAD = 0.8
 VIA_DRILL = 0.4
 HOLE_TO_HOLE = 0.25
-# Round an M3 screw: its head and washer on top, a 7 mm washer and its nut
+# Round an M3 screw: its head and washer on top, a 6 mm unthreaded spacer
 # underneath. 4.0 WHILE A 6 mm SPACER STOOD UNDER IT on the bought board; the
-# board is on the nuts now, and 3.6 is the washer and a tenth. It is what lets
-# a motor header pass under a screw in a strip only 6.85 mm deep.
+# board is on its own 3 mm spacers now, and 3.6 is the 7 mm washer on top and a
+# tenth. It stood on a nut and a washer until 2026-10-15, and a nut is never a
+# spacer. It is what lets a motor header pass under a screw in a strip only
+# 6.85 mm deep.
 SCREW_BODY_KEEPOUT = 3.6
 SCREW_COPPER_KEEPOUT = 3.6
 SCREW_HOLE = e.m3Clearance

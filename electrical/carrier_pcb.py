@@ -431,6 +431,12 @@ def ina226_module() -> Footprint:
     # Pin 1 at the rear, pin 8 at the front. IN+ and IN- came out of the end
     # nearest the shunt's plug while there was one; they go to ground now.
     span = PITCH * 7
+    # The two spacers under it are Ø6 on holes 2.5 mm in from its edge, so they
+    # stand half a millimetre past the module's outline and the box under it is
+    # drawn out to them. They were two stacked M2 nuts until 2026-10-17, and a
+    # nut is never a spacer.
+    spacerX = 11.0 - e.busSenseHoleInset + e.standoffDiameter / 2
+    spacerY = e.busSenseHolePitch / 2 + e.standoffDiameter / 2
     pads = tuple(
         Pad(
             str(n),
@@ -447,7 +453,11 @@ def ina226_module() -> Footprint:
         "INA226 breakout on standoffs, on a 1 x 8",
         pads,
         (
-            Body((-11.0, -11.0, 11.0, 11.0, 0.0, 3.0), "standoffs"),
+            Body(
+                (-11.0, -max(11.0, spacerY), max(11.0, spacerX), max(11.0, spacerY))
+                + (0.0, e.busSenseStandoff),
+                "standoffs",
+            ),
             Body((-11.0, -11.0, 11.0, 11.0, 3.0, 11.0), "bus monitor"),
         ),
         tuple(
@@ -1879,6 +1889,8 @@ CARRIER_STAND_INS = {
     # real part against its own stand-in would find a clash every time.
     "bus monitor",
     "logic BEC",
+    # And the monitor's two spacers, which are the A3 footprint's standoffs.
+    "bus monitor standoffs",
 }
 
 

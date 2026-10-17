@@ -16,7 +16,7 @@ file records why, and it reverses what the rest of the file used to argue rather
 than quietly rewriting it.
 
 It is 50 × 66 mm, two layers, out to both long walls of the power bay, and it
-stands on its own four nuts on the posts the bought board used.
+stands on four 3 mm unthreaded spacers on the posts the bought board used.
 [`electrical/power.py`](../electrical/power.py) is the circuit,
 [`electrical/power_pcb.py`](../electrical/power_pcb.py) is the board and
 [`electrical/power_sch.py`](../electrical/power_sch.py) is the drawing:
@@ -322,8 +322,8 @@ x 46 to 58, and the lid's two screw bosses stand over its outboard corners, so a
 board out to the walls cannot be lowered straight down — `tools/gate_i.py`
 found that. It is the first thing into the torso, while the battery bay beside
 it is still empty, so it comes down 30 mm inboard of its posts, slides outboard
-under the ledges and the bosses, and drops the last 5 mm onto its nuts; gate I
-runs that path. **It was notched round the ledges for the first day** so that it
+under the ledges and the bosses, and drops the last 5 mm onto its spacers,
+which go onto the posts first; gate I runs that path. **It was notched round the ledges for the first day** so that it
 could drop past them, and the notches are what made the headers PH; they went
 once the sideways path was found, and PH stayed for its keying. A screw sits at
 every corner, so neither strip can be fed round an end: the rear one is fed down
@@ -343,7 +343,7 @@ was dropped on 2026-10-07. The 20 A main fuse covers the outputs together, so a
 short in one motor's lead is on that fuse alone.
 
 **The board came down 9.6 mm**, which was the bought board and the spacer, and it
-went where it was short: the switches had 6 mm under the deck and have 15.6, and
+went where it was short: the switches had 6 mm under the deck and have 14.1, and
 the pack's connectors no longer hang over the inboard column. The pack's
 negative lands on this board now too, on P3 at the same 14 AWG as the positive,
 and the BMS's B− beside it on P4; P3 was a 22 AWG ground from the bought board's
@@ -354,22 +354,29 @@ negative.
 On the four printed posts the bought board used, on the same 45 mm square, so
 the pelvis did not change. Four M3 × 8 self-tapping screws from above, which is
 the only direction anything in this bay can be driven from, each through the
-board and an M3 nut on a washer that stands it 3 mm off its post. Until
+board and a 3 mm unthreaded plastic spacer that stands it off its post. Until
 2026-10-07 they were M3 × 20 through this board, an 8 mm printed spacer and the
 bought board, and the spacers are off the print now.
+
+**It stood on an M3 nut and a washer at each screw until 2026-10-15**, and that
+must not come back. A nut run up a screw as a spacer is threaded to it, so it
+clamps tight as the screw is driven and the screw stops on the nut instead of
+pulling the board down and cutting its thread in the post. Put the four spacers
+on the posts, land the board on them, then drive the screws.
 
 What the fit comes to, all of it measured by `tools/gate_f.py` and
 `electrical/power_pcb.py` rather than asserted, since 2026-10-07:
 
 | | |
 |---|---|
-| 15.6 mm | over the two TO-220 switches, to the electronics deck above — 6.0 while the board stood 8 mm over the bought one |
-| 18.4 mm | over the two capacitor cans, to that deck |
+| 14.1 mm | over the two TO-220 switches, to the electronics deck above — 15.6 until the posts were raised 1.5 mm on 2026-10-17, and 6.0 while the board stood 8 mm over the bought one |
+| 16.9 mm | over the two capacitor cans, to that deck |
+| 4.5 mm | under the board, to the right hip saddle's top, which the posts stand 1.5 mm proud of since 2026-10-17 — 2.5 of air under the trimmed leads, where it was 1.0 |
 | 0.70 mm | from each motor header to the long wall beside it |
 | 0.65 mm | from R6 and R7, in the inboard column, to the battery's leads |
 | 0.55 mm | from J4 to the CAN loom running up the wall beside it |
 
-**Nothing under the board but its own nuts.** The bought board's XT60 input
+**Nothing under the board but its own spacers.** The bought board's XT60 input
 socket stood half a millimetre under this one and kept every lead out from over
 it; with that board gone, a trimmed lead hangs into a millimetre of air over the
 post tops, and the keepout is gone from the layout.

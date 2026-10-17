@@ -51,6 +51,7 @@ from cad.electronics import (
     panelWallY,
     pdbHolePitch,
     pdbY,
+    powerPostTopZ,
     powerX,
     rearWallCutouts,
     sideWallX,
@@ -396,8 +397,12 @@ def batteryPads() -> list:
 
 
 def powerEntryPosts() -> list:
-    """Four posts from the shell floor to the power switch board's standoffs."""
-    postHeight = lowerBandZ - cavityBottomZ
+    """Four posts from the shell floor to the power switch board's standoffs.
+
+    Standing powerPostRise proud of the hip saddle's top since 2026-10-17, for
+    air under the board's trimmed leads; they stopped level with it until then.
+    """
+    postHeight = powerPostTopZ - cavityBottomZ
     posts = []
     for sx in (1, -1):
         for sy in (1, -1):
@@ -406,7 +411,7 @@ def powerEntryPosts() -> list:
             block = Pos(atX, atY, cavityBottomZ + postHeight / 2) * Box(
                 boardPostSize, boardPostSize, postHeight
             )
-            posts.append(_piloted(block, atX, atY, lowerBandZ, postHeight - 1.0))
+            posts.append(_piloted(block, atX, atY, powerPostTopZ, postHeight - 1.0))
     return posts
 
 

@@ -52,7 +52,7 @@ they require confirmation in the seller's current cart before an actual order.
 
 | Store | Item | Design requirement and action |
 |---|---|---|
-| fastdep | M3 × 20 | Remove. Zero current uses: the power board now takes M3 × 8 directly on nut/washer spacers. |
+| fastdep | M3 × 20 | Remove. Zero current uses: the power board now takes M3 × 8 directly, through 3 mm unthreaded spacers since 2026-10-15. |
 | fastdep | M3 × 10 | 20 installed: 16 motor stator screws + 4 cover screws. Two ten-packs cover all 20; reduce the recorded three packs to two. |
 | fastdep | M3 × 8 | 46 installed: 36 rotor screws + 6 carrier mounting screws + 4 power-board mounting screws. Five ten-packs are the minimum, leaving four because of pack size. |
 | fastdep | M3 × 6 | Conditional substitute for the 36 rotor screws only. Hold the alternative full set until the first motor's output thread is measured; it is not another 36 screws installed beside the ×8s. Record the compatibility decision before buying. |
@@ -86,13 +86,13 @@ they require confirmation in the seller's current cart before an actual order.
 | M3 × 12 SHCS, 12.9 | 8 | Four rear screws per wheel motor × two, through the shin stator plates | 10 |
 | M3 × 6 SHCS | 0 by default; 36 instead of rotor ×8 if required | Conditional fallback for short output threads; never an additional installed set | Hold pending measurement |
 | M3 × 20 | 0 | Former stacked distribution/power-board assembly is gone | 0 |
-| M3 nuts | 10 | Six carrier + four power-board spacers | 25 |
-| M3 plain washers, 0.5 mm | 34 | 24 stator screws + ten nut spacers | Deduct the recorded 100-pack first |
+| M3 nuts | 0 | None since 2026-10-15: the ten that stood the carrier and the power board off are 3 mm unthreaded spacers, because a nut is never a spacer. The 25 bought are surplus | 0 |
+| M3 plain washers, 0.5 mm | 24 | 24 stator screws; the ten under the nut spacers went with them, 2026-10-15 | Deduct the recorded 100-pack first |
 | M2.5 × 8 SHCS | 4 | Deck slots into four printed wall ledges | 10 |
 | M2.5 × 6 SHCS | 8 | Four SBC standoffs, one screw into each end | 10 |
 | M2.5 × 10 female-female hex standoffs, 5 mm A/F | 4 | `sbc_standoff_xy()`, carrier to Banana Pi | 4 (one pack) |
 | M2 × 10 SHCS | 4 | Two inlet ears + two INA226 mounting holes | 10 |
-| M2 nuts | 8 | Two inlet nuts + six on INA226 (two under each hole, one above) | 25 |
+| M2 nuts | 2 | One on top of each INA226 screw. It was eight, two of them the inlet's and four stacked under the INA226 as its standoff; the inlet went to M2.5 on 2026-10-12, and the stacked nuts became 3 mm unthreaded spacers on 2026-10-17 | 25 |
 | M2.5 plain washers | 2 | Under the two inlet screw heads; no washers behind its ears | 25 |
 | M5 × 12 ISO 7380 button-head screws | 4 | Hip/knee journal screws in `cad/hardware.py`; already recorded separately from obsolete clamp screws | Deduct secured journal screws first |
 | M5 nuts, as bought (unfiled since 2026-10-14) | 4 | Captive journal nut pockets, hip/knee | 25 |
@@ -102,8 +102,7 @@ they require confirmation in the seller's current cart before an actual order.
 
 The installed M3 total remains **78 = 46 + 20 + 8 + 4**. Conditional ×6s replace
 36 of the ×8s, without changing that total. Printed pilots use ordinary socket
-screws self-tapped into the print; coarse sheet-metal screws would not pass the
-nut spacers. Button and antenna use their supplied bushing nuts, not additional
+screws self-tapped into the print. Button and antenna use their supplied bushing nuts, not additional
 mounting screws. The four 6800 bearings support hip/knee joints; wheel joints
 have no additional support bearing. Journal sleeves, wheel caps and the torso
 mounts are printed parts, not purchased machined spacers.
