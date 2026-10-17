@@ -102,7 +102,9 @@ Measure the mated pair in hand.
 ## Already committed and unverified: the two boards ordered 8 October
 
 Both boards were ordered from PCB Power on 8 October, for dispatch on
-16 October. Each was laid out round modules that were already in hand, which the
+16 October. The power switch boards have arrived and one is being populated,
+reported by the owner on 17 October; the carrier boards' delivery is not
+recorded. Each was laid out round modules that were already in hand, which the
 documents said to measure before ordering. Nothing records that they were.
 
 | Module | What the board assumes | Source |

@@ -219,7 +219,7 @@ amount is not yet reported. Receipt was confirmed by the owner on 2026-10-15.
 ## Robu — 2026-10-13
 
 - **Placed:** reported by the owner on 2026-10-13; order number not yet recorded.
-- **Status:** delivery not yet recorded.
+- **Status:** received, reported by the owner on 2026-10-16.
 - **Source:** the cart as read in the browser on 2026-10-13, before the owner
   placed it; the placed order itself has not been seen.
 
