@@ -21,12 +21,23 @@ electrical/carrier.py: BOOT0 on header pin 7 (PI12), NRST on header pin 11
 (UART4 TX). NRST is only ever pulled low or let go, never driven high: the core
 board's reset button and the MCU's own resets pull the same line down.
 
+On the robot the Pi also holds the power on, on header pin 12 (PI1), the
+power switch board's second hold input. The ROM bootloader holds nothing, and
+the Pi's own supply comes through that switch, so without it an update cuts the
+power to the Pi doing it. The hold goes up before anything else and comes down
+last, once the MCU is running an image again and holding for itself. If the
+flash fails after erasing, the MCU has nothing to run, so this keeps holding and
+offers another try rather than letting the robot and the Pi go off.
+
 Root, or a udev rule, for /dev/gpiochip*; and UART4 switched on with its pins,
 which on Armbian takes its bananapi-m4-pi-13-14-uart4 overlay and our
 uart4-fix.dts both. setup_flash.sh, beside this, does all of it once.
 
 First run 2026-10-16: bootloader 3.1, product ID 0x469, serial_check's 14 232
-bytes erased, written and read back, then its lines and its echo heard.
+bytes erased, written and read back, then its lines and its echo heard. On the
+robot with the hold, 2026-10-18: the same, the Pi up throughout. The first try
+that day had no answer from the bootloader on any attempt, and the next run
+worked unchanged; why is not known.
 """
 
 from __future__ import annotations
@@ -57,6 +68,8 @@ def line_of(pin: str) -> int:
 
 BOOT0 = line_of("PI12")  # header pin 7
 NRST = line_of("PH2")  # header pin 11
+# electrical/carrier.py's SBC_HOLD_HEADER: the power switch board's J2-4.
+SBC_HOLD = line_of("PI1")  # header pin 12
 
 # UART4 is at this address in the H618; its tty is found by it, not assumed.
 UART4 = "5001000.serial"
@@ -182,7 +195,12 @@ class Line:
         request.config.attrs[0].attr.id = ATTR_ID_OUTPUT_VALUES
         request.config.attrs[0].attr.value = value
         request.config.attrs[0].mask = 1
-        fcntl.ioctl(chip, GET_LINE, request)
+        try:
+            fcntl.ioctl(chip, GET_LINE, request)
+        except OSError as error:
+            sys.exit(
+                f"GPIO line {offset}: {error.strerror}; is something else using it?"
+            )
         self.fd = request.fd
 
     def set(self, value: int) -> None:
@@ -198,12 +216,18 @@ class Line:
 
 
 class Control:
-    """BOOT0 and NRST, both let go when this closes."""
+    """BOOT0, NRST and the SBC's hold, all let go when this closes: the hold
+    last, and only once the MCU is out of its bootloader."""
 
     def __enter__(self) -> Control:
         self.chip = open_controller()
+        # The hold first: once the MCU is reset nothing else holds the power.
+        self.hold = Line(self.chip, SBC_HOLD, 1, open_drain=False)
         self.boot0 = Line(self.chip, BOOT0, 0, open_drain=False)
         self.nrst = Line(self.chip, NRST, 1, open_drain=True)
+        self.in_bootloader = False
+        # Between an erase and a verified write the MCU has nothing to run.
+        self.erased = False
         return self
 
     def reset(self, bootloader: bool) -> None:
@@ -219,12 +243,22 @@ class Control:
         time.sleep(0.1)
         if not bootloader:
             self.boot0.set(0)
+        self.in_bootloader = bootloader
 
     def __exit__(self, *exc) -> None:
-        # The board's own 10 kOhm holds BOOT0 low once it is let go.
-        self.nrst.release()
-        self.boot0.release()
-        os.close(self.chip)
+        try:
+            # Never left in the bootloader, which holds nothing. An image
+            # raises its own hold in its first instructions, and reset() waits
+            # 0.1 s after starting it, so the power is held throughout.
+            if self.in_bootloader:
+                self.reset(bootloader=False)
+        finally:
+            # The board's own 10 kOhm holds BOOT0 low once it is let go, and
+            # the power board's R17 holds the hold off.
+            self.nrst.release()
+            self.boot0.release()
+            self.hold.release()
+            os.close(self.chip)
 
 
 # ---- the serial port ---------------------------------------------------------
@@ -424,6 +458,7 @@ def flash(control: Control, port: Port, start: int, image: bytes) -> None:
         sys.exit("this bootloader has no Extended Erase")
 
     pages = list(range((len(image) + PAGE - 1) // PAGE))
+    control.erased = True
     boot.erase(pages)
     print(f"erased {len(pages)} page(s)")
 
@@ -434,8 +469,45 @@ def flash(control: Control, port: Port, start: int, image: bytes) -> None:
     for offset in range(0, len(image), 256):
         chunk = image[offset : offset + 256]
         if boot.read(start + offset, len(chunk)) != chunk:
-            sys.exit(f"verify failed at {start + offset:#010x}")
+            raise BootloaderError(f"verify failed at {start + offset:#010x}")
+    control.erased = False
     print("read back and verified")
+
+
+ATTEMPTS = 3
+
+STRANDED = """
+The controller's flash is erased and not written back, so it has nothing to
+run, and nothing will hold the power once this lets go of it: the robot, and
+this Pi, turn off about a second later. Holding it on.
+
+Press Enter to try again. To give up instead, hold the robot's power button
+down, press Ctrl-C, and keep the button down until this Pi has shut down
+(sudo poweroff)."""
+
+
+def flash_until_written(control: Control, port: Port, start: int, image: bytes) -> None:
+    """flash(), tried again while it fails. Given up only if nothing was
+    erased, since an MCU with no image left cannot hold the power."""
+    while True:
+        for attempt in range(1, ATTEMPTS + 1):
+            try:
+                flash(control, port, start, image)
+                return
+            except BootloaderError as error:
+                print(f"attempt {attempt} of {ATTEMPTS}: {error}")
+            except KeyboardInterrupt:
+                if not control.erased:
+                    raise
+                print("interrupted")
+                break
+        if not control.erased:
+            raise BootloaderError("gave up before erasing; the old image is intact")
+        print(STRANDED, file=sys.stderr)
+        try:
+            input()
+        except EOFError:
+            raise BootloaderError("no one to ask; letting go") from None
 
 
 def listen(control: Control, port: Port, seconds: float) -> None:
@@ -481,7 +553,7 @@ def main() -> None:
     try:
         with Control() as control:
             if image:
-                flash(control, port, *image)
+                flash_until_written(control, port, *image)
             if args.listen > 0:
                 listen(control, port, args.listen)
             else:
@@ -489,6 +561,8 @@ def main() -> None:
                 print("started")
     except BootloaderError as error:
         sys.exit(str(error))
+    except KeyboardInterrupt:
+        sys.exit("interrupted")
     finally:
         port.close()
 

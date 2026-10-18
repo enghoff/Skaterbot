@@ -561,7 +561,8 @@ PARTS = [
     ),
     # ---- what plugs in -------------------------------------------------------
     # ONE HOUSING FOR BOTH HOLDS, and the lead splits after it: three wires to
-    # the carrier, one to a GPIO on the SBC's 40-pin header. The SBC needs no
+    # the carrier, one to header pin 12 (PI1) on the SBC's 40-pin header, which
+    # electrical/carrier.py's SBC_HOLD_HEADER records and checks. The SBC needs no
     # ground of its own on this plug -- it already shares the carrier's.
     Part(
         "J2",

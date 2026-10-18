@@ -587,6 +587,19 @@ BPI_HEADER = {
     12: ("PI1", "I2S0_BCLK"),
 }
 
+# THE SBC'S HOLD ON HEADER PIN 12, PI1, chosen 2026-10-17. It does not come
+# through J5: it is pin 4 of the power switch board's hold lead, whose wire
+# leaves that lead for this pin before it reaches J7, soldered like J5's. Pin 12 is
+# the one plain port pin left in the block J5 already uses, and I2S0 is off.
+#
+# The Pi drives it high only while sbc/flash_mcu.py runs, from before it resets
+# the MCU into its ROM bootloader -- which holds nothing -- until the new image is
+# running and holding for itself, so that a firmware update does not cut the
+# Pi's own supply. Never left high: a Pi that halted with it raised would hold
+# the robot on with the button unable to turn it off. Unclaimed, the pin floats
+# and the power board's R17 holds the hold off.
+SBC_HOLD_HEADER = 12
+
 # What each J5 net has to meet at the Pi. The MCU's transmit goes to the Pi's
 # receive and the other way about, which is the swap this table exists to stop.
 #
@@ -642,7 +655,7 @@ UNCONNECTED = {
 }
 UNCONNECTED[("J7", "4")] = (
     "the SBC's hold, on the power switch board's lead; it leaves for the SBC's "
-    "own header before the lead reaches this one"
+    f"header pin {SBC_HOLD_HEADER} before the lead reaches this one"
 )
 UNCONNECTED.update(
     {
@@ -758,6 +771,20 @@ def check() -> list[str]:
             )
         taken[header] = pin
 
+    # 7. The SBC's hold, on a plain port pin that J5 does not already take.
+    names = BPI_HEADER.get(SBC_HOLD_HEADER)
+    if names is None:
+        faults.append(f"SBC_HOLD: header pin {SBC_HOLD_HEADER} is not in BPI_HEADER")
+    elif names[0][:2] not in ("PH", "PI") or not names[0][2:].isdigit():
+        faults.append(
+            f"SBC_HOLD: header pin {SBC_HOLD_HEADER} is {names[0]}, not a port pin"
+        )
+    if SBC_HOLD_HEADER in taken:
+        faults.append(
+            f"header pin {SBC_HOLD_HEADER}: takes both J5-{taken[SBC_HOLD_HEADER]} "
+            "and the SBC's hold"
+        )
+
     return faults
 
 
@@ -801,6 +828,8 @@ def sbc_header() -> str:
         net = net_of.get(("J5", pin), "--")
         there = " / ".join(BPI_HEADER[header])
         lines.append(f"  {pin:<6}{net:<14}{header:<9}{there}")
+    there = " / ".join(BPI_HEADER[SBC_HOLD_HEADER])
+    lines.append(f"  {'J7-4':<6}{'SBC_HOLD':<14}{SBC_HOLD_HEADER:<9}{there}")
     return "\n".join(lines)
 
 

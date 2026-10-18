@@ -419,13 +419,24 @@ post tops, and the keepout is gone from the layout.
   sweeping it against the cavity again.
 * **The hold lead lands on the carrier's J7 since 2026-10-07**, in the same
   pin order as J2 here, so one double-ended lead joins them. The SBC's hold on
-  pin 4 leaves that lead for a GPIO on its 40-pin header, and which GPIO has not
-  been chosen. **The MCU's half is in firmware since 2026-10-16**
+  pin 4 leaves that lead for **header pin 12 (PI1) on the Pi, chosen
+  2026-10-17** and wired 2026-10-18, when it held the robot on alone for 3 s
+  with the MCU in reset; the Pi raises it only while it is reflashing
+  the MCU ([`docs/CARRIER.md`](CARRIER.md)). **The MCU's half is in firmware since 2026-10-16**
   (`firmware/board`, module `power`): HOLD high in the first instructions after
-  reset, so the button need only be held about half a second; a press of 2 s
-  while running asks to turn off, and the press that turned the robot on does
-  not count. Without the SBC's hold, reflashing the MCU on the robot turns it
-  off, since the bootloader holds nothing.
+  reset, so the button need only be held about half a second. **Since
+  2026-10-17 a half-second press while running turns the robot off in every
+  image**, from a 10 ms timer interrupt in that shared crate rather than from
+  anything the image does: the press lets go of HOLD at once, and the power
+  goes about 0.9 s after the button comes up, since a pressed button holds the
+  switch closed by itself. The press is debounced — it counts as let go only
+  after 50 ms up — and the press that turned the robot on does not count. A
+  crash or a watchdog reset now drops HOLD too, rather than raising it on the
+  way into the bootloader. Reflashing the MCU on the robot relies on the SBC's
+  hold, since the bootloader does not drive HOLD — **unless it
+  puts a pull-up on PC11**, which it uses as USART3's receive pin: that would
+  hold the robot on against R16 with nothing reading the button. Unmeasured;
+  [`docs/CARRIER.md`](CARRIER.md) says how to check it.
 * **Nothing isolates the pack any more, and this is the open item to weigh.**
   The loop key was deleted on 2026-09-16 and its button took the wall station,
   so the only break in the pack's positive lead is this board's two transistors

@@ -19,9 +19,10 @@
 //! does not clear, and the next ordinary start takes it out for the firmware to
 //! report ([`last_crash`]).
 //!
-//! On the robot it also holds the power on: [`early_init`] raises the power
-//! switch board's HOLD before anything else, and [`power`] turns a long press
-//! of the robot's button into a request to turn off.
+//! On the robot it also holds the power on and turns it off: [`early_init`]
+//! raises the power switch board's HOLD as soon as it knows this image is to
+//! run, and starts [`power`]'s watch on the robot's button, which lets go of
+//! HOLD after a half-second press whatever the image is doing.
 //!
 //! The button still works whatever an image does, because the option bytes that
 //! give it that job are left alone.
@@ -127,10 +128,14 @@ pub fn usb_config(product: &'static str) -> embassy_usb::Config<'static> {
 ///
 /// Resets the chip if the bootloader started this firmware; enters the
 /// bootloader if the last reset asked for it or was the watchdog's; and
-/// otherwise takes any crash record out of the backup registers for
-/// [`last_crash`].
+/// otherwise raises HOLD, starts watching the power button, and takes any
+/// crash record out of the backup registers for [`last_crash`].
+///
+/// HOLD goes up only once this image is certain to run, because ST's
+/// bootloader reads no button: a robot held on in it could not be turned off.
+/// Entered after a crash, the robot turns off instead. The checks before it
+/// are a few register reads, so the press that turns the robot on is no longer.
 pub fn early_init() {
-    power::hold_early();
     restart_if_started_by_bootloader();
 
     // The flags accumulate across resets until cleared, and the bootloader
@@ -145,6 +150,8 @@ pub fn early_init() {
     if take_bootloader_request() {
         enter_bootloader();
     }
+    power::hold_early();
+    power::watch();
     RESET_FLAGS.store(flags.0, Ordering::Relaxed);
     crash::take();
 }
@@ -235,104 +242,193 @@ pub mod power {
     //! or the SBC's -- and opens it about 0.9 s after the last one goes, or when
     //! the pack falls below its cutoff (docs/POWER_SWITCH.md). So a press has
     //! to last until this firmware raises HOLD, which [`super::early_init`]
-    //! does first of all, and the button can then be let go.
+    //! does as soon as it has ruled out the bootloader, and the button can then
+    //! be let go.
     //!
-    //! The same button reaches PB14 through the power board's D7, pulling it
-    //! low against the MCU's own pull-up. A press of [`OFF_PRESS`] or more
-    //! asks for the robot to be turned off: [`Power::update`] says so once, and
-    //! the image decides what to do first -- put the robot down, tell the SBC
-    //! -- before it calls [`Power::release`]. The press that turned the robot
-    //! on is still held when the firmware starts, and is not one.
+    //! Turning off belongs to this crate rather than to the image, so that
+    //! every image turns off the same way whatever else it does or fails to do.
+    //! [`super::early_init`] starts SysTick, and every [`TICK_MS`] its handler
+    //! reads the button on PB14, which the power board's D7 pulls low against
+    //! the MCU's own pull-up. A press of [`OFF_PRESS_MS`] lets go of HOLD
+    //! there and then, and the robot turns off about 0.9 s after the button
+    //! comes up, since a pressed button holds the switch closed by itself. An
+    //! image that has something to do first -- put the robot down, tell the
+    //! SBC -- watches [`off_requested`], and has that 0.9 s and however long
+    //! the button is still held.
     //!
+    //! A press counts as let go only once the button has read up for
+    //! [`RELEASE_MS`], so a contact that chatters does not start the count
+    //! again. The press that turned the robot on is still held when the
+    //! firmware starts, and is not one: nothing counts until the button has
+    //! been seen up.
+    //!
+    //! PC11, PB14 and SysTick are this module's, and no image may take them.
     //! With no power board on J7, SENSE reads high and nothing happens, and
     //! HOLD drives an open pin.
 
-    use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
-    use embassy_stm32::{Peri, pac, peripherals};
-    use embassy_time::{Duration, Instant, Timer};
+    use core::cell::RefCell;
+    use core::sync::atomic::{AtomicBool, Ordering};
 
-    /// How long the button must be held to ask for the robot to turn off.
-    pub const OFF_PRESS: Duration = Duration::from_secs(2);
+    use cortex_m::interrupt::{Mutex, free};
+    use cortex_m::peripheral::{SCB, SYST};
+    use embassy_stm32::pac;
+    use embassy_stm32::pac::gpio::vals::{Idr, Moder, Pupdr};
+    use embassy_stm32::pac::rcc::vals::Sw;
+
+    /// How often the button is read.
+    pub const TICK_MS: u32 = 10;
+    /// How long the button must be held to turn the robot off.
+    pub const OFF_PRESS_MS: u32 = 500;
+    /// How long the button must read up before a press counts as let go.
+    /// Contact bounce is a few milliseconds; a finger that eases off is more.
+    pub const RELEASE_MS: u32 = 50;
 
     /// HOLD, PC11, J7-1.
     const HOLD_PIN: usize = 11;
+    /// SENSE, PB14, J7-2.
+    const SENSE_PIN: usize = 14;
+
+    /// SysTick's control bits: the core clock, its interrupt, and the counter.
+    const SYST_CORE_CLOCK_TICKINT_ENABLE: u32 = 0b111;
+    /// SysTick's priority byte in SHPR3. The lowest, so that it never delays
+    /// an image's own interrupts.
+    const SYSTICK_SHPR: usize = 11;
+
+    static OFF: AtomicBool = AtomicBool::new(false);
+    static BUTTON: Mutex<RefCell<Button>> = Mutex::new(RefCell::new(Button::Starting { up_ms: 0 }));
 
     /// Raises HOLD from the reset state, before clocks or embassy: the button
-    /// has to be held until this runs, so it runs first. embassy's start-up
-    /// turns the GPIO clocks on and leaves the ports alone, so it stays raised
-    /// until [`Power::new`] takes the pin over at the same level.
+    /// has to be held until this runs, so it runs as early as it can. embassy's
+    /// start-up turns the GPIO clocks on and leaves the ports alone, so HOLD
+    /// stays raised.
     pub(crate) fn hold_early() {
         pac::RCC.ahb2enr().modify(|w| w.set_gpiocen(true));
         let port = pac::GPIOC;
         port.bsrr().write(|w| w.set_bs(HOLD_PIN, true));
         port.moder()
-            .modify(|w| w.set_moder(HOLD_PIN, pac::gpio::vals::Moder::OUTPUT));
+            .modify(|w| w.set_moder(HOLD_PIN, Moder::OUTPUT));
     }
 
+    /// Makes SENSE an input against the MCU's pull-up and starts SysTick.
+    /// Only once the bootloader is ruled out, since it expects SysTick off.
+    pub(crate) fn watch() {
+        pac::RCC.ahb2enr().modify(|w| w.set_gpioben(true));
+        let port = pac::GPIOB;
+        port.pupdr()
+            .modify(|w| w.set_pupdr(SENSE_PIN, Pupdr::PULL_UP));
+        port.moder()
+            .modify(|w| w.set_moder(SENSE_PIN, Moder::INPUT));
+        // Through the registers rather than cortex_m::Peripherals, which an
+        // image may take for itself.
+        unsafe {
+            (*SCB::PTR).shpr[SYSTICK_SHPR].write(0xFF);
+            let syst = &*SYST::PTR;
+            syst.rvr.write(reload());
+            syst.cvr.write(0);
+            syst.csr.write(SYST_CORE_CLOCK_TICKINT_ENABLE);
+        }
+    }
+
+    /// SysTick's reload for one [`TICK_MS`] at the clock the core is on now:
+    /// the reset's 16 MHz HSI until embassy sets the clocks up, and
+    /// [`super::SYSCLK_HZ`] from the PLL after. The tick that spans the change
+    /// is the wrong length, which does not matter.
+    fn reload() -> u32 {
+        let hz = match pac::RCC.cfgr().read().sws() {
+            Sw::PLL1_R => super::SYSCLK_HZ,
+            Sw::HSE => 8_000_000,
+            _ => 16_000_000,
+        };
+        hz / 1000 * TICK_MS - 1
+    }
+
+    /// One tick of the watch, from SysTick.
+    pub(crate) fn tick() {
+        unsafe { (*SYST::PTR).rvr.write(reload()) };
+        let pressed = pressed();
+        let off = free(|cs| {
+            let mut button = BUTTON.borrow(cs).borrow_mut();
+            let (next, off) = button.step(pressed);
+            *button = next;
+            off
+        });
+        if off {
+            pac::GPIOC.bsrr().write(|w| w.set_br(HOLD_PIN, true));
+            OFF.store(true, Ordering::Relaxed);
+        }
+    }
+
+    #[derive(Clone, Copy)]
     enum Button {
-        /// Still held from turning the robot on.
-        Starting,
+        /// Not yet seen up since the firmware started: the press that turned
+        /// the robot on, which has read up for `up_ms`.
+        Starting {
+            up_ms: u32,
+        },
         Up,
-        Down(Instant),
-        /// The off request has been made; nothing more is said.
+        /// Pressed for `held_ms`, the last `up_ms` of which it has read up.
+        Down {
+            held_ms: u32,
+            up_ms: u32,
+        },
+        /// HOLD has been let go; nothing more is done.
         Spent,
     }
 
-    /// HOLD and the button, owned by the image. Keep it for as long as the
-    /// image runs: dropping it lets go of HOLD.
-    pub struct Power<'d> {
-        hold: Output<'d>,
-        sense: Input<'d>,
-        button: Button,
+    impl Button {
+        /// One tick on, with the button read as `pressed`; and whether that has
+        /// made a press long enough to turn off.
+        fn step(self, pressed: bool) -> (Self, bool) {
+            match self {
+                Button::Starting { up_ms } => {
+                    let up_ms = if pressed { 0 } else { up_ms + TICK_MS };
+                    if up_ms >= RELEASE_MS {
+                        (Button::Up, false)
+                    } else {
+                        (Button::Starting { up_ms }, false)
+                    }
+                }
+                // Seen down at a tick, so held for up to a tick already.
+                Button::Up if pressed => (
+                    Button::Down {
+                        held_ms: TICK_MS,
+                        up_ms: 0,
+                    },
+                    false,
+                ),
+                Button::Down { held_ms, up_ms } => {
+                    let held_ms = held_ms + TICK_MS;
+                    let up_ms = if pressed { 0 } else { up_ms + TICK_MS };
+                    if up_ms >= RELEASE_MS {
+                        (Button::Up, false)
+                    } else if pressed && held_ms >= OFF_PRESS_MS {
+                        // Only on a tick that reads it down, so that the moments
+                        // of a release are never what makes the length.
+                        (Button::Spent, true)
+                    } else {
+                        (Button::Down { held_ms, up_ms }, false)
+                    }
+                }
+                other => (other, false),
+            }
+        }
     }
 
-    impl<'d> Power<'d> {
-        pub fn new(hold: Peri<'d, peripherals::PC11>, sense: Peri<'d, peripherals::PB14>) -> Self {
-            Self {
-                hold: Output::new(hold, Level::High, Speed::Low),
-                sense: Input::new(sense, Pull::Up),
-                button: Button::Starting,
-            }
-        }
+    /// Whether HOLD is high at the pin, read back rather than remembered.
+    pub fn held() -> bool {
+        pac::GPIOC.idr().read().idr(HOLD_PIN) == Idr::HIGH
+    }
 
-        /// Whether HOLD is high at the pin, read back rather than remembered.
-        pub fn held(&self) -> bool {
-            pac::GPIOC.idr().read().idr(HOLD_PIN) == pac::gpio::vals::Idr::HIGH
-        }
+    /// Whether the button is down this moment, as read, without the debounce.
+    pub fn pressed() -> bool {
+        pac::GPIOB.idr().read().idr(SENSE_PIN) == Idr::LOW
+    }
 
-        pub fn pressed(&self) -> bool {
-            self.sense.is_low()
-        }
-
-        /// Call often, every few milliseconds. True once, when the button
-        /// has been held for [`OFF_PRESS`].
-        pub fn update(&mut self) -> bool {
-            let pressed = self.pressed();
-            let now = Instant::now();
-            match self.button {
-                Button::Starting | Button::Down(_) if !pressed => self.button = Button::Up,
-                Button::Up if pressed => self.button = Button::Down(now),
-                Button::Down(since) if now - since >= OFF_PRESS => {
-                    self.button = Button::Spent;
-                    return true;
-                }
-                _ => {}
-            }
-            false
-        }
-
-        /// Waits for an off request, for an image with nothing else to poll.
-        pub async fn off_requested(&mut self) {
-            while !self.update() {
-                Timer::after_millis(10).await;
-            }
-        }
-
-        /// Lets go of HOLD. The robot turns off about 0.9 s later, once the
-        /// button is up -- unless the SBC is holding it on as well.
-        pub fn release(&mut self) {
-            self.hold.set_low();
-        }
+    /// Whether a press has turned the robot off. HOLD is already down, and the
+    /// power goes about 0.9 s after the button comes up -- unless the SBC is
+    /// holding it on as well.
+    pub fn off_requested() -> bool {
+        OFF.load(Ordering::Relaxed)
     }
 }
 
@@ -448,6 +544,12 @@ unsafe fn HardFault(frame: &ExceptionFrame) -> ! {
     };
     crash::record(crash::Cause::HardFault, [frame.pc(), cfsr, address], &[]);
     reboot_to_bootloader();
+}
+
+/// The power button's watch, every [`power::TICK_MS`].
+#[exception]
+fn SysTick() {
+    power::tick();
 }
 
 #[exception]

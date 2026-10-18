@@ -172,6 +172,14 @@ or brown-out reset, and a pin driven high fights both. Its 10 kΩ pull-up (R3) i
 marked not fitted, so the MCU's internal pull-up and the board's 100 nF hold it.
 PH2 is also UART5_TX, so UART5 stays off.
 
+**The SBC's hold is on header pin 12 (PI1), and not on J5.** It is pin 4 of
+the power switch board's hold lead, whose wire leaves that lead before J7 and is
+soldered to pin 12. Pin 12 is the one plain port pin left in the block J5
+already uses, and the check holds it to a port pin J5 does not take. The Pi
+raises it only while `sbc/flash_mcu.py` runs, never at boot and never for
+good: a Pi halted with it high would hold the robot on with the button unable
+to turn it off.
+
 **The wires are soldered to the header pins, not plugged onto them.** A Dupont
 housing on the header stands about 16.5 mm over the Pi's top face before its
 wire has turned, and the lid is 16.4 mm over that face; nothing caught it because
@@ -757,12 +765,23 @@ beeping with a meter before ordering.**
 - **The hold lead has landed, 2026-10-07**, on J7: the MCU drives `HOLD` on PC11
   and reads the button on PB14 with its own pull-up. **Every firmware image does
   both since 2026-10-16**: the shared `board` crate raises HOLD in its first
-  instructions and turns a 2 s press into an off request, after which the image
-  lets go. Read back at the pin on the carrier; no power board exists to hold
-  yet. **The SBC's hold is the open half**: pin 4 of the lead still has no GPIO
-  on the Pi, and until it has one, flashing the MCU on the robot drops the power
-  — the ROM bootloader does not hold, and the Pi's own supply comes through the
-  switch.
+  instructions, and **since 2026-10-17 it turns the robot off itself**: a
+  timer interrupt reads the button every 10 ms and lets go of HOLD after a
+  half-second press, debounced, so no image has to act on it and none can
+  forget to. Read back at the pin on the carrier; no power board exists to hold
+  yet. **The SBC's hold is on header pin 12 (PI1) since 2026-10-17, wired
+  2026-10-18**: pin 4 of the lead leaves it before J7 and is soldered to that
+  pin, like J5's wires. On the robot it held the power alone for 3 s with the
+  MCU held in reset, and the first update through it wrote `serial_check` with
+  the Pi up throughout. `sbc/flash_mcu.py` raises it before
+  it resets the MCU and lets go once the new image is running, because the ROM
+  bootloader does not drive HOLD and the Pi's own supply comes through the
+  switch. If a flash fails after erasing, the script keeps
+  holding and offers another try. **Unverified:** the ROM uses PC11 as USART3's receive pin,
+  and if it gives that pin a pull-up, the arithmetic says it holds the robot on
+  against R16's 100 kΩ, with no button read. A meter on J7-1 with the
+  controller in its bootloader and the power board unplugged settles it: about
+  3 V means a pull-up, and R16 wants to be 10 kΩ.
 - **IMU commissioning.** ES-12234 is identified from the ordered listing;
   its connector is four-pin Qwiic/JST-SH-compatible. The assembly setting is
   **JP1 2–3, 3.3 V**, with the four-wire J6 adapter above. Verify the delivered
