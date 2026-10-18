@@ -253,13 +253,21 @@ here are substitutes, recorded in their BOM rows: the zener for the BZX79-C15
 the 0204 resistors, with R3 and R7 stood over their second hole. The 1 kΩ line
 covers R18 and R26.
 
-## LionCircuits — 2026-10-13
+## LionCircuits — sales order ETPSO-58883
 
-- **Placed:** reported by the owner on 2026-10-13; order number not yet recorded.
-- **Status:** delivery not yet recorded; every line read “In Stock, ships in
-  7–10 days”, which is stock at LionCircuits' own suppliers.
-- **Source:** the cart as read in the browser on 2026-10-13, before the owner
-  placed it; the placed order itself has not been seen.
+- **Placed:** 2026-10-13, and paid the same day.
+- **Status:** “On Track”, procurement in progress and not shipped, as read in
+  the account on 2026-10-18. **Expected shipping 28 October**, where every line
+  read “In Stock, ships in 7–10 days” when it was ordered and still does: that
+  is stock at LionCircuits' own suppliers, and 7–10 days from 13 October would
+  have been 20–23 October. Its own notice puts the gap down to Dussehra: back-end
+  operations limited on 17, 19 and 20 October and shipments resuming on the 21st.
+  All four lines read “Ready”, none unavailable or awaiting input.
+- **Source:** the cart as read in the browser on 2026-10-13, and the order's
+  page in the owner's LionCircuits account (project NextCart-797018), read on
+  2026-10-18. Signed in, it is at
+  <https://order.lioncircuits.com/bomScrub/project/6ace09d4848c1c5df6797018>;
+  the account's project list shows nothing, so go by the link.
 
 The other half of the cancelled element14 order.
 
@@ -274,3 +282,20 @@ Components **₹1,369.74**, GST ₹246.55, shipping free; **total ₹1,616.00**.
 
 Three R82s because LionCircuits' minimum is three. Ten C315s because ten cost
 ₹274.30 where nine cost ₹788.36; eight are fitted.
+
+## ElectronicsComp — order #3304076
+
+- **Placed:** 2026-10-16, the day it was recommended; invoice INV/26-27/2668.
+- **Status:** Confirmed, and nothing since, as read in the account on
+  2026-10-18: not yet dispatched.
+- **Source:** the order page in the owner's ElectronicsComp account, read in
+  the browser on 2026-10-18.
+
+| Item as ordered | Quantity | Unit price | Line amount |
+|---|---:|---:|---:|
+| YIHUA 948-III 3 in 1 desoldering rework station, 110 W iron and vacuum desoldering gun, model EC-19054 | 1 | ₹7,568.00 | ₹7,568.00 |
+
+Subtotal **₹7,568.00**, free shipping, CGST and SGST ₹681.12 each; **total
+₹8,930.24**, paid by UPI or card. The listing does not state the mains voltage: read
+the plate for 220–240 V before plugging it in. The Yihua 853AAA-I preheater
+recommended with it was not ordered.
