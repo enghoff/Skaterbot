@@ -257,7 +257,8 @@ covers R18 and R26.
 
 - **Placed:** 2026-10-13, and paid the same day.
 - **Status:** “On Track”, procurement in progress and not shipped, as read in
-  the account on 2026-10-18. **Expected shipping 28 October**, where every line
+  the account on 2026-10-18 and unchanged on 2026-10-19, still at procurement,
+  the first of six steps between confirmation and delivery. **Expected shipping 28 October**, where every line
   read “In Stock, ships in 7–10 days” when it was ordered and still does: that
   is stock at LionCircuits' own suppliers, and 7–10 days from 13 October would
   have been 20–23 October. Its own notice puts the gap down to Dussehra: back-end
@@ -299,3 +300,100 @@ Subtotal **₹7,568.00**, free shipping, CGST and SGST ₹681.12 each; **total
 ₹8,930.24**, paid by UPI or card. The listing does not state the mains voltage: read
 the plate for 220–240 V before plugging it in. The Yihua 853AAA-I preheater
 recommended with it was not ordered.
+
+## Zbotic — 3D print cart, release 2088e6f
+
+- **Cart built:** 2026-10-20, through zbotic.in/3d-print-order/. **Not placed.**
+- **Source:** Zbotic's quote page and cart, read in the browser as each line was
+  added.
+- **Release:** `exports/releases/2088e6f/`, commit
+  2088e6f09ddd9cc9878ea205cd1b89c2da3dee23 of 2026-10-18, finished form (arrises
+  broken at 0.5 mm). The seven files uploaded, as the release table printed them;
+  the journal sleeves, the wheel caps and the torso cover are not in this cart:
+
+| File | Prints | Up | cm³ | SHA-256 |
+|---|---:|---|---:|---|
+| pelvis-shell_2088e6f.step | 1 | +Z | 184.54 | 21a85b358a65 |
+| electronics-deck_2088e6f.step | 1 | -Z | 27.42 | afa6cfc6be10 |
+| wheel-adapter_2088e6f.step | 2 | +X | 6.96 | 5a6683f3c226 |
+| thigh-105-unmirrored_2088e6f.step | 1 | -X | 42.18 | 9b58d726f8f7 |
+| thigh-105-mirrored_2088e6f.step | 1 | +X | 42.18 | 41228f41a10f |
+| limb-105-unmirrored_2088e6f.step | 1 | -X | 33.41 | b62f7af8568d |
+| limb-105-mirrored_2088e6f.step | 1 | +X | 33.41 | a32cacfd5af0 |
+
+**Settings, the same on every line:** FDM, which Zbotic says it runs on its own
+Bambu Lab machines; PLA (₹1.32/cm³ as listed); black; "FDM 0.12mm High Quality"
+(₹20/hr as listed); infill 100 %; supports "Auto", shown on the review and not
+selectable; rush order off. The page offers no infill pattern, wall count,
+top and bottom layers, orientation or finishing, so none was set. Which way up
+each piece prints went into each line's Special Instructions box:
+
+- Pelvis shell: *Print in the orientation uploaded (+Z up): upright, standing on
+  the two hip saddles. Not rim-down. The 0.5 mm edge chamfers are intentional.*
+- Electronics deck: *Print upside down from the orientation uploaded (-Z up):
+  the plate's top face on the bed, the IMU rails on its underside standing up.
+  The 0.5 mm edge chamfers are intentional.*
+- Wheel adapter: *Print with the flat disc on the bed and the spigot standing up
+  (the file's +X axis up). Two identical prints. The 0.5 mm edge chamfers are
+  intentional.*
+- Right thigh: *Right thigh. Print lying on its side with the file's -X axis
+  pointing up (resting on its +X face, the tie arches' face uppermost). The left
+  thigh is a separate, mirrored file. The 0.5 mm edge chamfers are
+  intentional.*
+- Left thigh: *Left thigh. Print lying on its side with the file's +X axis
+  pointing up (resting on its -X face, the tie arches' face uppermost). The
+  right thigh is a separate, mirrored file. The 0.5 mm edge chamfers are
+  intentional.*
+- Left shin: *Left shin. Print lying on its side with the file's -X axis
+  pointing up (resting on its +X face, the tie arches' face uppermost). The
+  right shin is a separate, mirrored file. The 0.5 mm edge chamfers are
+  intentional.*
+- Right shin: *Right shin. Print lying on its side with the file's +X axis
+  pointing up (resting on its -X face, the tie arches' face uppermost). The
+  left shin is a separate, mirrored file. The 0.5 mm edge chamfers are
+  intentional.*
+
+The box is cleared when a slice finishes, so a note typed while the page is
+still slicing is lost; the right thigh's had to be typed twice. Every note above
+was read back out of the box before its line was added.
+
+| Piece | Zbotic read, mm | Zbotic cm³ | Quote: material + print time + GST 18 % | Print time | Weight | Delivery | Cart line |
+|---|---|---:|---|---:|---:|---|---:|
+| Pelvis shell × 1 | 177.9 × 72 × 136.6 | 184.537 | ₹329 + ₹783 + ₹200 = **₹1,312** | 17.3 h | 309 g | ~4 days | ₹1,167.17 (₹1,111.59 + GST) |
+| Electronics deck × 1 | 148.3 × 66.4 × 9.15 | 27.4172 | ₹61 + ₹167 + ₹41 = **₹269** | 3.6 h | 53.2 g | ~3 days | ₹238.94 (₹227.56 + GST) |
+| Wheel adapter × 2 | 12 × 35.99 × 36 | 6.9606 | ₹31 + ₹81 + ₹20 = **₹132** for two | 0.8 h each | 10.1 g each | ~3 days | ₹117.53 (₹111.93 + GST) |
+| Right thigh × 1 | 54.7 × 52 × 149 | 42.1723 | ₹82 + ₹211 + ₹53 = **₹345** | 4.6 h | 73.1 g | ~3 days | ₹307.04 (₹292.42 + GST) |
+| Left thigh × 1 | 54.7 × 52 × 149 | 42.1725 | ₹83 + ₹216 + ₹54 = **₹353** | 4.7 h | 74 g | ~3 days | ₹313.74 (₹298.80 + GST) |
+| Left shin × 1 | 10 × 46 × 149 | 33.4058 | ₹61 + ₹140 + ₹36 = **₹237** | 3.1 h | 53 g | ~3 days | ₹210.85 (₹200.81 + GST) |
+| Right shin × 1 | 10 × 46 × 149 | 33.4058 | ₹61 + ₹139 + ₹36 = **₹236** | 3.0 h | 53 g | ~3 days | ₹209.86 (₹199.87 + GST) |
+
+Cart **₹2,442.98 + ₹122.15 GST at 5 % = ₹2,565.13**, shipping free, read
+after the last line went in. The quote page prices at 18 % GST and the cart
+charges 5 %; the figures before tax agree to within a few rupees. The 5 % coupon
+the cart shows is for a Bambu Lab A1 printer and does not apply.
+
+**A quote can be read before it reflects the settings.** The left thigh first
+priced at ₹246 — 2.6 h, 54.1 g — with every setting already showing as chosen,
+and at ₹353 once it was sliced again. So each line after that was sliced twice
+and added only when both agreed, and the deck and the wheel adapters, added
+before this was found, were quoted again afterwards: ₹269 and ₹132, the same as
+their lines. The pelvis was not quoted again; its slice was seen to start after
+its last setting changed. The right thigh was not either, and agrees with the
+left to ₹8.
+
+Three things about this cart are unproven:
+
+- **The cart does not show the quality preset, the infill or the special
+  instructions.** Each line shows technology, material, colour, size, model and
+  quantity only. The price matches the 0.12 mm, 100 % quote, which is the only
+  evidence those settings went with it. Confirm with Zbotic that the orientation
+  notes reached the order.
+- **Zbotic flagged every file "Non-manifold mesh — may need repair"** and
+  offered an Auto Repair, which was not used. Its volumes match the release's to
+  the figure it prints, and the export read each file back as one closed
+  surface, so the flag is most likely from Zbotic's own conversion of the STEP.
+- **Zbotic's weights are 17 to 56 % above solid PLA** at about 1.24 g/cm³:
+  309 g for a pelvis whose solid is 229 g, the deck 53.2 for 34.0, an adapter
+  10.1 for 8.6, a thigh 74 for 52.3 and a shin 53 for 41.4. The surplus is most
+  likely support material in whatever orientation its slicer chose, which need
+  not be the one asked for.
