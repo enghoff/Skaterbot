@@ -55,7 +55,7 @@ sys.path.insert(0, str(ROOT))
 
 # Where the Python that this project runs on lives. Everything else in the tree
 # is geometry output, reference input or documentation.
-SOURCE_DIRS = ("cad", "tools", "simulation", "electrical")
+SOURCE_DIRS = ("cad", "tools", "simulation", "electrical", "bench")
 
 
 def modules() -> list[str]:

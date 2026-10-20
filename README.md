@@ -64,6 +64,8 @@ bipedal/
 │   └── dimensions.py      every constant and colour, collected for simulation/
 │
 ├── tools/                 check, gates, mass, view and export scripts (see below)
+├── bench/                 the motors on the bench: a window to configure and drive
+│                          them through DAMIAO's USB-to-CAN debugger (motor_gui.py)
 ├── simulation/            the CAD as a URDF, for Isaac Sim and RL (see below)
 ├── docs/                  project documentation (see above)
 ├── reference/             vendor STEP and datasheets — design inputs
