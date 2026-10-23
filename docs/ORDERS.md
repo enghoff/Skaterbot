@@ -140,20 +140,28 @@ Cart total **₹2,095.00**; shipping, if any, is not recorded. One fitted, no sp
 - **Status:** **cancelled by element14**, reported by the owner on 2026-10-13.
   Nothing from it is coming.
 - **Source:** owner's explicit confirmation in this conversation: “element14 order has been placed”.
-- **Order number and final invoice:** not yet supplied.
+- **Order number:** element14 ref **26013728**, PO number 20261008185525,
+  from element14's “order has been received” email of 2026-10-08 to the
+  owner's Hotmail address. No invoice was issued: the detailed confirmation
+  waits on stock allocation, and the order was cancelled first.
+- **Charged:** **₹2,887.70** to the owner's ICICI Visa debit card on 2026-10-08 at 18:56, card
+  reference 628113396699, read from the owner's bank statement on 2026-10-22.
+  That is ₹124.82 less than the reviewed basket's ₹3,012.52, and one Keystone
+  3568 holder fewer, ₹105.98 + 18 % GST, accounts for it to within 25 paise.
+  **Refund not yet seen**, 2026-10-22.
 
 Its parts were re-sourced from shops that sell to an individual without a
 GSTIN and ordered on 2026-10-13: see [Robu](#robu--2026-10-13) and
 [LionCircuits](#lioncircuits--2026-10-13). The table is what this order held,
-kept as a record. The following are the quantities in the last reviewed
-17-line basket, not independently verified invoice quantities. The two film
-capacitor lines were also shown at ten each in the owner's cart screenshot.
+kept as a record, with the quantities read from the order-received email on
+2026-10-22. They match the last reviewed 17-line basket on every line but the
+Keystone holder, which went in at one, not two.
 
-| Selected part | element14 order code | Reviewed basket quantity |
+| Selected part | element14 order code | Quantity ordered |
 |---|---|---:|
 | MCP2562FD-E/P CAN transceiver | 2434898 | 4 |
 | BZX79-C15,133 zener | 1097217 | 5 |
-| Keystone 3568 fuse holder | 2504685 | 2 |
+| Keystone 3568 fuse holder | 2504685 | 1 |
 | Vishay PR01 1 kΩ 1 W, R26 | 2614498 | 2 |
 | KEMET C315C104K5R5TA 100 nF | 4552016 | 10 |
 | TE LR0204 10 Ω | 2329856 | 10 |
@@ -170,8 +178,7 @@ capacitor lines were also shown at ten each in the owner's cart screenshot.
 | KEMET MMK5225K63J06L4BULK 2.2 µF, C7 | 2429330 | 10 |
 
 Last reviewed basket: **₹2,552.98 before GST**, **₹3,012.52 including GST**,
-with ₹0 shipping shown. Final charged amount and invoice quantities remain to
-be recorded; order placement does not establish delivery.
+with ₹0 shipping shown, and two Keystone holders where the order took one.
 
 ## Evelta — 2026-10-08
 
