@@ -1217,6 +1217,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "wheel_check"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "cortex-m",
+ "cortex-m-rt",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-time",
+ "embedded-can",
+ "embedded-io-async 0.7.0",
+ "heapless 0.9.3",
+ "libm",
+]
+
+[[package]]
 name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

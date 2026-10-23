@@ -7,11 +7,14 @@
 #   serial_check
 #             the serial link to the Banana Pi through the carrier's J5, and
 #             the first image flashed over it, by sbc/flash_mcu.py
+#   wheel_check
+#             the two wheel motors on bus C, through the carrier's U3, swung
+#             ±45° at 2 Hz on a command from the Pi (sbc/wheel_check.py)
 #
 # flash.ps1 builds one and writes it to the board over USB.
 [workspace]
 resolver = "3"
-members = ["board", "policy", "serial_check"]
+members = ["board", "policy", "serial_check", "wheel_check"]
 
 # Released embassy crates, matched to each other by their 2026-03-10 releases.
 # The chip feature is the exact part on the WeAct board: STM32G474, 48 pins,
@@ -31,6 +34,8 @@ cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.0"
 heapless = { version = "0.9", default-features = false }
 embedded-hal-nb = "1.0.0"
+embedded-can = "0.4.1"
+embedded-io-async = "0.7.0"
 libm = "0.2.16"
 
 [profile.release]
