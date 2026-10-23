@@ -1098,15 +1098,43 @@ class App(tk.Tk):
                     f"state    {self.state_text(m)}"
                 )
             )
-        timeout = m.registers.get(dm.RID["TIMEOUT"])
-        self.warning.configure(
-            text=(
+        notes = []
+        if m.registers.get(dm.RID["TIMEOUT"]) == 0:
+            notes.append(
                 "TIMEOUT is 0 (off): if this program stops while the motor is "
                 "enabled, the motor keeps its last command. Esc still disables it."
             )
-            if timeout == 0
-            else ""
-        )
+        lim, cmd = self.limits, self.command()
+        asked = 0.0 if cmd is None else self.asked_speed(m, cmd)
+        if asked > lim.speed:
+            notes.append(
+                f"Speed held to {lim.speed:g} rad/s by the |speed| box under "
+                "'Never send more than'."
+            )
+        cap = m.speed_cap
+        if cap is not None and min(asked, lim.speed) > cap:
+            notes.append(
+                f"The motor holds itself to {cap:.1f} rad/s: MAX_SPD "
+                f"{m.registers[dm.RID['MAX_SPD']]:g} at the rotor, over gearing "
+                f"{m.registers[dm.RID['Gr']]:g}. Raise MAX_SPD to go faster."
+            )
+        if lim.speed > m.vmax:
+            notes.append(
+                f"VMAX is {m.vmax:g} rad/s: past ±{m.vmax:g} the motor's speed "
+                f"reading wraps round to the other sign ({m.vmax + 2:g} reads as "
+                f"{m.vmax + 2 - 2 * m.vmax:g}). Raise VMAX on the Registers tab "
+                "before driving faster."
+            )
+        self.warning.configure(text="\n\n".join(notes))
+
+    @staticmethod
+    def asked_speed(m: dm.Motor, cmd: Command) -> float:
+        """The fastest the sliders ask this motor to turn, before any limit."""
+        if m.mode == dm.MIT:
+            return abs(cmd.v)
+        if m.mode == dm.VELOCITY:
+            return abs(cmd.v) + (cmd.amp if cmd.wave != "constant" else 0.0)
+        return cmd.vlim
 
     def draw_plot(self) -> None:
         c = self.canvas

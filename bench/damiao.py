@@ -88,7 +88,7 @@ REGISTERS = [
     Register(0x03, "OC_Value", "f", True, "(0.0, 1.0)", "Overcurrent trip, per unit"),
     Register(0x04, "ACC", "f", True, "(0.0, fmax)", "Acceleration"),
     Register(0x05, "DEC", "f", True, "[-fmax, 0.0)", "Deceleration"),
-    Register(0x06, "MAX_SPD", "f", True, "(0.0, fmax]", "Maximum speed"),
+    Register(0x06, "MAX_SPD", "f", True, "(0.0, fmax]", "Speed limit, rotor rad/s"),
     Register(0x07, "MST_ID", "u", True, "[0, 0x7FF]", "Feedback ID (master ID)"),
     Register(0x08, "ESC_ID", "u", True, "[0, 0x7FF]", "Receive ID (the CAN ID)"),
     Register(0x09, "TIMEOUT", "u", True, "[0, 2^32-1]", "Communication-loss timeout"),
@@ -187,7 +187,22 @@ class Motor:
     feedback: Feedback | None = None
     history: deque = field(default_factory=lambda: deque(maxlen=4000))
 
+    @property
+    def speed_cap(self) -> float | None:
+        """The output speed MAX_SPD holds the motor to, in rad/s, if it is known.
+
+        MAX_SPD is at the rotor, so the output's limit is it over the gear ratio.
+        Measured 2026-10-20 in velocity mode: at MAX_SPD 300 and Gr 7, asked for
+        50 rad/s, the motor held 42.7 against the 42.9 this gives; at 450 it
+        followed to 48.
+        """
+        spd, gr = self.registers.get(RID["MAX_SPD"]), self.registers.get(RID["Gr"])
+        return spd / gr if spd and gr else None
+
     def decode(self, d: bytes, t: float) -> Feedback:
+        # Speed is packed against VMAX, and past it wraps round rather than
+        # stopping: on 2026-10-20 a motor commanded to 52 rad/s, having followed
+        # 48 exactly, read -48 with VMAX at 50.
         p = d[1] << 8 | d[2]
         v = d[3] << 4 | d[4] >> 4
         q = (d[4] & 0xF) << 8 | d[5]
@@ -351,7 +366,7 @@ class Bus:
         if self.read(can_id, RID["ESC_ID"], timeout=timeout, tries=1) is None:
             return None
         m = Motor(can_id)
-        for name in ("MST_ID", "CTRL_MODE", "PMAX", "VMAX", "TMAX"):
+        for name in ("MST_ID", "CTRL_MODE", "PMAX", "VMAX", "TMAX", "MAX_SPD", "Gr"):
             v = self.read(can_id, RID[name])
             if v is not None:
                 m.registers[RID[name]] = v
