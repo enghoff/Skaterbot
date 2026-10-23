@@ -1,0 +1,9 @@
+[package]
+name = "diag_link"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# No dependencies, so that its tests build and run on the PC:
+#   cargo test -p diag_link --target x86_64-pc-windows-msvc
+[dependencies]

@@ -25,8 +25,8 @@ What it checks, in order of what it costs:
    which is the rule cad/finish.py's problems() states. A body that does not
    reach the rest of its piece, or a pocket closed over into a void, fails here
    on the edit that caused it rather than at the printer;
-3. ruff lints and format-checks cad/, tools/ and simulation/, against the rules
-   pinned in ruff.toml.
+3. ruff lints and format-checks cad/, tools/, simulation/, electrical/, bench/
+   and sbc/, against the rules pinned in ruff.toml.
 
 WHAT IT STILL DOES NOT PROVE. That a feature exists. A hole is a boolean, and a
 boolean the engine accepts having built the wrong solid is the failure this
@@ -55,7 +55,7 @@ sys.path.insert(0, str(ROOT))
 
 # Where the Python that this project runs on lives. Everything else in the tree
 # is geometry output, reference input or documentation.
-SOURCE_DIRS = ("cad", "tools", "simulation", "electrical", "bench")
+SOURCE_DIRS = ("cad", "tools", "simulation", "electrical", "bench", "sbc")
 
 
 def modules() -> list[str]:

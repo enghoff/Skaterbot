@@ -3,6 +3,12 @@
 #   board     what every image carries: the clocks, and every way back into ST's
 #             USB bootloader, which is how the board is reflashed without anyone
 #             at it
+#   diag      the diagnostics link: every CAN bus, the IMU and the battery bus,
+#             carried to the Banana Pi over J5 (docs/DIAGNOSTICS.md,
+#             sbc/diagd.py)
+#   diag_link the link's framing, a library with no dependencies, so that its
+#             tests run on the PC: cargo test -p diag_link --target
+#             x86_64-pc-windows-msvc
 #   policy    the trained policy, run on the board for the host to check
 #   serial_check
 #             the serial link to the Banana Pi through the carrier's J5, and
@@ -14,7 +20,7 @@
 # flash.ps1 builds one and writes it to the board over USB.
 [workspace]
 resolver = "3"
-members = ["board", "policy", "serial_check", "wheel_check"]
+members = ["board", "diag", "diag_link", "policy", "serial_check", "wheel_check"]
 
 # Released embassy crates, matched to each other by their 2026-03-10 releases.
 # The chip feature is the exact part on the WeAct board: STM32G474, 48 pins,
@@ -22,6 +28,7 @@ members = ["board", "policy", "serial_check", "wheel_check"]
 # read over DFU on 2026-09-26), and this firmware leaves the option bytes alone.
 [workspace.dependencies]
 board = { path = "board" }
+diag_link = { path = "diag_link" }
 embassy-stm32 = { version = "0.6.0", features = ["stm32g474ce", "dual-bank", "memory-x", "time-driver-any", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
 # A tick that divides the timers' 170 MHz exactly. embassy rounds the divider
@@ -30,6 +37,8 @@ embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "execu
 embassy-time = { version = "0.5.1", features = ["tick-hz-1_000_000"] }
 embassy-usb = "0.6.0"
 embassy-futures = "0.1.2"
+# What embassy-stm32 0.6 itself is built on, for the queues between futures.
+embassy-sync = "0.8.0"
 cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.0"
 heapless = { version = "0.9", default-features = false }

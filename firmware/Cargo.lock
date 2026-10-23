@@ -223,6 +223,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "diag"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "cortex-m",
+ "cortex-m-rt",
+ "diag_link",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-sync",
+ "embassy-time",
+ "embedded-can",
+ "embedded-io-async 0.7.0",
+ "heapless 0.9.3",
+]
+
+[[package]]
+name = "diag_link"
+version = "0.1.0"
+
+[[package]]
 name = "document-features"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"

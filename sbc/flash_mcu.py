@@ -272,18 +272,29 @@ def uart4() -> str:
 
 
 class Port:
-    def __init__(self, path: str):
+    def __init__(self, path: str, baud: int = 115200):
         self.path = path
+        self.baud = baud
         # Opened without waiting for a carrier, which this port has no line for,
         # then told to ignore it and made blocking again.
         self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK | os.O_CLOEXEC)
+        # Two programs reading one port each get some of its bytes, and neither
+        # makes sense of them; diagd.py holds it for as long as it runs.
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            os.close(self.fd)
+            sys.exit(
+                f"{path} is in use by another program: diagd.py, flash_mcu.py or "
+                "wheel_check.py. Stop it first."
+            )
         self.configure(parity=False)
         flags = fcntl.fcntl(self.fd, fcntl.F_GETFL)
         fcntl.fcntl(self.fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
 
     def configure(self, parity: bool) -> None:
-        """115 200 baud, 8 bits, raw: even parity for the bootloader, none
-        for the firmware."""
+        """8 bits, raw, at the port's rate: 115 200 unless it was opened at
+        another. Even parity for the bootloader, none for the firmware."""
         attrs = termios.tcgetattr(self.fd)
         attrs[0] = 0  # iflag
         attrs[1] = 0  # oflag
@@ -291,7 +302,7 @@ class Port:
         if parity:
             attrs[2] |= termios.PARENB
         attrs[3] = 0  # lflag
-        attrs[4] = attrs[5] = termios.B115200
+        attrs[4] = attrs[5] = getattr(termios, f"B{self.baud}")
         attrs[6][termios.VMIN] = 0
         attrs[6][termios.VTIME] = 0
         termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
@@ -300,9 +311,15 @@ class Port:
     def flush(self) -> None:
         termios.tcflush(self.fd, termios.TCIOFLUSH)
 
-    def write(self, data: bytes) -> None:
-        os.write(self.fd, data)
-        termios.tcdrain(self.fd)
+    def write(self, data: bytes, drain: bool = True) -> None:
+        """Writes all of data, and with drain waits until it has left: the
+        bootloader's handshake wants that, and a stream of messages does not,
+        since the wait can be a whole scheduler tick."""
+        view = memoryview(data)
+        while view:
+            view = view[os.write(self.fd, view) :]
+        if drain:
+            termios.tcdrain(self.fd)
 
     def read(self, n: int, timeout: float) -> bytes:
         """Up to n bytes, waiting at most timeout for all of them."""

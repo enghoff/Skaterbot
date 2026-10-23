@@ -1,4 +1,14 @@
-"""DAMIAO joint motors, through DAMIAO's own USB-to-CAN debugger.
+"""DAMIAO joint motors, through DAMIAO's own USB-to-CAN debugger or the robot's buses.
+
+A Bus is the motors on one CAN bus, and reaches them through a link: anything
+with send(can_id, data), set_handler(handler) and close(), which hands every
+frame it hears to handler(can_id, data, t). Two links are:
+
+- Debugger, here: DAMIAO's USB-to-CAN debugger, one bus.
+- diag_client.CanBus, in sbc/: one of the robot's three buses, through the
+  controller board and the Banana Pi (docs/DIAGNOSTICS.md). It also has
+  request(), which waits for a register's answer at the Pi rather than across
+  the network, and a Bus uses it when it is there.
 
 The debugger is a USB serial port to the PC (USB ID 2E88:4603, a CDC device, so
 Windows needs no driver for it). Every CAN frame goes to it as a 30-byte record
@@ -225,27 +235,25 @@ class _Pending:
         self.data: bytes | None = None
 
 
-class Bus:
-    """One debugger, and the motors found behind it."""
+class Debugger:
+    """DAMIAO's USB-to-CAN debugger: one CAN bus, through a serial port."""
 
     def __init__(self, port: str):
         self.port = port
+        self.where = port
         self._serial = serial.Serial(port, ADAPTER_BAUD, timeout=0.02)
         self._write_lock = threading.Lock()
-        self._pending: dict[tuple[int, int, int], _Pending] = {}
-        self._pending_lock = threading.Lock()
-        self.history_lock = threading.Lock()
-        self.motors: dict[int, Motor] = {}
-        self.tx = self.rx = self.unmatched = self.foreign = self.late = 0
+        self._handler = None
+        self.foreign = 0
         self.error: str | None = None
         self._running = True
         self._reader = threading.Thread(target=self._read_loop, daemon=True)
         self._reader.start()
 
-    # -- the debugger's framing ------------------------------------------------
+    def set_handler(self, handler) -> None:
+        self._handler = handler
 
-    def send(self, can_id: int, data: bytes | list[int]) -> None:
-        data = bytes(data).ljust(8, b"\0")
+    def send(self, can_id: int, data: bytes) -> None:
         record = bytearray(30)
         record[0:4] = b"\x55\xaa\x1e\x03"  # header, record length, "send"
         record[4:8] = (1).to_bytes(4, "little")  # send once
@@ -257,7 +265,6 @@ class Bus:
         record[21:29] = data
         with self._write_lock:
             self._serial.write(record)
-        self.tx += 1
 
     def _read_loop(self) -> None:
         buf = bytearray()
@@ -274,12 +281,47 @@ class Bus:
                     continue
                 packet = bytes(buf[:16])
                 del buf[:16]
-                if packet[1] == 0x11:
-                    self._dispatch(int.from_bytes(packet[3:7], "little"), packet[7:15])
-                else:
+                if packet[1] != 0x11:
                     self.foreign += 1
+                elif self._handler is not None:
+                    can_id = int.from_bytes(packet[3:7], "little")
+                    self._handler(can_id, packet[7:15], time.monotonic())
 
-    def _dispatch(self, can_id: int, d: bytes) -> None:
+    def close(self) -> None:
+        self._running = False
+        self._reader.join(timeout=1)
+        self._serial.close()
+
+
+class Bus:
+    """The motors on one CAN bus, through a link: a Debugger, or one of the
+    robot's buses (sbc/diag_client.py's CanBus)."""
+
+    def __init__(self, link, name: str = ""):
+        self.link = link
+        self.name = name
+        self._pending: dict[tuple[int, int, int], _Pending] = {}
+        self._pending_lock = threading.Lock()
+        self.history_lock = threading.Lock()
+        self.motors: dict[int, Motor] = {}
+        self.tx = self.rx = self.unmatched = self.late = 0
+        link.set_handler(self._dispatch)
+
+    @property
+    def error(self) -> str | None:
+        return self.link.error
+
+    @property
+    def where(self) -> str:
+        return self.link.where
+
+    def send(self, can_id: int, data: bytes | list[int]) -> None:
+        # Eight bytes always, as the debugger sends them: velocity mode's
+        # four went out padded to eight when that mode was measured.
+        self.link.send(can_id, bytes(data).ljust(8, b"\0"))
+        self.tx += 1
+
+    def _dispatch(self, can_id: int, d: bytes, t: float) -> None:
         self.rx += 1
         if d[2] in (REG_READ, REG_WRITE, REG_SAVE):
             key = (d[0] | d[1] << 8, d[2], d[3])
@@ -299,7 +341,7 @@ class Bus:
         if motor is None:
             self.unmatched += 1
             return
-        fb = motor.decode(d, time.monotonic())
+        fb = motor.decode(d, t)
         motor.feedback = fb
         with self.history_lock:
             motor.history.append(fb)
@@ -313,18 +355,24 @@ class Bus:
         return hits[0] if len(hits) == 1 else None
 
     def close(self) -> None:
-        self._running = False
-        self._reader.join(timeout=1)
-        self._serial.close()
+        self.link.close()
 
     # -- registers -------------------------------------------------------------
 
     def _request(self, can_id, op, rid, payload=b"\0\0\0\0", timeout=0.05):
+        data = bytes([can_id & 0xFF, can_id >> 8, op, rid]) + payload
+        ask = getattr(self.link, "request", None)
+        if ask is not None:
+            # Answered where the bus is: timeout is the motor's, not the network's.
+            self.tx += 1
+            reply = ask(CONFIG_ID, data, data[:4], timeout)
+            self.rx += reply is not None
+            return reply
         key = (can_id, op, rid)
         pending = _Pending()
         with self._pending_lock:
             self._pending[key] = pending
-        self.send(CONFIG_ID, bytes([can_id & 0xFF, can_id >> 8, op, rid]) + payload)
+        self.send(CONFIG_ID, data)
         if pending.event.wait(timeout):
             return pending.data
         with self._pending_lock:

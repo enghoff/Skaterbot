@@ -1,0 +1,19 @@
+[package]
+name = "diag"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+board.workspace = true
+diag_link.workspace = true
+embassy-stm32.workspace = true
+embassy-executor.workspace = true
+embassy-time.workspace = true
+embassy-futures.workspace = true
+embassy-sync.workspace = true
+embedded-can.workspace = true
+embedded-io-async.workspace = true
+cortex-m.workspace = true
+cortex-m-rt.workspace = true
+heapless.workspace = true

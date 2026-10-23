@@ -2,20 +2,32 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyserial>=3.5"]
 # ///
-"""A window for configuring and testing DAMIAO motors through the USB-to-CAN debugger.
+"""A window for configuring and testing DAMIAO motors, through the USB-to-CAN debugger or the robot.
 
     uv run bench/motor_gui.py
+    uv run bench/motor_gui.py --robot ssh:admin@<the Pi>
 
-Connect finds the debugger by its USB ID and scans CAN IDs 1 to 16 with register
-reads, which cannot move anything. Pick a motor on the left. The Registers tab
-reads, writes and saves its settings and gives it a new CAN ID; the Drive tab
-enables it and commands it in whichever of its four modes it is set to, with a
-sine or square wave on the setpoint if asked, and plots what it reports.
+It reaches motors two ways. Through DAMIAO's USB-to-CAN debugger, found by its
+USB ID, one bus. Or through the robot itself: the controller board running
+firmware/diag and the Banana Pi running sbc/diagd.py, which carry all three of
+the robot's buses and its IMU and battery bus (docs/DIAGNOSTICS.md). The box
+offers the Banana Pi as ssh:bpi-m4zero, which the PC's SSH configuration
+resolves; any other robot is typed in, as host:port for diagd directly, or
+ssh:DEST to reach it through SSH, which is how a PC should. `python
+sbc/diagd.py --sim` gives a robot with simulated motors to try this on.
+
+Connect scans CAN IDs 1 to 16 on every bus with register reads, which cannot
+move anything. Pick a motor on the left. The Registers tab reads, writes and
+saves its settings and gives it a new CAN ID; the Drive tab enables it and
+commands it in whichever of its four modes it is set to, with a sine or square
+wave on the setpoint if asked, and plots what it reports. Connected to the
+robot, the System tab shows the controller, its buses, the battery and the IMU.
 
 What keeps it safe:
 
-- Esc, or the red button, disables every motor on the bus, on every mode's frame
-  ID, from anywhere in the window. So does closing it.
+- Esc, or the red button, disables every motor on every bus, on every mode's
+  frame ID, from anywhere in the window. So does closing it. On the robot it
+  also has the controller stop every motor itself.
 - Enabling starts from nothing: in MIT mode no stiffness, no damping and no
   torque, holding the present position; in the position modes the present
   position at a slow speed; in velocity mode zero speed.
@@ -26,36 +38,59 @@ What keeps it safe:
   damping more, since it is not bounded by anything but Kd.
 - A motor that reports a fault stops being driven.
 - Settings change only while a motor is disabled, and only in its RAM until Save
-  to flash. The CAN bit rate is not offered at all, since the debugger would
-  stop hearing the motor.
+  to flash. The CAN bit rate is not offered at all, since the debugger or the
+  controller would stop hearing the motor.
+- On the robot, the Pi stops every motor if this window stops talking to it for
+  half a second, and the controller does if the Pi stops talking to it.
 
-What it cannot do: if this program dies while a motor is enabled, the motor holds
-its last command unless its TIMEOUT register is set, and the first motor read
-arrived with it at 0, which is off. The Drive tab says so when it is.
+What it cannot do: if this program dies while a motor is enabled on the
+debugger, the motor holds its last command unless its TIMEOUT register is set,
+and the first motor read arrived with it at 0, which is off. The Drive tab says
+so when it is.
 
 The protocol is in damiao.py beside this file.
 """
 
 from __future__ import annotations
 
+import argparse
 import math
+import os
 import queue
+import re
+import sys
 import threading
 import time
 import tkinter as tk
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from pathlib import Path
 from tkinter import messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
 import damiao as dm
 import serial
 
+# The robot's client is the Pi's own, in sbc/, and needs nothing installed.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sbc"))
+import diag_client  # noqa: E402
+
 PLOT_WINDOW_S = 10.0
 POLL_HZ = 20  # status requests to motors that are not being driven
 STALE_S = 0.3  # feedback older than this, from a driven motor, is a fault
 WAVES = ("constant", "sine", "square")
+LINK_ERRORS = (serial.SerialException, OSError, diag_client.RobotError)
+DEBUGGER_BUS = "USB"
+IMU_REPORTS = ("accel", "gyro", "gravity", "game")
+IMU_HZ = 100
+# The robots offered in the box, after any --robot or $DIAG_ROBOT, and what each
+# is. The Pi by the name the PC's SSH configuration gives it, which carries its
+# key and finds its address.
+ROBOTS = {
+    "ssh:bpi-m4zero": "the Banana Pi, through SSH",
+    diag_client.DEFAULT_ROBOT: "diagd --sim on this PC",
+}
 
 
 def clamp(x: float, lo: float, hi: float) -> float:
@@ -105,6 +140,11 @@ class Command:
         self.vlim, self.wave, self.amp = 1.0, "constant", 0.0
 
 
+def key_of(bus: dm.Bus, m: dm.Motor) -> tuple[str, int]:
+    """A motor's name in this window: its bus and its CAN ID."""
+    return (bus.name, m.can_id)
+
+
 class Streamer(threading.Thread):
     """Sends every driven motor its command at the set rate, and polls the rest."""
 
@@ -115,23 +155,23 @@ class Streamer(threading.Thread):
         self.running = True
 
     def run(self) -> None:
-        bus = self.app.bus
         next_tick = time.perf_counter()
         last_poll = 0.0
-        while self.running and bus.error is None:
+        while self.running and self.app.link_error() is None:
             now = time.monotonic()
             poll = now - last_poll >= 1 / POLL_HZ
             if poll:
                 last_poll = now
             try:
-                for m in list(bus.motors.values()):
-                    cmd = self.app.commands.get(m.can_id)
-                    if cmd is not None and cmd.active:
-                        self.drive(bus, m, cmd, now)
-                    elif poll:
-                        bus.request_status(m)
-            except (serial.SerialException, OSError) as e:
-                bus.error = f"debugger lost: {e}"
+                for bus in list(self.app.buses.values()):
+                    for m in list(bus.motors.values()):
+                        cmd = self.app.commands.get(key_of(bus, m))
+                        if cmd is not None and cmd.active:
+                            self.drive(bus, m, cmd, now)
+                        elif poll:
+                            bus.request_status(m)
+            except LINK_ERRORS as e:
+                self.app.lost = f"link lost: {e}"
                 break
             next_tick += 1 / self.rate
             delay = next_tick - time.perf_counter()
@@ -145,7 +185,9 @@ class Streamer(threading.Thread):
         if fb is not None and fb.fault and fb.t > cmd.enabled_at:
             cmd.active = False
             bus.disable(m)
-            self.app.say(f"motor {m.can_id} tripped ({fb.state_name}); disabled")
+            self.app.say(
+                f"motor {self.app.label(bus, m)} tripped ({fb.state_name}); disabled"
+            )
             return
         lim = self.app.limits
         sp = cmd.setpoint(m.mode, now)
@@ -232,7 +274,7 @@ class Slider:
 
 
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, robots: list[str] | None = None):
         super().__init__()
         self.title("DAMIAO motors")
         ttk.Style(self).configure(
@@ -240,13 +282,20 @@ class App(tk.Tk):
         )
         self.geometry("1400x980")
         self.minsize(1100, 700)
-        self.bus: dm.Bus | None = None
+        self.robots = list(dict.fromkeys([*(robots or []), *ROBOTS]))
+        # One bus through the debugger, or the robot's three through diagd.
+        self.buses: dict[str, dm.Bus] = {}
+        self.debugger: dm.Debugger | None = None
+        self.robot: diag_client.Robot | None = None
+        self.lost: str | None = None
         self.streamer: Streamer | None = None
-        self.commands: dict[int, Command] = {}
+        self.commands: dict[tuple[str, int], Command] = {}
         self.limits = Limits()
-        self.selected: int | None = None
+        self.selected: tuple[str, int] | None = None
         self.jobs = ThreadPoolExecutor(max_workers=1)
         self.inbox: queue.Queue = queue.Queue()
+        self.imu: dict[str, tuple[float, list[float], int]] = {}
+        self.imu_counts: dict[str, deque] = {}
         self._loading = False
         self._ticks = 0
         self._build()
@@ -260,11 +309,10 @@ class App(tk.Tk):
     def _build(self) -> None:
         top = ttk.Frame(self, padding=6)
         top.pack(fill="x")
-        ttk.Label(top, text="Debugger").pack(side="left")
+        ttk.Label(top, text="Connect to").pack(side="left")
         self.port_var = tk.StringVar()
-        self.port_box = ttk.Combobox(
-            top, textvariable=self.port_var, width=54, state="readonly"
-        )
+        # Typed into as well as picked from: a robot's address is typed.
+        self.port_box = ttk.Combobox(top, textvariable=self.port_var, width=54)
         self.port_box.pack(side="left", padx=4)
         ttk.Button(top, text="↻", width=3, command=self.refresh_ports).pack(side="left")
         self.connect_btn = ttk.Button(top, text="Connect", command=self.toggle_connect)
@@ -299,8 +347,10 @@ class App(tk.Tk):
 
         motors = ttk.Frame(body)
         body.add(motors, weight=0)
-        cols = ("id", "master", "mode", "state", "pos", "vel", "torque", "mos", "wind")
+        cols = ("bus", "id", "master", "mode", "state", "pos", "vel", "torque")
+        cols += ("mos", "wind")
         heads = (
+            "Bus",
             "CAN ID",
             "Master",
             "Mode",
@@ -311,7 +361,7 @@ class App(tk.Tk):
             "MOS",
             "Wdg",
         )
-        widths = (70, 70, 140, 220, 90, 90, 90, 70, 70)
+        widths = (50, 70, 70, 140, 220, 90, 90, 90, 70, 70)
         self.tree = ttk.Treeview(motors, columns=cols, show="headings", height=6)
         for c, h, w in zip(cols, heads, widths):
             self.tree.heading(c, text=h)
@@ -323,6 +373,7 @@ class App(tk.Tk):
         body.add(self.notebook, weight=1)
         self._build_drive(self.notebook)
         self._build_registers(self.notebook)
+        self._build_system(self.notebook)
 
         bottom = ttk.Frame(self, padding=(6, 4))
         bottom.pack(fill="x")
@@ -510,6 +561,27 @@ class App(tk.Tk):
         ).pack(side="left")
         self.new_id.trace_add("write", lambda *_: self._suggest_master())
 
+    def _build_system(self, nb: ttk.Notebook) -> None:
+        tab = ttk.Frame(nb, padding=8)
+        nb.add(tab, text="System")
+        row = ttk.Frame(tab)
+        row.pack(fill="x", pady=(0, 6))
+        for text, fn in (
+            (f"IMU on, {IMU_HZ} Hz", self.imu_on),
+            ("IMU off", self.imu_off),
+            ("Reset IMU", self.imu_reset),
+        ):
+            ttk.Button(row, text=text, command=fn).pack(side="left", padx=(0, 4))
+        ttk.Label(
+            row,
+            text="the robot's controller, its buses, the battery and the IMU",
+            foreground="#666",
+        ).pack(side="left", padx=8)
+        self.system = ttk.Label(
+            tab, text="", font=("Consolas", 11), justify="left", anchor="nw"
+        )
+        self.system.pack(fill="both", expand=True)
+
     # -- plumbing --------------------------------------------------------------
 
     def post(self, fn) -> None:
@@ -525,34 +597,62 @@ class App(tk.Tk):
         self.log_box.see("end")
         self.log_box.configure(state="disabled")
 
-    def job(self, fn, done=None) -> None:
-        """Run fn on the worker thread, and done(result) back on this one."""
+    def job(self, fn, done=None, failed=None) -> None:
+        """Run fn on the worker thread, and done(result) back on this one, or
+        failed(error) if it raised."""
 
         def run():
             try:
                 result = fn()
             except Exception as e:  # a failed job must not take the worker with it
-                self.say(f"error: {e}")
+                if failed is None:
+                    self.say(f"error: {e}")
+                else:
+                    # Bound now: Python unbinds e when the except block ends.
+                    self.post(lambda e=e: failed(e))
                 return
             if done is not None:
                 self.post(lambda: done(result))
 
         self.jobs.submit(run)
 
-    def motor(self) -> dm.Motor | None:
-        if self.bus is None or self.selected is None:
+    def label(self, bus: dm.Bus, m: dm.Motor | int) -> str:
+        """How the log names a motor: its CAN ID, and its bus on the robot."""
+        can_id = m if isinstance(m, int) else m.can_id
+        return str(can_id) if bus.name == DEBUGGER_BUS else f"{bus.name}{can_id}"
+
+    def target(self) -> tuple[dm.Bus, dm.Motor, Command] | None:
+        """The selected motor, its bus and its command, if one is selected."""
+        if self.selected is None:
             return None
-        return self.bus.motors.get(self.selected)
+        bus = self.buses.get(self.selected[0])
+        m = None if bus is None else bus.motors.get(self.selected[1])
+        cmd = self.commands.get(self.selected)
+        if bus is None or m is None or cmd is None:
+            return None
+        return bus, m, cmd
+
+    def motor(self) -> dm.Motor | None:
+        t = self.target()
+        return None if t is None else t[1]
 
     def command(self) -> Command | None:
         return None if self.selected is None else self.commands.get(self.selected)
 
-    def is_disabled(self, m: dm.Motor) -> bool:
-        cmd = self.commands.get(m.can_id)
+    def is_disabled(self, bus: dm.Bus, m: dm.Motor) -> bool:
+        cmd = self.commands.get(key_of(bus, m))
         if (cmd and cmd.active) or (m.feedback and m.feedback.enabled):
-            self.log(f"motor {m.can_id}: disable it first")
+            self.log(f"motor {self.label(bus, m)}: disable it first")
             return False
         return True
+
+    def link_error(self) -> str | None:
+        if self.lost:
+            return self.lost
+        for bus in self.buses.values():
+            if bus.error:
+                return bus.error
+        return None
 
     def _set_rate(self) -> None:
         try:
@@ -584,52 +684,125 @@ class App(tk.Tk):
             f"{dev}  {desc}" + ("  [DAMIAO debugger]" if ours else "")
             for dev, desc, ours in ports
         ]
-        self.port_box.configure(values=values)
-        if values and not self.port_var.get():
-            self.port_var.set(values[0])
-        if not values:
-            self.port_var.set("")
+        robots = [
+            f"robot  {r}" + (f"   ({ROBOTS[r]})" if r in ROBOTS else "")
+            for r in self.robots
+        ]
+        self.port_box.configure(values=values + robots)
+        if not self.port_var.get():
+            # The debugger if one is plugged in, and the robot if not: the
+            # other serial ports are anything at all, Bluetooth's among them.
+            debuggers = [v for v, (_, _, ours) in zip(values, ports) if ours]
+            self.port_var.set((debuggers + robots)[0])
 
     def toggle_connect(self) -> None:
-        if self.bus is None:
-            self.connect()
-        else:
+        if self.buses:
             self.disconnect()
+        else:
+            self.connect()
 
     def connect(self) -> None:
-        port = self.port_var.get().split(" ")[0]
-        if not port:
-            self.log("no serial port to connect to")
+        text = self.port_var.get().strip()
+        if not text:
+            self.log("nothing to connect to")
             return
+        devices = {dev for dev, _, _ in dm.list_adapters()}
+        first = text.split()[0]
+        if first in devices:
+            self.connect_debugger(first)
+        else:
+            robot = text[len("robot") :].strip() if first == "robot" else text
+            # Without the note on what it is, if it carries one.
+            self.connect_robot(re.sub(r"\s+\([^()]*\)$", "", robot))
+
+    def connect_debugger(self, port: str) -> None:
         try:
-            self.bus = dm.Bus(port)
+            self.debugger = dm.Debugger(port)
         except (serial.SerialException, OSError) as e:
             messagebox.showerror("Could not open the debugger", str(e))
             return
+        self.buses = {DEBUGGER_BUS: dm.Bus(self.debugger, DEBUGGER_BUS)}
+        self.connected(port)
+
+    def connect_robot(self, address: str) -> None:
+        """Connects on the worker thread: through SSH, finding the Pi can take
+        ten seconds, and the window stays alive meanwhile."""
+        self.log(f"connecting to the robot at {address}…")
+        self.connect_btn.configure(state="disabled")
+
+        def work():
+            robot = diag_client.Robot(
+                address, name="motor_gui", streams=("can", "imu", "status", "log")
+            )
+            try:
+                robot.take_control()
+            except diag_client.RobotError:
+                robot.close()
+                raise
+            return robot
+
+        def failed(e):
+            self.connect_btn.configure(state="normal")
+            self.log(f"could not reach the robot: {e}")
+            messagebox.showerror("Could not reach the robot", str(e))
+
+        self.job(work, lambda robot: self.robot_connected(address, robot), failed)
+
+    def robot_connected(self, address: str, robot: diag_client.Robot) -> None:
+        self.connect_btn.configure(state="normal")
+        self.robot = robot
+        robot.on("stopped", self.on_stopped)
+        robot.on(
+            "link",
+            lambda m: self.say(f"robot: controller {'up' if m['up'] else 'DOWN'}"),
+        )
+        robot.on("log", lambda m: self.say(f"robot: {m['text']}"))
+        robot.on("imu", self.on_imu)
+        self.buses = {name: dm.Bus(robot.can(name), name) for name in "ABC"}
+        info = robot.info
+        self.log(
+            f"robot: {info.get('firmware', '?')} on the controller, "
+            f"uid {info.get('uid', '?')}, reset by {info.get('reset', '?')}, "
+            f"through {robot.where}"
+        )
+        if address not in self.robots:
+            self.robots.insert(0, address)
+        self.connected(address)
+
+    def connected(self, where: str) -> None:
+        self.lost = None
         self.streamer = Streamer(self)
         self._set_rate()
         self.streamer.start()
         self.connect_btn.configure(text="Disconnect")
-        self.log(f"connected to {port}")
+        self.log(f"connected to {where}")
         self.scan()
 
     def disconnect(self) -> None:
-        if self.bus is None:
+        if not self.buses:
             return
         self.stop_all()
         if self.streamer:
             self.streamer.running = False
             self.streamer.join(timeout=1)
-        self.bus.close()
-        self.bus = self.streamer = None
+        for bus in self.buses.values():
+            bus.close()
+        if self.robot is not None:
+            try:
+                self.robot.release_control()
+            except diag_client.RobotError:
+                pass
+            self.robot.close()
+        self.buses, self.debugger, self.robot, self.streamer = {}, None, None, None
         self.selected = None
+        self.imu.clear()
         self.tree.delete(*self.tree.get_children())
         self.connect_btn.configure(text="Connect")
         self.log("disconnected")
 
     def scan(self) -> None:
-        bus = self.bus
-        if bus is None:
+        buses = list(self.buses.values())
+        if not buses:
             self.log("connect first")
             return
         if any(c.active for c in self.commands.values()):
@@ -639,31 +812,415 @@ class App(tk.Tk):
             last = int(self.scan_to.get())
         except (tk.TclError, ValueError):
             last = 16
-        self.log(f"scanning CAN IDs 1 to {last}…")
+        on = "" if len(buses) == 1 else f" on buses {', '.join(self.buses)}"
+        self.log(f"scanning CAN IDs 1 to {last}{on}…")
 
         def work():
-            found = bus.scan(range(1, last + 1))
-            for m in found:
-                v = bus.read(m.can_id, dm.RID["TIMEOUT"])
-                if v is not None:
-                    m.registers[dm.RID["TIMEOUT"]] = v
+            found = []
+            for bus in buses:
+                for m in bus.scan(range(1, last + 1)):
+                    v = bus.read(m.can_id, dm.RID["TIMEOUT"])
+                    if v is not None:
+                        m.registers[dm.RID["TIMEOUT"]] = v
+                    found.append((bus, m))
             return found
 
         def done(found):
-            for m in found:
-                self.commands.setdefault(m.can_id, Command())
+            for bus, m in found:
+                self.commands.setdefault(key_of(bus, m), Command())
             if not found:
-                self.log("no motor answered: is it powered, and is CAN H/L connected?")
+                s = self.robot.status if self.robot else None
+                if self.robot is not None and not (s and s["link_up"]):
+                    self.log(
+                        "no motor answered, and the controller is not answering "
+                        "diagd either: is it running firmware/diag?"
+                    )
+                else:
+                    self.log(
+                        "no motor answered: is it powered, and is CAN H/L connected?"
+                    )
                 return
-            for m in found:
+            for bus, m in found:
                 self.log(
-                    f"motor {m.can_id}: master 0x{m.master_id:X}, "
+                    f"motor {self.label(bus, m)}: master 0x{m.master_id:X}, "
                     f"{dm.MODE_NAMES.get(m.mode, m.mode)} mode, "
                     f"PMAX {m.pmax:g} rad, VMAX {m.vmax:g} rad/s, TMAX {m.tmax:g} Nm"
                 )
             self.update_tree()
-            if self.selected not in bus.motors:
-                self.tree.selection_set(str(found[0].can_id))
+            if self.target() is None:
+                bus, m = found[0]
+                self.tree.selection_set(self.iid(bus, m.can_id))
+
+        self.job(work, done)
+
+    @staticmethod
+    def iid(bus: dm.Bus | str, can_id: int) -> str:
+        return f"{bus if isinstance(bus, str) else bus.name}:{can_id}"
+
+    # -- the robot's own events, on its reader thread --------------------------
+
+    def on_stopped(self, message: dict) -> None:
+        # At once, before the streamer sends another command.
+        for cmd in self.commands.values():
+            cmd.active = False
+        why = {
+            "asked": "it was asked to",
+            "silent": "it stopped hearing from the Pi",
+            "button": "the power button was held",
+            "starting": "it has just started",
+        }.get(message["why"], message["why"])
+        self.say(f"robot: the controller stopped every motor: {why}")
+
+    def on_imu(self, message: dict) -> None:
+        report = message["report"]
+        self.imu[report] = (message["t"], message["v"], message["status"])
+        self.imu_counts.setdefault(report, deque(maxlen=200)).append(message["t"])
+
+    # -- driving ---------------------------------------------------------------
+
+    def enable(self) -> None:
+        t = self.target()
+        if t is None:
+            return
+        bus, m, cmd = t
+        fb = m.feedback
+        if fb is None or time.monotonic() - fb.t > 0.5:
+            self.log(
+                f"motor {self.label(bus, m)}: no recent feedback, so not enabling it"
+            )
+            return
+        if fb.fault:
+            self.log(
+                f"motor {self.label(bus, m)}: {fb.state_name}; clear the error first"
+            )
+            return
+        if cmd.active:
+            self.log(f"motor {self.label(bus, m)} is already enabled")
+            return
+        # Start from nothing, and say so before and after the enable, so that
+        # whatever command the motor last held is never acted on.
+        cmd.start_from(m, fb)
+        self.load_motor()
+        now = time.monotonic()
+        cmd.t0 = cmd.enabled_at = now
+        self.streamer.drive(bus, m, cmd, now)
+        bus.enable(m)
+        self.streamer.drive(bus, m, cmd, now)
+        cmd.active = True
+        self.log(
+            f"motor {self.label(bus, m)} enabled in {dm.MODE_NAMES[m.mode]} mode, "
+            "starting from rest at its present position"
+        )
+
+    def disable(self) -> None:
+        t = self.target()
+        if t is None:
+            return
+        bus, m, cmd = t
+        cmd.active = False
+        for _ in range(3):
+            bus.disable(m)
+        self.log(f"motor {self.label(bus, m)} disabled")
+
+    def stop_all(self) -> None:
+        for cmd in self.commands.values():
+            cmd.active = False
+        if not self.buses:
+            return
+        if self.robot is not None:
+            # The controller's own stop, first: it throws away whatever is
+            # queued for the buses and disables every motor it knows of.
+            try:
+                self.robot.stop()
+            except diag_client.RobotError as e:
+                self.log(f"STOP could not reach the robot: {e}")
+        for bus in self.buses.values():
+            try:
+                bus.disable_everything()
+            except LINK_ERRORS as e:
+                self.log(f"STOP could not reach bus {bus.name}: {e}")
+                return
+        self.log("STOP: every motor disabled")
+
+    def hold_here(self) -> None:
+        m, cmd = self.motor(), self.command()
+        if m is None or cmd is None or m.feedback is None:
+            return
+        cmd.p = m.feedback.pos
+        cmd.wave, cmd.amp = "constant", 0.0
+        self.load_motor()
+
+    def clear_error(self) -> None:
+        t = self.target()
+        if t is None:
+            return
+        bus, m, _ = t
+        bus.clear_error(m)
+        self.log(f"motor {self.label(bus, m)}: clear error sent")
+
+    def set_zero(self) -> None:
+        t = self.target()
+        if t is None or not self.is_disabled(t[0], t[1]):
+            return
+        bus, m, _ = t
+        if not messagebox.askyesno(
+            "Set zero",
+            f"Make motor {self.label(bus, m)}'s present position its zero?\n\n"
+            "This replaces the zero the motor holds.",
+        ):
+            return
+        bus.set_zero(m)
+        self.log(f"motor {self.label(bus, m)}: zero set at the present position")
+
+    def set_mode(self) -> None:
+        t = self.target()
+        names = {v: k for k, v in dm.MODE_NAMES.items()}
+        mode = names.get(self.mode_var.get())
+        if t is None or mode is None or mode == t[1].mode:
+            return
+        bus, m, _ = t
+        if not self.is_disabled(bus, m):
+            return
+
+        def done(echo):
+            if echo != mode:
+                self.log(f"motor {self.label(bus, m)}: mode change not confirmed")
+                return
+            m.mode = mode
+            m.registers[dm.RID["CTRL_MODE"]] = mode
+            self.log(
+                f"motor {self.label(bus, m)}: now in {dm.MODE_NAMES[mode]} mode (RAM)"
+            )
+            self.load_motor()
+
+        self.job(lambda: bus.write(m.can_id, dm.RID["CTRL_MODE"], mode), done)
+
+    # -- the System tab, the robot's IMU ---------------------------------------
+
+    def imu_job(self, what: str, fn) -> None:
+        robot = self.robot
+        if robot is None:
+            self.log("the System tab is the robot's: connect to it first")
+            return
+        self.job(lambda: fn(robot), lambda result: self.log(f"imu: {what}{result}"))
+
+    def imu_on(self) -> None:
+        def work(robot):
+            granted = [
+                robot.request("imu.enable", report=r, hz=IMU_HZ) for r in IMU_REPORTS
+            ]
+            return ", ".join(f"{g['report']} {g['hz']:g} Hz" for g in granted)
+
+        self.imu_job("granted ", work)
+
+    def imu_off(self) -> None:
+        def work(robot):
+            for r in IMU_REPORTS:
+                robot.request("imu.enable", report=r, hz=0)
+            return ""
+
+        self.imu_job("reports off", work)
+
+    def imu_reset(self) -> None:
+        def work(robot):
+            robot.request("imu.reset")
+            return ""
+
+        self.imu_job("reset sent", work)
+
+    # -- registers -------------------------------------------------------------
+
+    def update_registers(self) -> None:
+        m = self.motor()
+        for r in dm.REGISTERS:
+            value = "" if m is None else m.registers.get(r.rid, "")
+            if isinstance(value, float):
+                text = f"{value:.6g}"
+            elif isinstance(value, int):
+                text = f"{value}  (0x{value:X})" if value > 9 else str(value)
+                if r.name == "CTRL_MODE":
+                    text = f"{value}  {dm.MODE_NAMES.get(value, '?')}"
+                if r.name == "TIMEOUT" and value == 0:
+                    text = "0  (off)"
+            else:
+                text = ""
+            self.regs.set(str(r.rid), "value", text)
+
+    def on_register_select(self, _event=None) -> None:
+        sel = self.regs.selection()
+        if not sel:
+            return
+        r = dm.REGISTER[int(sel[0])]
+        self.reg_name.configure(text=r.name)
+        m = self.motor()
+        value = None if m is None else m.registers.get(r.rid)
+        self.reg_value.set("" if value is None else f"{value:.6g}")
+
+    def read_all(self) -> None:
+        t = self.target()
+        if t is None:
+            return
+        bus, m, _ = t
+
+        def work():
+            missed = 0
+            for r in dm.REGISTERS:
+                v = bus.read(m.can_id, r.rid)
+                if v is None:
+                    missed += 1
+                else:
+                    m.registers[r.rid] = v
+            return missed
+
+        def done(missed):
+            self.update_registers()
+            note = f", {missed} did not answer" if missed else ""
+            self.log(f"motor {self.label(bus, m)}: registers read{note}")
+
+        self.job(work, done)
+
+    def write_register(self) -> None:
+        t = self.target()
+        sel = self.regs.selection()
+        if t is None or not sel or not self.is_disabled(t[0], t[1]):
+            return
+        bus, m, _ = t
+        r = dm.REGISTER[int(sel[0])]
+        if not r.writable:
+            self.log(f"{r.name} is read-only")
+            return
+        if r.name == "ESC_ID":
+            self.log("use 'Give this motor a new CAN ID' to change ESC_ID")
+            return
+        if r.name == "can_br":
+            self.log(
+                "the CAN bit rate is not changed here: the debugger or the "
+                "controller would lose the motor"
+            )
+            return
+        text = self.reg_value.get().strip()
+        try:
+            value = float(text) if r.kind == "f" else int(text, 0)
+        except ValueError:
+            self.log(f"{text!r} is not a value for {r.name}")
+            return
+        if r.name == "CTRL_MODE" and value not in dm.MODE_NAMES:
+            self.log("CTRL_MODE is 1 to 4")
+            return
+        if r.name == "MST_ID" and (why := self.feedback_clash(value, bus.motors)):
+            self.log(why)
+            return
+
+        def done(echo):
+            if echo is None:
+                self.log(f"motor {self.label(bus, m)}: no answer writing {r.name}")
+                return
+            m.registers[r.rid] = echo
+            if r.name in ("PMAX", "VMAX", "TMAX"):
+                setattr(m, r.name.lower(), float(echo))
+            elif r.name == "MST_ID":
+                m.master_id = int(echo)
+            elif r.name == "CTRL_MODE":
+                m.mode = int(echo)
+            self.log(
+                f"motor {self.label(bus, m)}: {r.name} = {echo:.6g} (RAM until saved)"
+            )
+            self.load_motor()
+
+        self.job(lambda: bus.write(m.can_id, r.rid, value), done)
+
+    @staticmethod
+    def feedback_clash(master: int, ids) -> str | None:
+        """Why a feedback ID is unsafe beside motors at these CAN IDs, or None.
+
+        Each CAN ID must have one sender, and a motor takes any frame whose low
+        eight ID bits are its own as addressed to it.
+        """
+        if master == dm.CONFIG_ID:
+            return "0x7FF is the ID the controller configures motors on"
+        hit = sorted(i for i in ids if i & 0xFF == master & 0xFF)
+        if hit:
+            return (
+                f"feedback ID 0x{master:X} would reach motor {hit[0]} as a command: "
+                "a motor reads only the low 8 bits of an ID"
+            )
+        return None
+
+    def save_flash(self) -> None:
+        t = self.target()
+        if t is None or not self.is_disabled(t[0], t[1]):
+            return
+        bus, m, _ = t
+        if not messagebox.askyesno(
+            "Save to flash",
+            f"Store motor {self.label(bus, m)}'s present settings in its flash?\n\n"
+            "The flash is good for about 10,000 writes.",
+        ):
+            return
+        self.job(
+            lambda: bus.save(m.can_id),
+            lambda ok: self.log(
+                f"motor {self.label(bus, m)}: "
+                + ("settings saved to flash" if ok else "save not confirmed")
+            ),
+        )
+
+    def change_id(self) -> None:
+        t = self.target()
+        if t is None or not self.is_disabled(t[0], t[1]):
+            return
+        bus, m, _ = t
+        try:
+            new_id, master = int(self.new_id.get()), int(self.new_master.get())
+        except (tk.TclError, ValueError):
+            return
+        old = m.can_id
+        if not 1 <= new_id <= 15 or not 0 <= master <= 0x7FF:
+            self.log("the CAN ID is 1 to 15 and the master ID 0 to 0x7FF")
+            return
+        if new_id != old and new_id in bus.motors:
+            self.log(f"motor {self.label(bus, new_id)} is already on the bus")
+            return
+        if why := self.feedback_clash(master, (set(bus.motors) - {old}) | {new_id}):
+            self.log(why)
+            return
+        if not messagebox.askyesno(
+            "New CAN ID",
+            f"Give motor {self.label(bus, old)} CAN ID {new_id} and feedback ID "
+            f"0x{master:X}, and save them to its flash?",
+        ):
+            return
+
+        def work():
+            answers = bus.read(new_id, dm.RID["ESC_ID"], tries=1) is not None
+            if new_id != old and answers:
+                return f"something already answers at {new_id}; nothing changed"
+            if bus.write(old, dm.RID["MST_ID"], master) is None:
+                return "no answer writing the master ID; nothing changed"
+            m.master_id = master
+            bus.write(old, dm.RID["ESC_ID"], new_id)
+            # The new ID may hold at once or only after a restart: save at
+            # whichever ID the motor answers to now.
+            now = new_id if bus.read(new_id, dm.RID["ESC_ID"]) is not None else old
+            saved = bus.save(now)
+            bus.motors.pop(old, None)
+            at_new = bus.probe(new_id) is not None
+            at_old = old != new_id and bus.probe(old) is not None
+            if not saved:
+                return "the save was not confirmed; power-cycle and scan to see"
+            if at_new:
+                return f"saved; the motor answers at {new_id}"
+            if at_old:
+                return f"saved; it answers at {old} until it is power-cycled"
+            return "saved, and it answers at neither ID; power-cycle it and scan"
+
+        def done(result):
+            self.log(f"motor {self.label(bus, old)}: {result}")
+            for i in bus.motors:
+                self.commands.setdefault((bus.name, i), Command())
+            self.update_tree()
+            if new_id in bus.motors:
+                self.tree.selection_set(self.iid(bus, new_id))
 
         self.job(work, done)
 
@@ -671,7 +1228,11 @@ class App(tk.Tk):
 
     def on_select(self, _event=None) -> None:
         sel = self.tree.selection()
-        self.selected = int(sel[0]) if sel else None
+        if sel:
+            name, _, can_id = sel[0].partition(":")
+            self.selected = (name, int(can_id))
+        else:
+            self.selected = None
         self.load_motor()
 
     def load_motor(self) -> None:
@@ -729,291 +1290,6 @@ class App(tk.Tk):
         cmd.wave = self.wave_var.get()
         cmd.t0 = time.monotonic()
 
-    # -- driving ---------------------------------------------------------------
-
-    def enable(self) -> None:
-        m, cmd, bus = self.motor(), self.command(), self.bus
-        if m is None or cmd is None or bus is None:
-            return
-        fb = m.feedback
-        if fb is None or time.monotonic() - fb.t > 0.5:
-            self.log(f"motor {m.can_id}: no recent feedback, so not enabling it")
-            return
-        if fb.fault:
-            self.log(f"motor {m.can_id}: {fb.state_name}; clear the error first")
-            return
-        if cmd.active:
-            self.log(f"motor {m.can_id} is already enabled")
-            return
-        # Start from nothing, and say so before and after the enable, so that
-        # whatever command the motor last held is never acted on.
-        cmd.start_from(m, fb)
-        self.load_motor()
-        now = time.monotonic()
-        cmd.t0 = cmd.enabled_at = now
-        self.streamer.drive(bus, m, cmd, now)
-        bus.enable(m)
-        self.streamer.drive(bus, m, cmd, now)
-        cmd.active = True
-        self.log(
-            f"motor {m.can_id} enabled in {dm.MODE_NAMES[m.mode]} mode, "
-            "starting from rest at its present position"
-        )
-
-    def disable(self) -> None:
-        m, cmd = self.motor(), self.command()
-        if m is None or self.bus is None:
-            return
-        if cmd:
-            cmd.active = False
-        for _ in range(3):
-            self.bus.disable(m)
-        self.log(f"motor {m.can_id} disabled")
-
-    def stop_all(self) -> None:
-        for cmd in self.commands.values():
-            cmd.active = False
-        if self.bus is not None:
-            try:
-                self.bus.disable_everything()
-            except (serial.SerialException, OSError) as e:
-                self.log(f"STOP could not reach the debugger: {e}")
-                return
-            self.log("STOP: every motor disabled")
-
-    def hold_here(self) -> None:
-        m, cmd = self.motor(), self.command()
-        if m is None or cmd is None or m.feedback is None:
-            return
-        cmd.p = m.feedback.pos
-        cmd.wave, cmd.amp = "constant", 0.0
-        self.load_motor()
-
-    def clear_error(self) -> None:
-        m = self.motor()
-        if m is None:
-            return
-        self.bus.clear_error(m)
-        self.log(f"motor {m.can_id}: clear error sent")
-
-    def set_zero(self) -> None:
-        m = self.motor()
-        if m is None or not self.is_disabled(m):
-            return
-        if not messagebox.askyesno(
-            "Set zero",
-            f"Make motor {m.can_id}'s present position its zero?\n\n"
-            "This replaces the zero the motor holds.",
-        ):
-            return
-        self.bus.set_zero(m)
-        self.log(f"motor {m.can_id}: zero set at the present position")
-
-    def set_mode(self) -> None:
-        m, bus = self.motor(), self.bus
-        names = {v: k for k, v in dm.MODE_NAMES.items()}
-        mode = names.get(self.mode_var.get())
-        if m is None or mode is None or mode == m.mode or not self.is_disabled(m):
-            return
-
-        def done(echo):
-            if echo != mode:
-                self.log(f"motor {m.can_id}: mode change not confirmed")
-                return
-            m.mode = mode
-            m.registers[dm.RID["CTRL_MODE"]] = mode
-            self.log(f"motor {m.can_id}: now in {dm.MODE_NAMES[mode]} mode (RAM)")
-            self.load_motor()
-
-        self.job(lambda: bus.write(m.can_id, dm.RID["CTRL_MODE"], mode), done)
-
-    # -- registers -------------------------------------------------------------
-
-    def update_registers(self) -> None:
-        m = self.motor()
-        for r in dm.REGISTERS:
-            value = "" if m is None else m.registers.get(r.rid, "")
-            if isinstance(value, float):
-                text = f"{value:.6g}"
-            elif isinstance(value, int):
-                text = f"{value}  (0x{value:X})" if value > 9 else str(value)
-                if r.name == "CTRL_MODE":
-                    text = f"{value}  {dm.MODE_NAMES.get(value, '?')}"
-                if r.name == "TIMEOUT" and value == 0:
-                    text = "0  (off)"
-            else:
-                text = ""
-            self.regs.set(str(r.rid), "value", text)
-
-    def on_register_select(self, _event=None) -> None:
-        sel = self.regs.selection()
-        if not sel:
-            return
-        r = dm.REGISTER[int(sel[0])]
-        self.reg_name.configure(text=r.name)
-        m = self.motor()
-        value = None if m is None else m.registers.get(r.rid)
-        self.reg_value.set("" if value is None else f"{value:.6g}")
-
-    def read_all(self) -> None:
-        m, bus = self.motor(), self.bus
-        if m is None:
-            return
-
-        def work():
-            missed = 0
-            for r in dm.REGISTERS:
-                v = bus.read(m.can_id, r.rid)
-                if v is None:
-                    missed += 1
-                else:
-                    m.registers[r.rid] = v
-            return missed
-
-        def done(missed):
-            self.update_registers()
-            note = f", {missed} did not answer" if missed else ""
-            self.log(f"motor {m.can_id}: registers read{note}")
-
-        self.job(work, done)
-
-    def write_register(self) -> None:
-        m, bus = self.motor(), self.bus
-        sel = self.regs.selection()
-        if m is None or not sel or not self.is_disabled(m):
-            return
-        r = dm.REGISTER[int(sel[0])]
-        if not r.writable:
-            self.log(f"{r.name} is read-only")
-            return
-        if r.name == "ESC_ID":
-            self.log("use 'Give this motor a new CAN ID' to change ESC_ID")
-            return
-        if r.name == "can_br":
-            self.log("the CAN bit rate is not changed here: the debugger would lose it")
-            return
-        text = self.reg_value.get().strip()
-        try:
-            value = float(text) if r.kind == "f" else int(text, 0)
-        except ValueError:
-            self.log(f"{text!r} is not a value for {r.name}")
-            return
-        if r.name == "CTRL_MODE" and value not in dm.MODE_NAMES:
-            self.log("CTRL_MODE is 1 to 4")
-            return
-        if r.name == "MST_ID" and (why := self.feedback_clash(value, bus.motors)):
-            self.log(why)
-            return
-
-        def done(echo):
-            if echo is None:
-                self.log(f"motor {m.can_id}: no answer writing {r.name}")
-                return
-            m.registers[r.rid] = echo
-            if r.name in ("PMAX", "VMAX", "TMAX"):
-                setattr(m, r.name.lower(), float(echo))
-            elif r.name == "MST_ID":
-                m.master_id = int(echo)
-            elif r.name == "CTRL_MODE":
-                m.mode = int(echo)
-            self.log(f"motor {m.can_id}: {r.name} = {echo:.6g} (RAM until saved)")
-            self.load_motor()
-
-        self.job(lambda: bus.write(m.can_id, r.rid, value), done)
-
-    @staticmethod
-    def feedback_clash(master: int, ids) -> str | None:
-        """Why a feedback ID is unsafe beside motors at these CAN IDs, or None.
-
-        Each CAN ID must have one sender, and a motor takes any frame whose low
-        eight ID bits are its own as addressed to it.
-        """
-        if master == dm.CONFIG_ID:
-            return "0x7FF is the ID the controller configures motors on"
-        hit = sorted(i for i in ids if i & 0xFF == master & 0xFF)
-        if hit:
-            return (
-                f"feedback ID 0x{master:X} would reach motor {hit[0]} as a command: "
-                "a motor reads only the low 8 bits of an ID"
-            )
-        return None
-
-    def save_flash(self) -> None:
-        m, bus = self.motor(), self.bus
-        if m is None or not self.is_disabled(m):
-            return
-        if not messagebox.askyesno(
-            "Save to flash",
-            f"Store motor {m.can_id}'s present settings in its flash?\n\n"
-            "The flash is good for about 10,000 writes.",
-        ):
-            return
-        self.job(
-            lambda: bus.save(m.can_id),
-            lambda ok: self.log(
-                f"motor {m.can_id}: "
-                + ("settings saved to flash" if ok else "save not confirmed")
-            ),
-        )
-
-    def change_id(self) -> None:
-        m, bus = self.motor(), self.bus
-        if m is None or not self.is_disabled(m):
-            return
-        try:
-            new_id, master = int(self.new_id.get()), int(self.new_master.get())
-        except (tk.TclError, ValueError):
-            return
-        old = m.can_id
-        if not 1 <= new_id <= 15 or not 0 <= master <= 0x7FF:
-            self.log("the CAN ID is 1 to 15 and the master ID 0 to 0x7FF")
-            return
-        if new_id != old and new_id in bus.motors:
-            self.log(f"motor {new_id} is already on the bus")
-            return
-        if why := self.feedback_clash(master, (set(bus.motors) - {old}) | {new_id}):
-            self.log(why)
-            return
-        if not messagebox.askyesno(
-            "New CAN ID",
-            f"Give motor {old} CAN ID {new_id} and feedback ID 0x{master:X}, "
-            "and save them to its flash?",
-        ):
-            return
-
-        def work():
-            answers = bus.read(new_id, dm.RID["ESC_ID"], tries=1) is not None
-            if new_id != old and answers:
-                return f"something already answers at {new_id}; nothing changed"
-            if bus.write(old, dm.RID["MST_ID"], master) is None:
-                return "no answer writing the master ID; nothing changed"
-            m.master_id = master
-            bus.write(old, dm.RID["ESC_ID"], new_id)
-            # The new ID may hold at once or only after a restart: save at
-            # whichever ID the motor answers to now.
-            now = new_id if bus.read(new_id, dm.RID["ESC_ID"]) is not None else old
-            saved = bus.save(now)
-            bus.motors.pop(old, None)
-            at_new = bus.probe(new_id) is not None
-            at_old = old != new_id and bus.probe(old) is not None
-            if not saved:
-                return "the save was not confirmed; power-cycle and scan to see"
-            if at_new:
-                return f"saved; the motor answers at {new_id}"
-            if at_old:
-                return f"saved; it answers at {old} until it is power-cycled"
-            return "saved, and it answers at neither ID; power-cycle it and scan"
-
-        def done(result):
-            self.log(f"motor {old}: {result}")
-            for i in bus.motors:
-                self.commands.setdefault(i, Command())
-            self.update_tree()
-            if new_id in bus.motors:
-                self.tree.selection_set(str(new_id))
-
-        self.job(work, done)
-
     # -- the periodic refresh --------------------------------------------------
 
     def tick(self) -> None:
@@ -1023,8 +1299,8 @@ class App(tk.Tk):
             except queue.Empty:
                 break
             fn()
-        if self.bus is not None and self.bus.error:
-            self.log(self.bus.error)
+        if self.buses and (error := self.link_error()):
+            self.log(error)
             for cmd in self.commands.values():
                 cmd.active = False
             self.disconnect()
@@ -1033,19 +1309,102 @@ class App(tk.Tk):
         self._ticks += 1
         if self._ticks % 2 == 0:
             self.draw_plot()
-        if self.bus is not None:
-            b = self.bus
-            self.status.configure(
-                text=f"{b.port}   sent {b.tx}   heard {b.rx}   "
-                f"unmatched {b.unmatched}   late {b.late}   other {b.foreign}   "
-                f"{self.streamer.rate:.0f} Hz to driven motors, {POLL_HZ} Hz polls"
-            )
-        else:
-            self.status.configure(text="not connected")
+        if self._ticks % 4 == 0:
+            self.update_system()
+        self.status.configure(text=self.status_text())
         self.after(50, self.tick)
 
-    def state_text(self, m: dm.Motor) -> str:
-        cmd, fb = self.commands.get(m.can_id), m.feedback
+    def status_text(self) -> str:
+        if not self.buses:
+            return "not connected"
+        counts = "   ".join(
+            f"{'' if name == DEBUGGER_BUS else name + ': '}sent {b.tx}  heard {b.rx}  "
+            f"unmatched {b.unmatched}  late {b.late}"
+            for name, b in self.buses.items()
+        )
+        rate = f"{self.streamer.rate:.0f} Hz to driven motors, {POLL_HZ} Hz polls"
+        if self.debugger is not None:
+            where = f"{self.debugger.port}   other {self.debugger.foreign}"
+        else:
+            s = self.robot.status if self.robot else None
+            vbus = (
+                f"battery {s['vbus']:.2f} V   "
+                if s and s.get("vbus") is not None
+                else ""
+            )
+            where = f"robot via {self.robot.where}   {vbus}"
+        return f"{where}   {counts}   {rate}"
+
+    def update_system(self) -> None:
+        robot = self.robot
+        if robot is None:
+            self.system.configure(
+                text="Connect to the robot (its address in the box above) to see "
+                "its controller, buses, battery and IMU here."
+            )
+            return
+        s, info = robot.status, robot.info
+        lines = [
+            f"controller  {info.get('firmware', '?')}, uid {info.get('uid', '?')}, "
+            f"reset by {info.get('reset', '?')}"
+        ]
+        if info.get("last_crash"):
+            lines.append(f"            last crash: {info['last_crash']}")
+        if s is None:
+            lines.append("no status from the controller yet")
+            self.system.configure(text="\n".join(lines))
+            return
+        link, pi = s["link"], s["pi"]
+        vbus = f"{s['vbus']:.2f} V" if s.get("vbus") is not None else "not read"
+        lines += [
+            f"            up {s['uptime']:.1f} s, link "
+            f"{'up' if s['link_up'] else 'DOWN'}, through {robot.where}",
+            f"power       HOLD {'high' if s['hold'] else 'low'}, button "
+            f"{'down' if s['button'] else 'up'}"
+            f"{', OFF asked for' if s['off'] else ''}"
+            f"{', DEADMAN TRIPPED' if s['lost'] else ''}",
+            f"battery     {vbus}",
+            f"J5          the controller heard {link['frames']} "
+            f"({link['crc_errors']} bad CRC, {link['uart_errors']} UART errors, "
+            f"{link['dropped']} dropped for room); the Pi heard {pi['frames']} "
+            f"({pi['crc_errors']} bad CRC)",
+            f"control     {pi['control'] or 'nobody'}, {pi['clients']} client(s)",
+            "",
+        ]
+        for name, b in s["buses"].items():
+            lines.append(
+                f"bus {name}       {b['state']:13s} TEC {b['tec']:3d} REC {b['rec']:3d}   "
+                f"sent {b['tx']:8d}  not taken {b['tx_fail']:5d}   heard "
+                f"{b['rx']:8d}  errors {b['rx_errors']:4d}  dropped "
+                f"{b['rx_drop'] + b['queue_drop']}"
+            )
+        lines += [
+            "",
+            f"IMU         {'found' if s['imu_found'] else 'not found'}, "
+            f"{s['imu']['packets']} packets, {s['imu']['errors']} errors",
+        ]
+        now = time.monotonic()
+        for report in IMU_REPORTS:
+            if report not in self.imu:
+                continue
+            t, v, status = self.imu[report]
+            stamps = self.imu_counts[report]
+            hz = (len(stamps) - 1) / (stamps[-1] - stamps[0]) if len(stamps) > 1 else 0
+            old = "  (old)" if now - t > 0.5 else ""
+            if report == "game":
+                roll, pitch, yaw = euler(*v[:4])
+                values = f"roll {roll:6.1f}°  pitch {pitch:6.1f}°  yaw {yaw:6.1f}°"
+            elif report == "gyro":
+                values = "  ".join(f"{math.degrees(x):7.2f}" for x in v) + "  °/s"
+            else:
+                values = "  ".join(f"{x:7.3f}" for x in v) + "  m/s²"
+            lines.append(
+                f"  {report:9s} {values}   accuracy {status}, {hz:5.1f} Hz{old}"
+            )
+        self.system.configure(text="\n".join(lines))
+
+    def state_text(self, key: tuple[str, int], m: dm.Motor) -> str:
+        cmd, fb = self.commands.get(key), m.feedback
         stale = fb is None or time.monotonic() - fb.t > STALE_S
         if cmd and cmd.active:
             if stale:
@@ -1057,37 +1416,43 @@ class App(tk.Tk):
         return fb.state_name + ("  (old)" if stale else "")
 
     def update_tree(self) -> None:
-        motors = {} if self.bus is None else dict(self.bus.motors)
+        motors = {
+            self.iid(bus, i): (bus, m)
+            for bus in self.buses.values()
+            for i, m in sorted(bus.motors.items())
+        }
         for iid in self.tree.get_children():
-            if int(iid) not in motors:
+            if iid not in motors:
                 self.tree.delete(iid)
-        for i, m in sorted(motors.items()):
+        for iid, (bus, m) in motors.items():
             fb = m.feedback
             values = (
-                i,
+                bus.name,
+                m.can_id,
                 f"0x{m.master_id:X}",
                 dm.MODE_NAMES.get(m.mode, m.mode),
-                self.state_text(m),
+                self.state_text(key_of(bus, m), m),
                 f"{math.degrees(fb.pos):.1f}" if fb else "",
                 f"{fb.vel:.2f}" if fb else "",
                 f"{fb.torque:.2f}" if fb else "",
                 fb.t_mos if fb else "",
                 fb.t_rotor if fb else "",
             )
-            if self.tree.exists(str(i)):
-                self.tree.item(str(i), values=values)
+            if self.tree.exists(iid):
+                self.tree.item(iid, values=values)
             else:
-                self.tree.insert("", "end", iid=str(i), values=values)
+                self.tree.insert("", "end", iid=iid, values=values)
 
     def update_readout(self) -> None:
-        m = self.motor()
-        if m is None:
+        t = self.target()
+        if t is None:
             self.readout.configure(text="no motor selected")
             self.warning.configure(text="")
             return
+        bus, m, cmd = t
         fb = m.feedback
         if fb is None:
-            self.readout.configure(text=f"motor {m.can_id}: no feedback yet")
+            self.readout.configure(text=f"motor {self.label(bus, m)}: no feedback yet")
         else:
             self.readout.configure(
                 text=(
@@ -1095,7 +1460,7 @@ class App(tk.Tk):
                     f"speed    {fb.vel:+8.3f} rad/s\n"
                     f"torque   {fb.torque:+8.3f} Nm\n"
                     f"MOSFET {fb.t_mos:3d} °C   winding {fb.t_rotor:3d} °C\n"
-                    f"state    {self.state_text(m)}"
+                    f"state    {self.state_text(key_of(bus, m), m)}"
                 )
             )
         notes = []
@@ -1103,9 +1468,15 @@ class App(tk.Tk):
             notes.append(
                 "TIMEOUT is 0 (off): if this program stops while the motor is "
                 "enabled, the motor keeps its last command. Esc still disables it."
+                + (
+                    " On the robot the Pi and the controller stop it too, unless "
+                    "its bus itself is cut."
+                    if self.robot is not None
+                    else ""
+                )
             )
-        lim, cmd = self.limits, self.command()
-        asked = 0.0 if cmd is None else self.asked_speed(m, cmd)
+        lim = self.limits
+        asked = self.asked_speed(m, cmd)
         if asked > lim.speed:
             notes.append(
                 f"Speed held to {lim.speed:g} rad/s by the |speed| box under "
@@ -1139,10 +1510,11 @@ class App(tk.Tk):
     def draw_plot(self) -> None:
         c = self.canvas
         c.delete("all")
-        m, cmd, bus = self.motor(), self.command(), self.bus
+        t = self.target()
         w, h = c.winfo_width(), c.winfo_height()
-        if m is None or cmd is None or bus is None or w < 50 or h < 50:
+        if t is None or w < 50 or h < 50:
             return
+        bus, m, cmd = t
         now = time.monotonic()
         start = now - PLOT_WINDOW_S
         with bus.history_lock:
@@ -1202,5 +1574,29 @@ class App(tk.Tk):
         self.destroy()
 
 
+def euler(i: float, j: float, k: float, r: float) -> tuple[float, float, float]:
+    """Roll, pitch and yaw in degrees from a quaternion, as sbc/imu_test.py has it."""
+    roll = math.atan2(2 * (r * i + j * k), 1 - 2 * (i * i + j * j))
+    pitch = math.asin(max(-1.0, min(1.0, 2 * (r * j - k * i))))
+    yaw = math.atan2(2 * (r * k + i * j), 1 - 2 * (j * j + k * k))
+    return tuple(math.degrees(a) for a in (roll, pitch, yaw))
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument(
+        "--robot",
+        action="append",
+        help="the robot's diagd, as host:port or ssh:DEST; offered in the box "
+        "first, before $DIAG_ROBOT and the Banana Pi",
+    )
+    args = ap.parse_args()
+    env = os.environ.get("DIAG_ROBOT")
+    app = App([*(args.robot or []), *([env] if env else [])])
+    if args.robot:
+        app.port_var.set(f"robot  {args.robot[0]}")
+    app.mainloop()
+
+
 if __name__ == "__main__":
-    App().mainloop()
+    main()
