@@ -578,6 +578,14 @@ Buy later / after validation:
 9. Treat purchase links as sourcing aids, not immutable approved vendors.
 10. Do not turn a design-dependent placeholder into a purchased part merely to make the BOM look complete.
 11. Prefer a consumer part with a standardised interface over a bespoke one. The skate wheel is the clearest case on this table: tread roundness, hardness and the PU-to-core bond are already solved by someone else, and what the project supplies is the one printed adapter in between.
+12. **Recommend a shop only once its reputation has been checked**, and refresh the check once it is a few months old. Price and stock say nothing about whether a shop ships what it is paid for. ElectronicsComp was recommended on stock alone on 2026-10-16, and the desoldering station paid for that day had not shipped eight days later.
+
+### Shops, as checked
+
+| Shop | Checked | Public record | This project's own orders | Verdict |
+|---|---|---|---|---|
+| ElectronicsComp | 2026-10-24 | Trustpilot 1.1 of 5 from 434 reviews, 96 % one-star, mostly 2026 complaints of prepaid orders never shipped and refunds never made; many more on ConsumerComplaints.in and Voxya. Operated by Constflick Technologies Limited | Order #3304076, ₹8,930.24 paid 2026-10-16, not shipped by 2026-10-24, phone unanswered | **Do not use.** Its listings may still serve as a reference for price or size |
+| Robu | 2026-10-24 | Trustpilot 2.6 of 5 from 67 reviews, 55 % one-star: late or partial deliveries, slow refunds | Three orders, placed 2026-10-02, 10-08 and 10-13, all received, within three to seven days | Usable for cheap parts. For anything costly, pay by credit card |
 
 ## 8. Engineering source references
 

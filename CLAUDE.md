@@ -13,6 +13,27 @@ want the conclusion and the decision, not the workings.
 - Two sentences beat two paragraphs.
 - Finish with the next step if there is one.
 
+# Recommending a shop
+
+A shop is not recommended for anything until its reputation has been checked, and
+the recommendation says what was found. Stock read off the shop's own page is
+necessary and not sufficient.
+
+- Check its Trustpilot score and how its last year of reviews trends, and in India
+  ConsumerComplaints.in and Voxya as well. A pattern of prepaid orders never
+  shipped, or refunds never made, rules a shop out at any price.
+- Record the finding, with its date, in the register under
+  [`docs/BOM.md`](docs/BOM.md)'s sourcing rules, and refresh it once it is a few
+  months old. A shop already there is not checked again until then.
+- For anything costing more than a few thousand rupees, say how to pay so the money
+  can be recovered: a credit card, or a marketplace's buyer protection. A UPI
+  payment to a shop that does not deliver is very hard to get back.
+
+ElectronicsComp was recommended on 2026-10-16 for the desoldering station on its
+stock alone. It was paid ₹8,930 up front, had not shipped eight days later, and did
+not answer its phone, which is what most of its 434 Trustpilot reviews, scoring 1.1
+out of 5, said it would do.
+
 # CAD work
 
 The CAD is [`cad/`](cad/): parametric solid modelling in

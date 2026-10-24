@@ -295,7 +295,11 @@ Three R82s because LionCircuits' minimum is three. Ten C315s because ten cost
 
 - **Placed:** 2026-10-16, the day it was recommended; invoice INV/26-27/2668.
 - **Status:** Confirmed, and nothing since, as read in the account on
-  2026-10-18: not yet dispatched.
+  2026-10-18: not yet dispatched. **Still not dispatched on 2026-10-24**, eight
+  days after payment, and the shop's phone, +91-8796538800, goes unanswered.
+  That is the outcome most of its reviews describe — Trustpilot 1.1 of 5 from
+  434, 96 % one-star — which was not checked before it was recommended. Being
+  cancelled for a refund; the shop is not to be used again.
 - **Source:** the order page in the owner's ElectronicsComp account, read in
   the browser on 2026-10-18.
 
