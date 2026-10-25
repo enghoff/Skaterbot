@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bipedal · Motor diagnostics</title><link rel="stylesheet" href="/console.css">
+  <script src="/console.js" defer></script>
+</head>
+<body>
+<header><div><span class="eyebrow">BIPEDAL / BENCH</span><h1>Motor diagnostics</h1></div>
+  <div class="toolbar"><span id="connection" class="badge">Connecting</span><button id="stop" class="danger">STOP ALL <kbd>Esc</kbd></button></div>
+</header>
+<section class="service card"><div><span id="daemon" class="badge">diagd —</span> <span id="owner">Control —</span></div>
+  <div class="toolbar"><button data-op="daemon.start">Start diagd</button><button data-op="daemon.stop">Stop diagd</button><button data-op="take">Take control</button><button data-op="release">Release</button></div>
+</section>
+<div id="notice" role="status" aria-live="polite">Connecting to console…</div>
+<main>
+<aside class="card"><div class="section-title"><h2>Motors</h2><button data-op="scan">Scan</button></div>
+  <label>IDs 1–<input id="scan-last" type="number" min="1" max="127" value="16"></label>
+  <div id="motors" role="listbox" aria-label="Motors"></div>
+</aside>
+<div class="workspace">
+<nav aria-label="Diagnostics panels"><button class="selected" data-tab="drive">Drive</button><button data-tab="registers">Registers</button><button data-tab="system">System</button><button data-tab="traffic">CAN & log</button></nav>
+<section id="drive" class="panel card">
+  <div class="section-title"><h2 id="motor-title">Select a motor</h2><span id="motor-state" class="badge">—</span></div>
+  <div id="readings" class="readings"></div>
+  <div class="toolbar"><button data-op="enable" class="primary">Enable</button><button data-op="disable">Disable</button><button data-op="hold">Hold here</button><button data-op="clear">Clear error</button><button data-op="zero">Set zero</button></div>
+  <form id="command-form"><div id="command-fields" class="fields"></div>
+    <div class="fields"><label>Wave<select name="wave"><option>constant</option><option>sine</option><option>square</option></select></label><label>Amplitude<input name="amp" type="number" min="0" max="100" step="0.01" value="0"></label><label>Frequency · Hz<input name="freq" type="number" min="0.01" max="20" step="0.01" value="0.5"></label></div>
+    <button class="primary">Apply command</button>
+  </form>
+  <div class="section-title"><h3>Feedback · 10 s</h3><select id="plot-kind" aria-label="Plot measurement"><option value="pos">Position · rad</option><option value="vel">Speed · rad/s</option><option value="torque">Torque · Nm</option></select></div>
+  <canvas id="plot" width="1000" height="220" aria-label="Motor feedback plot"></canvas>
+  <details><summary>Command limits</summary><form id="limits-form"><div id="limit-fields" class="fields"></div><button>Apply limits</button></form></details>
+</section>
+<section id="registers" class="panel card" hidden><div class="section-title"><h2>Registers <span class="target"></span></h2><div class="toolbar"><button data-op="read">Read all</button><button data-op="save">Save to flash</button></div></div>
+  <form id="register-form" class="toolbar"><label>Register<select id="reg-select"></select></label><label>Value<input id="reg-value" required></label><button>Write RAM</button></form><p id="reg-description" class="muted"></p>
+  <div class="table-scroll"><table><thead><tr><th>Address</th><th>Register</th><th>Value</th><th>Range</th><th>Access</th></tr></thead><tbody id="register-rows"></tbody></table></div>
+  <form id="id-form" class="toolbar"><label>New CAN ID<input id="new-id" type="number" value="1" min="1" max="15"></label><label>Feedback ID<input id="new-master" value="0x101"></label><button>Change ID & save</button></form>
+</section>
+<section id="system" class="panel" hidden>
+  <article class="card"><div class="section-title"><h2>Controller & power</h2><button data-op="power.off" class="danger subtle">Power off robot</button></div><div id="system-readings" class="readings"></div><details><summary>Controller payload</summary><pre id="controller"></pre></details></article>
+  <article class="card"><h2>CAN buses</h2><div class="table-scroll"><table><thead><tr><th>Bus</th><th>State</th><th>TEC / REC</th><th>TX / failed</th><th>RX / errors</th><th>Dropped</th></tr></thead><tbody id="bus-rows"></tbody></table></div></article>
+  <article class="card"><div class="section-title"><h2>IMU</h2><div class="toolbar"><label>Hz<input id="imu-hz" type="number" value="100" min="1" max="400"></label><button data-op="imu.on">Reports on</button><button data-op="imu.off">Off</button><button data-op="imu.info">Product</button><button data-op="imu.reset">Reset</button><button data-op="imu.diagnostics">Diagnostics</button></div></div><div id="imu-readings"></div><details><summary>IMU firmware payload</summary><pre id="imu-firmware"></pre></details><details><summary>IMU response payload</summary><pre id="imu-diag"></pre></details></article>
+  <article class="card"><h2>I²C</h2><form id="i2c-form" class="toolbar"><label>Address<input name="addr" value="0x40"></label><label>Write · hex<input name="write" value="fe"></label><label>Read · bytes<input name="read" type="number" min="0" max="64" value="2"></label><button>Transfer</button></form><details><summary>I²C response payload</summary><pre id="i2c-result"></pre></details></article>
+</section>
+<section id="traffic" class="panel card" hidden><div class="section-title"><h2>CAN & log</h2><div class="toolbar"><label>Bus<select id="traffic-bus"><option value="">All</option><option>A</option><option>B</option><option>C</option></select></label><label>CAN ID<input id="traffic-id" placeholder="All"></label><label><input id="pause" type="checkbox"> Pause</label><button id="clear-log">Clear</button><button id="export-log">Export</button></div></div><pre id="log"></pre></section>
+</div>
+</main>
+<footer><span id="footer-status">—</span><span>BPI · local diagnostics</span></footer>
+</body></html>
