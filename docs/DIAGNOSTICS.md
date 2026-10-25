@@ -121,6 +121,7 @@ The Pi sends:
 | 0x01 | HELLO | nothing; the controller answers with INFO |
 | 0x02 | PING | nothing. Every valid message counts as one |
 | 0x03 | STOP | nothing; stop every motor |
+| 0x04 | SHUTDOWN | nothing; Linux has accepted shutdown: stop motors, latch OFF, stop the MCU heartbeat LED and start the grace period unless already running |
 | 0x10 | CAN_SEND | bus u8 (0 A, 1 B, 2 C), flags u8 (bit 0 extended ID), id u32, then 0 to 8 data bytes |
 | 0x20 | IMU_WRITE | one SHTP packet, header included, written to the IMU as it stands |
 | 0x21 | I2C | tag u8, address u8, read length u16, then the bytes to write |
@@ -159,6 +160,58 @@ the Pi whole, and anything the Pi writes goes to the IMU whole, so the Pi can
 use any part of SH-2 without the firmware changing.
 
 ## The daemon's API
+
+The System panel's **Power off...** button confirms the action, acquires
+control, and sends `power.off`. The daemon stops all motors, blocks further
+control commands and queues normal Linux shutdown after two seconds. The
+client disconnects after acknowledgement. In simulation this only stops
+the simulated robot; the host computer remains on.
+
+Install the power-cut hook once on the Pi with
+`bash ~/setup_poweroff.sh`, with `robot_poweroff.py` and `flash_mcu.py` beside
+it. This copies root-owned files to `/usr/lib/systemd/system-shutdown/` and
+`/usr/local/lib/bipedal/`; it does not turn anything off. The daemon needs
+passwordless sudo for `/usr/bin/systemd-run` (the current admin account has
+passwordless sudo). The hook runs only for `poweroff`, after systemd has
+stopped services and unmounted or made filesystems read-only. It holds the
+MCU in reset using the existing J5 NRST connection and lowers SBC HOLD on
+header pin 12, releasing both power-latch holds. Reboot and halt do not cut
+the latch. Start the robot again with its physical power button.
+
+This uses systemd's final shutdown hook stage:
+https://www.freedesktop.org/software/systemd/man/253/systemd-poweroff.service.html
+
+The diagnostics firmware also uses this sequence for the physical button. A
+half-second press latches OFF and stops motors, while MCU HOLD remains high.
+`diagd` notices OFF in controller status, blocks further control and runs the
+same shutdown callback without needing a client's ownership. Failed scheduling
+is retried once a second. The final Linux hook resets the MCU and drops SBC HOLD
+after filesystems are safe. The controller's SysTick independently forces its
+HOLD low after a continuous eight-second press, or 20 seconds after the request;
+the pressed button itself keeps the latch on until released. Other firmware
+images retain the original immediate HOLD release. `diagd` must be running for
+orderly shutdown; the console installer now enables it at boot, while explicit
+Start/Stop still work for flashing and diagnostics.
+
+Measured on 2026-10-25: 10.55 s from API request to the filesystem-unmount stage,
+including the two-second acknowledgement delay. The final GPIO hook cut power
+and the owner restarted the robot. Its final UDP timestamp was unavailable once
+Wi-Fi stopped. An earlier 53.27 s run included 49.31 s waiting for systemd's timer
+to fire: its default accuracy was one minute. The timer now sets
+`AccuracySec=100ms`; the 20 s MCU fallback leaves margin beyond the observed
+shutdown, and is not a guarantee for every possible stalled service.
+
+Shutdown stops the MCU heartbeat LED as soon as OFF is latched. Once Linux
+accepts the shutdown, the installed hook's `--stop-heartbeat` mode sets any
+active BPI heartbeat LED's trigger to `none` and brightness to zero, without
+changing power GPIOs. For software power-off, diagd then sends SHUTDOWN to
+firmware advertising `shutdown_led=1`; this does not restart an already running
+grace period. Diagnostic PINGs and the MCU watchdog continue until Linux halts.
+The M4 Zero v2's red status LED is physically dark at brightness 1 despite its
+device-tree polarity, so the hook inverts only that LED on that model. The
+diagd service restores its heartbeat trigger on startup. The physical-button
+test reached the filesystem-unmount stage in 8.07 s and the owner power-cycled
+the robot afterward; both heartbeat LEDs stopped on the shutdown request.
 
 One JSON object a line, both ways, on `127.0.0.1:7700`. A request with a `req`
 is answered with the same `req` and `"ok": true` or `"ok": false, "error": ...`;

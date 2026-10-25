@@ -275,16 +275,17 @@ class Session:
 
     def action(self, message):
         op = message["op"]
-        if op == "take":
+        if op in ("take", "power.off"):
             if not self.robot or self.robot.error:
                 raise ValueError("diagd is not connected")
             self.robot.take_control()
             with self.lock:
-                if time.monotonic() - self.last_ping > DEADMAN:
+                if not self.running or time.monotonic() - self.last_ping > DEADMAN:
                     self.stop(release=True)
                     raise ValueError("browser heartbeat lost")
                 self.control = True
-            return "control acquired"
+            if op == "take":
+                return "control acquired"
         self.require_control()
         if op == "scan":
             with self.lock:
@@ -635,8 +636,12 @@ async def websocket(request):
                         message.get("op"), str
                     ):
                         raise ValueError("expected an action object")
+                    # A native confirm() dialog suspends the browser's ping
+                    # timer. Its subsequent action is fresh proof of liveness.
+                    # This does not restore control or resume stopped motors.
+                    session.last_ping = time.monotonic()
                     if message["op"] == "ping":
-                        session.last_ping = time.monotonic()
+                        continue
                     elif len(tasks) >= 4:
                         await ws.send_json(
                             dict(

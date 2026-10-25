@@ -42,6 +42,7 @@ import select
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import threading
 import time
@@ -199,7 +200,7 @@ def say(text: str) -> None:
 
 
 class Daemon:
-    def __init__(self, stream):
+    def __init__(self, stream, poweroff=None):
         self.stream = stream
         self.lock = threading.RLock()
         self.write_lock = threading.Lock()
@@ -226,6 +227,10 @@ class Daemon:
         self.epoch = 0
         self.last_raw: int | None = None
         self.running = True
+        self.poweroff = poweroff
+        self.shutting_down = False
+        self.button_shutdown_pending = False
+        self.button_shutdown_retry_at = 0.0
 
     # -- to the controller -------------------------------------------------------
 
@@ -344,12 +349,35 @@ class Daemon:
             self.broadcast(None, {"ev": "link", "up": True})
             self.mcu(dl.HELLO)
         self.broadcast("status", self.status_event())
+        with self.lock:
+            button_shutdown = (
+                status.get("off", False)
+                and not self.shutting_down
+                and not self.button_shutdown_pending
+                and time.monotonic() >= self.button_shutdown_retry_at
+            )
+            if button_shutdown:
+                self.button_shutdown_pending = True
+        if button_shutdown:
+            # Scheduling systemd must not block the UART reader or its status flow.
+            threading.Thread(target=self.power_button_shutdown, daemon=True).start()
+
+    def power_button_shutdown(self) -> None:
+        try:
+            self.shutdown("power button")
+        except Refused as error:
+            self.log(f"power: button shutdown failed: {error}; retrying in 1 s")
+        finally:
+            with self.lock:
+                self.button_shutdown_pending = False
+                self.button_shutdown_retry_at = time.monotonic() + 1
 
     def status_event(self) -> dict:
         with self.lock:
             status = dict(self.status or {})
             status["ev"] = "status"
             status["link_up"] = self.link_up
+            status["shutting_down"] = self.shutting_down
             status["pi"] = {
                 "frames": self.decoder.frames,
                 "crc_errors": self.decoder.crc_errors,
@@ -461,6 +489,8 @@ class Daemon:
 
     def need_control(self, client: Client) -> None:
         with self.lock:
+            if self.shutting_down or (self.status and self.status.get("off")):
+                raise Refused("the robot is shutting down")
             if self.owner is client:
                 return
             held = f"; {self.owner} holds it" if self.owner else ""
@@ -499,6 +529,8 @@ class Daemon:
         take = m.get("take", True)
         with self.lock:
             if take:
+                if self.shutting_down or (self.status and self.status.get("off")):
+                    raise Refused("the robot is shutting down")
                 if self.owner not in (None, client):
                     raise Refused(f"{self.owner} holds control")
                 self.owner = client
@@ -516,6 +548,35 @@ class Daemon:
     def op_stop(self, client: Client, m: dict) -> dict:
         self.stop(f"asked by {client}")
         return {}
+
+    def op_power_off(self, client: Client, m: dict) -> dict:
+        self.need_control(client)
+        return self.shutdown(f"power-off asked by {client}")
+
+    def shutdown(self, why: str) -> dict:
+        """One shutdown sequence for an API request and the physical button."""
+        if self.poweroff is None:
+            raise Refused("power-off is not configured on this daemon")
+        with self.lock:
+            if self.shutting_down:
+                raise Refused("the robot is already shutting down")
+            self.shutting_down = True
+        try:
+            self.stop(why)
+            self.poweroff()
+        except (OSError, subprocess.SubprocessError) as error:
+            with self.lock:
+                self.shutting_down = False
+            raise Refused(f"could not schedule power-off: {error}") from error
+        self.log("power: motors stopped; system shutdown scheduled")
+        # Notify only after Linux accepted shutdown. Failure to stop an LED
+        # must not undo a successfully queued system power-off.
+        if self.info.get("shutdown_led") == "1":
+            try:
+                self.mcu(dl.SHUTDOWN)
+            except OSError as error:
+                self.log(f"power: could not notify MCU of shutdown: {error}")
+        return {"shutting_down": True}
 
     def can_frame_from(self, m: dict) -> tuple[int, bytes]:
         bus = m["bus"]
@@ -688,6 +749,7 @@ OPS = {
     "status": Daemon.op_status,
     "control": Daemon.op_control,
     "stop": Daemon.op_stop,
+    "power.off": Daemon.op_power_off,
     "can.send": Daemon.op_can_send,
     "can.request": Daemon.op_can_request,
     "imu.enable": Daemon.op_imu_enable,
@@ -705,6 +767,45 @@ def address(text: str) -> tuple[str, int]:
 
 def interrupt(*_) -> None:
     raise KeyboardInterrupt
+
+
+def schedule_poweroff() -> None:
+    hook = "/usr/lib/systemd/system-shutdown/robot-poweroff"
+    if not os.access(hook, os.X_OK):
+        raise OSError("install the robot-poweroff shutdown hook first")
+    # Queue in systemd so it survives this daemon stopping. The brief delay
+    # allows the client to receive its acknowledgement before SSH closes.
+    result = subprocess.run(
+        [
+            "sudo",
+            "-n",
+            "/usr/bin/systemd-run",
+            "--quiet",
+            "--collect",
+            "--unit=robot-gui-poweroff",
+            "--on-active=2s",
+            "--timer-property=AccuracySec=100ms",
+            "/usr/bin/systemctl",
+            "--no-block",
+            "poweroff",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if result.returncode:
+        raise OSError(result.stderr.strip() or "systemd refused power-off")
+    try:
+        leds = subprocess.run(
+            ["sudo", "-n", hook, "--stop-heartbeat"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if leds.returncode:
+            say(f"power: heartbeat LED: {leds.stderr.strip()}")
+    except (OSError, subprocess.SubprocessError) as error:
+        say(f"power: heartbeat LED: {error}")
 
 
 def main() -> None:
@@ -737,7 +838,12 @@ def main() -> None:
     except OSError as error:
         sys.exit(f"cannot listen on {host}:{port}: {error}. Is diagd already running?")
 
-    daemon = Daemon(stream)
+    daemon = Daemon(
+        stream,
+        poweroff=(lambda: say("power: simulated shutdown; this computer stays on"))
+        if args.sim
+        else schedule_poweroff,
+    )
     say(f"diagd: {stream.where}; clients on {host}:{port}. Ctrl-C to stop.")
     if host not in ("127.0.0.1", "localhost", "::1"):
         say("diagd: open to the network: anyone who can reach it can drive the motors")

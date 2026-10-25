@@ -28,8 +28,9 @@ the web server only. Cross-origin browser WebSocket requests are refused.
 The web server runs independently of diagd. **Start diagd** and **Stop diagd**
 run the existing scripts beside `diagd.py`, as the service user. Startup failures
 are reported in the page; UART and firmware details are in `sbc/diagd.log`.
-Starting the web server does not automatically start diagd. Console restarts
-leave diagd running. Stop diagd before flashing the controller.
+The installer enables diagd at boot so the physical button can request shutdown
+without a browser. Launching the web server manually does not start diagd.
+Console restarts leave diagd running. Stop diagd before flashing the controller.
 
 ## Using it
 
@@ -56,6 +57,37 @@ browsers and the desktop GUI. Other clients may always stop motors. Scans and
 register reads require control because they send CAN frames. Only the browser
 holding control polls discovered motors. Browser reconnects clear commands and
 require taking control and scanning again.
+
+**Power off robot** acquires control when confirmed, including when this browser's
+previous ownership has expired. Another client's ownership is still respected.
+It stops motors and asks the daemon for orderly Linux shutdown; the installed
+final shutdown hook cuts the power latch afterward. On success the page shows
+shutdown progress; refresh after physically turning the robot on again.
+The confirmed action refreshes browser liveness after the native dialog pauses
+JavaScript timers; this never resumes motor commands stopped by the watchdog.
+
+With the diagnostics firmware, holding the physical button for half a second
+stops the motors and requests the same Linux shutdown. The controller holds power
+until the final shutdown hook releases the latch. Holding the button for eight
+seconds forces off; if shutdown never completes, the controller releases its
+hold after 20 seconds. Release the button for power to go off. If diagd has been
+explicitly stopped, only the forced-off fallbacks are available.
+
+The MCU heartbeat LED goes dark when shutdown is requested. The BPI heartbeat
+LED goes dark when Linux accepts shutdown. Both the physical button and console
+power-off do this; UART heartbeats and the safety watchdog continue until halt.
+The M4 Zero v2's red status LED uses the inverted dark level, and diagd restores
+its heartbeat when starting so the shutdown state does not persist after boot.
+Startup also restores the heartbeat trigger's `invert=1` setting, keeping the
+original brief flashes against a dark background.
+
+Timing on 25 October 2026: the BPI reached the filesystem-unmount stage in
+10.55 seconds including the two-second acknowledgement delay. An earlier run
+exposed a 49-second systemd timer tolerance delay; the scheduler now explicitly
+sets `AccuracySec=100ms`. The late power-cut hook ran and the owner confirmed
+the robot switched off; Wi-Fi was already down before its final timing packet.
+The physical-button test reached the same stage in 8.07 seconds, with both
+heartbeat LEDs stopping and the robot subsequently power-cycled by the owner.
 
 Older daemons can serve the core console without the optional `imu.diag` stream.
 IMU diagnostic snapshots and robot power-off require a daemon that provides

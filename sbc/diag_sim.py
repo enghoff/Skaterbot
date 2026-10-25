@@ -328,6 +328,7 @@ class Controller:
         self.imu_packets = 0
         self.last_host: float | None = None
         self.lost = False
+        self.off = False
         self.lock = threading.Lock()
         self.write_lock = threading.Lock()
         self.running = True
@@ -356,6 +357,7 @@ class Controller:
             "uid=simulated",
             "baud=1500000",
             "bitrate=1000000",
+            "shutdown_led=1",
             "buses=A FDCAN1 J2 hips,B FDCAN2 J3 knees,C FDCAN3 J4 wheels",
             f"deadman_ms={int(DEADMAN_S * 1000)}",
             "imu=0x4A",
@@ -389,6 +391,9 @@ class Controller:
             self.info()
         elif kind == dl.STOP:
             self.stop(0)
+        elif kind == dl.SHUTDOWN and not body:
+            self.off = True
+            self.stop(0)
         elif kind == dl.CAN_SEND and 6 <= len(body) <= 14 and body[0] < 3:
             bus, flags, can_id = struct.unpack_from("<BBI", body)
             self.can_send(dl.BUSES[bus], can_id, body[6:], bool(flags & 1))
@@ -402,7 +407,7 @@ class Controller:
             self.malformed += 1
 
     def can_send(self, bus: str, can_id: int, data: bytes, extended: bool) -> None:
-        if extended:
+        if extended or self.off:
             return
         motors = self.buses[bus]
         with self.lock:
@@ -512,7 +517,7 @@ class Controller:
                     "uptime": time.monotonic() - self.t0,
                     "hold": True,
                     "button": False,
-                    "off": False,
+                    "off": self.off,
                     "lost": self.lost,
                     "imu_found": True,
                     "ina_found": True,

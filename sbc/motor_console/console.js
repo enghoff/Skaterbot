@@ -1,7 +1,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 let ws, state = {}, schema = [], selected = null, sequence = 0, loaded = null;
-let reconnect, heartbeat, lastState = 0;
+let reconnect, heartbeat, lastState = 0, shutdownRequested = false;
 const pending = new Map(), history = new Map(), logs = [];
 const fields = {p:["Position · rad",0,-100,100,.01],v:["Speed · rad/s",0,-100,100,.01],kp:["Kp",0,0,500,.1],kd:["Kd",0,0,5,.01],t:["Torque · Nm",0,-5,5,.01],vlim:["Speed limit · rad/s",1,0,100,.1],ilim:["Current · pu",.2,0,1,.01]};
 const limits = {torque:["Torque · Nm",.5,0,5,.1],kp:["Kp",10,0,500,1],kd:["Kd",1,0,5,.1],speed:["Speed · rad/s",5,0,100,1],current:["Current · pu",.3,0,1,.01],rate:["Stream · Hz",200,10,500,10]};
@@ -15,6 +15,13 @@ function makeFields(id, data) {
 }
 makeFields("command-fields", fields); makeFields("limit-fields", limits);
 function notice(text, error=false) { $("notice").textContent = text; $("notice").classList.toggle("error",error); }
+function confirmAction(text) {
+  const accepted = confirm(text);
+  // The native dialog pauses JS message handlers and timers. Give queued
+  // state messages time to run before judging the stream stale.
+  lastState = performance.now();
+  return accepted;
+}
 function send(op, extra={}) {
   if (!ws || ws.readyState !== WebSocket.OPEN) { notice("Console disconnected",true); return; }
   const req = ++sequence; pending.set(req,op);
@@ -34,12 +41,14 @@ function connect() {
       const op = pending.get(message.req); pending.delete(message.req);
       const result = typeof message.result === "string" ? message.result : JSON.stringify(message.result,null,2);
       notice(message.ok ? `${op}: ${result}` : `${op || "Action"}: ${message.error}`, !message.ok);
+      if (message.ok && op === "power.off") { shutdownRequested = true; notice("Power-off accepted; robot is shutting down"); render(); }
       if (op === "i2c") $("i2c-result").textContent = message.ok ? result : message.error;
       if (op?.startsWith("imu.") && !["imu.on","imu.off"].includes(op)) $("imu-diag").textContent = message.ok ? result : message.error;
       if (message.ok && ["enable","hold"].includes(op)) loaded = null;
     }
     if (message.type === "state") {
       state = message; lastState = performance.now();
+      if(message.status?.shutting_down && !shutdownRequested){shutdownRequested=true;notice("Robot is shutting down");}
       for (const event of message.events) { logs.push(event); if(logs.length > 2000) logs.shift(); }
       for (const m of message.motors) {
         if (!history.has(m.key)) history.set(m.key,[]);
@@ -50,7 +59,7 @@ function connect() {
       render();
     }
   };
-  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); state = {}; loaded = null; lastState = 0; render(); notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500); };
+  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); state = {}; loaded = null; lastState = 0; render(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
 }
 function cell(row,text,tag="td") { const element = document.createElement(tag); element.textContent = text ?? "—"; row.append(element); return element; }
 function reading(parent,title,value,unit="") {
@@ -67,8 +76,8 @@ function loadCommand(m) {
   loaded=m.key+":"+m.mode;
 }
 function render() {
-  const connected = Boolean(state.connected), live = ws?.readyState === WebSocket.OPEN && performance.now()-lastState < 1500;
-  $("connection").textContent=live ? "Console online" : "Console offline";
+  const connected = Boolean(state.connected), live = !shutdownRequested && ws?.readyState === WebSocket.OPEN && performance.now()-lastState < 1500;
+  $("connection").textContent=shutdownRequested ? "Shutting down" : live ? "Console online" : "Console offline";
   $("connection").className=`badge ${live?"good":"bad"}`;
   $("daemon").textContent=connected ? "diagd running" : "diagd stopped / unavailable";
   $("daemon").className=`badge ${connected?"good":"bad"}`;
@@ -87,7 +96,7 @@ function render() {
   if(m && loaded!==m.key+":"+m.mode) loadCommand(m);
   for(const button of document.querySelectorAll("[data-op]")) {
     const op=button.dataset.op, motorOp=["enable","disable","hold","clear","zero","read","save"].includes(op);
-    button.disabled=!live || (op==="take" ? !connected || state.control : op==="release" ? !state.control : op.startsWith("daemon.") ? false : !state.control || !connected || (motorOp&&!m));
+    button.disabled=!live || (op==="take" ? !connected || state.control : op==="release" ? !state.control : op==="power.off" ? !connected : op.startsWith("daemon.") ? false : !state.control || !connected || (motorOp&&!m));
   }
   for(const id of ["command-form","register-form","id-form","limits-form","i2c-form"]) $(id).querySelector("button").disabled=!live||!state.control||(!m && ["command-form","register-form","id-form"].includes(id));
   renderRegisters(m); renderSystem(); drawPlot(); renderLog();
@@ -116,14 +125,14 @@ document.querySelectorAll("[data-tab]").forEach(button=>button.onclick=()=>{docu
 document.querySelectorAll("[data-op]").forEach(button=>button.onclick=()=>{
   const op=button.dataset.op;
   const confirmations={zero:"Set this motor’s current position as zero?",save:"Save this motor’s settings to flash?", "power.off":"Stop all motors and power off the robot?", "daemon.stop":"Stop diagd and all motors?"};
-  if(confirmations[op]&&!confirm(confirmations[op]))return;
+  if(confirmations[op]&&!confirmAction(confirmations[op]))return;
   send(op,{motor:selected,last:$("scan-last").value,hz:$("imu-hz").value});
 });
 $("stop").onclick=()=>send("stop");document.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();send("stop");}});
 $("command-form").onsubmit=e=>{e.preventDefault();send("command",{motor:selected,...formValues(e.target)});};
 $("limits-form").onsubmit=e=>{e.preventDefault();send("limits",formValues(e.target));};
 $("register-form").onsubmit=e=>{e.preventDefault();send("write",{motor:selected,rid:$("reg-select").value,value:$("reg-value").value});};
-$("id-form").onsubmit=e=>{e.preventDefault();if(confirm("Change this motor’s CAN and feedback IDs and save to flash?"))send("id",{motor:selected,new_id:$("new-id").value,master:$("new-master").value});};
+$("id-form").onsubmit=e=>{e.preventDefault();if(confirmAction("Change this motor’s CAN and feedback IDs and save to flash?"))send("id",{motor:selected,new_id:$("new-id").value,master:$("new-master").value});};
 $("i2c-form").onsubmit=e=>{e.preventDefault();send("i2c",formValues(e.target));};
 $("reg-select").onchange=selectRegister;$("plot-kind").onchange=drawPlot;
 $("traffic-bus").onchange=renderLog;$("traffic-id").oninput=renderLog;$("pause").onchange=renderLog;

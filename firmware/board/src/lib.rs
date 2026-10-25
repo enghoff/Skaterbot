@@ -22,7 +22,8 @@
 //! On the robot it also holds the power on and turns it off: [`early_init`]
 //! raises the power switch board's HOLD as soon as it knows this image is to
 //! run, and starts [`power`]'s watch on the robot's button, which lets go of
-//! HOLD after a half-second press whatever the image is doing.
+//! HOLD after a half-second press, or waits for Linux shutdown when the image
+//! opts into graceful power-off (with timed and long-press forced-off fallbacks).
 //!
 //! The button still works whatever an image does, because the option bytes that
 //! give it that job are left alone.
@@ -234,6 +235,8 @@ pub fn reset_cause(out: &mut impl Write) -> fmt::Result {
 // --------------------------------------------------------------------------
 // Power
 
+mod power_button;
+
 pub mod power {
     //! The power switch board's hold and its button, on the carrier's J7.
     //!
@@ -249,12 +252,13 @@ pub mod power {
     //! every image turns off the same way whatever else it does or fails to do.
     //! [`super::early_init`] starts SysTick, and every [`TICK_MS`] its handler
     //! reads the button on PB14, which the power board's D7 pulls low against
-    //! the MCU's own pull-up. A press of [`OFF_PRESS_MS`] lets go of HOLD
-    //! there and then, and the robot turns off about 0.9 s after the button
-    //! comes up, since a pressed button holds the switch closed by itself. An
-    //! image that has something to do first -- put the robot down, tell the
-    //! SBC -- watches [`off_requested`], and has that 0.9 s and however long
-    //! the button is still held.
+    //! the MCU's pull-up. Normally a half-second press drops HOLD immediately.
+    //! An image that calls [`wait_for_sbc_shutdown`] instead latches a shutdown
+    //! request while keeping HOLD high. The Pi's final shutdown hook then resets
+    //! the MCU to release HOLD after Linux is safe. An eight-second button hold,
+    //! or twenty seconds without completing shutdown, releases HOLD regardless
+    //! of the image or Pi's state. The pressed button itself keeps power on until
+    //! released. The image must stop motors when [`off_requested`] becomes true.
     //!
     //! A press counts as let go only once the button has read up for
     //! [`RELEASE_MS`], so a contact that chatters does not start the count
@@ -275,13 +279,10 @@ pub mod power {
     use embassy_stm32::pac::gpio::vals::{Idr, Moder, Pupdr};
     use embassy_stm32::pac::rcc::vals::Sw;
 
-    /// How often the button is read.
-    pub const TICK_MS: u32 = 10;
-    /// How long the button must be held to turn the robot off.
-    pub const OFF_PRESS_MS: u32 = 500;
-    /// How long the button must read up before a press counts as let go.
-    /// Contact bounce is a few milliseconds; a finger that eases off is more.
-    pub const RELEASE_MS: u32 = 50;
+    use crate::power_button::Button;
+    pub use crate::power_button::{
+        FORCE_OFF_MS, OFF_PRESS_MS, RELEASE_MS, SHUTDOWN_GRACE_MS, TICK_MS,
+    };
 
     /// HOLD, PC11, J7-1.
     const HOLD_PIN: usize = 11;
@@ -295,6 +296,7 @@ pub mod power {
     const SYSTICK_SHPR: usize = 11;
 
     static OFF: AtomicBool = AtomicBool::new(false);
+    static GRACEFUL: AtomicBool = AtomicBool::new(false);
     static BUTTON: Mutex<RefCell<Button>> = Mutex::new(RefCell::new(Button::Starting { up_ms: 0 }));
 
     /// Raises HOLD from the reset state, before clocks or embassy: the button
@@ -346,72 +348,38 @@ pub mod power {
     pub(crate) fn tick() {
         unsafe { (*SYST::PTR).rvr.write(reload()) };
         let pressed = pressed();
-        let off = free(|cs| {
+        let action = free(|cs| {
             let mut button = BUTTON.borrow(cs).borrow_mut();
-            let (next, off) = button.step(pressed);
+            let (next, action) = button.step(pressed, GRACEFUL.load(Ordering::Relaxed));
             *button = next;
-            off
+            action
         });
-        if off {
-            pac::GPIOC.bsrr().write(|w| w.set_br(HOLD_PIN, true));
+        if action.request_off {
             OFF.store(true, Ordering::Relaxed);
         }
-    }
-
-    #[derive(Clone, Copy)]
-    enum Button {
-        /// Not yet seen up since the firmware started: the press that turned
-        /// the robot on, which has read up for `up_ms`.
-        Starting {
-            up_ms: u32,
-        },
-        Up,
-        /// Pressed for `held_ms`, the last `up_ms` of which it has read up.
-        Down {
-            held_ms: u32,
-            up_ms: u32,
-        },
-        /// HOLD has been let go; nothing more is done.
-        Spent,
-    }
-
-    impl Button {
-        /// One tick on, with the button read as `pressed`; and whether that has
-        /// made a press long enough to turn off.
-        fn step(self, pressed: bool) -> (Self, bool) {
-            match self {
-                Button::Starting { up_ms } => {
-                    let up_ms = if pressed { 0 } else { up_ms + TICK_MS };
-                    if up_ms >= RELEASE_MS {
-                        (Button::Up, false)
-                    } else {
-                        (Button::Starting { up_ms }, false)
-                    }
-                }
-                // Seen down at a tick, so held for up to a tick already.
-                Button::Up if pressed => (
-                    Button::Down {
-                        held_ms: TICK_MS,
-                        up_ms: 0,
-                    },
-                    false,
-                ),
-                Button::Down { held_ms, up_ms } => {
-                    let held_ms = held_ms + TICK_MS;
-                    let up_ms = if pressed { 0 } else { up_ms + TICK_MS };
-                    if up_ms >= RELEASE_MS {
-                        (Button::Up, false)
-                    } else if pressed && held_ms >= OFF_PRESS_MS {
-                        // Only on a tick that reads it down, so that the moments
-                        // of a release are never what makes the length.
-                        (Button::Spent, true)
-                    } else {
-                        (Button::Down { held_ms, up_ms }, false)
-                    }
-                }
-                other => (other, false),
-            }
+        if action.cut_power {
+            pac::GPIOC.bsrr().write(|w| w.set_br(HOLD_PIN, true));
         }
+    }
+
+    /// Keep HOLD high while the Pi shuts down. Call once, just after early_init.
+    /// The independent SysTick still enforces the forced-off fallbacks.
+    pub fn wait_for_sbc_shutdown() {
+        GRACEFUL.store(true, Ordering::Relaxed);
+    }
+
+    /// The Pi has accepted orderly shutdown. Start the same grace period as
+    /// the button, without extending a shutdown already requested by the button.
+    pub fn request_shutdown() {
+        free(|cs| {
+            if !OFF.swap(true, Ordering::Relaxed) {
+                *BUTTON.borrow(cs).borrow_mut() = Button::Waiting {
+                    elapsed_ms: 0,
+                    held_ms: 0,
+                    up_ms: RELEASE_MS,
+                };
+            }
+        });
     }
 
     /// Whether HOLD is high at the pin, read back rather than remembered.
@@ -424,9 +392,8 @@ pub mod power {
         pac::GPIOB.idr().read().idr(SENSE_PIN) == Idr::LOW
     }
 
-    /// Whether a press has turned the robot off. HOLD is already down, and the
-    /// power goes about 0.9 s after the button comes up -- unless the SBC is
-    /// holding it on as well.
+    /// Whether a half-second press requested shutdown. This remains latched
+    /// through the grace period, even after the button is released.
     pub fn off_requested() -> bool {
         OFF.load(Ordering::Relaxed)
     }
@@ -444,19 +411,32 @@ pub mod power {
 /// 860 at a load of 1, 510 at 5 -- and this board has no load average, so it
 /// beats at the idle period, as the Pi does with nothing to do. Two boards that
 /// both beat are two boards both running.
+/// A latched shutdown request cancels the pattern and leaves this LED dark;
+/// the executor and its safety watchdog continue running.
 pub async fn heartbeat(led: &mut embassy_stm32::gpio::Output<'_>) -> ! {
     const PERIOD_MS: u64 = 300 + 6720 / 7;
     const FLASH_MS: u64 = 70;
-    loop {
-        led.set_high();
-        Timer::after_millis(FLASH_MS).await;
-        led.set_low();
-        Timer::after_millis(PERIOD_MS / 4 - FLASH_MS).await;
-        led.set_high();
-        Timer::after_millis(FLASH_MS).await;
-        led.set_low();
-        Timer::after_millis(PERIOD_MS - PERIOD_MS / 4 - FLASH_MS).await;
-    }
+    let beat = async {
+        loop {
+            led.set_high();
+            Timer::after_millis(FLASH_MS).await;
+            led.set_low();
+            Timer::after_millis(PERIOD_MS / 4 - FLASH_MS).await;
+            led.set_high();
+            Timer::after_millis(FLASH_MS).await;
+            led.set_low();
+            Timer::after_millis(PERIOD_MS - PERIOD_MS / 4 - FLASH_MS).await;
+        }
+    };
+    let shutting_down = async {
+        while !power::off_requested() {
+            Timer::after_millis(10).await;
+        }
+    };
+    select(beat, shutting_down).await;
+    led.set_low();
+    core::future::pending::<()>().await;
+    unreachable!()
 }
 
 // --------------------------------------------------------------------------

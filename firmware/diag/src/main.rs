@@ -230,6 +230,7 @@ struct Ctx<'a> {
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     board::early_init();
+    power::wait_for_sbc_shutdown();
     let mut config = board::config();
     // FDCAN straight from the 8 MHz crystal, as wheel_check has it: eight
     // quanta a bit at 1 Mbit/s.
@@ -388,6 +389,8 @@ fn send_info(ctx: &Ctx<'_>) {
     let _ = writeln!(text, "sysclk_hz={}", board::SYSCLK_HZ);
     let _ = writeln!(text, "baud={BAUD}");
     let _ = writeln!(text, "bitrate={BITRATE}");
+    let _ = writeln!(text, "power_shutdown=grace-20s-force-8s");
+    let _ = writeln!(text, "shutdown_led=1");
     let _ = write!(text, "buses=");
     for (i, name) in BUS_NAMES.iter().enumerate() {
         let _ = write!(text, "{}{name}", if i == 0 { "" } else { "," });
@@ -459,6 +462,11 @@ fn handle(kind: u8, body: &[u8], ctx: &Ctx<'_>) {
             stop_all(ctx, Stop::Asked);
             true
         }
+        host::SHUTDOWN if body.is_empty() => {
+            power::request_shutdown();
+            stop_all(ctx, Stop::Asked);
+            true
+        }
         host::CAN_SEND => can_send(body, ctx),
         host::IMU_WRITE => match Vec::from_slice(body) {
             Ok(packet) => {
@@ -480,6 +488,9 @@ fn handle(kind: u8, body: &[u8], ctx: &Ctx<'_>) {
 
 /// CAN_SEND: bus u8, flags u8, id u32, then the data.
 fn can_send(body: &[u8], ctx: &Ctx<'_>) -> bool {
+    if power::off_requested() {
+        return false;
+    }
     if body.len() < 6 || body.len() > 14 {
         return false;
     }
@@ -587,7 +598,9 @@ async fn can_out(bus: usize, tx: &mut CanTx<'_>, ctx: &Ctx<'_>) -> ! {
         match select(ctx.stops[bus].wait(), queue.receive()).await {
             Either::First(()) => stop_bus(bus, tx, ctx).await,
             Either::Second(frame) => {
-                send(bus, tx, &frame, ctx).await;
+                if !power::off_requested() {
+                    send(bus, tx, &frame, ctx).await;
+                }
             }
         }
     }
@@ -685,7 +698,7 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
         if power::off_requested() && !told_off {
             told_off = true;
             ctx.out
-                .log("power: button held, HOLD released; every motor stopped");
+                .log("power: button held; every motor stopped; waiting for Pi shutdown");
             stop_all(ctx, Stop::Button);
         }
         if now >= next_status {

@@ -17,6 +17,7 @@ pub mod host {
     pub const HELLO: u8 = 0x01;
     pub const PING: u8 = 0x02;
     pub const STOP: u8 = 0x03;
+    pub const SHUTDOWN: u8 = 0x04;
     pub const CAN_SEND: u8 = 0x10;
     pub const IMU_WRITE: u8 = 0x20;
     pub const I2C: u8 = 0x21;

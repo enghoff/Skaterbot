@@ -581,6 +581,10 @@ class App(tk.Tk):
             tab, text="", font=("Consolas", 11), justify="left", anchor="nw"
         )
         self.system.pack(fill="both", expand=True)
+        self.poweroff_btn = ttk.Button(
+            row, text="Power off\u2026", command=self.power_off
+        )
+        self.poweroff_btn.pack(side="right")
 
     # -- plumbing --------------------------------------------------------------
 
@@ -996,6 +1000,35 @@ class App(tk.Tk):
         self.job(lambda: bus.write(m.can_id, dm.RID["CTRL_MODE"], mode), done)
 
     # -- the System tab, the robot's IMU ---------------------------------------
+
+    def power_off(self) -> None:
+        robot = self.robot
+        if robot is None:
+            self.log("connect to the robot before powering it off")
+            return
+        if not messagebox.askyesno(
+            "Power off robot",
+            "Stop every motor, shut down the Banana Pi, and turn the robot off?\n\n"
+            "Use the physical power button to turn it on again.",
+            parent=self,
+        ):
+            return
+        self.poweroff_btn.configure(state="disabled")
+
+        def work():
+            robot.take_control()
+            return robot.request("power.off", wait=15)
+
+        def done(_):
+            self.disconnect()
+            self.poweroff_btn.configure(state="normal")
+            self.log("power-off accepted: the robot is shutting down")
+
+        def failed(error):
+            self.poweroff_btn.configure(state="normal")
+            self.log(f"power-off failed: {error}")
+
+        self.job(work, done, failed)
 
     def imu_job(self, what: str, fn) -> None:
         robot = self.robot

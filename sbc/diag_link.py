@@ -21,7 +21,7 @@ import struct
 import sys
 
 # The Pi's messages to the controller.
-HELLO, PING, STOP = 0x01, 0x02, 0x03
+HELLO, PING, STOP, SHUTDOWN = 0x01, 0x02, 0x03, 0x04
 CAN_SEND, IMU_WRITE, I2C = 0x10, 0x20, 0x21
 # The controller's messages to the Pi.
 INFO, STATUS, STOPPED = 0x81, 0x82, 0x83

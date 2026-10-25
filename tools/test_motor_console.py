@@ -10,6 +10,7 @@ import sys
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, call
 
 import aiohttp
 from aiohttp import web
@@ -124,6 +125,7 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         observer = await self.browser()
         await observer.until(lambda: observer.state.get("connected"))
         await observer.action("take", ok=False)
+        await observer.action("power.off", ok=False)
         await browser.action("read", motor=target)
         await browser.action("write", motor=target, rid=9, value="500")
         await browser.action("write", motor=target, rid=35, value="4", ok=False)
@@ -194,6 +196,71 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         await observer.until(lambda: observer.state["connected"])
         self.assertFalse(observer.state["control"])
         self.assertEqual(observer.state["motors"], [])
+
+    async def test_power_off_without_manual_control(self):
+        import diagd
+
+        if "power.off" not in diagd.OPS:
+            self.skipTest("this diagnostics daemon has no power.off operation")
+        browser = await self.browser()
+        await browser.action("daemon.start")
+        await browser.until(lambda: browser.state.get("connected"))
+        self.assertFalse(browser.state["control"])
+        # Native browser confirmation pauses JS timers. The confirmed action
+        # must count as fresh liveness even after application pings expired.
+        browser.pinger.cancel()
+        await asyncio.sleep(console.DEADMAN + 0.2)
+        reply = await browser.action("power.off")
+        self.assertTrue(reply["result"]["shutting_down"])
+        # The simulator acknowledges power-off without shutting down the test host.
+        await browser.action("take", ok=False)
+
+
+class PowerOffControlTests(unittest.TestCase):
+    def session(self, control=False):
+        session = console.Session.__new__(console.Session)
+        session.robot = Mock(error=None)
+        session.robot.request.return_value = {"shutting_down": True}
+        session.control = control
+        session.running = True
+        session.last_ping = time.monotonic()
+        session.lock = console.threading.RLock()
+        session.commands = {"A:1": console.Command(active=True)}
+        return session
+
+    def test_power_off_reacquires_then_stops_before_shutdown(self):
+        for previous_control in (False, True):
+            with self.subTest(previous_control=previous_control):
+                session = self.session(previous_control)
+                result = session.action({"op": "power.off"})
+                self.assertTrue(result["shutting_down"])
+                self.assertFalse(session.commands["A:1"].active)
+                self.assertEqual(
+                    session.robot.mock_calls,
+                    [
+                        call.take_control(),
+                        call.stop(),
+                        call.request("power.off", wait=15),
+                    ],
+                )
+
+    def test_other_owner_prevents_shutdown(self):
+        session = self.session()
+        session.robot.take_control.side_effect = console.diag_client.RobotError(
+            "another client holds control"
+        )
+        with self.assertRaisesRegex(console.diag_client.RobotError, "holds control"):
+            session.action({"op": "power.off"})
+        session.robot.stop.assert_not_called()
+        session.robot.request.assert_not_called()
+
+    def test_expired_browser_cannot_request_shutdown(self):
+        session = self.session()
+        session.last_ping -= 2 * console.DEADMAN
+        with self.assertRaisesRegex(ValueError, "heartbeat lost"):
+            session.action({"op": "power.off"})
+        session.robot.request.assert_not_called()
+        session.robot.send.assert_called_once_with("control", take=False)
 
 
 if __name__ == "__main__":
