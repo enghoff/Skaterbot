@@ -15,7 +15,17 @@ and B acknowledged nothing, having no motors on them, and nothing answered on
 I2C at any address. No motor has been enabled through it yet. The firmware is
 58 KB of flash and 24 KB of RAM, clean under clippy.
 
-Everything else has run against `sbc/diag_sim.py`, a software controller with
+**IMU on the robot, 2026-10-25:** direct I2C reads answered at 0x4B while
+automatic discovery still reported no IMU. The INA226 discovery loop was
+sending its one-byte register request to the IMU's SHTP address. Excluding
+0x4A and 0x4B from that register scan, rebuilding and flashing made discovery
+succeed. The IMU returned product 10004148, version 3.2.13, build 6. A ten-second
+test received 654 accelerometer reports (62.5 Hz granted), 501 gyro, 501 game
+rotation and 500 gravity reports (50 Hz granted), with zero IMU errors and
+zero UART or CRC errors. The INA226 remains absent. Do not strap an INA226
+to either reserved IMU address on this shared bus.
+
+Other checks have run against `sbc/diag_sim.py`, a software controller with
 simulated motors behind it:
 
 - the GUI, driven by a script, through every feature it has -- scan, enable,

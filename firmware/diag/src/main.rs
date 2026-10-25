@@ -854,6 +854,12 @@ async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
     };
     if ina.is_none() {
         for address in 0x40..=0x4F {
+            // These belong to the SHTP IMU, not a register-based device.
+            // A one-byte register request is not a valid SHTP packet and
+            // must not be sent to it while looking for the INA226.
+            if IMU_ADDRESSES.contains(&address) {
+                continue;
+            }
             let mut id = [0u8; 2];
             if i2c.write_read(address, &[0xFE], &mut id).await.is_ok() && id == *b"TI" {
                 ctx.shared.borrow_mut().ina = Some(address);
