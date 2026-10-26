@@ -238,6 +238,12 @@ on the 5 V, and a second 10 µF on the bus where it arrives — that last one fo
 the lead's own inductance when the switch board's MOSFETs open. The two
 4.7 kΩ I²C pull-ups go on only if neither sensor module brings its own.
 
+**As-built correction, reported 2026-10-26:** removing both carrier pull-ups
+**R1 and R2 (4.7 kΩ)** fixed the IMU reporting problem on the assembled robot.
+Leave these two positions unpopulated for this configuration. The schematic
+still provides the optional footprints. See the
+[IMU troubleshooting resolution](IMU_TROUBLESHOOTING_2026-10-25.md).
+
 **Two parts were drawn smaller than they are, until an outside review on
 2026-10-07.** The 100 nF were bought as KEMET's C320, 5.08 × 3.18 mm, on a board
 drawn for 4.0 × 2.6; at their real size they stood within 0.25 mm of a neighbour
@@ -789,8 +795,9 @@ beeping with a meter before ordering.**
   powering it. The manufacturer's page still contains conflicting supply text.
 - **The INA226's alert.** Wired to a GPIO because it costs nothing to wire, not
   because a threshold has been chosen.
-- **Nothing here has been built.** Every number in this document came off a
-  vendor document or off the CAD. No part of this board exists.
+- **Original design-review status:** dimensions came from vendor documents
+  and CAD before this board was built. Later assembly observations, including
+  the R1/R2 removal above, are recorded separately with their report dates.
 
 ## Checked fabrication release (2026-09-15)
 

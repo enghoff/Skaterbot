@@ -7,6 +7,12 @@ own replacement for DAMIAO's USB-to-CAN debugger on the bench, and
 `bench/motor_gui.py` drives the motors through it with every feature it has
 through the debugger.
 
+**IMU resolution reported 2026-10-26:** the owner confirmed that removing
+the carrier's two **4.7 kΩ I2C pull-ups, R1/R2**, fixed the reporting problem.
+Leave them unpopulated for this assembled configuration. The investigation
+and software recovery experiments below precede that hardware correction;
+see [the troubleshooting record](IMU_TROUBLESHOOTING_2026-10-25.md).
+
 **On the robot, 2026-10-23**, `firmware/diag` was flashed through J5 and the
 link came up at 1.5 Mbaud: 243 messages to the controller and 125 back with no
 CRC failure and no UART error either way. Its stop as it started reached both
@@ -180,15 +186,15 @@ requests left the requested interval at zero and produced no input reports.
 The first 4096 bytes of controller flash matched `diag-imu-autostart.elf`,
 ruling out an older installed image in that run. Temporary 100 kHz and polled
 write experiments did not restore reporting; the 400 kHz async configuration
-was restored. The cause remains unresolved pending IMU supply measurements
-and a decoded I2C capture. The earlier warm-run success does not validate
-reliable cold-start behavior.
+was restored. At that stage the cause remained unresolved; the earlier
+warm-run success did not validate reliable cold-start behavior. The owner
+subsequently confirmed removal of carrier R1/R2 as the fix.
 
 A subsequent test added a 300 ms quiet period at MCU startup and after
 host-requested IMU reset, deferring rediscovery and setup until afterward.
 The flashed image reports `imu_startup=quiet-300ms` in INFO. It built and
 passed clippy and the project check, but did not recover reports from the
-currently failing module: reset and report-enable requests still yielded no
+then-failing module: reset and report-enable requests still yielded no
 input reports. This timing change is not a demonstrated fix for the fault.
 
 Subsequent instrumented testing found invalid `ff ff ff ff` headers, read
@@ -377,8 +383,9 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
   next exact rate on both ends and carries about 3 500 frames a second, which
   still holds the GUI at 200 Hz on six motors.
 - **The IMU, by polling.** Tested on J6 on 2026-10-25: empty polls return zero
-  length and all four default reports stream. Intermittent stalls required the
-  host transaction fixes above. Repeated cold starts, signal waveforms and
+  length and all four default reports stream. Host transaction recovery was
+  added during troubleshooting; removing carrier R1/R2 was the owner-confirmed
+  reporting fix. Repeated cold starts, signal waveforms and
   extended operation with the INA226 reconnected remain to be validated.
 - **Three buses at once.** Bus C carries frames both ways through `diag`;
   buses A and B and their transceivers have carried nothing yet, since no motor
@@ -388,9 +395,10 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
 - **The controller's own watches.** The stop, the deadman and the button are
   the firmware's, and only the simulator's copies of them have been timed.
 - **I2C.** The carrier has detected INA226 at 0x40 and BNO085 at 0x4B. The
-  battery-monitor PCB is currently removed for isolation; the latest host
-  recovery validation therefore covers the IMU-only bus. The user measured
-  3.299 V at the IMU and confirmed the carrier's 4.7 kΩ pull-ups fitted.
+  earlier host recovery validation covered the IMU-only bus with the
+  battery-monitor PCB removed for isolation. The user measured 3.299 V at
+  the IMU. Carrier R1/R2 were fitted during that investigation and subsequently
+  removed to fix IMU reporting, as confirmed by the owner on 2026-10-26.
 
 ## Wi-Fi, measured 2026-10-23
 

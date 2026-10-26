@@ -2,23 +2,26 @@
 
 Date: 2026-10-25 (Asia/Calcutta)
 
+Resolution reported: 2026-10-26 (Asia/Calcutta)
+
 ## Current conclusion
 
-The IMU communicates at I2C address **0x4B**, but measurement reporting is
-not reliable after system power-up. In the failing state it answers product-ID,
-Get Feature and Report Errors requests, while report-enable commands do not
-produce measurement data. The queried gyro report interval remains zero.
+**Resolved on the assembled robot:** the owner confirmed that removing the
+carrier's two **4.7 kΩ I2C pull-up resistors, R1 and R2**, fixed the IMU
+reporting problem. Leave R1/R2 unpopulated for this hardware configuration.
+This outcome was reported on 2026-10-26; the removal date was not specified.
 
-Instrumentation has now identified host I2C transaction-state faults: stale
-STOP/RX/TX state, invalid all-ones headers being accepted as a responding
-device, and a stalled host peripheral that could block controller service
-longer than the motor deadman. Cleaning transaction boundaries and using
-bounded polled transfers restored all four automatic reports in the initial
-check. Sustained and reset testing is recorded below as it completes.
+The logs below document the investigation before that hardware correction.
+The IMU answered at **0x4B**, including product-ID, Get Feature and Report
+Errors requests, while measurement reports failed intermittently or did not
+start. Earlier software changes produced temporary recovery but did not
+establish a complete fix.
 
-The exact trigger of the intermittent stall remains unresolved. Earlier warm
-success did not establish reliable cold-start behavior. Neither the internal
-error record nor the online reports below prove defective IMU hardware.
+Host transaction cleanup, bounded transfers, malformed-header rejection and
+diagnostic counters remain in the firmware. They are retained robustness and
+observability changes; the owner-confirmed resolution is removal of R1/R2.
+The electrical mechanism and the sensor's internal error tuple were not
+characterized by the recorded tests.
 
 ## Hardware and connection
 
@@ -43,12 +46,14 @@ There is no physical IMU reset connection through the four-wire cable.
 See [carrier wiring](CARRIER.md) and the
 [connector investigation](../exports/imu-research/connector-identification.md).
 
-The user measured **3.299 V directly between blue and yellow**, confirmed both
-carrier 4.7 kΩ pull-ups R1/R2 fitted, and removed the power-monitoring PCB for
-isolation. That PCB measured 10 kΩ from VCC to each I2C signal. Thus removing it
-does not remove the carrier's external pull-ups. These measurements establish
+During the earlier investigation, the user measured **3.299 V directly between
+blue and yellow**, confirmed both carrier 4.7 kΩ pull-ups R1/R2 fitted, and
+removed the power-monitoring PCB for isolation. That PCB measured 10 kΩ from
+VCC to each I2C signal. Removing it left the carrier's external pull-ups fitted.
+These measurements establish
 the DC supply and fitted pull-ups, not startup transients or signal rise time.
-The latest recovery test uses the IMU-only bus; INA226 is correctly absent.
+That recovery test used the IMU-only bus; INA226 was correctly absent.
+The subsequent confirmed fix was to remove the carrier's R1/R2 pull-ups.
 
 ## Observations from the robot
 
@@ -111,6 +116,7 @@ The positive device error value **2** must not be confused with
 
 | Change or test | Observed outcome |
 |---|---|
+| Remove carrier R1/R2, the two 4.7 kΩ I2C pull-ups | Owner confirmed on 2026-10-26 that this fixed the IMU reporting problem. This is the resolved hardware configuration. |
 | Exclude 0x4A/0x4B from the INA226 register scan | Discovery and streaming succeeded in earlier runs. Committed as `4c0f256`. The previous scan sent register-style commands to the SHTP IMU. |
 | Reacquire GUI control when an IMU button is pressed | Fixed the separate `take control first` rejection after client timeout. Does not explain the later failure with direct diagnostic clients. |
 | Automatically request accel, gyro, gravity and game rotation at 100 Hz | One five-second observer-only run received 647 accel reports and 500 of each other report, with zero controller IMU errors. Later cold starts failed. |
@@ -211,7 +217,10 @@ tuple was found in this investigation. Similar symptoms alone are insufficient
 to diagnose defective hardware, bad parameters, calibration failure or a
 particular internal firmware fault.
 
-## Evidence still needed
+## Earlier follow-up questions
+
+These were open before the owner reported the pull-up removal fix. They are
+retained as optional electrical characterization and historical context.
 
 1. The DC supply at the module is measured at **3.299 V**. Startup and stalled
    signal waveforms remain unmeasured; a DC measurement does not exclude dips.
@@ -225,5 +234,6 @@ particular internal firmware fault.
 4. If the tuple remains reproducible, obtain its firmware-specific decoding
    from CEVA or 7Semi, supplying the raw packet and firmware 3.2.13/build 6.
 
-No replacement recommendation or confirmed root cause follows from the
-evidence collected so far.
+The reporting issue is resolved by the owner-confirmed removal of R1/R2.
+The earlier logs alone did not establish that outcome or an electrical
+mechanism, and do not justify replacing the IMU.
