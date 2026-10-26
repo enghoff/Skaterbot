@@ -34,15 +34,20 @@ Console restarts leave diagd running. Stop diagd before flashing the controller.
 
 ## Using it
 
-Take control, then scan IDs 1–16 on buses A, B and C. Pick a motor. The page
+Opening the console automatically acquires control when it is available and
+scans IDs 1–16 on buses A, B and C. Pick a motor. If another browser or the
+desktop GUI owns control, the console waits for it to finish. The page
 renders state pushed by the server ten times per second; application heartbeats
 travel back every 100 ms. Actions are acknowledged by the server, and motor
 readouts come from actual feedback.
 
 - **Drive:** enable/disable, hold position, clear error, set zero, all four modes,
   constant/sine/square setpoints, numeric command fields, command rate and limits,
-  position/speed/torque plots and winding/MOSFET temperatures. Change mode through
-  `CTRL_MODE` in Registers. Commands are applied explicitly with **Apply command**.
+  side-by-side position/speed/torque plots and winding/MOSFET temperatures.
+  The Drive operating-mode selector writes `CTRL_MODE` in RAM while disabled;
+  use Save to flash in Registers to persist it. Valid command edits apply
+  immediately, including command limits, with no Apply buttons. MIT defaults
+  to Kp 1 and Kd 0.05 as starting values to tune for the attached load.
 - **Registers:** read all, write RAM, save flash, change CAN and feedback IDs.
   Writes, saves and zeroing require fresh disabled feedback. Bit rate is blocked;
   CAN ID changes use the dedicated action and check for address collisions.
@@ -51,12 +56,18 @@ readouts come from actual feedback.
   controls/product/reset/diagnostic snapshot, I²C transactions and robot power-off.
 - **CAN & log:** live traffic, bus/ID filters (use `0x123` for hex), pause,
   clear, and bounded JSONL export of the latest 2,000 events.
+- **Wi-Fi:** scan nearby APs, connect to open or password-protected personal
+  networks, reuse saved credentials and forget saved networks. Successful
+  connections are saved in Netplan; the preferred SSID survives browser and
+  BPI restarts. WPA/WPA2 and WPA3 personal are supported where the adapter
+  supports them; enterprise networks need their additional settings configured
+  outside this page. A failed connection restores the previous network.
 
 Each browser has its own diagd client. The daemon arbitrates control with other
 browsers and the desktop GUI. Other clients may always stop motors. Scans and
 register reads require control because they send CAN frames. Only the browser
 holding control polls discovered motors. Browser reconnects clear commands and
-require taking control and scanning again.
+automatically acquire control and scan again when the controller is available.
 
 **Power off robot** acquires control when confirmed, including when this browser's
 previous ownership has expired. Another client's ownership is still respected.
@@ -95,14 +106,16 @@ those operations; an older daemon reports an unsupported operation when asked.
 
 Motor streaming runs on the BPI at 200 Hz by default, independently of browser
 rendering. Enabling discards the old command and starts at rest at the current
-position; MIT starts with zero gains and torque. Limits and MIT spring reach are
+position; MIT preserves the selected gains (initially Kp 1, Kd 0.05) and starts
+with zero feedforward torque. Limits and MIT spring reach are
 clamped on the server. A motor fault or feedback older than 300 ms disables that
 motor. **STOP ALL** and Escape use a separate action path that bypasses long scans
 or register reads. The daemon and controller retain their own watchdogs.
 
 Closing or hiding a controlling tab releases control and stops its motors.
 Missing browser application heartbeats for 500 ms also releases control. A
-reconnect never resumes motion. Timing depends on OS scheduling, so physical
+visible tab automatically reacquires available control; it never resumes motion.
+Timing depends on OS scheduling, so physical
 hardware still needs bench verification. MIT's torque limit bounds the spring
 and feedforward separately; damping can add torque, as in the desktop GUI.
 
@@ -118,9 +131,33 @@ terminate an unrelated daemon. Real robot power-off is simulated too.
 
 ```text
 uv run --with aiohttp --with pyserial tools/test_motor_console.py
+uv run tools/test_console_wifi.py
 node --check sbc/motor_console/console.js
 ```
 
 The integration tests use the real WebSocket server, local API and simulated
 controller. They need port 7700 to be free, refuse to use an existing daemon,
 and stop their simulator when finished.
+
+## Wi-Fi helper
+
+The installer also runs `sbc/install_console_wifi.sh`. For an existing console,
+copy `console_wifi.py` and `install_console_wifi.sh` beside `motor_console.py`
+and run `sudo bash sbc/install_console_wifi.sh` (adjust the path on the BPI).
+This installs a root-owned helper in `/usr/lib/bipedal-console/`, a sudo rule
+allowing only that helper without arguments, and a supplicant startup hook that
+restores the preferred network. It does not restart Wi-Fi during installation.
+The interface is the BPI's `wlan0`, managed by Netplan, networkd and
+wpa_supplicant; NetworkManager is not needed.
+
+Passwords travel in the helper's stdin and never appear in command arguments,
+API replies or browser storage. Netplan files and the preference file are
+root-only. Changes preserve unrelated Netplan settings and existing APs;
+original files have a root-only `.yaml.console-backup` copy. The last forgotten
+AP is replaced by a disabled, unconnectable internal entry because Netplan
+requires an AP definition to keep the supplicant available for future scans.
+
+Connection jobs run independently of the browser socket, so changing networks
+can complete after the page disconnects. Reopen the console from the new
+network using `bpi-m4zero.local:8080` or its new IP. Switching or forgetting a
+network releases this browser's motor control and stops its commands.

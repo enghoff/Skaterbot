@@ -10,27 +10,33 @@
   <div class="toolbar"><span id="connection" class="badge">Connecting</span><button id="stop" class="danger">STOP ALL <kbd>Esc</kbd></button></div>
 </header>
 <section class="service card"><div><span id="daemon" class="badge">diagd —</span> <span id="owner">Control —</span></div>
-  <div class="toolbar"><button data-op="daemon.start">Start diagd</button><button data-op="daemon.stop">Stop diagd</button><button data-op="take">Take control</button><button data-op="release">Release</button></div>
+  <div class="toolbar"><button data-op="daemon.start">Start diagd</button><button data-op="daemon.stop">Stop diagd</button></div>
 </section>
 <div id="notice" role="status" aria-live="polite">Connecting to console…</div>
 <main>
 <aside class="card"><div class="section-title"><h2>Motors</h2><button data-op="scan">Scan</button></div>
   <label>IDs 1–<input id="scan-last" type="number" min="1" max="127" value="16"></label>
+  <p id="scan-status" class="muted">Waiting for controller…</p>
   <div id="motors" role="listbox" aria-label="Motors"></div>
 </aside>
 <div class="workspace">
-<nav aria-label="Diagnostics panels"><button class="selected" data-tab="drive">Drive</button><button data-tab="registers">Registers</button><button data-tab="system">System</button><button data-tab="traffic">CAN & log</button></nav>
+<nav aria-label="Diagnostics panels"><button class="selected" data-tab="drive">Drive</button><button data-tab="registers">Registers</button><button data-tab="system">System</button><button data-tab="wifi">Wi-Fi</button><button data-tab="traffic">CAN & log</button></nav>
 <section id="drive" class="panel card">
   <div class="section-title"><h2 id="motor-title">Select a motor</h2><span id="motor-state" class="badge">—</span></div>
   <div id="readings" class="readings"></div>
   <div class="toolbar"><button data-op="enable" class="primary">Enable</button><button data-op="disable">Disable</button><button data-op="hold">Hold here</button><button data-op="clear">Clear error</button><button data-op="zero">Set zero</button></div>
-  <form id="command-form"><div id="command-fields" class="fields"></div>
+  <label class="toolbar">Operating mode<select id="motor-mode" aria-label="Operating mode"><option value="1">MIT</option><option value="2">Position–velocity</option><option value="3">Velocity</option><option value="4">Force–position</option></select><small class="muted">Disable the motor to change mode (RAM).</small></label>
+  <form id="command-form" novalidate><div id="command-fields" class="fields"></div>
     <div class="fields"><label>Wave<select name="wave"><option>constant</option><option>sine</option><option>square</option></select></label><label>Amplitude<input name="amp" type="number" min="0" max="100" step="0.01" value="0"></label><label>Frequency · Hz<input name="freq" type="number" min="0.01" max="20" step="0.01" value="0.5"></label></div>
-    <button class="primary">Apply command</button>
+    <small class="muted">Valid command edits apply immediately. Starting gains: Kp 1, Kd 0.05; tune for your load. Enable keeps your gains and starts at the current position.</small>
   </form>
-  <div class="section-title"><h3>Feedback · 10 s</h3><select id="plot-kind" aria-label="Plot measurement"><option value="pos">Position · rad</option><option value="vel">Speed · rad/s</option><option value="torque">Torque · Nm</option></select></div>
-  <canvas id="plot" width="1000" height="220" aria-label="Motor feedback plot"></canvas>
-  <details><summary>Command limits</summary><form id="limits-form"><div id="limit-fields" class="fields"></div><button>Apply limits</button></form></details>
+  <div class="section-title"><h3>Feedback · 10 s</h3></div>
+  <div class="plots">
+    <div><h3>Position · rad</h3><canvas id="plot-pos" width="480" height="220" aria-label="Position feedback plot"></canvas></div>
+    <div><h3>Speed · rad/s</h3><canvas id="plot-vel" width="480" height="220" aria-label="Speed feedback plot"></canvas></div>
+    <div><h3>Torque · Nm</h3><canvas id="plot-torque" width="480" height="220" aria-label="Torque feedback plot"></canvas></div>
+  </div>
+  <details><summary>Command limits</summary><form id="limits-form" novalidate><div id="limit-fields" class="fields"></div><small class="muted">Valid limit edits apply immediately.</small></form></details>
 </section>
 <section id="registers" class="panel card" hidden><div class="section-title"><h2>Registers <span class="target"></span></h2><div class="toolbar"><button data-op="read">Read all</button><button data-op="save">Save to flash</button></div></div>
   <form id="register-form" class="toolbar"><label>Register<select id="reg-select"></select></label><label>Value<input id="reg-value" required></label><button>Write RAM</button></form><p id="reg-description" class="muted"></p>
@@ -42,6 +48,18 @@
   <article class="card"><h2>CAN buses</h2><div class="table-scroll"><table><thead><tr><th>Bus</th><th>State</th><th>TEC / REC</th><th>TX / failed</th><th>RX / errors</th><th>Dropped</th></tr></thead><tbody id="bus-rows"></tbody></table></div></article>
   <article class="card"><div class="section-title"><h2>IMU</h2><div class="toolbar"><label>Hz<input id="imu-hz" type="number" value="100" min="1" max="400"></label><button data-op="imu.on">Reports on</button><button data-op="imu.off">Off</button><button data-op="imu.info">Product</button><button data-op="imu.reset">Reset</button><button data-op="imu.diagnostics">Diagnostics</button></div></div><div id="imu-readings"></div><details><summary>IMU firmware payload</summary><pre id="imu-firmware"></pre></details><details><summary>IMU response payload</summary><pre id="imu-diag"></pre></details></article>
   <article class="card"><h2>I²C</h2><form id="i2c-form" class="toolbar"><label>Address<input name="addr" value="0x40"></label><label>Write · hex<input name="write" value="fe"></label><label>Read · bytes<input name="read" type="number" min="0" max="64" value="2"></label><button>Transfer</button></form><details><summary>I²C response payload</summary><pre id="i2c-result"></pre></details></article>
+</section>
+<section id="wifi" class="panel card" hidden>
+  <div class="section-title"><h2>Wi-Fi</h2><button id="wifi-scan" type="button">Scan networks</button></div>
+  <p id="wifi-connection" class="muted">Loading Wi-Fi status…</p>
+  <p id="wifi-status" role="status" aria-live="polite"></p>
+  <form id="wifi-form" class="toolbar">
+    <label>Network<select id="wifi-network" required><option value="">Scan for networks</option></select></label>
+    <label>Password<input id="wifi-password" type="password" autocomplete="new-password" maxlength="64" placeholder="Password for a new network"></label>
+    <button id="wifi-connect" class="primary">Connect & save</button>
+  </form>
+  <p class="muted">Saved networks reconnect automatically. Leave the password blank to reuse a saved network. Changing Wi-Fi may disconnect this page; reopen the console on the new network.</p>
+  <h3>Saved networks</h3><div id="wifi-saved"></div>
 </section>
 <section id="traffic" class="panel card" hidden><div class="section-title"><h2>CAN & log</h2><div class="toolbar"><label>Bus<select id="traffic-bus"><option value="">All</option><option>A</option><option>B</option><option>C</option></select></label><label>CAN ID<input id="traffic-id" placeholder="All"></label><label><input id="pause" type="checkbox"> Pause</label><button id="clear-log">Clear</button><button id="export-log">Export</button></div></div><pre id="log"></pre></section>
 </div>

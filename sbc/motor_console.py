@@ -59,8 +59,8 @@ class Command:
     active: bool = False
     p: float = 0
     v: float = 0
-    kp: float = 0
-    kd: float = 0
+    kp: float = 1
+    kd: float = 0.05
     t: float = 0
     vlim: float = 1
     ilim: float = 0.2
@@ -356,7 +356,11 @@ class Session:
                 if motor.mode not in dm.MODE_NAMES:
                     raise ValueError("unknown motor mode")
                 command = Command(
-                    p=fb.pos, enabled_at=time.monotonic(), t0=time.monotonic()
+                    p=fb.pos,
+                    kp=command.kp,
+                    kd=command.kd,
+                    enabled_at=time.monotonic(),
+                    t0=time.monotonic(),
                 )
                 self.commands[message["motor"]] = command
                 self.drive(bus, motor, command, time.monotonic())
@@ -568,6 +572,116 @@ class DaemonManager:
             return text
 
 
+class WifiManager:
+    """Network jobs outlive their initiating browser's network connection."""
+
+    def __init__(self, sim=False):
+        self.sim = sim
+        self.task = None
+        self.state = dict(busy=False, message="", error="", saved=[], networks=[])
+        if sim:
+            self.state.update(
+                interface="wlan0",
+                current="Bench Wi-Fi",
+                ip="127.0.0.1",
+                preferred="Bench Wi-Fi",
+                saved=["Bench Wi-Fi"],
+                networks=[
+                    dict(ssid="Bench Wi-Fi", dbm=-40, security="WPA/WPA2"),
+                    dict(ssid="Workshop", dbm=-60, security="WPA/WPA2"),
+                    dict(ssid="Guest", dbm=-70, security="Open"),
+                ],
+            )
+
+    async def run(self, request):
+        if self.sim:
+            await asyncio.sleep(0.05)
+            op, ssid = request["op"], request.get("ssid")
+            if op == "connect":
+                if ssid not in [p["ssid"] for p in self.state["networks"]]:
+                    raise ValueError("Network is no longer visible")
+                if (
+                    ssid != "Guest"
+                    and ssid not in self.state["saved"]
+                    and len(request.get("password", "")) < 8
+                ):
+                    raise ValueError("Wi-Fi password must be at least 8 bytes")
+                self.state.update(current=ssid, preferred=ssid)
+                if ssid not in self.state["saved"]:
+                    self.state["saved"].append(ssid)
+            elif op == "forget":
+                if ssid not in self.state["saved"]:
+                    raise ValueError("Select a saved network")
+                self.state["saved"].remove(ssid)
+                for key in ("current", "preferred"):
+                    if self.state.get(key) == ssid:
+                        self.state[key] = None
+            return dict(self.state)
+        process = await asyncio.create_subprocess_exec(
+            "sudo",
+            "-n",
+            "/usr/lib/bipedal-console/wifi-helper",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        try:
+            output, _ = await asyncio.wait_for(
+                process.communicate(json.dumps(request).encode()), 65
+            )
+        except (TimeoutError, asyncio.CancelledError):
+            if process.returncode is None:
+                process.kill()
+                await process.wait()
+            raise
+        if process.returncode:
+            raise ValueError("Wi-Fi helper unavailable; run install_console_wifi.sh")
+        reply = json.loads(output)
+        if not reply["ok"]:
+            raise ValueError(reply["error"])
+        return reply["result"]
+
+    async def job(self, request):
+        try:
+            self.state.update(await self.run(request))
+            if request["op"] != "status":
+                self.state.update(
+                    error="",
+                    message={
+                        "scan": "Wi-Fi scan complete",
+                        "connect": "Connected; network saved",
+                        "forget": "Network forgotten",
+                    }[request["op"]],
+                )
+        except Exception as error:
+            self.state.update(error=str(error), message="")
+        finally:
+            self.state["busy"] = False
+
+    async def action(self, message):
+        op = message["op"].removeprefix("wifi.")
+        if op not in ("scan", "connect", "forget", "status"):
+            raise ValueError("Unknown Wi-Fi action")
+        # Polling during a job returns cached progress without competing with it.
+        if self.state["busy"]:
+            if op != "status":
+                raise ValueError("Another Wi-Fi action is running")
+        else:
+            self.state.update(
+                busy=True,
+                message={
+                    "scan": "Scanning Wi-Fi…",
+                    "connect": "Connecting… The console may disconnect while Wi-Fi changes.",
+                    "forget": "Forgetting network…",
+                    "status": self.state["message"],
+                }[op],
+            )
+            self.task = asyncio.create_task(self.job(dict(message, op=op)))
+            if op == "status":
+                await asyncio.shield(self.task)
+        return dict(self.state)
+
+
 async def websocket(request):
     # Reject cross-origin browser control, including CSRF from unrelated sites.
     origin = request.headers.get("Origin")
@@ -584,7 +698,11 @@ async def websocket(request):
         rid = message.get("req")
         try:
             op = message["op"]
-            if op == "stop":
+            if op.startswith("wifi."):
+                if op in ("wifi.connect", "wifi.forget"):
+                    await asyncio.to_thread(session.stop, True)
+                result = await request.app["wifi"].action(message)
+            elif op == "stop":
                 await asyncio.to_thread(session.stop)
                 result = "all motors stopped"
             elif op == "release":
@@ -681,6 +799,7 @@ def create_app(sim=False):
     app = web.Application()
     app["manager"] = DaemonManager(sim)
     app["sessions"] = set()
+    app["wifi"] = WifiManager(sim)
     app.router.add_get("/", asset)
     app.router.add_get("/ws", websocket)
     app.router.add_get("/{name}", asset)
@@ -688,6 +807,8 @@ def create_app(sim=False):
     async def shutdown(app):
         for session in list(app["sessions"]):
             session.close()
+        if app["wifi"].task:
+            await app["wifi"].task
 
     app.on_shutdown.append(shutdown)
     return app

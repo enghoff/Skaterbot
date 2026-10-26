@@ -137,7 +137,8 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
             await browser.action("write", motor=target, rid=10, value=mode)
             await browser.action("enable", motor=target)
             await browser.until(lambda: motor()["command"]["active"])
-            self.assertEqual(motor()["command"]["kp"], 0)
+            self.assertEqual(motor()["command"]["kp"], 1)
+            self.assertEqual(motor()["command"]["kd"], 0.05 if mode == 1 else 0.1)
             await browser.action(
                 "command",
                 motor=target,
@@ -153,6 +154,7 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
                 wave="sine",
             )
             await browser.action("write", motor=target, rid=9, value="50", ok=False)
+            await browser.action("write", motor=target, rid=10, value=1, ok=False)
             await observer.action("stop")
             await browser.until(
                 lambda: (
@@ -214,6 +216,60 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(reply["result"]["shutting_down"])
         # The simulator acknowledges power-off without shutting down the test host.
         await browser.action("take", ok=False)
+
+    async def test_wifi_saved_networks_survive_browser_sessions(self):
+        browser = await self.browser()
+        await browser.action("wifi.scan")
+        await browser.until(lambda: not self.app["wifi"].state["busy"])
+        reply = await browser.action("wifi.status")
+        self.assertEqual(len(reply["result"]["networks"]), 3)
+        await browser.action("wifi.connect", ssid="Workshop", password="test-password")
+        await browser.close()
+        await browser.until(lambda: not self.app["wifi"].state["busy"])
+        other = await self.browser()
+        reply = await other.action("wifi.status")
+        self.assertEqual(reply["result"]["current"], "Workshop")
+        self.assertEqual(reply["result"]["preferred"], "Workshop")
+        self.assertIn("Workshop", reply["result"]["saved"])
+        self.assertNotIn("test-password", str(reply))
+        await other.action("wifi.forget", ssid="Workshop")
+        await other.until(lambda: not self.app["wifi"].state["busy"])
+        reply = await other.action("wifi.status")
+        self.assertNotIn("Workshop", reply["result"]["saved"])
+
+
+class MotorEnableTests(unittest.TestCase):
+    def test_enable_uses_current_position_and_preserves_only_tuned_gains(self):
+        session = console.Session.__new__(console.Session)
+        session.lock = console.threading.RLock()
+        session.robot = Mock(error=None)
+        session.control = True
+        session.last_ping = time.monotonic()
+        session.limits = dict(torque=0.5, kp=10, kd=1, speed=5, current=0.3)
+        previous = console.Command(
+            p=-3, v=0.7, kp=0.8, kd=0.03, t=0.1, wave="sine", amp=0.1
+        )
+        session.commands = {"A:1": previous}
+        feedback = console.dm.Feedback(
+            t=time.monotonic(),
+            state=0,
+            pos=1.234567,
+            vel=0,
+            torque=0,
+            t_mos=25,
+            t_rotor=25,
+        )
+        motor = console.dm.Motor(1, feedback=feedback)
+        bus = Mock()
+        session.target = Mock(return_value=(bus, motor, previous))
+        session.action(dict(op="enable", motor="A:1"))
+        command = session.commands["A:1"]
+        self.assertEqual(command.p, feedback.pos)
+        self.assertEqual((command.kp, command.kd), (0.8, 0.03))
+        self.assertEqual((command.v, command.t, command.amp), (0, 0, 0))
+        self.assertEqual(command.wave, "constant")
+        self.assertTrue(command.active)
+        bus.enable.assert_called_once_with(motor)
 
 
 class PowerOffControlTests(unittest.TestCase):
