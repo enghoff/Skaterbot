@@ -26,6 +26,46 @@ CAN_SEND, IMU_WRITE, I2C = 0x10, 0x20, 0x21
 # The controller's messages to the Pi.
 INFO, STATUS, STOPPED = 0x81, 0x82, 0x83
 CAN_RECV, IMU_PACKET, I2C_RESULT, LOG = 0x90, 0xA0, 0xA1, 0xE0
+IMU_DIAG = 0xA2
+
+IMU_DIAG_FIELDS = (
+    "version",
+    "header_reads",
+    "empty_reads",
+    "header_errors",
+    "payload_errors",
+    "write_errors",
+    "nack",
+    "timeouts",
+    "bus_errors",
+    "arbitration",
+    "other_errors",
+    "invalid_lengths",
+    "resets",
+    "input_packets",
+    "last_input_ms",
+    "ina_errors",
+    "searches",
+    "max_i2c_us",
+    "max_service_gap_us",
+    "last_header",
+    "last_error_ms",
+    "pins",
+    "isr",
+)
+
+
+def parse_imu_diag(body: bytes) -> dict:
+    if len(body) < 4:
+        raise ValueError("unexpected IMU diagnostic packet size")
+    version = struct.unpack_from("<I", body)[0]
+    if version not in (1, 2):
+        raise ValueError("unsupported IMU diagnostic version")
+    fields = IMU_DIAG_FIELDS + (("host_resets",) if version == 2 else ())
+    if len(body) != 4 * len(fields):
+        raise ValueError("unexpected IMU diagnostic packet size")
+    return dict(zip(fields, struct.unpack(f"<{len(fields)}I", body)))
+
 
 PROTOCOL = 1
 MAX_MESSAGE = 600

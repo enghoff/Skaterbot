@@ -1035,7 +1035,15 @@ class App(tk.Tk):
         if robot is None:
             self.log("the System tab is the robot's: connect to it first")
             return
-        self.job(lambda: fn(robot), lambda result: self.log(f"imu: {what}{result}"))
+
+        def work():
+            # The daemon can revoke control after a brief client stall.
+            # An explicit IMU button press should acquire it again; another
+            # client's ownership is still refused by the daemon.
+            robot.take_control()
+            return fn(robot)
+
+        self.job(work, lambda result: self.log(f"imu: {what}{result}"))
 
     def imu_on(self) -> None:
         def work(robot):
@@ -1416,6 +1424,22 @@ class App(tk.Tk):
             f"IMU         {'found' if s['imu_found'] else 'not found'}, "
             f"{s['imu']['packets']} packets, {s['imu']['errors']} errors",
         ]
+        if d := s.get("imu_diag"):
+            age = (
+                f"{((round(s['uptime'] * 1000) - d['last_input_ms']) & 0xFFFFFFFF) / 1000:.1f}s"
+                if d["input_packets"]
+                else "never"
+            )
+            lines.append(
+                f"  diagnostics: input {age} ago; IMU resets {d['resets']}, "
+                f"I2C resets {d.get('host_resets', 0)}; "
+                f"max service gap {d['max_service_gap_us'] / 1000:.1f} ms"
+            )
+            lines.append(
+                "  I2C: "
+                f"NACK {d['nack']}, timeout {d['timeouts']}, bus {d['bus_errors']}; "
+                f"header/payload/write {d['header_errors']}/{d['payload_errors']}/{d['write_errors']}"
+            )
         now = time.monotonic()
         for report in IMU_REPORTS:
             if report not in self.imu:

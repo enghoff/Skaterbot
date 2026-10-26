@@ -63,7 +63,7 @@ IMU_ANSWER_S = 0.5
 # Lines held for a client that is not reading; past this, events are dropped.
 BACKLOG = 20_000
 
-STREAMS = {"can", "imu", "imu.raw", "status", "log"}
+STREAMS = {"can", "imu", "imu.raw", "imu.diag", "status", "log"}
 
 # SH-2's input reports: name, fixed-point Q, values. The rotation vector's fifth
 # value is its accuracy estimate, in Q12 radians.
@@ -231,6 +231,11 @@ class Daemon:
         self.shutting_down = False
         self.button_shutdown_pending = False
         self.button_shutdown_retry_at = 0.0
+        self.imu_diag: dict = {}
+        self.imu_control: deque = deque(maxlen=32)
+        self.imu_internal_errors: deque = deque(maxlen=32)
+        self.imu_features: dict = {}
+        self.imu_parse_errors = 0
 
     # -- to the controller -------------------------------------------------------
 
@@ -306,6 +311,10 @@ class Daemon:
         elif kind == dl.IMU_PACKET:
             t = self.unwrap(int.from_bytes(body[:4], "little"))
             self.imu_packet(t, body[4:])
+        elif kind == dl.IMU_DIAG:
+            with self.lock:
+                self.imu_diag = dl.parse_imu_diag(body)
+            self.broadcast("imu.diag", {"ev": "imu.diag", **self.imu_diag})
         elif kind == dl.INFO:
             info = dl.parse_info(body)
             if info != self.info:
@@ -385,6 +394,7 @@ class Daemon:
                 "clients": len(self.clients),
                 "control": str(self.owner) if self.owner else None,
             }
+            status["imu_diag"] = dict(self.imu_diag)
         return status
 
     def can_frame(self, body: bytes) -> None:
@@ -415,12 +425,16 @@ class Daemon:
             return
         length = int.from_bytes(packet[:2], "little") & 0x7FFF
         channel, payload = packet[2], packet[4:length]
+        if channel in (0, 1, 2):
+            with self.lock:
+                self.imu_control.append({"t": t, "data": packet.hex()})
         if channel in (3, 4):
             i = 0
             while i < len(payload):
                 rid = payload[i]
                 size = LENGTHS.get(rid)
                 if size is None or i + size > len(payload):
+                    self.imu_parse_errors += 1
                     break
                 if rid in REPORTS:
                     name, q, count = REPORTS[rid]
@@ -443,6 +457,8 @@ class Daemon:
             report = payload[1]
             interval = struct.unpack_from("<I", payload, 5)[0]
             hz = round(1e6 / interval, 3) if interval else 0
+            with self.lock:
+                self.imu_features[report] = {"t": t, "interval_us": interval, "hz": hz}
             self.imu_answer(
                 ("feature", report), report=REPORTS.get(report, (report,))[0], hz=hz
             )
@@ -452,7 +468,26 @@ class Daemon:
                 ("product",), part=part, version=f"{major}.{minor}.{patch}", build=build
             )
         elif channel == 1 and payload[:1] == b"\x01":
+            with self.lock:
+                self.imu_features.clear()
             self.log("imu: reset complete", t)
+        elif (
+            channel == 2
+            and len(payload) >= 16
+            and payload[0] == 0xF1
+            and payload[2] == 1
+        ):
+            error = dict(
+                zip(
+                    ("severity", "sequence", "source", "error", "module", "code"),
+                    payload[5:11],
+                )
+            )
+            if error["source"] != 255:
+                error["t"] = t
+                with self.lock:
+                    self.imu_internal_errors.append(error)
+                self.log(f"imu: internal error {error}", t)
 
     def imu_answer(self, what: tuple, **fields) -> None:
         with self.lock:
@@ -524,6 +559,17 @@ class Daemon:
         if self.status is None:
             raise Refused("no status from the controller yet")
         return {"status": self.status_event()}
+
+    def op_imu_diagnostics(self, client: Client, m: dict) -> dict:
+        """Read-only snapshots; never send sensor commands or take control."""
+        with self.lock:
+            return {
+                "firmware": dict(self.imu_diag),
+                "features": dict(self.imu_features),
+                "internal_errors": list(self.imu_internal_errors),
+                "control_packets": list(self.imu_control),
+                "parse_errors": self.imu_parse_errors,
+            }
 
     def op_control(self, client: Client, m: dict) -> dict:
         take = m.get("take", True)
@@ -747,6 +793,7 @@ OPS = {
     "subscribe": Daemon.op_subscribe,
     "ping": Daemon.op_ping,
     "status": Daemon.op_status,
+    "imu.diagnostics": Daemon.op_imu_diagnostics,
     "control": Daemon.op_control,
     "stop": Daemon.op_stop,
     "power.off": Daemon.op_power_off,

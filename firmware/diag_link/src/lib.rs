@@ -30,6 +30,7 @@ pub mod mcu {
     pub const STOPPED: u8 = 0x83;
     pub const CAN_RECV: u8 = 0x90;
     pub const IMU_PACKET: u8 = 0xA0;
+    pub const IMU_DIAG: u8 = 0xA2;
     pub const I2C_RESULT: u8 = 0xA1;
     pub const LOG: u8 = 0xE0;
 }
@@ -43,6 +44,20 @@ pub const PROTOCOL: u32 = 1;
 pub const MAX_MESSAGE: usize = 600;
 /// The longest SHTP packet passed either way.
 pub const MAX_IMU_PACKET: usize = 512;
+
+/// Validate the BNO08x SHTP header before treating a read as a live sensor.
+/// Length includes the header; zero denotes no pending packet. In particular,
+/// a floating/stale all-ones read must not keep discovery latched as present.
+pub fn imu_header_length(header: &[u8], max_length: usize) -> Option<usize> {
+    if header.len() < 4 || header[2] >= 6 {
+        return None;
+    }
+    let length = (u16::from_le_bytes([header[0], header[1]]) & 0x7FFF) as usize;
+    if (length != 0 && length < 4) || length > max_length {
+        return None;
+    }
+    Some(length)
+}
 /// The most a message of [`MAX_MESSAGE`] takes on the wire: its CRC, one COBS
 /// code byte for every 254 bytes and one more, and the zero that ends it.
 pub const MAX_WIRE: usize = MAX_MESSAGE + 2 + MAX_MESSAGE / 254 + 2;
@@ -238,6 +253,18 @@ mod tests {
     extern crate std;
     use super::*;
     use std::vec::Vec;
+
+    #[test]
+    fn imu_headers_reject_floating_and_malformed_reads() {
+        assert_eq!(imu_header_length(&[0xFF; 4], 1024), None);
+        assert_eq!(imu_header_length(&[3, 0, 2, 0], 1024), None);
+        assert_eq!(imu_header_length(&[5, 0, 6, 0], 1024), None);
+        assert_eq!(imu_header_length(&[1, 4, 2, 0], 1024), None);
+        assert_eq!(imu_header_length(&[0, 0, 0, 0], 1024), Some(0));
+        assert_eq!(imu_header_length(&[5, 0x80, 1, 12], 1024), Some(5));
+        assert_eq!(imu_header_length(&[20, 0, 2, 3], 1024), Some(20));
+        assert_eq!(imu_header_length(&[5, 0, 1], 1024), None);
+    }
 
     fn wire(kind: u8, body: &[u8]) -> Vec<u8> {
         let mut out = [0u8; MAX_WIRE];

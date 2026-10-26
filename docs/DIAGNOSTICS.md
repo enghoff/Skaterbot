@@ -159,6 +159,80 @@ IMU every 2 ms, because J6 does not carry its interrupt line. Anything the IMU s
 the Pi whole, and anything the Pi writes goes to the IMU whole, so the Pi can
 use any part of SH-2 without the firmware changing.
 
+The controller automatically requests acceleration, calibrated gyro, gravity
+and game rotation reports at 100 Hz when it discovers the IMU and whenever the
+IMU reports a completed reset. No GUI or client command is needed after power-on.
+The IMU can grant a nearby supported rate. The GUI can still change rates or
+turn reports off; off lasts until the next IMU reset or controller restart.
+The controller assigns outgoing SHTP sequence numbers to both its defaults
+and host IMU commands so they share one sequence per channel.
+
+Verified on 2026-10-25 after flashing and restarting the controller: an
+observer sent no enable commands and received 647 acceleration reports and
+500 each of gyro, gravity and game rotation in five seconds, with zero IMU
+errors. Explicitly switching reports off stopped them. Reset recovery
+verification was interrupted when the Pi became unreachable.
+
+Later cold-start testing on 2026-10-25 did **not** reproduce reliable IMU
+startup: the controller found 0x4B but received only three startup packets.
+Product ID, Get Feature and Report Errors requests answered, while Set Feature
+requests left the requested interval at zero and produced no input reports.
+The first 4096 bytes of controller flash matched `diag-imu-autostart.elf`,
+ruling out an older installed image in that run. Temporary 100 kHz and polled
+write experiments did not restore reporting; the 400 kHz async configuration
+was restored. The cause remains unresolved pending IMU supply measurements
+and a decoded I2C capture. The earlier warm-run success does not validate
+reliable cold-start behavior.
+
+A subsequent test added a 300 ms quiet period at MCU startup and after
+host-requested IMU reset, deferring rediscovery and setup until afterward.
+The flashed image reports `imu_startup=quiet-300ms` in INFO. It built and
+passed clippy and the project check, but did not recover reports from the
+currently failing module: reset and report-enable requests still yielded no
+input reports. This timing change is not a demonstrated fix for the fault.
+
+Subsequent instrumented testing found invalid `ff ff ff ff` headers, read
+timeouts, and a relapse after about 102 seconds with SCL low and the host I2C
+peripheral BUSY. The host service gap reached 369 ms, exceeding its 300 ms
+deadman. The current `imu_bus=clean-boundaries-v1` image uses bounded polled
+transactions for both devices, clears old STOP/error flags and stale RX/TX
+data between transactions, waits asynchronously for bus idle, yields between
+missing-device probes, and resets the host I2C peripheral after a timeout.
+It rejects malformed headers during discovery and polling. This host reset
+does not power-cycle or physically reset the IMU. Hardware test results and
+remaining limits are recorded in [the investigation](IMU_TROUBLESHOOTING_2026-10-25.md).
+
+The additive `IMU_DIAG` controller message (`0xA2`, once a second) leaves the
+127-byte STATUS and protocol version unchanged. Version 2 is 24 little-endian
+u32 values, in this order:
+
+```text
+version header_reads empty_reads header_errors payload_errors write_errors
+nack timeouts bus_errors arbitration other_errors invalid_lengths resets
+input_packets last_input_ms ina_errors searches max_i2c_us max_service_gap_us
+last_header last_error_ms pins isr host_resets
+```
+
+Version 1 omits `host_resets`; the daemon accepts both lengths. `resets` counts
+received IMU reset-complete packets; `host_resets` counts I2C peripheral resets.
+The maximum durations are since controller startup, in microseconds. Input and
+error timestamps use the controller's wrapping u32 millisecond clock. `pins`
+has SCL in bit 0 and SDA in bit 1; `3` means both were high when sampled.
+`isr` is the raw STM32 I2C1 ISR; `last_header` packs the four received bytes
+little-endian. Empty headers are normal polling, not measurement packets.
+
+`imu.diagnostics` reads cached counters, feature responses, internal error
+records and the last 32 control packets. It takes no control and sends no bus
+commands. The GUI shows transport counters and input age in System. For a
+bounded read-only flight recording on the Pi:
+
+```sh
+python3 ~/imu_watch.py --seconds 300 --output ~/imu-traces/session.jsonl
+```
+
+This saves one-second summaries and recent raw packets around a stall; it
+never enables reports, resets the module or takes motor control.
+
 ## The daemon's API
 
 The System panel's **Power off...** button confirms the action, acquires
@@ -221,7 +295,7 @@ carrying `"ev"`, to the streams the client subscribed to.
 | Request | Control | Does |
 |---|---|---|
 | `hello` `name` | | the controller's INFO, the daemon's settings, and who holds control |
-| `subscribe` `streams` | | any of `can`, `imu`, `imu.raw`, `status`, `log`; `status` and `log` by default |
+| `subscribe` `streams` | | any of `can`, `imu`, `imu.raw`, `imu.diag`, `status`, `log`; `status` and `log` by default |
 | `ping` | | nothing: the keepalive |
 | `status` | | the latest status, decoded |
 | `control` `take` | | take control, or with `take: false` give it back |
@@ -230,6 +304,7 @@ carrying `"ev"`, to the streams the client subscribed to.
 | `can.request` ... `expect` `timeout` | yes | one frame, answered by the first frame on the same bus whose data starts with `expect`, within `timeout` (0.02 s if not given) |
 | `imu.enable` `report` `hz` | yes | ask the IMU for a report at a rate; `hz` 0 stops it |
 | `imu.reset`, `imu.info` | yes | reset the IMU; its product ID and firmware |
+| `imu.diagnostics` | no | cached firmware counters, features, internal errors and recent control packets |
 | `imu.write` `channel` `data` | yes | one SHTP packet's payload, on a channel |
 | `i2c` `addr` `write` `read` | yes | one transaction on I2C1 |
 
@@ -245,6 +320,7 @@ The events:
 | `can` | `bus`, `t`, `id`, `ext`, `data` |
 | `imu` | `t`, `report` (`accel`, `gyro`, `mag`, `linear`, `rotation`, `gravity`, `game`), `status` 0-3, `v` in SI units |
 | `imu.raw` | `t`, `data`: one SHTP packet |
+| `imu.diag` | decoded `IMU_DIAG` fields; also cached under `status.imu_diag` |
 | `status` | the controller's STATUS decoded, with the daemon's own counters and the link's state |
 | `log` | `t`, `text`: from the controller or the daemon |
 | `stopped` | `why`: every motor has just been told to stop |
@@ -300,10 +376,10 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
   without error, not yet a stream at 200 Hz. If it will not, 750 000 is the
   next exact rate on both ends and carries about 3 500 frames a second, which
   still holds the GUI at 200 Hz on six motors.
-- **The IMU, by polling.** Reading a BNO085's SHTP header with no interrupt line
-  and nothing waiting should return a zero length; the bench script
-  `sbc/imu_test.py` has relied on the same thing, and neither has been run with
-  the IMU on J6.
+- **The IMU, by polling.** Tested on J6 on 2026-10-25: empty polls return zero
+  length and all four default reports stream. Intermittent stalls required the
+  host transaction fixes above. Repeated cold starts, signal waveforms and
+  extended operation with the INA226 reconnected remain to be validated.
 - **Three buses at once.** Bus C carries frames both ways through `diag`;
   buses A and B and their transceivers have carried nothing yet, since no motor
   is on them. Each counted receive errors only while the controller was trying
@@ -311,10 +387,10 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
   going unacknowledged, retried for 5 ms each, and not noise.
 - **The controller's own watches.** The stop, the deadman and the button are
   the firmware's, and only the simulator's copies of them have been timed.
-- **I2C.** Every address declines cleanly, which says the bus runs and nothing
-  on it answers. The INA226 was tested on the Pi's header and the IMU is not
-  fitted; when either is on J6 or the carrier, the controller finds it within
-  a second.
+- **I2C.** The carrier has detected INA226 at 0x40 and BNO085 at 0x4B. The
+  battery-monitor PCB is currently removed for isolation; the latest host
+  recovery validation therefore covers the IMU-only bus. The user measured
+  3.299 V at the IMU and confirmed the carrier's 4.7 kΩ pull-ups fitted.
 
 ## Wi-Fi, measured 2026-10-23
 

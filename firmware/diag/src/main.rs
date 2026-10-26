@@ -106,6 +106,11 @@ const OUT_BYTES: usize = 8192;
 
 const IMU_ADDRESSES: [u8; 2] = [0x4A, 0x4B];
 const IMU_POLL: Duration = Duration::from_millis(2);
+/// Acceleration, calibrated gyro, gravity and game rotation at 100 Hz.
+const IMU_DEFAULT_REPORTS: [u8; 4] = [0x01, 0x02, 0x06, 0x08];
+const IMU_REPORT_INTERVAL_US: u32 = 10_000;
+/// Leave the hub's boot/reset sequence undisturbed before I2C setup.
+const IMU_BOOT_QUIET: Duration = Duration::from_millis(300);
 /// An SHTP length past this is not a BNO085 talking: a bus that reads all
 /// ones, say.
 const IMU_LONGEST: usize = 1024;
@@ -156,6 +161,31 @@ struct BusCounts {
     queue_drop: u32,
 }
 
+#[derive(Default)]
+struct ImuDiag {
+    header_reads: u32,
+    empty_reads: u32,
+    header_errors: u32,
+    payload_errors: u32,
+    write_errors: u32,
+    nack: u32,
+    timeouts: u32,
+    bus_errors: u32,
+    arbitration: u32,
+    other_errors: u32,
+    invalid_lengths: u32,
+    resets: u32,
+    input_packets: u32,
+    last_input_ms: u32,
+    ina_errors: u32,
+    searches: u32,
+    max_i2c_us: u32,
+    max_service_gap_us: u32,
+    last_header: u32,
+    last_error_ms: u32,
+    host_resets: u32,
+}
+
 /// What the futures share. Each takes it only between awaits.
 struct Shared {
     /// When the Pi last sent a message that held together.
@@ -173,10 +203,14 @@ struct Shared {
     /// as a 256-bit set.
     addressed: [[u32; 8]; BUSES],
     imu: Option<u8>,
+    /// One sequence per SHTP channel, shared by defaults and Pi requests.
+    imu_sequence: [u8; 6],
+    imu_quiet_until: Option<Instant>,
     ina: Option<u8>,
     vbus_mv: Option<u16>,
     imu_packets: u32,
     imu_errors: u32,
+    imu_diag: ImuDiag,
 }
 
 impl Shared {
@@ -197,10 +231,13 @@ impl Shared {
             buses: [BusCounts::default(); BUSES],
             addressed,
             imu: None,
+            imu_sequence: [0; 6],
+            imu_quiet_until: None,
             ina: None,
             vbus_mv: None,
             imu_packets: 0,
             imu_errors: 0,
+            imu_diag: ImuDiag::default(),
         }
     }
 }
@@ -391,6 +428,9 @@ fn send_info(ctx: &Ctx<'_>) {
     let _ = writeln!(text, "bitrate={BITRATE}");
     let _ = writeln!(text, "power_shutdown=grace-20s-force-8s");
     let _ = writeln!(text, "shutdown_led=1");
+    let _ = writeln!(text, "imu_startup=quiet-300ms");
+    let _ = writeln!(text, "imu_diagnostics=2");
+    let _ = writeln!(text, "imu_bus=clean-boundaries-v1");
     let _ = write!(text, "buses=");
     for (i, name) in BUS_NAMES.iter().enumerate() {
         let _ = write!(text, "{}{name}", if i == 0 { "" } else { "," });
@@ -677,10 +717,20 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
     send_info(ctx);
     let mut ticker = Ticker::every(TICK);
     let mut next_status = Instant::now();
+    let mut next_diag = next_status;
+    let mut last_service = next_status;
     let mut told_off = false;
     loop {
         ticker.next().await;
         let now = Instant::now();
+        {
+            let mut s = ctx.shared.borrow_mut();
+            s.imu_diag.max_service_gap_us = s
+                .imu_diag
+                .max_service_gap_us
+                .max((now - last_service).as_micros() as u32);
+        }
+        last_service = now;
         let silent = {
             let mut s = ctx.shared.borrow_mut();
             let silent = !s.lost && s.last_host.is_some_and(|t| now - t > DEADMAN);
@@ -704,6 +754,10 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
         if now >= next_status {
             next_status += STATUS_PERIOD;
             send_status(ctx, &properties);
+        }
+        if now >= next_diag {
+            next_diag = now + Duration::from_secs(1);
+            send_imu_diag(ctx);
         }
     }
 }
@@ -784,13 +838,204 @@ fn send_status(ctx: &Ctx<'_>, properties: &[&Properties; BUSES]) {
 
 // ---- I2C: the IMU, the battery bus, and the Pi's own transactions ------------
 
+fn i2c_pins() -> u32 {
+    ((pac::GPIOA.idr().read().0 >> 15) & 1) | (((pac::GPIOB.idr().read().0 >> 7) & 1) << 1)
+}
+
+async fn reset_i2c_host(ctx: &Ctx<'_>) {
+    let before = i2c_pins();
+    let isr = pac::I2C1.isr().read().0;
+    pac::I2C1.cr1().modify(|w| w.set_pe(false));
+    while pac::I2C1.cr1().read().pe() {}
+    Timer::after_micros(10).await;
+    let released = i2c_pins();
+    pac::I2C1.cr1().modify(|w| w.set_pe(true));
+    let count = {
+        let mut s = ctx.shared.borrow_mut();
+        s.imu_diag.host_resets += 1;
+        s.imu_diag.host_resets
+    };
+    if count <= 8 || count % 100 == 0 {
+        log!(
+            ctx.out,
+            "i2c host reset #{count}: pins {before}->{released}, ISR={isr:08x}"
+        );
+    }
+}
+
+async fn prepare_imu_bus(ctx: &Ctx<'_>) -> Result<(), i2c::Error> {
+    // The released HAL's DMA reads can leave STOPF set. Its blocking reader
+    // interprets that old STOP as a completed read even without fresh RXNE,
+    // producing a false empty header. Wait for the previous transaction to
+    // finish and remove its flags before using the bounded polled path.
+    let idle = with_timeout(Duration::from_millis(25), async {
+        while pac::I2C1.isr().read().busy() || pac::I2C1.cr2().read().start() {
+            Timer::after_micros(10).await;
+        }
+    })
+    .await;
+    if idle.is_err() {
+        reset_i2c_host(ctx).await;
+        return Err(i2c::Error::Timeout);
+    }
+    pac::I2C1.icr().write(|w| {
+        w.set_stopcf(true);
+        w.set_nackcf(true);
+        w.set_berrcf(true);
+        w.set_arlocf(true);
+        w.set_ovrcf(true);
+    });
+    if pac::I2C1.isr().read().rxne() {
+        let _ = pac::I2C1.rxdr().read();
+    }
+    // A NACK during a DMA write may leave a preloaded byte in TXDR. It must
+    // not become the first byte of the next sensor's SHTP header. This is the
+    // same flush sequence as the HAL's polled error handler, at an idle bus.
+    if pac::I2C1.isr().read().txis() {
+        pac::I2C1.txdr().write(|w| w.set_txdata(0));
+    }
+    if !pac::I2C1.isr().read().txe() {
+        pac::I2C1.isr().write(|w| w.set_txe(true));
+    }
+    Ok(())
+}
+
+async fn read_imu_bus(
+    i2c: &mut I2c<'_, Async, Master>,
+    address: u8,
+    buffer: &mut [u8],
+    ctx: &Ctx<'_>,
+) -> Result<(), i2c::Error> {
+    prepare_imu_bus(ctx).await?;
+    let result = i2c.blocking_read(address, buffer);
+    if matches!(result, Err(i2c::Error::Timeout)) {
+        reset_i2c_host(ctx).await;
+    }
+    result
+}
+
+async fn write_i2c_bus(
+    i2c: &mut I2c<'_, Async, Master>,
+    address: u8,
+    data: &[u8],
+    ctx: &Ctx<'_>,
+) -> Result<(), i2c::Error> {
+    prepare_imu_bus(ctx).await?;
+    let result = i2c.blocking_write(address, data);
+    if matches!(result, Err(i2c::Error::Timeout)) {
+        reset_i2c_host(ctx).await;
+    }
+    result
+}
+
+async fn write_read_i2c_bus(
+    i2c: &mut I2c<'_, Async, Master>,
+    address: u8,
+    write: &[u8],
+    read: &mut [u8],
+    ctx: &Ctx<'_>,
+) -> Result<(), i2c::Error> {
+    prepare_imu_bus(ctx).await?;
+    let result = i2c.blocking_write_read(address, write, read);
+    if matches!(result, Err(i2c::Error::Timeout)) {
+        reset_i2c_host(ctx).await;
+    }
+    result
+}
+
+fn send_imu_diag(ctx: &Ctx<'_>) {
+    let mut buf = [0u8; 96];
+    let mut put = Put {
+        buf: &mut buf,
+        n: 0,
+    };
+    {
+        let s = ctx.shared.borrow();
+        let d = &s.imu_diag;
+        for value in [
+            2,
+            d.header_reads,
+            d.empty_reads,
+            d.header_errors,
+            d.payload_errors,
+            d.write_errors,
+            d.nack,
+            d.timeouts,
+            d.bus_errors,
+            d.arbitration,
+            d.other_errors,
+            d.invalid_lengths,
+            d.resets,
+            d.input_packets,
+            d.last_input_ms,
+            d.ina_errors,
+            d.searches,
+            d.max_i2c_us,
+            d.max_service_gap_us,
+            d.last_header,
+            d.last_error_ms,
+            i2c_pins(),
+            pac::I2C1.isr().read().0,
+            d.host_resets,
+        ] {
+            put.u32(value);
+        }
+    }
+    ctx.out.send(mcu::IMU_DIAG, &[&buf]);
+}
+
+fn track_i2c(ctx: &Ctx<'_>, started: Instant) -> u32 {
+    let elapsed = (Instant::now() - started).as_micros() as u32;
+    let mut s = ctx.shared.borrow_mut();
+    s.imu_diag.max_i2c_us = s.imu_diag.max_i2c_us.max(elapsed);
+    elapsed
+}
+
+fn i2c_fault(ctx: &Ctx<'_>, stage: &str, error: i2c::Error, elapsed: u32) {
+    let count = {
+        let mut s = ctx.shared.borrow_mut();
+        let d = &mut s.imu_diag;
+        match stage {
+            "header" => d.header_errors += 1,
+            "payload" => d.payload_errors += 1,
+            "write" => d.write_errors += 1,
+            "ina" => d.ina_errors += 1,
+            _ => {}
+        }
+        match error {
+            i2c::Error::Nack => d.nack += 1,
+            i2c::Error::Timeout => d.timeouts += 1,
+            i2c::Error::Bus => d.bus_errors += 1,
+            i2c::Error::Arbitration => d.arbitration += 1,
+            _ => d.other_errors += 1,
+        }
+        d.last_error_ms = Instant::now().as_millis() as u32;
+        d.header_errors + d.payload_errors + d.write_errors + d.ina_errors
+    };
+    // Capture early faults without flooding the link during a stuck bus.
+    if count <= 8 || count % 100 == 0 {
+        log!(
+            ctx.out,
+            "i2c fault #{count} {stage}: {error:?}, {elapsed}us, pins={}, ISR={:08x}",
+            i2c_pins(),
+            pac::I2C1.isr().read().0
+        );
+    }
+}
+
 async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
+    Timer::after(IMU_BOOT_QUIET).await;
     let mut packet = [0u8; MAX_IMU_PACKET];
     let start = Instant::now();
     let (mut next_search, mut next_vbus, mut next_imu) = (start, start, start);
     // Reads in a row that each part has not answered.
     let (mut imu_missed, mut ina_missed) = (0u32, 0u32);
     loop {
+        let quiet_until = ctx.shared.borrow_mut().imu_quiet_until.take();
+        if let Some(deadline) = quiet_until {
+            Timer::at(deadline).await;
+            next_search = Instant::now();
+        }
         let (imu, ina) = {
             let s = ctx.shared.borrow();
             (s.imu, s.ina)
@@ -804,6 +1049,9 @@ async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
         }
         if let Either::First(job) = select(ctx.jobs.receive(), Timer::at(wake)).await {
             run_job(i2c, job, ctx).await;
+            if ctx.shared.borrow().imu_quiet_until.is_some() {
+                continue;
+            }
         }
         let now = Instant::now();
         if now >= next_search && (imu.is_none() || ina.is_none()) {
@@ -827,14 +1075,23 @@ async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
             }
         }
         if now >= next_vbus {
+            if ctx.shared.borrow().imu_quiet_until.is_some() {
+                continue;
+            }
             next_vbus = now + VBUS_PERIOD;
             let volts = match ina {
                 Some(address) => {
                     let mut raw = [0u8; 2];
-                    match i2c.write_read(address, &[0x02], &mut raw).await {
+                    let started = Instant::now();
+                    let result = write_read_i2c_bus(i2c, address, &[0x02], &mut raw, ctx).await;
+                    let elapsed = track_i2c(ctx, started);
+                    match result {
                         // 1.25 mV a count.
                         Ok(()) => Some((u16::from_be_bytes(raw) as u32 * 5 / 4) as u16),
-                        Err(_) => None,
+                        Err(error) => {
+                            i2c_fault(ctx, "ina", error, elapsed);
+                            None
+                        }
                     }
                 }
                 None => None,
@@ -861,6 +1118,7 @@ async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
 /// INA226 by TI's manufacturer ID, since the module's address straps are not
 /// recorded, and the IMU by anything at all answering at its two addresses.
 async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
+    ctx.shared.borrow_mut().imu_diag.searches += 1;
     let (imu, ina) = {
         let s = ctx.shared.borrow();
         (s.imu, s.ina)
@@ -874,11 +1132,18 @@ async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
                 continue;
             }
             let mut id = [0u8; 2];
-            if i2c.write_read(address, &[0xFE], &mut id).await.is_ok() && id == *b"TI" {
+            if write_read_i2c_bus(i2c, address, &[0xFE], &mut id, ctx)
+                .await
+                .is_ok()
+                && id == *b"TI"
+            {
                 ctx.shared.borrow_mut().ina = Some(address);
                 log!(ctx.out, "i2c: INA226 at 0x{address:02X}");
                 break;
             }
+            // A missing or held-low device must not monopolize the executor
+            // for a whole address scan.
+            Timer::after_micros(1).await;
         }
     }
     if imu.is_none() {
@@ -886,13 +1151,65 @@ async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
             // A header read takes nothing from the packet it heads: the next
             // read starts the packet again.
             let mut header = [0u8; 4];
-            if i2c.read(address, &mut header).await.is_ok() {
+            if read_imu_bus(i2c, address, &mut header, ctx).await.is_ok()
+                && diag_link::imu_header_length(&header, IMU_LONGEST).is_some()
+            {
                 ctx.shared.borrow_mut().imu = Some(address);
                 log!(ctx.out, "i2c: IMU at 0x{address:02X}");
+                start_imu_reports(i2c, address, ctx).await;
                 break;
             }
         }
     }
+}
+
+/// Assign sequence numbers here so automatic setup and host commands cannot
+/// reuse one another's SHTP sequence numbers.
+async fn write_imu(
+    i2c: &mut I2c<'_, Async, Master>,
+    address: u8,
+    packet: &mut [u8],
+    ctx: &Ctx<'_>,
+) -> bool {
+    if packet.len() < 4 || packet[2] >= 6 {
+        ctx.shared.borrow_mut().imu_errors += 1;
+        return false;
+    }
+    {
+        let mut s = ctx.shared.borrow_mut();
+        let sequence = &mut s.imu_sequence[packet[2] as usize];
+        packet[3] = *sequence;
+        *sequence = sequence.wrapping_add(1);
+    }
+    let started = Instant::now();
+    let result = write_i2c_bus(i2c, address, packet, ctx).await;
+    let elapsed = track_i2c(ctx, started);
+    if let Err(error) = result {
+        ctx.shared.borrow_mut().imu_errors += 1;
+        i2c_fault(ctx, "write", error, elapsed);
+        return false;
+    }
+    true
+}
+
+async fn start_imu_reports(i2c: &mut I2c<'_, Async, Master>, address: u8, ctx: &Ctx<'_>) {
+    for report in IMU_DEFAULT_REPORTS {
+        // SH-2 Set Feature: SHTP header, report ID, flags, sensitivity,
+        // report interval, batch interval, sensor-specific configuration.
+        let mut packet = [0u8; 21];
+        packet[0] = 21;
+        packet[2] = 2;
+        packet[4] = 0xFD;
+        packet[5] = report;
+        packet[9..13].copy_from_slice(&IMU_REPORT_INTERVAL_US.to_le_bytes());
+        if !write_imu(i2c, address, &mut packet, ctx).await {
+            ctx.shared.borrow_mut().imu = None;
+            ctx.out
+                .log("imu: default setup failed; looking for it again");
+            return;
+        }
+    }
+    ctx.out.log("imu: default reports requested at 100 Hz");
 }
 
 /// Reads the IMU's next packet, if it has one, and passes it to the Pi.
@@ -910,39 +1227,88 @@ async fn poll_imu(
     ctx: &Ctx<'_>,
 ) -> bool {
     let mut header = [0u8; 4];
-    if i2c.read(address, &mut header).await.is_err() {
+    ctx.shared.borrow_mut().imu_diag.header_reads += 1;
+    let started = Instant::now();
+    let result = read_imu_bus(i2c, address, &mut header, ctx).await;
+    let elapsed = track_i2c(ctx, started);
+    if let Err(error) = result {
         ctx.shared.borrow_mut().imu_errors += 1;
+        i2c_fault(ctx, "header", error, elapsed);
         return false;
     }
-    let length = (u16::from_le_bytes([header[0], header[1]]) & 0x7FFF) as usize;
+    ctx.shared.borrow_mut().imu_diag.last_header = u32::from_le_bytes(header);
+    let Some(length) = diag_link::imu_header_length(&header, IMU_LONGEST) else {
+        invalid_imu_header(ctx, &header);
+        return false;
+    };
     if length <= 4 {
-        return true;
-    }
-    if length > IMU_LONGEST {
-        ctx.shared.borrow_mut().imu_errors += 1;
+        ctx.shared.borrow_mut().imu_diag.empty_reads += 1;
         return true;
     }
     // A packet longer than this comes as a continuation the next time round.
     let n = length.min(MAX_IMU_PACKET);
     let t = now_us();
-    if i2c.read(address, &mut packet[..n]).await.is_err() {
+    let started = Instant::now();
+    let result = read_imu_bus(i2c, address, &mut packet[..n], ctx).await;
+    let elapsed = track_i2c(ctx, started);
+    if let Err(error) = result {
         ctx.shared.borrow_mut().imu_errors += 1;
+        i2c_fault(ctx, "payload", error, elapsed);
+        return false;
+    }
+    if !matches!(diag_link::imu_header_length(packet, IMU_LONGEST), Some(5..)) {
+        invalid_imu_header(ctx, packet);
         return false;
     }
     ctx.shared.borrow_mut().imu_packets += 1;
+    if packet[2] == 3 || packet[2] == 4 || packet[2] == 5 {
+        let mut s = ctx.shared.borrow_mut();
+        s.imu_diag.input_packets += 1;
+        s.imu_diag.last_input_ms = Instant::now().as_millis() as u32;
+    }
     ctx.out
         .send(mcu::IMU_PACKET, &[&t.to_le_bytes(), &packet[..n]]);
+    if n >= 5 && packet[2] == 1 && packet[4] == 0x01 {
+        // An IMU reset clears its enabled reports. Restore defaults even if
+        // no GUI is connected. An explicit host 'off' lasts until a reset.
+        let mut s = ctx.shared.borrow_mut();
+        s.imu_diag.resets += 1;
+        s.imu_sequence = [0; 6];
+        s.imu = None;
+        s.imu_quiet_until = Some(Instant::now() + IMU_BOOT_QUIET);
+    }
     true
+}
+
+fn invalid_imu_header(ctx: &Ctx<'_>, header: &[u8]) {
+    let count = {
+        let mut s = ctx.shared.borrow_mut();
+        s.imu_errors += 1;
+        s.imu_diag.invalid_lengths += 1;
+        s.imu_diag.last_error_ms = Instant::now().as_millis() as u32;
+        s.imu_diag.invalid_lengths
+    };
+    if count <= 8 || count % 100 == 0 {
+        log!(
+            ctx.out,
+            "imu: invalid header #{count}: {:02x?}",
+            &header[..4]
+        );
+    }
 }
 
 async fn run_job(i2c: &mut I2c<'_, Async, Master>, job: Job, ctx: &Ctx<'_>) {
     match job {
-        Job::ImuWrite(packet) => {
+        Job::ImuWrite(mut packet) => {
             let imu = ctx.shared.borrow().imu;
             match imu {
                 Some(address) => {
-                    if i2c.write(address, &packet).await.is_err() {
-                        ctx.shared.borrow_mut().imu_errors += 1;
+                    let reset = packet.len() == 5 && packet[2] == 1 && packet[4] == 1;
+                    if write_imu(i2c, address, &mut packet, ctx).await && reset {
+                        let mut s = ctx.shared.borrow_mut();
+                        s.imu = None;
+                        s.imu_sequence = [0; 6];
+                        s.imu_quiet_until = Some(Instant::now() + IMU_BOOT_QUIET);
                     }
                 }
                 None => ctx
@@ -958,9 +1324,9 @@ async fn run_job(i2c: &mut I2c<'_, Async, Master>, job: Job, ctx: &Ctx<'_>) {
         } => {
             let mut data = [0u8; I2C_MOST];
             let result = match (write.is_empty(), read) {
-                (_, 0) => i2c.write(address, &write).await,
-                (true, n) => i2c.read(address, &mut data[..n]).await,
-                (false, n) => i2c.write_read(address, &write, &mut data[..n]).await,
+                (_, 0) => write_i2c_bus(i2c, address, &write, ctx).await,
+                (true, n) => read_imu_bus(i2c, address, &mut data[..n], ctx).await,
+                (false, n) => write_read_i2c_bus(i2c, address, &write, &mut data[..n], ctx).await,
             };
             let status = match result {
                 Ok(()) => 0u8,
