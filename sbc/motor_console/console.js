@@ -2,9 +2,9 @@
 const $ = id => document.getElementById(id);
 let ws, state = {}, schema = [], selected = null, sequence = 0, loaded = null;
 let reconnect, heartbeat, lastState = 0, shutdownRequested = false;
-let queuedCommand = null, queuedLimits = null, limitsLoaded = false;
+let queuedCommand = null, queuedLimits = null, queuedZero = null, limitsLoaded = false;
 let autoScanNeeded = true, autoControlAfter = 0, wifiState = {}, wifiSignature = "";
-const pending = new Map(), history = new Map(), logs = [];
+const pending = new Map(), history = new Map(), zeroRevisions = new Map(), logs = [];
 const fields = {p:["Position · rad",0,-100,100,.01],v:["Speed · rad/s",0,-100,100,.01],kp:["Kp",1,0,500,.1],kd:["Kd",.05,0,5,.01],t:["Torque · Nm",0,-5,5,.01],vlim:["Speed limit · rad/s",1,0,100,.1],ilim:["Current · pu",.2,0,1,.01]};
 const limits = {torque:["Torque · Nm",.5,0,5,.1],kp:["Kp",10,0,500,1],kd:["Kd",1,0,5,.1],speed:["Speed · rad/s",5,0,100,1],current:["Current · pu",.3,0,1,.01],rate:["Stream · Hz",200,10,500,10]};
 function makeFields(id, data) {
@@ -33,6 +33,7 @@ function motor() { return state.motors?.find(m => m.key === selected); }
 function formValues(form) { return Object.fromEntries(new FormData(form)); }
 function flushCommand() {
   if (pending.size) return;
+  if(queuedZero){const target=queuedZero;queuedZero=null;send("zero",{motor:target});return;}
   if (queuedLimits) {
     const values=queuedLimits; queuedLimits=null;
     if(state.control && state.connected && !shutdownRequested) send("limits",values);
@@ -66,7 +67,7 @@ function editCommand() {
   // Feedback positions need not fall on the input spinner's step grid.
   // Accept finite in-range values, including those loaded from the motor.
   const valid = validNumbers(form);
-  if (!motor() || !state.control || !state.connected || !valid) { queuedCommand=null; return; }
+  if (!motor() || !state.control || !state.connected || !valid || queuedZero || [...pending.values()].includes("zero")) { queuedCommand=null; return; }
   queuedCommand = {motor:selected,...formValues(form)};
   flushCommand();
 }
@@ -99,6 +100,8 @@ function connect() {
       if(message.status?.shutting_down && !shutdownRequested){shutdownRequested=true;notice("Robot is shutting down");}
       for (const event of message.events) { logs.push(event); if(logs.length > 2000) logs.shift(); }
       for (const m of message.motors) {
+        const revision=m.command.zero_revision || 0;
+        if(zeroRevisions.get(m.key)!==revision){history.delete(m.key);zeroRevisions.set(m.key,revision);}
         if (!history.has(m.key)) history.set(m.key,[]);
         const points = history.get(m.key), fb = m.feedback;
         if (fb && points.at(-1)?.t !== fb.t) points.push(fb);
@@ -108,7 +111,7 @@ function connect() {
       autoDiscover();
     }
   };
-  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); queuedCommand = queuedLimits = null; limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; render(); renderWifi(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
+  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); queuedCommand = queuedLimits = queuedZero = null; zeroRevisions.clear();history.clear();limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; render(); renderWifi(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
 }
 function cell(row,text,tag="td") { const element = document.createElement(tag); element.textContent = text ?? "—"; row.append(element); return element; }
 function reading(parent,title,value,unit="") {
@@ -123,8 +126,9 @@ function loadCommand(m) {
   const shown = {1:["p","v","kp","kd","t"],2:["p","vlim"],3:["v"],4:["p","vlim","ilim"]}[m.mode] || [];
   for(const key of Object.keys(fields)) $("command-form").elements[key].parentElement.hidden = !shown.includes(key);
   $("new-id").value=m.id; $("new-master").value=m.master;
-  loaded=m.key+":"+m.mode;
+  loaded=commandVersion(m);
 }
+function commandVersion(m){return `${m.key}:${m.mode}:${m.command.zero_revision || 0}`;}
 function render() {
   const connected = Boolean(state.connected), live = !shutdownRequested && ws?.readyState === WebSocket.OPEN && performance.now()-lastState < 1500;
   $("connection").textContent=shutdownRequested ? "Shutting down" : live ? "Console online" : "Console offline";
@@ -142,7 +146,7 @@ function render() {
   for(const m of motors){let button=buttons.get(m.key);
     if(!button){button=document.createElement("button");button.type="button";button.dataset.key=m.key;button.setAttribute("role","option");
       const text=document.createElement("span"), sub=document.createElement("small"), mode=document.createElement("small");text.append(document.createTextNode(m.key),sub);button.append(text,mode);
-      button.onclick=()=>{selected=m.key;loaded=null;queuedCommand=null;render();};$("motors").append(button);}
+      button.onclick=()=>{selected=m.key;loaded=null;queuedCommand=queuedZero=null;render();};$("motors").append(button);}
     buttons.delete(m.key);button.className=`motor ${m.key===selected?"selected":""}`;button.setAttribute("aria-selected",String(m.key===selected));
     button.firstChild.lastChild.textContent=m.age>.5?"stale":m.state;button.lastChild.textContent=["","MIT","Position","Velocity","Hybrid"][m.mode] || m.mode;}
   for(const button of buttons.values()) button.remove();
@@ -152,13 +156,14 @@ function render() {
   $("motor-state").textContent=m ? `${m.command.active?"driving · ":""}${m.age>.5?"stale":m.state}` : "—";
   $("readings").replaceChildren();
   for(const [label,key,unit] of [["Position","pos","rad"],["Speed","vel","rad/s"],["Torque","torque","Nm"],["MOSFET","t_mos","°C"],["Winding","t_rotor","°C"]]) reading($("readings"),label,fmt(fb?.[key],key.startsWith("t_")?0:3),unit);
-  if(m && loaded!==m.key+":"+m.mode) loadCommand(m);
+  if(m && loaded!==commandVersion(m)) loadCommand(m);
   $("motor-mode").value=m?.mode || "";
   $("motor-mode").disabled=!live||!connected||!state.control||!m||m.command.active||m.feedback?.state===1||!m.feedback||m.age>.5||pending.size>0;
-  for(const input of $("command-form").querySelectorAll("input,select")) input.disabled=!live||!connected||!state.control||!m;
+  const zeroPending=Boolean(queuedZero)||[...pending.values()].includes("zero");
+  for(const input of $("command-form").querySelectorAll("input,select")) input.disabled=!live||!connected||!state.control||!m||zeroPending||m.command.homing;
   for(const button of document.querySelectorAll("[data-op]")) {
     const op=button.dataset.op, motorOp=["enable","disable","hold","clear","zero","read","save"].includes(op);
-    button.disabled=!live || (op==="take" ? !connected || state.control : op==="release" ? !state.control : op==="power.off" ? !connected : op.startsWith("daemon.") ? false : !state.control || !connected || (motorOp&&!m));
+    button.disabled=!live || (op==="take" ? !connected || state.control : op==="release" ? !state.control : op==="power.off" ? !connected : op.startsWith("daemon.") ? false : !state.control || !connected || (motorOp&&!m) || (motorOp&&zeroPending));
   }
   if(state.limits && !limitsLoaded){for(const key of Object.keys(limits)) $("limits-form").elements[key].value=key==="rate"?state.rate:state.limits[key];limitsLoaded=true;}
   for(const input of $("limits-form").querySelectorAll("input")) input.disabled=!live||!connected||!state.control;
@@ -220,12 +225,13 @@ function renderWifi() {
 document.querySelectorAll("[data-tab]").forEach(button=>button.onclick=()=>{document.querySelectorAll(".panel").forEach(panel=>panel.hidden=panel.id!==button.dataset.tab);document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("selected",b===button));if(button.dataset.tab==="wifi"){send("wifi.status");renderWifi();}});
 document.querySelectorAll("[data-op]").forEach(button=>button.onclick=()=>{
   const op=button.dataset.op;
-  queuedCommand=queuedLimits=null;
-  const confirmations={zero:"Set this motor’s current position as zero?",save:"Save this motor’s settings to flash?", "power.off":"Stop all motors and power off the robot?", "daemon.stop":"Stop diagd and all motors?"};
+  queuedCommand=queuedLimits=queuedZero=null;
+  if(op==="zero"){queuedZero=selected;flushCommand();render();return;}
+  const confirmations={save:"Save this motor’s settings to flash?", "power.off":"Stop all motors and power off the robot?", "daemon.stop":"Stop diagd and all motors?"};
   if(confirmations[op]&&!confirmAction(confirmations[op]))return;
   send(op,{motor:selected,last:$("scan-last").value,hz:$("imu-hz").value});
 });
-$("stop").onclick=()=>{queuedCommand=queuedLimits=null;send("stop");};document.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();queuedCommand=queuedLimits=null;send("stop");}});
+$("stop").onclick=()=>{queuedCommand=queuedLimits=queuedZero=null;send("stop");};document.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();queuedCommand=queuedLimits=queuedZero=null;send("stop");}});
 $("command-form").onsubmit=e=>{e.preventDefault();editCommand();};
 $("command-form").oninput=editCommand;
 $("command-form").onchange=editCommand;
@@ -243,7 +249,7 @@ $("reg-select").onchange=selectRegister;
 $("traffic-bus").onchange=renderLog;$("traffic-id").oninput=renderLog;$("pause").onchange=renderLog;
 $("clear-log").onclick=()=>{logs.length=0;renderLog();};
 $("export-log").onclick=()=>{const url=URL.createObjectURL(new Blob([logs.map(e=>JSON.stringify(e)).join("\n")],{type:"application/x-ndjson"}));const a=document.createElement("a");a.href=url;a.download="bipedal-diagnostics.jsonl";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-document.addEventListener("visibilitychange",()=>{if(document.hidden){queuedCommand=queuedLimits=null;send("release");}else{autoControlAfter=0;autoDiscover();}});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){queuedCommand=queuedLimits=queuedZero=null;send("release");}else{autoControlAfter=0;autoDiscover();}});
 window.addEventListener("pagehide",()=>{if(ws?.readyState===WebSocket.OPEN){ws.send('{"op":"release"}');ws.close();}});
 setInterval(()=>{if(lastState && performance.now()-lastState>1500){notice("Console updates lost",true);ws.close();}},500);
 connect();

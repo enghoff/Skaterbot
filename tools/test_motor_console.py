@@ -237,6 +237,43 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         reply = await other.action("wifi.status")
         self.assertNotIn("Workshop", reply["result"]["saved"])
 
+    async def test_set_zero_preserves_other_motor_streams_in_every_mode(self):
+        browser = await self.browser()
+        await browser.action("daemon.start")
+        await browser.until(lambda: browser.state.get("connected"))
+        await browser.action("take")
+        await browser.action("scan", last=2)
+
+        def motor(key):
+            return next(m for m in browser.state["motors"] if m["key"] == key)
+
+        await browser.until(lambda: all(m["feedback"] for m in browser.state["motors"]))
+        await browser.action("enable", motor="A:2")
+        for mode in range(1, 5):
+            await browser.until(lambda: not motor("A:1")["command"]["active"])
+            await browser.action("write", motor="A:1", rid=10, value=mode)
+            await browser.action("enable", motor="A:1")
+            before = motor("A:2")["feedback"]["t"]
+            await browser.action("zero", motor="A:1")
+            await browser.until(
+                lambda: motor("A:1")["command"]["zero_revision"] == mode
+            )
+            target = motor("A:1")
+            self.assertTrue(target["command"]["active"])
+            self.assertEqual(target["feedback"]["state"], 1)
+            self.assertAlmostEqual(target["feedback"]["pos"], 0, delta=0.01)
+            self.assertEqual(target["command"]["p"], 0)
+            self.assertFalse(target["command"]["homing"])
+            self.assertTrue(motor("A:2")["command"]["active"])
+            self.assertEqual(motor("A:2")["feedback"]["state"], 1)
+            await browser.until(lambda: motor("A:2")["feedback"]["t"] > before)
+            await browser.action("disable", motor="A:1")
+            await browser.until(lambda: motor("A:1")["feedback"]["state"] == 0)
+        await browser.action("zero", motor="A:1")
+        await browser.until(lambda: motor("A:1")["command"]["zero_revision"] == 5)
+        self.assertFalse(motor("A:1")["command"]["active"])
+        self.assertTrue(motor("A:2")["command"]["active"])
+
 
 class MotorEnableTests(unittest.TestCase):
     def test_enable_uses_current_position_and_preserves_only_tuned_gains(self):
@@ -270,6 +307,75 @@ class MotorEnableTests(unittest.TestCase):
         self.assertEqual(command.wave, "constant")
         self.assertTrue(command.active)
         bus.enable.assert_called_once_with(motor)
+
+
+class MotorZeroTests(unittest.TestCase):
+    def setUp(self):
+        self.session = console.Session.__new__(console.Session)
+        self.session.lock = console.threading.RLock()
+        self.session.require_control = Mock()
+        self.session.robot = Mock(error=None)
+        self.session.limits = dict(torque=0.5, kp=10, kd=1, speed=5, current=0.3)
+        self.command = console.Command(
+            active=True, p=2, v=1, t=0.1, wave="sine", amp=0.2
+        )
+        self.other = console.Command(active=True, p=-0.4)
+        self.session.commands = {"A:1": self.command, "A:2": self.other}
+        self.motor = console.dm.Motor(1)
+        self.motor.feedback = console.dm.Feedback(
+            time.monotonic(), 1, 0.6, 0, 0, 25, 25
+        )
+        self.bus = Mock()
+        self.bus.history_lock = console.threading.Lock()
+        self.bus.request_status.side_effect = self.confirm
+
+    def confirm(self, _motor):
+        self.motor.feedback = console.dm.Feedback(time.monotonic(), 1, 0, 0, 0, 25, 25)
+
+    def test_zero_drops_old_motion_without_disabling_either_motor(self):
+        self.bus.set_zero.side_effect = self.confirm
+        self.session.set_zero(self.bus, self.motor, self.command)
+        self.assertTrue(self.command.active)
+        self.assertTrue(self.other.active)
+        self.assertEqual(
+            (self.command.p, self.command.v, self.command.t, self.command.amp),
+            (0, 0, 0, 0),
+        )
+        self.assertEqual(self.command.wave, "constant")
+        self.assertEqual(self.command.zero_revision, 1)
+        self.assertFalse(self.command.homing)
+        self.bus.disable.assert_not_called()
+        self.session.robot.stop.assert_not_called()
+        self.session.robot.send.assert_not_called()
+
+    def test_stop_during_zero_is_never_undone(self):
+        def stop_and_confirm(motor):
+            self.session.stop()
+            self.confirm(motor)
+
+        self.bus.set_zero.side_effect = stop_and_confirm
+        self.session.set_zero(self.bus, self.motor, self.command)
+        self.assertFalse(self.command.active)
+        self.assertFalse(self.other.active)
+        self.bus.enable.assert_not_called()
+
+    def test_unconfirmed_zero_disables_only_selected_motor(self):
+        self.bus.request_status.side_effect = None
+        with self.assertRaisesRegex(ValueError, "zero not confirmed"):
+            self.session.set_zero(self.bus, self.motor, self.command)
+        self.assertFalse(self.command.active)
+        self.assertTrue(self.other.active)
+        self.assertEqual(self.command.zero_revision, 0)
+        self.assertFalse(self.command.homing)
+        self.bus.disable.assert_called_once_with(self.motor)
+        self.session.robot.stop.assert_not_called()
+
+    def test_stale_feedback_rejects_zero_without_sending_it(self):
+        self.motor.feedback.t -= 1
+        with self.assertRaisesRegex(ValueError, "no recent healthy feedback"):
+            self.session.set_zero(self.bus, self.motor, self.command)
+        self.bus.set_zero.assert_not_called()
+        self.bus.disable.assert_not_called()
 
 
 class PowerOffControlTests(unittest.TestCase):

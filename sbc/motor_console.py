@@ -57,6 +57,8 @@ def clamp(value, low, high):
 @dataclass
 class Command:
     active: bool = False
+    homing: bool = False
+    zero_revision: int = 0
     p: float = 0
     v: float = 0
     kp: float = 1
@@ -196,7 +198,7 @@ class Session:
                                 command = self.commands.setdefault(
                                     f"{name}:{motor.can_id}", Command()
                                 )
-                                if command.active:
+                                if command.active and not command.homing:
                                     self.drive(bus, motor, command, now)
                                 elif poll:
                                     bus.request_status(motor)
@@ -325,6 +327,8 @@ class Session:
                 self.stop()
             return self.robot.request(op, wait=15 if op == "power.off" else 2)
         bus, motor, command = self.target(message)
+        if op == "zero":
+            return self.set_zero(bus, motor, command)
         if op == "read":
             missed = []
             for reg in dm.REGISTERS:
@@ -359,6 +363,7 @@ class Session:
                     p=fb.pos,
                     kp=command.kp,
                     kd=command.kd,
+                    zero_revision=command.zero_revision,
                     enabled_at=time.monotonic(),
                     t0=time.monotonic(),
                 )
@@ -378,9 +383,6 @@ class Session:
                 command.active = False
                 bus.disable(motor)
                 bus.clear_error(motor)
-            elif op == "zero":
-                self.disabled(motor, command)
-                bus.set_zero(motor)
             elif op == "command":
                 spans = dict(
                     p=(-motor.pmax, motor.pmax),
@@ -402,6 +404,58 @@ class Session:
             else:
                 raise ValueError(f"unknown action {op}")
         return f"{op} accepted"
+
+    def set_zero(self, bus, motor, command):
+        """Rebase one motor without interrupting the other command streams."""
+        with self.lock:
+            self.require_control()
+            fb = motor.feedback
+            if not fb or time.monotonic() - fb.t > 0.3 or fb.fault:
+                raise ValueError("no recent healthy feedback")
+            command.homing = True
+        try:
+            with self.lock:
+                self.require_control()
+                # Stop the selected motor's waveform and feedforward. A hold
+                # in the old frame is followed by SET_ZERO, which resets the
+                # motor's own position command along with its origin.
+                command.p, command.v, command.t = fb.pos, 0, 0
+                command.wave, command.amp = "constant", 0
+                if command.active:
+                    self.drive(bus, motor, command, time.monotonic())
+                sent = time.monotonic()
+                bus.set_zero(motor)
+                command.p = 0
+            deadline = sent + 0.8
+            tolerance = max(0.01, 4 * 2 * motor.pmax / 65535)
+            while time.monotonic() < deadline:
+                with self.lock:
+                    self.require_control()
+                    feedback = motor.feedback
+                    if (
+                        feedback
+                        and feedback.t > sent
+                        and not feedback.fault
+                        and abs(feedback.pos) <= tolerance
+                    ):
+                        command.zero_revision += 1
+                        with bus.history_lock:
+                            motor.history.clear()
+                        return "zero confirmed by motor feedback"
+                    bus.request_status(motor)
+                # Do not hold the session lock while waiting: other motors,
+                # the browser watchdog, STOP and incoming feedback keep running.
+                time.sleep(0.01)
+            raise ValueError("zero not confirmed; selected motor disabled")
+        except Exception:
+            with self.lock:
+                command.active = False
+                with contextlib.suppress(Exception):
+                    bus.disable(motor)
+            raise
+        finally:
+            with self.lock:
+                command.homing = False
 
     def write_register(self, bus, motor, message):
         reg = dm.REGISTER[integer(message["rid"], 0, 255)]

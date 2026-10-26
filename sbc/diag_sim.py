@@ -183,8 +183,10 @@ class Motor:
                 self.enabled, self.command = True, ()
             elif code == DISABLE:
                 self.enabled, self.command = False, ()
-            elif code == SET_ZERO and not self.enabled:
+            elif code == SET_ZERO:
                 self.pos = 0.0
+                if self.command and self.mode != VELOCITY:
+                    self.command = (0.0, *self.command[1:])
             elif code == CLEAR_ERROR:
                 self.fault = 0
             return self.feedback()

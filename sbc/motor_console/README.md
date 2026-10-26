@@ -48,8 +48,15 @@ readouts come from actual feedback.
   use Save to flash in Registers to persist it. Valid command edits apply
   immediately, including command limits, with no Apply buttons. MIT defaults
   to Kp 1 and Kd 0.05 as starting values to tune for the attached load.
+  Set zero acts immediately on the selected motor, preserving its enabled
+  state and the other motors' streams. It clears that motor's position,
+  velocity, torque feedforward and waveform setpoints, confirms the new origin
+  from fresh motor feedback, then refreshes the command fields and plot history.
+  If zero cannot be confirmed, only the selected motor is disabled and the
+  console reports the failure. There is no blocking zero-confirmation dialog
+  to interrupt browser heartbeats.
 - **Registers:** read all, write RAM, save flash, change CAN and feedback IDs.
-  Writes, saves and zeroing require fresh disabled feedback. Bit rate is blocked;
+  Writes and saves require fresh disabled feedback. Bit rate is blocked;
   CAN ID changes use the dedicated action and check for address collisions.
 - **System:** controller identity, reset/crash details, link counters, power
   state, battery voltage, bus errors, IMU values/rate/accuracy/age, IMU report
