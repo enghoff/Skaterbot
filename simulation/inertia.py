@@ -149,11 +149,22 @@ class MeshLibrary:
     should not, so this unions the positive shells, subtracts the negative
     ones, and integrates the single watertight solid that comes out. It keeps
     the summed figure alongside so the two tools can still be reconciled.
+
+    A piece in `weighed` has been on a scale, and is integrated at whatever
+    uniform density makes it weigh that. A print is denser at its walls than
+    in its infill, so this puts slightly too little of it at the surface; the
+    mass is right and the inertia is as near as a uniform solid gets.
     """
 
-    def __init__(self, directory: Path, density_kg_m3: float) -> None:
+    def __init__(
+        self,
+        directory: Path,
+        density_kg_m3: float,
+        weighed: dict[str, float] | None = None,
+    ) -> None:
         self.directory = directory
         self.density = density_kg_m3 * G_PER_MM3_FROM_KG_PER_M3
+        self.weighed = weighed or {}
         self._cache: dict[str, MeshFacts] = {}
 
     def _resolve(self, mesh, name: str):
@@ -203,9 +214,14 @@ class MeshLibrary:
             )
 
         raw = trimesh.load_mesh(path)
-        summed = float(raw.volume) * self.density
         solid, shells = self._resolve(raw, path.name)
-        solid.density = self.density
+        density = (
+            self.weighed[piece] / float(solid.volume)
+            if piece in self.weighed
+            else self.density
+        )
+        summed = float(raw.volume) * density
+        solid.density = density
 
         facts = MeshFacts(
             grams=float(solid.mass),

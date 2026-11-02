@@ -348,7 +348,11 @@ def describe_plant(links, joints, dimensions, rolled) -> None:
 def report_provenance(links) -> None:
     print("\n\n4. HOW MUCH OF THIS ROBOT HAS BEEN MEASURED")
 
-    meshes = MeshLibrary(RAW_MESHES, robot_model.budget()["material"]["density"])
+    meshes = MeshLibrary(
+        RAW_MESHES,
+        robot_model.budget()["material"]["density"],
+        robot_model.weighed_pieces(),
+    )
     by_source: dict[str, float] = {}
     soft: list[tuple[str, float, str]] = []
     for link in links.values():
@@ -403,7 +407,11 @@ def report_provenance(links) -> None:
 
 def main() -> int:
     links, joints, dimensions = robot_model.build()
-    meshes = MeshLibrary(RAW_MESHES, robot_model.budget()["material"]["density"])
+    meshes = MeshLibrary(
+        RAW_MESHES,
+        robot_model.budget()["material"]["density"],
+        robot_model.weighed_pieces(),
+    )
 
     try:
         failures = check_poses(joints, dimensions)

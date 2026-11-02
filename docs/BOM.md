@@ -657,7 +657,7 @@ With the six actuators, the metal, the wheels, the fasteners, the electronics an
 
 **The margin is measured against a ceiling that belongs to a different machine.** The 2 300 g figure is a single-leg walking-robot calculation at 40° of sustained knee flexion. This robot always has both wheels on the ground, so the number is conservative here — but the wheeled torque envelope has never been re-derived, so nobody knows by how much. The eight-motor walking robot on `walking` is near 2 047 g. Use `uv run tools/mass.py` as the authoritative roll-up rather than this static table.
 
-The softest figure in that roll-up is the **60 g wheel**, which is catalogue-typical for an 80 × 24 mm 85A skate wheel and has never been weighed; brand to brand the range is roughly 55–65 g, so the pair could move ±10 g either way. It is the **bare** wheel — the 608s come out for the direct drive, so a vendor figure quoted with bearings fitted is about 24 g per wheel too heavy.
+**The wheels and the actuators were weighed on 2026-11-02**, and both came in heavier than this bill carried: a bare wheel, the 608s out for the direct drive, is **73 g** where 60 g was catalogue-typical, and a DM-J3507-2EC is **165 g** where its manual says about 150. That is 116 g on the robot. The thighs and shins in hand, Zbotic's PLA prints, were weighed the same day too, at 40 g and 37 g bare, which is 10 g more on the pair of legs, and the headroom is **195.4 g** as this is written. `docs/NOTES.md` has the arithmetic, and two leg assemblies weighed alongside it.
 
 ## 10. Fastener schedule
 

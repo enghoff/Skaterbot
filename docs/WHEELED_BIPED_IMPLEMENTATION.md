@@ -101,7 +101,7 @@ Measuring the walking parts as they stand today gives the honest comparison:
 
 **The wheeled conversion costs 11.8 g.** The printed part at the bottom of each leg drops from 143.1 g the pair to 28.9 g — a 114 g saving in printing, since an adapter is a disc and a spigot where a foot was a ribbed tray, a sole and four sensor pads — and 120 g of bought wheel comes straight back. The hip carriers come out identical: the 4 mm of span the wheel takes away does not change any wall, and the small difference in measured mass is the double-counted overlap between the three bodies, which grows as the two ends come closer.
 
-The soft number is the 60 g wheel. It is a catalogue-typical figure for an 80 × 24 mm 85A skate wheel and it has not been weighed; the brand-to-brand range is roughly 55–65 g, so the pair could move ±10 g. Weigh one when it arrives.
+The soft number was the 60 g wheel, a catalogue-typical figure for an 80 × 24 mm 85A skate wheel. One was weighed on 2026-11-02 at 73 g, bare, so the pair is 26 g heavier than this section was written against.
 
 ---
 

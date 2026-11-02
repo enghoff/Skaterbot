@@ -366,7 +366,16 @@ number was not read.
 
 ## Zbotic — 3D print cart, release 2088e6f
 
-- **Cart built:** 2026-10-20, through zbotic.in/3d-print-order/. **Not placed.**
+- **Cart built:** 2026-10-20, through zbotic.in/3d-print-order/. **Not placed**
+  as of that day.
+- **Placed and received:** the owner reported on 2026-11-02 that the thighs and
+  shins in hand are this order's prints. Its order number, date, price paid, and
+  whether the order matched this cart line for line are not recorded.
+- **Weighed on arrival, 2026-11-02:** a thigh 40 g and a shin 37 g, bare,
+  against 52.3 and 41.4 g for the same volumes in solid PLA and Zbotic's own 73
+  and 53 g. **They were not printed solid**, whatever infill the order carried:
+  the thigh is about 76 % full and the shin 89 %. The wheel adapters were not
+  weighed on their own.
 - **Source:** Zbotic's quote page and cart, read in the browser as each line was
   added.
 - **Release:** `exports/releases/2088e6f/`, commit

@@ -167,6 +167,16 @@ def budget() -> dict:
     return tomllib.loads(BUDGET.read_text(encoding="utf-8"))
 
 
+def weighed_pieces() -> dict[str, float]:
+    """The printed pieces that have been on a scale: grams a print, by name."""
+    return {
+        piece["name"]: piece["weighed_g"]
+        for part in budget()["printed"]
+        for piece in part.get("piece", [])
+        if "weighed_g" in piece
+    }
+
+
 # --------------------------------------------------------------------------
 # The tree
 
@@ -199,6 +209,7 @@ class Joint:
 def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
     """The whole robot: links with their masses, joints, and the dimensions."""
     d = load_dimensions()
+    weighed = weighed_pieces()
     journal_fastener_g = next(
         row["each_g"]
         for row in budget()["fixed"]
@@ -286,13 +297,13 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
         base.solids.append(
             Solid(
                 label=f"hip pitch actuator, {side}",
-                grams=150.0,
+                grams=165.0,
                 shape="cylinder_x",
                 dims=(motor_d, motor_l),
                 at=(sign * hip_x, 0.0, hip_local_z),
-                source="vendor",
+                source="weighed",
                 material="motorGrey",
-                note="DM-J3507-2EC, vendor manual V1.0: 46 dia x 37.9, about 150 g",
+                note="DM-J3507-2EC, 46 dia x 37.9; 165 g weighed 2026-11-02, the manual says about 150",
             )
         )
         # The bearing is bonded straight into the pelvis cheek, so its mass is
@@ -580,6 +591,10 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
 
     for side in SIDES:
         sign = SIDE_SIGN[side]
+        printed_as = {
+            limb: "weighed" if limb_mesh[(limb, side)] in weighed else "measured"
+            for limb in ("thigh", "shin")
+        }
 
         # -- thigh: hip pitch axis to knee axis --
         thigh = Link(f"thigh_{side}")
@@ -590,16 +605,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 shape="mesh",
                 piece=limb_mesh[("thigh", side)],
                 at=(0.0, 0.0, -thigh_len / 2),
-                source="measured",
+                source=printed_as["thigh"],
                 note="cad/thigh.py, 105 mm, seven bodies, clevis at the knee",
             ),
             Solid(
                 label=f"knee actuator, {side}",
-                grams=150.0,
+                grams=165.0,
                 shape="cylinder_x",
                 dims=(motor_d, motor_l),
                 at=(0.0, 0.0, -thigh_len),
-                source="vendor",
+                source="weighed",
                 material="motorGrey",
                 note="held by the thigh's stator plate; drives the shin",
             ),
@@ -705,16 +720,16 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                 shape="mesh",
                 piece=limb_mesh[("shin", side)],
                 at=(0.0, 0.0, -shin_len / 2),
-                source="measured",
+                source=printed_as["shin"],
                 note="cad/shin.py, 105 mm, seven bodies, plate at the wheel",
             ),
             Solid(
                 label=f"wheel actuator, {side}",
-                grams=150.0,
+                grams=165.0,
                 shape="cylinder_x",
                 dims=(motor_d, motor_l),
                 at=(0.0, 0.0, -shin_len),
-                source="vendor",
+                source="weighed",
                 material="motorGrey",
                 note="held by the shin's stator plate; drives the wheel",
             ),
@@ -813,10 +828,10 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             ),
             Solid(
                 label=f"skate wheel, {side}",
-                grams=60.0,
+                grams=73.0,
                 shape="tube_x",
                 # Urethane from the hub out to the tread. The hub itself is thin
-                # plastic; putting all 60 g in the urethane annulus is the
+                # plastic; putting all 73 g in the urethane annulus is the
                 # pessimistic choice for spin inertia, and it is flagged as such.
                 dims=(
                     d["skateWheelDiameter"],
@@ -824,12 +839,12 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
                     d["skateWheelWidth"],
                 ),
                 at=(wheel_centre_x, 0.0, 0.0),
-                source="estimate",
+                source="weighed",
                 material="soleBlack",
                 note=(
-                    "NEVER WEIGHED. Catalogue-typical for an 80 x 24 mm 85A wheel with "
-                    "the bearings out. Its spin inertia is the most sensitive unmeasured "
-                    "number in this model."
+                    "73 g weighed 2026-11-02, the bearings out. Its mass is measured now; "
+                    "how it divides between hub and tread is not, so its spin inertia "
+                    "is still an assumption."
                 ),
             ),
             # THE CAP IS A PRINT, placed as its own mesh like the adapter and

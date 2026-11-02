@@ -3187,3 +3187,35 @@ the robot is 0.5 g heavier at 1 983.6 g, mostly because a whole nut weighs more
 than a filed one. In PLA, which prints a hole about 0.2 mm small, the delivered
 nuts will go in with a little play and still cannot turn. The thighs and shins
 are re-exported and the simulation model rebuilt.
+
+## The motors, the wheels and the legs, weighed — 2 November 2026
+
+A DM-J3507-2EC is 165 g, 15 g over the 150 g of its manual, and a bare skate
+wheel is 73 g, 13 g over the 60 g that was only ever a catalogue figure. The
+legs in hand are Zbotic's prints of release 2088e6f, in PLA ordered at 100 %
+infill, and bare a thigh is 40 g and a shin 37 g, where the CAD at the
+budget's 0.93 g/cm³ made them 39.2 and 31.2. On the robot that is 90 g of
+motors, 26 g of wheels and 10 g of legs: 2 104.6 g against the 2 300 g
+ceiling, and 195.4 g of headroom where there was 316.
+
+Neither leg part is solid. Solid PLA at about 1.24 g/cm³ would make a thigh
+52.3 g and a shin 41.4, so the thigh is 76 per cent full and the shin 89; a
+shin is mostly a 10 mm plate, so more of it is wall. Zbotic's own quote had
+them at 73 and 53 g. Whatever went into the order, these parts were not
+printed solid, and the strength figures elsewhere in these notes assume they
+were.
+
+Two leg assemblies were weighed the same day, and they are the first check
+the leg's hardware has had against a scale. A wheel, its motor and a shin, put
+together with what holds them, is 300 g; the same with the knee motor and a
+thigh added is 520 g. The simulation model, carrying every weighed figure
+above, makes them 305.2 and 526.8 g. So what is left on the leg -- the wheel
+adapter and cap, the wheel clamp, the M3 sets, the journals and the knee
+bearing, none of them weighed -- is modelled about 7 g a leg too heavy, which
+is inside what those estimates were ever worth, and is left alone.
+
+The simulation carries the six motors, the two wheels and the four leg prints
+as weighed parts now. A weighed print's mesh is integrated at whatever uniform
+density gives its weight, and tools/mass.py rolls the weighed figure up in
+place of the CAD's, while gate C still compares the CAD. The meshes were
+re-exported and the model rebuilt, and it agrees with the CAD.

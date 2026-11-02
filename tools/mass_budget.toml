@@ -95,6 +95,19 @@ baseline_density = 1060.0
 # Since the robot became mirror-symmetric the four leg files each build both
 # hands, so their count is 1 and the measured figure is the pair.
 #
+# `weighed_g` on a piece is what one print of it weighed on a scale. Where every
+# piece of an entry carries one, tools/mass.py rolls that up in place of the
+# figure measured off the CAD, and the simulation scales the piece's mesh to it.
+# Gate C still compares the CAD, because what it holds is geometry.
+#
+# THE THIGHS AND SHINS WERE WEIGHED ON 2026-11-02, Zbotic's prints of release
+# 2088e6f in PLA, ordered at 100 % infill: a thigh 40 g and a shin 37 g, bare.
+# Neither is solid. Solid PLA at 1.24 would make them 52.3 and 41.4 g, so the
+# thigh is 76 per cent full and the shin 89; the thin plate of a shin is more of
+# it wall. The 2088e6f shin is 0.14 cm3 short of the current one, which is
+# 0.1 g and not worth a separate figure. A shin reprinted genuinely solid would
+# be about 4 g heavier and a thigh about 12.
+#
 # THERE ARE FOUR DISTINCT LIMB PRINTS NOW, WHERE THERE WERE TWO PRINTED TWICE.
 # Both leg segments are still 105 mm, and while both ended in a flat plate the
 # right thigh and the left shin were literally the same solid. Straddling the
@@ -118,6 +131,7 @@ name = "thigh-105-unmirrored"
 export = "thighRight"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, knee clevis, two tie ears
+weighed_g = 40.0  # a Zbotic print of release 2088e6f, bare, 2026-11-02
 print_up = "-X"  # lying on its outboard face, the tie arches' face uppermost
 note = "Right thigh -- limbAssembly as built, clevis rooted on +X, reaching -X."
 
@@ -126,6 +140,7 @@ name = "thigh-105-mirrored"
 export = "thighLeft"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, knee clevis, two tie ears
+weighed_g = 40.0  # its mirror's figure; one thigh went on the scale
 print_up = "+X"  # the mirror: lying on its outboard face, arches up
 note = "Left thigh -- the mirror."
 
@@ -144,6 +159,7 @@ name = "limb-105-unmirrored"
 export = "shinLeft"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
+weighed_g = 37.0  # a Zbotic print of release 2088e6f, bare, 2026-11-02
 print_up = "-X"  # lying on its outboard face, the tie arches' face uppermost
 note = "Left shin -- limbAssembly as built, stator plate on +X."
 
@@ -152,6 +168,7 @@ name = "limb-105-mirrored"
 export = "shinRight"
 prints = 1
 bodies = 7  # waist plate, two gussets, output disc, stator plate, two tie ears
+weighed_g = 37.0  # its mirror's figure; one shin went on the scale
 print_up = "+X"  # the mirror: lying on its outboard face, arches up
 note = "Right shin -- the mirror, stator plate on -X."
 
@@ -291,10 +308,13 @@ note = "Carries the controller carrier and the SBC over the battery, and holds t
 
 [[fixed]]
 label = "Actuators"
-each_g = 150.0
+each_g = 165.0
 count = 6
-note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm, \
-~150 g. Six, not eight: hip pitch, knee and wheel on each leg."""
+note = """DAMIAO DM-J3507-2EC, vendor manual V1.0 2024-11-19: Ø46 x 37.9 mm. \
+WEIGHED, 165 g, on 2026-11-02, a motor in hand: 15 g over the manual's ~150 g, \
+which this line carried until then, so 90 g on the six. Two leg assemblies \
+weighed the same day agree with it; the wheel line below has the arithmetic. \
+Six, not eight: hip pitch, knee and wheel on each leg."""
 
 [[fixed]]
 label = "Support bearings"
@@ -310,9 +330,9 @@ note = """What holds one journal in: an M5 x 12 ISO 7380 button head and an ordi
 
 [[fixed]]
 label = "Wheels — 80 mm skate, the pair"
-each_g = 60.0
+each_g = 73.0
 count = 2
-note = """ESTIMATE, NOT WEIGHED, and the softest figure in the printed half of this table. Catalogue-typical for an 80 x 24 mm 85A inline-skate wheel; the range across brands is roughly 55-65 g. It is the bare wheel: the two 608 bearings come out for the direct drive, so a vendor figure quoted with bearings fitted is about 24 g per wheel too heavy. Replace this with a weighed figure as soon as a wheel is in hand."""
+note = """WEIGHED, 73 g, on 2026-11-02, a wheel in hand: 13 g over the 60 g this line carried until then, which was catalogue-typical for an 80 x 24 mm 85A inline-skate wheel and never weighed. It is the bare wheel, the two 608 bearings out for the direct drive. TWO LEG ASSEMBLIES WERE WEIGHED THE SAME DAY: a wheel, its motor and a shin, built up with what holds them together, is 300 g, and adding the knee motor and a thigh makes it 520 g. With this wheel, the 165 g actuator and the weighed thigh and shin, simulation/robot.py's links come to 305.2 and 526.8 g, so the leg's unweighed hardware -- adapter, cap, clamp, M3 sets, journals and knee bearing -- is carried about 7 g a leg heavy, which is inside what those estimates are worth."""
 
 [[fixed]]
 label = "Fasteners"

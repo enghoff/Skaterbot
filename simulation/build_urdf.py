@@ -376,7 +376,7 @@ def main() -> int:
 
     links, joints, dimensions = robot_model.build()
     density = robot_model.budget()["material"]["density"]
-    meshes = MeshLibrary(RAW_MESHES, density)
+    meshes = MeshLibrary(RAW_MESHES, density, robot_model.weighed_pieces())
 
     pieces = {
         solid.piece

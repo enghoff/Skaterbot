@@ -211,9 +211,12 @@ CONTACT = {
 DOMAIN_RANDOMISATION = {
     "static_friction": (0.6, 1.4),
     "dynamic_friction": (0.5, 1.2),
-    # The wheels have never been weighed and the capacitor bank has never been
-    # sized, so the mass this model carries is uncertain by a good deal more
-    # than the usual few per cent. Randomise the base mass accordingly.
+    # The capacitor bank has never been sized and most of the torso has never
+    # been weighed, so the mass this model carries is uncertain by a good deal
+    # more than the usual few per cent. Randomise the base mass accordingly. The
+    # wheels and motors were weighed on 2026-11-02, so the wheel's range is now
+    # wider than its mass needs; it is left as it was so that policies trained
+    # before and after stay comparable.
     "base_mass_scale": (0.85, 1.15),
     "wheel_mass_scale": (0.8, 1.2),
     "armature_scale": (0.5, 2.0),
