@@ -88,7 +88,6 @@ from cad.joint import (
     outputDisc,
     statorClevis,
     statorPlate,
-    statorPlateSpotFaces,
 )
 from cad.parameters import (
     actuatorRearBoltOffset,
@@ -353,11 +352,6 @@ def limbAssembly(limbLength: float, lowerEnd: str = "plate") -> list:
         )
     else:
         lowerJoint = Pos(0, 0, -jointZ) * mirrored(statorPlate(), Plane.YZ)
-        # The waist's end stops a cap head short of the two rear bolts nearest
-        # it, 0.4 mm inside their washer spot faces, so it takes the same cuts
-        # the plate does or the finished piece has them filled back in.
-        for spot in statorPlateSpotFaces():
-            waistPlate -= Pos(0, 0, -jointZ) * mirrored(spot, Plane.YZ)
 
     # The two cable-tie arches, standing on the INBOARD face at each end of the
     # waist -- the face the actuators are on, where a lead is inside the leg

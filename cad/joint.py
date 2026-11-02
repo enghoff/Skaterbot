@@ -96,9 +96,6 @@ from cad.parameters import (
     statorPlateCenterX,
     statorPlateDiameter,
     statorPlateFlatOffset,
-    statorPlateOuterX,
-    statorScrewSpotFaceDepth,
-    statorScrewSpotFaceDiameter,
 )
 
 outputBoltRadius = 24.0 / 2  # actuatorOutputBoltCircle / 2
@@ -538,30 +535,6 @@ def rotorHub():
     return outputDisc() + rotorArmRaw + bridgeLightened
 
 
-def statorPlateSpotFaces() -> list:
-    """The four washer spot faces over the plate's rear bolts, as cutters.
-
-    A millimetre down into the head side for a 0.5 mm washer, so an M3 x 12
-    takes the thread an M3 x 14 did -- cad/parameters.py says why. Each is cut
-    from a millimetre outside the face so no cut ends coplanar with it. They
-    leave 1.7 mm of plate to the connector flat and 1.7 to the rim.
-
-    A FUNCTION OF ITS OWN because the plate is not the only body they cross:
-    cad/limb.py's waist stops a cap head short of the two bolts nearest it,
-    which is 0.4 mm inside a spot face, and a waist left uncut fills that 0.4
-    back in on the finished piece. Both bodies take the same four cuts.
-    """
-    spotLength = statorScrewSpotFaceDepth + 1.0
-    spotCenterX = statorPlateOuterX + statorScrewSpotFaceDepth - spotLength / 2
-    return [
-        _disc(statorScrewSpotFaceDiameter, spotLength, spotCenterX).moved(
-            Pos(0, y * rearBoltOffset, z * rearBoltOffset)
-        )
-        for y in (1, -1)
-        for z in (1, -1)
-    ]
-
-
 def statorPlate():
     """The flat limb's lower end, bolted straight to the actuator's rear cover.
 
@@ -605,14 +578,13 @@ def statorPlate():
         for z in (1, -1)
     ]
 
-    # The washer spot faces, 2026-09-30; statorPlateSpotFaces() says why.
-    spotFaces = statorPlateSpotFaces()
+    # The four rear bolts sat in washer spot faces a millimetre deep from
+    # 2026-09-30 to 2026-11-02, and were taken off at the owner's request;
+    # cad/parameters.py carries what that does to the screws' thread.
 
     # KCL-SHAPED: every cut on the plain disc, before anything else, as
     # everywhere here.
     plate = plateBlank - flatCutter
     for bolt in plateBolts:
         plate -= bolt
-    for spot in spotFaces:
-        plate -= spot
     return plate

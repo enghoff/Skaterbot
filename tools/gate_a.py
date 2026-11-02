@@ -756,11 +756,6 @@ ADDED = {
     # cad/torso.py: what the pelvis grew to hold all of that. Two rails under the
     # packs, four posts under the power-entry board, and the service panel that
     # replaced the tether slot in the rear wall.
-    # THE WHEEL MOTOR'S FOUR REAR SCREWS SIT IN SPOT FACES, 2026-09-30, a
-    # millimetre deep for a 0.5 mm DIN 125 washer, so an M3 x 12 from any shelf
-    # takes the thread MISUMI's M3 x 14 did.
-    "statorScrewSpotFaceDiameter": 7.6,
-    "statorScrewSpotFaceDepth": 1.0,
     "batteryRailThickness": 3.0,
     # 20 until 2026-09-30, outside the thinner packs; now just outboard of the
     # IMU's reservation, and starting at the left hip saddle's inboard face,

@@ -234,12 +234,12 @@
 
   <link name="shin_right">
     <inertial>
-      <origin xyz="6.96975761e-05 0.00412665966 -0.0955547836" rpy="0 0 0"/>
-      <mass value="0.192628"/>
-      <inertia ixx="1.925848593e-04" ixy="-2.578272929e-07" ixz="3.144801644e-07"
-               iyy="1.836930677e-04" iyz="-3.506540129e-05" izz="5.695046291e-05"/>
+      <origin xyz="6.96504515e-05 0.0041408865 -0.0955613941" rpy="0 0 0"/>
+      <mass value="0.192763"/>
+      <inertia ixx="1.926815304e-04" ixy="-2.576410638e-07" ixz="3.143886122e-07"
+               iyy="1.837629753e-04" iyz="-3.503952158e-05" izz="5.703511059e-05"/>
     </inertial>
-    <!-- shin limb plate, right — 31.1 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
+    <!-- shin limb plate, right — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__right">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -367,12 +367,12 @@
 
   <link name="shin_left">
     <inertial>
-      <origin xyz="6.96975761e-05 -0.00412665966 -0.0955547836" rpy="0 0 0"/>
-      <mass value="0.192628"/>
-      <inertia ixx="1.925848593e-04" ixy="2.578272913e-07" ixz="3.144801645e-07"
-               iyy="1.836930677e-04" iyz="3.506540134e-05" izz="5.695046294e-05"/>
+      <origin xyz="6.96504515e-05 -0.0041408865 -0.0955613941" rpy="0 0 0"/>
+      <mass value="0.192763"/>
+      <inertia ixx="1.926815305e-04" ixy="2.576410623e-07" ixz="3.143886123e-07"
+               iyy="1.837629753e-04" iyz="3.503952164e-05" izz="5.703511062e-05"/>
     </inertial>
-    <!-- shin limb plate, left — 31.1 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
+    <!-- shin limb plate, left — 31.2 g, measured: cad/shin.py, 105 mm, seven bodies, plate at the wheel -->
     <visual name="shin_limb_plate__left">
       <origin xyz="0 0 -0.0525" rpy="0 0 -1.57079633"/>
       <geometry>

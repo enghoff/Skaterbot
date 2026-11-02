@@ -152,7 +152,7 @@ EXPECTED_CHANGE_G = {
         "much and was never on the bill to lose.",
     ),
     "cad/shin.py": (
-        +2.6,
+        +2.9,
         "the same changes on the same shared limb geometry, which now includes "
         "the journal's anchor: a shin carries one at its knee end exactly as a "
         "thigh does at its hip, and the sleeve itself is a print of its own, "
@@ -179,10 +179,10 @@ EXPECTED_CHANGE_G = {
         "housing and stops the plate seating at all. What the plate gives up is "
         "its pilot, which cad/parameters.py argues is worth less than the "
         "clearance. Gate B holds the volumes exactly and tools/gate_e.py "
-        "asserts the millimetre in front of the plate is empty. AND THE WHEEL MOTOR'S FOUR REAR SCREWS SIT IN WASHER SPOT FACES, "
-        "2026-09-30, which is the 0.3 g this line came DOWN by: four of Ø7.6 x 1 "
-        "less the bolt hole, 145.1 mm3 a shin, so an M3 x 12 off any shelf does "
-        "what MISUMI's M3 x 14 did. Gate B holds it exactly.",
+        "asserts the millimetre in front of the plate is empty. THE WHEEL MOTOR'S "
+        "FOUR REAR SCREWS SAT IN WASHER SPOT FACES from 2026-09-30, 145.1 mm3 a "
+        "shin, and the 0.3 g they took off this line went back on when they "
+        "came off again on 2026-11-02, at the owner's request.",
     ),
     "cad/wheel_adapter.py": (
         -11.3,
