@@ -312,6 +312,58 @@ Subtotal **₹7,568.00**, free shipping, CGST and SGST ₹681.12 each; **total
 the plate for 220–240 V before plugging it in. The Yihua 853AAA-I preheater
 recommended with it was not ordered.
 
+## Bengaluru instant estimates — release 2e89fd7, 2026-11-02
+
+The shell, the deck and both shins, one of each, in PLA, read off each shop's
+own calculator. None is an order and none is a quote anyone has to honour. The
+STLs were written for these with `uv run tools/export.py --release --format stl`
+into the same release folder, since neither calculator takes STEP:
+
+| File | Prints | Up | cm³ | SHA-256 |
+|---|---:|---|---:|---|
+| pelvis-shell_2e89fd7.stl | 1 | +Z | 184.54 | e627920d6212 |
+| electronics-deck_2e89fd7.stl | 1 | -Z | 27.42 | 364dc5c1975a |
+| limb-105-unmirrored_2e89fd7.stl | 1 | -X | 33.55 | 46bced1fea0f |
+| limb-105-mirrored_2e89fd7.stl | 1 | +X | 33.55 | 520b8df5f3a1 |
+
+| Shop | Settings | Shell | Deck | Shin, each | Total | Leaves out |
+|---|---|---:|---:|---:|---:|---|
+| Dr.PrinT, drprint.in/calculator | PLA ₹6/g, Bambu A1, "Fine" 0.1 mm, 100 % infill, grid, 2 walls, no supports | ₹1,539.00 (256.5 g) | ₹211.80 (35.3 g) | ₹250.20 (41.7 g) | **₹2,301.20** with ₹50 setup | GST not stated; ±15 % |
+| Anuveshana, anuveshanatechnologies.in/upload | PLA, 100 % infill; no layer or colour setting priced | ₹686.49 (228.83 g) | ₹102.00 (34.00 g) | ₹124.81 (41.60 g) | **₹1,038.11** | supports, setup, tax, delivery: material only |
+| Rapid 3D, quote.rapid3d.co.in, the owner's account | FDM, PLA+ (no plain PLA offered), black, 100 % infill, "As Printed", no brass inserts, standard inspection; no layer height offered | ₹1,863.82 | ₹276.91 | ₹338.86 | **₹2,818.47**; with SGST and CGST at 9 % each and ₹200 shipping, ₹3,561.79 | nothing; whether collection drops the ₹200 is not stated |
+
+The Rapid 3D quote was saved with "Generate Quotation", which left the page
+unresponsive behind what is most likely a browser dialog, so its quotation
+number was not read.
+
+## Makenica — 3D print quote RH0AD5, release 2088e6f
+
+- **Quote built:** 2026-11-02, at console.makenica.com/quotes/18393. **Not
+  ordered**: about 2.6 times Zbotic's price for the same four pieces.
+- **Release:** `exports/releases/2088e6f/`, the same files as the Zbotic cart
+  below: the pelvis shell, the electronics deck and both shins. `cad/` carried
+  uncommitted work at the time (the spot faces off the wheel motors' stator
+  plates, which are on the shins), so the shins quoted are not the working copy.
+- **Settings, the same on every line:** FDM, PLA, black. Infill "Solid (50% -
+  80%)", the highest Makenica offers, and layer height "Standard (200 μm)", the
+  finest; the other choices are 250 and 300 μm. Threaded inserts 0. No finishing
+  chosen. Each part's note asks for 100 % infill and 0.12 mm if possible, gives
+  the orientation as in the Zbotic notes below, and says the parts will be
+  collected from the JC Industrial Estate shop, not couriered. Every note was
+  read back after a fresh load: the site saves a note typed after its
+  next-part arrow onto the previous part.
+
+| Piece | Makenica read, mm | Line, before discount and GST |
+|---|---|---:|
+| pelvis-shell × 1 | 178 × 72 × 137 | ₹3,367.83 |
+| electronics-deck × 1 | 148 × 66 × 9 | ₹381.11 |
+| limb-105-unmirrored (left shin) × 1 | 10 × 46 × 149 | ₹623.47 |
+| limb-105-mirrored (right shin) × 1 | 10 × 46 × 149 | ₹623.47 |
+
+₹4,995.88, less a 10 % offer of ₹499.59, is ₹4,496.29, plus GST at 18 %
+₹809.33: **₹5,305.62**. Shipping shown as "-". Zbotic priced the same four at
+₹2,054 with 18 % GST, at 0.12 mm and 100 % infill.
+
 ## Zbotic — 3D print cart, release 2088e6f
 
 - **Cart built:** 2026-10-20, through zbotic.in/3d-print-order/. **Not placed.**
