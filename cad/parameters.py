@@ -468,21 +468,16 @@ statorPlateDiameter = cheekDiameter
 # is a mating face. Screws cross 3.2 mm of cover into 4 mm of thread, so a
 # 6 mm plate wanted M3 x 14 where the old 3 mm cheek wanted M3 x 12.
 #
-# IT TOOK AN M3 x 12 FROM 2026-09-30, because nobody sells an M3 x 14 in 12.9
+# IT TAKES AN M3 x 12 NOW, 2026-09-30, because nobody sells an M3 x 14 in 12.9
 # on a hobby shop's shelf: fastdep stocks every length but that one, and the
-# only source was MISUMI at Rs 38 a screw. Each of the four rear screws sat in
-# a spot face a millimetre deep, Ø7.6 for a standard 0.5 mm DIN 125 washer, so
-# washer, 5 mm of plate and 3.2 of cover left an M3 x 12 the same 3.3 mm of
-# thread the M3 x 14 had. Only the wheel motors' plates carried them: the knee
-# is a straddled clevis now and its screws pass a 3 mm cheek like the hip's.
-#
-# THE SPOT FACES CAME OFF ON 2026-11-02, and the plate is the full 6 mm under
-# every head again. The shin prints lying on the face they were cut into, so
-# each was a 1 mm pocket against the bed, and the supports Zbotic's slicer put
-# in them could not be got out. The washer went with them: an M3 x 12 with its
-# head straight on the plate engages 2.8 mm of the motor's 3.8 mm hole, where
-# it engaged 3.3, and stops 1.0 mm short of the bottom. On the washer it would
-# have been 2.3.
+# only source was MISUMI at Rs 38 a screw. Each of the four rear screws sits in
+# a spot face a millimetre deep, sized for a standard 0.5 mm DIN 125 washer, so
+# washer, 5 mm of plate and 3.2 of cover leave an M3 x 12 the same 3.3 mm of
+# thread the M3 x 14 had, and 1.7 mm of plate to the connector flat and to the
+# rim. Only the wheel motors' plates carry these: the knee is a straddled clevis now
+# and its screws pass a 3 mm cheek like the hip's.
+statorScrewSpotFaceDiameter = 7.6  # a DIN 125 M3 washer, Ø7.0, and 0.3 round it
+statorScrewSpotFaceDepth = 1.0
 statorPlateInnerX = -(actuatorDepth / 2)
 statorPlateOuterX = statorPlateInnerX - limbPlateThickness
 statorPlateCenterX = statorPlateInnerX - (limbPlateThickness / 2)

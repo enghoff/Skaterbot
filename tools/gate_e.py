@@ -403,6 +403,20 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     ]
     rows["thigh-105-mirrored"] = rows["thigh-105-unmirrored"]
 
+    # THE SHIN'S FOUR SPOT FACES, 2026-09-30, and the thigh does not carry them:
+    # they are on the wheel motor's stator plate, and the knee is a clevis. They
+    # are what lets an M3 x 12 do an M3 x 14's job, so a union over the plate that
+    # filled them would put the screws back on MISUMI's shelf.
+    from cad.parameters import statorScrewSpotFaceDiameter
+
+    spotFaces = (
+        "washer spot faces over the wheel motor's four rear screws",
+        statorScrewSpotFaceDiameter / 2,
+        4,
+    )
+    rows["limb-105-unmirrored"] = [*rows["limb-105-unmirrored"], spotFaces]
+    rows["limb-105-mirrored"] = rows["limb-105-unmirrored"]
+
     # THE WHEEL ADAPTER, which had no rows here until 6 October 2026 although it
     # carries the joint whose holes this gate was written for. It shares the
     # limbs' output disc, and it is three bodies left apart precisely because the

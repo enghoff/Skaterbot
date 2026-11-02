@@ -2727,10 +2727,6 @@ faces lost 1.8 mm³ to the shin's waist, whose end stops a cap head short of the
 two nearest bolts and so 0.4 mm inside their spot faces. Gate B's figure came out
 143.3 mm³ removed against 145.1 of arithmetic, which is how it was found, and the
 waist now takes the same four cuts from `cad/joint.py`'s `statorPlateSpotFaces()`.
-(The spot faces came off on 2026-11-02. The shin prints lying on the face they
-were cut into, so each was a 1 mm pocket against the bed, and Zbotic's supports
-in them could not be removed. The wheel's M3 × 12 goes in without a washer now,
-head straight on the 6 mm plate, and engages 2.8 mm.)
 The output screws default to M3 × 8, because the vendor STEP shows 6.5 mm of
 thread, with 40 M3 × 6 bought as the fallback.
 

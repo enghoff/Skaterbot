@@ -114,10 +114,7 @@ The hips and knees now take an M3 × 10 on one 0.5 mm washer. The wheel motors'
 6 mm plate has a 1 mm washer spot face at each rear screw, so an M3 × 12 on
 one 0.5 mm washer gets the same 3.3 mm of thread. The first version of the spot
 faces was partly filled back in by the shin's waist, 1.8 mm³ of it, which gate
-B's arithmetic caught, and the waist took the same cuts. The spot faces came
-off on 2026-11-02, because the shin prints lying on that face and the supports
-in them could not be removed; the wheel's M3 × 12 now goes in without a washer
-and engages 2.8 mm. The output screws
+B's arithmetic caught. The waist now takes the same cuts. The output screws
 default to M3 × 8, because the vendor STEP shows 6.5 mm of thread. The two
 fasteners nobody stocks are designed out:
 
