@@ -54,10 +54,18 @@ readouts come from actual feedback.
   from fresh motor feedback, then refreshes the command fields and plot history.
   If zero cannot be confirmed, only the selected motor is disabled and the
   console reports the failure. There is no blocking zero-confirmation dialog
-  to interrupt browser heartbeats.
+  to interrupt browser heartbeats, and no action asks with the browser's own
+  confirm box: it stops the heartbeat while open, and half a second without
+  one releases control, so the confirmed action was refused. The console asks
+  in a dialog of its own instead.
 - **Registers:** read all, write RAM, save flash, change CAN and feedback IDs.
   Writes and saves require fresh disabled feedback. Bit rate is blocked;
   CAN ID changes use the dedicated action and check for address collisions.
+  Typing a new CAN ID fills in the feedback ID as CAN ID + 0x10, which can
+  still be edited before saving. A change waits for a running scan instead of
+  being refused, and the selection follows the motor to its new ID. Each
+  browser keeps its own motor list, so a console rescans whenever it takes
+  control, and a scan drops motors that no longer answer.
 - **System:** controller identity, reset/crash details, link counters, power
   state, battery voltage, bus errors, IMU values/rate/accuracy/age, IMU report
   controls/product/reset/diagnostic snapshot, I²C transactions and robot power-off.

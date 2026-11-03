@@ -41,7 +41,7 @@
 <section id="registers" class="panel card" hidden><div class="section-title"><h2>Registers <span class="target"></span></h2><div class="toolbar"><button data-op="read">Read all</button><button data-op="save">Save to flash</button></div></div>
   <form id="register-form" class="toolbar"><label>Register<select id="reg-select"></select></label><label>Value<input id="reg-value" required></label><button>Write RAM</button></form><p id="reg-description" class="muted"></p>
   <div class="table-scroll"><table><thead><tr><th>Address</th><th>Register</th><th>Value</th><th>Range</th><th>Access</th></tr></thead><tbody id="register-rows"></tbody></table></div>
-  <form id="id-form" class="toolbar"><label>New CAN ID<input id="new-id" type="number" value="1" min="1" max="15"></label><label>Feedback ID<input id="new-master" value="0x101"></label><button>Change ID & save</button></form>
+  <form id="id-form" class="toolbar"><label>New CAN ID<input id="new-id" type="number" value="1" min="1" max="15"></label><label>Feedback ID<input id="new-master" value="0x11"></label><button>Change ID & save</button></form>
 </section>
 <section id="system" class="panel" hidden>
   <article class="card"><div class="section-title"><h2>Controller & power</h2><button data-op="power.off" class="danger subtle">Power off robot</button></div><div id="system-readings" class="readings"></div><details><summary>Controller payload</summary><pre id="controller"></pre></details></article>
@@ -64,5 +64,6 @@
 <section id="traffic" class="panel card" hidden><div class="section-title"><h2>CAN & log</h2><div class="toolbar"><label>Bus<select id="traffic-bus"><option value="">All</option><option>A</option><option>B</option><option>C</option></select></label><label>CAN ID<input id="traffic-id" placeholder="All"></label><label><input id="pause" type="checkbox"> Pause</label><button id="clear-log">Clear</button><button id="export-log">Export</button></div></div><pre id="log"></pre></section>
 </div>
 </main>
+<dialog id="ask"><form method="dialog"><p id="ask-text"></p><div class="toolbar"><button value="no">Cancel</button><button id="ask-yes" value="yes" class="primary">Yes</button></div></form></dialog>
 <footer><span id="footer-status">—</span><span>BPI · local diagnostics</span></footer>
 </body></html>

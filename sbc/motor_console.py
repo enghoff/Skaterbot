@@ -302,6 +302,12 @@ class Session:
                         motor.registers[dm.RID["TIMEOUT"]] = bus.read(
                             can_id, dm.RID["TIMEOUT"]
                         )
+                    else:
+                        # Each browser keeps its own motor list, so a motor
+                        # given a new ID from another browser would otherwise
+                        # stay listed here at its old ID, stale, for good.
+                        bus.motors.pop(can_id, None)
+                        self.commands.pop(f"{bus.name}:{can_id}", None)
             return "scan complete"
         if op == "limits":
             spans = dict(

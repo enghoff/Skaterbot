@@ -4,6 +4,11 @@ let ws, state = {}, schema = [], selected = null, sequence = 0, loaded = null;
 let reconnect, heartbeat, lastState = 0, shutdownRequested = false;
 let queuedCommand = null, queuedLimits = null, queuedZero = null, limitsLoaded = false;
 let autoScanNeeded = true, autoControlAfter = 0, wifiState = {}, wifiSignature = "";
+// A CAN ID change in flight: {from, to, master, target, until}. While it is
+// pending the selection stays put, and once it lands the selection follows the
+// motor to wherever it now answers, instead of falling back to the first motor.
+let idChange = null;
+const hex = n => "0x" + Number(n).toString(16).toUpperCase();
 const pending = new Map(), history = new Map(), zeroRevisions = new Map(), logs = [];
 const fields = {p:["Position · rad",0,-100,100,.01],v:["Speed · rad/s",0,-100,100,.01],kp:["Kp",1,0,500,.1],kd:["Kd",.05,0,5,.01],t:["Torque · Nm",0,-5,5,.01],vlim:["Speed limit · rad/s",1,0,100,.1],ilim:["Current · pu",.2,0,1,.01]};
 const limits = {torque:["Torque · Nm",.5,0,5,.1],kp:["Kp",10,0,500,1],kd:["Kd",1,0,5,.1],speed:["Speed · rad/s",5,0,100,1],current:["Current · pu",.3,0,1,.01],rate:["Stream · Hz",200,10,500,10]};
@@ -17,12 +22,14 @@ function makeFields(id, data) {
 }
 makeFields("command-fields", fields); makeFields("limit-fields", limits);
 function notice(text, error=false) { $("notice").textContent = text; $("notice").classList.toggle("error",error); }
-function confirmAction(text) {
-  const accepted = confirm(text);
-  // The native dialog pauses JS message handlers and timers. Give queued
-  // state messages time to run before judging the stream stale.
-  lastState = performance.now();
-  return accepted;
+// Ask in the page, never with confirm(): the native dialog stops this page's
+// heartbeat for as long as it is open, and half a second without one releases
+// control, so the action confirmed after it was refused with "take control".
+function ask(text, then) {
+  const dialog = $("ask");
+  $("ask-text").textContent = text; dialog.returnValue = "";
+  dialog.onclose = () => { if (dialog.returnValue === "yes") then(); };
+  dialog.showModal(); $("ask-yes").focus();
 }
 function send(op, extra={}) {
   if (!ws || ws.readyState !== WebSocket.OPEN) { notice("Console disconnected",true); return; }
@@ -33,6 +40,9 @@ function motor() { return state.motors?.find(m => m.key === selected); }
 function formValues(form) { return Object.fromEntries(new FormData(form)); }
 function flushCommand() {
   if (pending.size) return;
+  // An ID change waits for whatever was running, such as the scan that follows
+  // taking control, rather than being refused as "another action is running".
+  if(idChange && !idChange.sent){idChange.sent=true;notice(`Moving ${idChange.from} to ${idChange.to}…`);send("id",{motor:idChange.from,new_id:idChange.id,master:idChange.value});return;}
   if(queuedZero){const target=queuedZero;queuedZero=null;send("zero",{motor:target});return;}
   if (queuedLimits) {
     const values=queuedLimits; queuedLimits=null;
@@ -92,9 +102,13 @@ function connect() {
       if (message.ok && ["enable","hold"].includes(op)) loaded = null;
       if (op === "write") $("motor-mode").value = motor()?.mode || "";
       if (op === "scan") $("scan-status").textContent=message.ok?"CAN discovery complete":message.error;
+      if (op === "id" && idChange) idReply(message);
       flushCommand();
     }
     if (message.type === "state") {
+      // Every browser keeps its own motor list, and another one may have
+      // changed an ID since this one last scanned: rescan on taking control.
+      if (message.control && !state.control) autoScanNeeded = true;
       state = message; lastState = performance.now();
       if(!state.connected){autoScanNeeded=true;limitsLoaded=false;}
       if(message.status?.shutting_down && !shutdownRequested){shutdownRequested=true;notice("Robot is shutting down");}
@@ -111,7 +125,7 @@ function connect() {
       autoDiscover();
     }
   };
-  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); queuedCommand = queuedLimits = queuedZero = null; zeroRevisions.clear();history.clear();limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; render(); renderWifi(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
+  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); idChange = null; queuedCommand = queuedLimits = queuedZero = null; zeroRevisions.clear();history.clear();limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; render(); renderWifi(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
 }
 function cell(row,text,tag="td") { const element = document.createElement(tag); element.textContent = text ?? "—"; row.append(element); return element; }
 function reading(parent,title,value,unit="") {
@@ -125,7 +139,7 @@ function loadCommand(m) {
   for(const key of [...Object.keys(fields),"wave","amp","freq"]) $("command-form").elements[key].value = m.command[key];
   const shown = {1:["p","v","kp","kd","t"],2:["p","vlim"],3:["v"],4:["p","vlim","ilim"]}[m.mode] || [];
   for(const key of Object.keys(fields)) $("command-form").elements[key].parentElement.hidden = !shown.includes(key);
-  $("new-id").value=m.id; $("new-master").value=m.master;
+  $("new-id").value=m.id; $("new-master").value=hex(m.master);
   loaded=commandVersion(m);
 }
 function commandVersion(m){return `${m.key}:${m.mode}:${m.command.zero_revision || 0}`;}
@@ -139,7 +153,12 @@ function render() {
   if(!connected) $("scan-status").textContent="Waiting for controller…";
   else if(!state.control) $("scan-status").textContent=state.status?.pi?.control?"Waiting for the other console to finish…":"Connecting to controller…";
   const motors=state.motors || [];
-  if(!motors.some(m=>m.key===selected)){selected=motors[0]?.key || null; loaded=null;}
+  if(idChange && performance.now()<idChange.until){
+    if(idChange.target && motors.some(m=>m.key===idChange.target)){selected=idChange.target;loaded=null;idChange=null;}
+  } else {
+    idChange=null;
+    if(!motors.some(m=>m.key===selected)){selected=motors[0]?.key || null; loaded=null;}
+  }
   // Preserve button identity across telemetry updates, including between
   // pointer-down and click, so incoming feedback cannot swallow a selection.
   const buttons = new Map([...$("motors").children].map(b=>[b.dataset.key,b]));
@@ -213,7 +232,8 @@ function renderWifi() {
       const row=document.createElement("div"), name=document.createElement("span"), forget=document.createElement("button");row.className="saved-network toolbar";
       name.textContent=ssid+(ssid===wifiState.current?" · connected":"")+(ssid===wifiState.preferred?" · preferred":"");
       forget.textContent="Forget";forget.type="button";
-      forget.onclick=()=>{if(ssid===wifiState.current&&!confirmAction(`Forget ${ssid} and disconnect the BPI from this network?`))return;queuedCommand=queuedLimits=null;send("wifi.forget",{ssid});renderWifi();};
+      const forgetNow=()=>{queuedCommand=queuedLimits=null;send("wifi.forget",{ssid});renderWifi();};
+      forget.onclick=()=>{if(ssid===wifiState.current)ask(`Forget ${ssid} and disconnect the BPI from this network?`,forgetNow);else forgetNow();};
       row.append(name,forget);$("wifi-saved").append(row);
     }
     if(!saved.length) $("wifi-saved").textContent="No saved networks";
@@ -228,10 +248,10 @@ document.querySelectorAll("[data-op]").forEach(button=>button.onclick=()=>{
   queuedCommand=queuedLimits=queuedZero=null;
   if(op==="zero"){queuedZero=selected;flushCommand();render();return;}
   const confirmations={save:"Save this motor’s settings to flash?", "power.off":"Stop all motors and power off the robot?", "daemon.stop":"Stop diagd and all motors?"};
-  if(confirmations[op]&&!confirmAction(confirmations[op]))return;
-  send(op,{motor:selected,last:$("scan-last").value,hz:$("imu-hz").value});
+  const extra={motor:selected,last:$("scan-last").value,hz:$("imu-hz").value};
+  if(confirmations[op]) ask(confirmations[op],()=>send(op,extra)); else send(op,extra);
 });
-$("stop").onclick=()=>{queuedCommand=queuedLimits=queuedZero=null;send("stop");};document.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();queuedCommand=queuedLimits=queuedZero=null;send("stop");}});
+$("stop").onclick=()=>{queuedCommand=queuedLimits=queuedZero=null;send("stop");};document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("ask").open)e.preventDefault();queuedCommand=queuedLimits=queuedZero=null;send("stop");}});
 $("command-form").onsubmit=e=>{e.preventDefault();editCommand();};
 $("command-form").oninput=editCommand;
 $("command-form").onchange=editCommand;
@@ -243,7 +263,32 @@ $("wifi-form").onsubmit=e=>{e.preventDefault();queuedCommand=queuedLimits=null;s
 $("wifi-network").onchange=renderWifi;
 setInterval(()=>{if(!$("wifi").hidden && ws?.readyState===WebSocket.OPEN && !document.hidden && ![...pending.values()].some(op=>op.startsWith("wifi."))){send("wifi.status");}},2000);
 $("register-form").onsubmit=e=>{e.preventDefault();send("write",{motor:selected,rid:$("reg-select").value,value:$("reg-value").value});};
-$("id-form").onsubmit=e=>{e.preventDefault();if(confirmAction("Change this motor’s CAN and feedback IDs and save to flash?"))send("id",{motor:selected,new_id:$("new-id").value,master:$("new-master").value});};
+$("id-form").onsubmit=e=>{e.preventDefault();
+  if(!selected) return;
+  if(idChange){notice(`${idChange.from} is still being moved to ${idChange.to}`,true);return;}
+  const id=Number($("new-id").value), master=Number($("new-master").value);
+  if(!Number.isInteger(id) || !Number.isInteger(master)){notice("The CAN ID and feedback ID must be whole numbers",true);return;}
+  const to=`${selected.split(":")[0]}:${id}`;
+  const from=selected;
+  ask(`Give ${from} CAN ID ${id} and feedback ID ${hex(master)}, and save them to its flash?`,()=>{
+    if(idChange) return;
+    idChange={from,to,id,value:master,master:hex(master),target:null,until:Infinity,sent:false};
+    if(pending.size) notice(`Moving ${from} to ${to} once the current action finishes…`);
+    flushCommand();});};
+function idReply(message){
+  const {from,to,master}=idChange, r=message.result || {};
+  if(!message.ok){idChange=null;notice(`${from} was not changed: ${message.error}`,true);render();return;}
+  idChange.target=r.at_new ? to : r.at_old ? from : null;
+  idChange.until=performance.now()+3000;
+  if(idChange.target){selected=idChange.target;loaded=null;}
+  if(r.at_new && from===to) notice(r.saved?`${to} now sends feedback on ${master}, saved to flash.`:`${to} now sends feedback on ${master}, but the save to flash was not confirmed: it may revert at power-off.`,!r.saved);
+  else if(r.at_new) notice(r.saved?`${from} is now ${to}, feedback on ${master}, saved to flash.`:`${from} is now ${to}, feedback on ${master}, but the save to flash was not confirmed: it may revert at power-off.`,!r.saved);
+  else if(r.at_old) notice(`${from} still answers at its old ID. Power-cycle it and scan; if it is still at ${from}, the change did not take.`,true);
+  else notice(`${from} answers at neither ${from} nor ${to}. Power-cycle it and scan.`,true);
+  render();
+}
+// Typing a CAN ID suggests the bench convention's feedback ID, CAN ID + 0x10.
+$("new-id").oninput=()=>{const id=Number($("new-id").value);if(Number.isInteger(id)&&id>=1&&id<=15)$("new-master").value="0x"+(id+0x10).toString(16).toUpperCase();};
 $("i2c-form").onsubmit=e=>{e.preventDefault();send("i2c",formValues(e.target));};
 $("reg-select").onchange=selectRegister;
 $("traffic-bus").onchange=renderLog;$("traffic-id").oninput=renderLog;$("pause").onchange=renderLog;
