@@ -106,6 +106,97 @@ What this cannot do: a motor that has lost its CAN bus entirely hears no
 disable, and holds its last command unless its own TIMEOUT register is set.
 That register is the fourth watch, and it is still 0 on the motors read so far.
 
+## The heartbeat LEDs
+
+Both boards' LEDs beat the heartbeat while all is well, exactly as before, and
+blink a fault's pattern instead while something is wrong. Both go dark when the
+robot shuts down, as before. So a blink that is not the heartbeat is always a
+fault, and a dark LED is a shutdown, a robot with no power, or a board that is
+not running at all; no fault pattern is ever steady or dark.
+
+| The LED | Means | What to do |
+|---|---|---|
+| two short flashes every 1.26 s | healthy | nothing |
+| a fast flicker, five times a second | the IMU: found but sending no reports, or not answering at all | power-cycle the robot; if it persists, check the IMU's cable |
+| an even blink, once a second | the link: the controller hears nothing from the Pi, or the Pi nothing from the controller | see whether diagd is running, and whether the controller is running `firmware/diag` |
+| lit, with a short wink dark every 1.2 s | other hardware: the INA226 battery monitor is not answering, or a CAN bus went bus-off | check the battery monitor and the CAN wiring |
+| dark | shutting down, or off | nothing |
+
+When more than one holds, the link is shown first, then the IMU, then the
+rest. A fault clears from the LED by itself within a second or so of its cause
+clearing, and diagd logs each change in plain words:
+
+```text
+health: imu fault, shown as a fast flicker: the IMU answers on I2C but has sent no report since it was found; power-cycle the robot
+health: all clear; the LEDs beat their heartbeat
+```
+
+The controller's LED blinking the link while the Pi's beats means diagd is not
+running. The Pi's blinking the link while the controller's is dark means the
+controller is not running its firmware: in the bootloader after a crash, or
+being flashed.
+
+**The controller judges**, because it sees each condition first hand: it asks
+for the IMU's reports itself when it finds it, and reads every packet the IMU
+sends. Its LED therefore needs nothing from the Pi, and works with diagd
+stopped, old, or not yet booted. It tells the Pi its verdict in HEALTH, and
+diagd shows the same on the Pi's LED, so the two agree, adding only what the
+controller cannot say: that its status has stopped arriving. The rules, in
+`firmware/diag/src/health.rs`:
+
+- **IMU silent:** found, and no input report since it was first found, for
+  3 s. A rediscovery does not restart the count, so an IMU that resets itself
+  over and over without reporting is still silent; once it has reported, a
+  client turning its reports off is not a fault. This is the fault seen after
+  some power-ons: found, product ID answered, no Set Feature answered, no
+  reports. An IMU that reports and then stops while still answering is not
+  caught; the robot has not shown that.
+- **IMU missing**, **INA226 missing:** not found for 3 s. A reset's 300 ms
+  quiet period does not count.
+- **Bus-off:** seen in any status, shown for 5 s after. A bus recovers from
+  bus-off by itself in about 1.4 ms, so it is only seen while frames keep
+  failing on it; a bus with nothing on it goes error-passive, not bus-off.
+- **Nothing from the Pi:** the 300 ms deadman has tripped, or the Pi has not
+  been heard in the 30 s since the controller started. The Pi boots in about
+  15 s, so the first half-minute after power-on shows the heartbeat.
+
+diagd's own rule is that no status for 0.5 s, or none in the 5 s after it
+starts, is a link fault. With a controller image that predates HEALTH it
+judges the rest from STATUS and IMU_DIAG instead, more coarsely: the IMU or the
+INA226 not found for 3 s, a bus seen in bus-off, and the IMU found for 3 s with
+not one input report since the controller started.
+
+**On the Pi**, diagd drives `/sys/class/leds/red:status`. Healthy is the
+kernel's heartbeat trigger with `invert=1`, as `robot_poweroff.py
+--start-heartbeat` leaves it at boot, and diagd does not touch the LED while
+that is what it shows. A fault is the timer trigger, its `delay_on` and
+`delay_off` swapped because this LED is lit at brightness 0. diagd runs as
+admin and the files are root's, so it writes them through `sudo -n tee`,
+which the admin account's passwordless sudo allows; if it cannot, it says so
+once and carries on. When diagd stops it puts the heartbeat back, so a fault's
+blink never outlives the program that judged it. Shutdown works as before:
+once Linux accepts it, the hook darkens a heartbeat and diagd darkens a
+fault's blink, and nothing lights it again.
+
+**Compatibility.** HEALTH is a new message from the controller, and nothing
+new goes to it. An older diagd ignores a message type it does not know,
+without logging it (checked against the committed daemon), and logs the
+controller's `health:` lines as ordinary log. A newer diagd with an older image
+falls back to its own judgement. INFO carries `health=1` on images that send
+HEALTH; the protocol version and the 127-byte STATUS are unchanged. A later
+HEALTH version may append to its body and keeps the first four bytes.
+
+**Tested on the PC, 2026-11-04**, against `diag_sim.py` modelling the new
+firmware, with a fake sysfs directory standing in for the LED: an IMU dead from
+power-on is shown 3.4 s after start, a software reset does not clear it, and
+the IMU coming back clears it within half a second; a missing IMU and INA226,
+a bus-off held 5 s, and a link that stops are each shown with their own
+pattern; a shutdown leaves the LED dark through a standing fault and through
+diagd's exit; and a healthy robot's heartbeat is left untouched, with nothing
+written. The firmware's rules pass their host tests (`rustc --test
+--edition=2024 diag/src/health.rs`), and it builds clean under clippy. Neither
+LED has yet been watched on the robot.
+
 ## The controller's link, J5
 
 USART1 to UART4 at **1 500 000 baud**, 8N1. 115 200 carries about 570 CAN frames
@@ -142,6 +233,7 @@ The controller sends:
 | 0x90 | CAN_RECV | time u32 µs, bus u8, flags u8, id u32, then the data |
 | 0xA0 | IMU_PACKET | time u32 µs, then one SHTP packet as the IMU sent it |
 | 0xA1 | I2C_RESULT | tag u8, status u8 (0 done, 1 refused, 2 timed out, 3 failed), then what was read |
+| 0xA3 | HEALTH | version u8 (1), fault u8 (0 none, 1 link, 2 IMU, 3 hardware), conditions u16; on every change and once a second ([the heartbeat LEDs](#the-heartbeat-leds)) |
 | 0xE0 | LOG | time u32 µs, then a line of text |
 
 STATUS is fixed at 127 bytes: time u32 µs; uptime u32 ms; flags u8 (bit 0 HOLD
@@ -327,7 +419,7 @@ The events:
 | `imu` | `t`, `report` (`accel`, `gyro`, `mag`, `linear`, `rotation`, `gravity`, `game`), `status` 0-3, `v` in SI units |
 | `imu.raw` | `t`, `data`: one SHTP packet |
 | `imu.diag` | decoded `IMU_DIAG` fields; also cached under `status.imu_diag` |
-| `status` | the controller's STATUS decoded, with the daemon's own counters and the link's state |
+| `status` | the controller's STATUS decoded, with the daemon's own counters, the link's state, and `health`: the fault the LEDs show, the conditions behind it, and what the Pi's LED was set to |
 | `log` | `t`, `text`: from the controller or the daemon |
 | `stopped` | `why`: every motor has just been told to stop |
 
@@ -363,6 +455,14 @@ uv run bench/motor_gui.py --robot ssh:admin@<the Pi>
 SSH configuration gives that destination; options can go before it,
 `ssh:-i ~/.ssh/key admin@<the Pi>`. On Windows it uses Windows' own OpenSSH.
 
+`--led` names the status LED's sysfs directory, `/sys/class/leds/red:status`
+on the robot by default and none with `--sim`; `--led none` leaves the LED
+alone. `--sim-faults imu-dead` gives the simulated controller an IMU that is
+found and answers its product ID but takes no Set Feature and sends no report,
+as the robot's has after some power-ons; `imu-missing`, `ina-missing` and
+`bus-off` are the others, comma-separated. `Controller.set_fault` in
+`diag_sim.py` gives and takes them away while it runs.
+
 **Without hardware**, `python sbc/diagd.py --sim` runs the daemon against
 `sbc/diag_sim.py`: a controller with two simulated DM-J3507-2EC on each bus,
 answering register reads, writes and saves, enabling, disabling, setting zero
@@ -394,6 +494,10 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
   going unacknowledged, retried for 5 ms each, and not noise.
 - **The controller's own watches.** The stop, the deadman and the button are
   the firmware's, and only the simulator's copies of them have been timed.
+- **The heartbeat LEDs.** Both patterns as an eye sees them on the robot,
+  and the Pi's timer trigger and sudo writes on the real sysfs. Whether the
+  IMU's silent fault after a cold start is shown, and clears after the power
+  cycle, can only be seen when it next happens.
 - **I2C.** The carrier has detected INA226 at 0x40 and BNO085 at 0x4B. The
   earlier host recovery validation covered the IMU-only bus with the
   battery-monitor PCB removed for isolation. The user measured 3.299 V at

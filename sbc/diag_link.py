@@ -26,7 +26,42 @@ CAN_SEND, IMU_WRITE, I2C = 0x10, 0x20, 0x21
 # The controller's messages to the Pi.
 INFO, STATUS, STOPPED = 0x81, 0x82, 0x83
 CAN_RECV, IMU_PACKET, I2C_RESULT, LOG = 0x90, 0xA0, 0xA1, 0xE0
-IMU_DIAG = 0xA2
+IMU_DIAG, HEALTH = 0xA2, 0xA3
+
+# HEALTH's conditions, one bit each, as firmware/diag/src/health.rs judges them.
+IMU_MISSING, IMU_SILENT, INA_MISSING, BUS_OFF, PI_SILENT = (1 << n for n in range(5))
+HEALTH_NAMES = {
+    IMU_MISSING: "imu missing",
+    IMU_SILENT: "imu silent",
+    INA_MISSING: "ina226 missing",
+    BUS_OFF: "bus off",
+    PI_SILENT: "pi silent",
+}
+# HEALTH's fault: what the controller's LED shows.
+FAULTS = {0: None, 1: "link", 2: "imu", 3: "hardware"}
+
+
+def health(flags: int) -> bytes:
+    """The body of a HEALTH, for diag_sim.py: version, fault, conditions."""
+    if flags & PI_SILENT:
+        fault = 1
+    elif flags & (IMU_MISSING | IMU_SILENT):
+        fault = 2
+    elif flags & (INA_MISSING | BUS_OFF):
+        fault = 3
+    else:
+        fault = 0
+    return struct.pack("<BBH", 1, fault, flags)
+
+
+def parse_health(body: bytes) -> tuple[str | None, int]:
+    """(the fault the controller's LED shows, its conditions). A later version
+    may append to the body and keeps these four bytes as they are."""
+    version, fault, flags = struct.unpack_from("<BBH", body)
+    if version < 1:
+        raise ValueError(f"HEALTH version {version}")
+    return FAULTS.get(fault, f"fault {fault}"), flags
+
 
 IMU_DIAG_FIELDS = (
     "version",

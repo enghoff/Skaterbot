@@ -31,6 +31,9 @@ pub mod mcu {
     pub const CAN_RECV: u8 = 0x90;
     pub const IMU_PACKET: u8 = 0xA0;
     pub const IMU_DIAG: u8 = 0xA2;
+    /// Additive: version u8, fault u8, condition flags u16. An image that
+    /// predates it never sends one, and a daemon that predates it ignores it.
+    pub const HEALTH: u8 = 0xA3;
     pub const I2C_RESULT: u8 = 0xA1;
     pub const LOG: u8 = 0xE0;
 }

@@ -402,6 +402,11 @@ pub mod power {
 // --------------------------------------------------------------------------
 // Heartbeat
 
+/// [`heartbeat`]'s period and flash, for an image that beats it itself
+/// (the diag image, which shows faults on the same LED).
+pub const HEARTBEAT_PERIOD_MS: u64 = 300 + 6720 / 7;
+pub const HEARTBEAT_FLASH_MS: u64 = 70;
+
 /// The Banana Pi's heartbeat, on an LED of this board: two 70 ms flashes, the
 /// second a quarter of a period after the first, then dark to the end of it.
 ///
@@ -414,8 +419,8 @@ pub mod power {
 /// A latched shutdown request cancels the pattern and leaves this LED dark;
 /// the executor and its safety watchdog continue running.
 pub async fn heartbeat(led: &mut embassy_stm32::gpio::Output<'_>) -> ! {
-    const PERIOD_MS: u64 = 300 + 6720 / 7;
-    const FLASH_MS: u64 = 70;
+    const PERIOD_MS: u64 = HEARTBEAT_PERIOD_MS;
+    const FLASH_MS: u64 = HEARTBEAT_FLASH_MS;
     let beat = async {
         loop {
             led.set_high();

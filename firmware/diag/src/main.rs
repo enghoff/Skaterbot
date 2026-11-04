@@ -29,10 +29,17 @@
 //! when the Pi has said nothing for [`DEADMAN`], on the power button's
 //! half-second press, and as it starts.
 //!
+//! Its LED, D1, beats board::heartbeat's heartbeat while all is well and shows
+//! a fault's pattern while something is wrong ([`health`]): the IMU missing or
+//! found and silent, the INA226 missing, a bus gone bus-off, or nothing from
+//! the Pi. It tells the Pi the same in HEALTH, so the Pi's LED can agree.
+//!
 //! Nothing here has run on the robot yet: what has is `wheel_check`, on bus C.
 
 #![no_std]
 #![no_main]
+
+mod health;
 
 use core::cell::RefCell;
 use core::fmt::Write as _;
@@ -59,6 +66,14 @@ use embassy_time::{Duration, Instant, Ticker, Timer, with_timeout};
 use embedded_can::Id;
 use embedded_io_async::{Read, Write};
 use heapless::{String, Vec};
+
+use health::{Fault, Health};
+
+// A healthy controller beats exactly as every other image does.
+const _: () = assert!(
+    health::HEARTBEAT_PERIOD_MS == board::HEARTBEAT_PERIOD_MS
+        && health::HEARTBEAT_FLASH_MS == board::HEARTBEAT_FLASH_MS
+);
 
 bind_interrupts!(struct Irqs {
     FDCAN1_IT0 => can::IT0InterruptHandler<peripherals::FDCAN1>;
@@ -211,6 +226,9 @@ struct Shared {
     imu_packets: u32,
     imu_errors: u32,
     imu_diag: ImuDiag,
+    health: Health,
+    /// What [`Health::flags`] said at the last tick, which the LED shows.
+    health_flags: u16,
 }
 
 impl Shared {
@@ -238,7 +256,15 @@ impl Shared {
             imu_packets: 0,
             imu_errors: 0,
             imu_diag: ImuDiag::default(),
+            health: Health::new(),
+            health_flags: 0,
         }
+    }
+
+    /// The IMU has stopped answering, or is to be looked for again.
+    fn imu_gone(&mut self) {
+        self.imu = None;
+        self.health.imu_lost(now_ms());
     }
 }
 
@@ -328,7 +354,7 @@ async fn main(_spawner: Spawner) {
 
     join5(
         join3(
-            board::heartbeat(&mut led),
+            indicator(&mut led, &ctx),
             board::watchdog(p.IWDG),
             supervise(&ctx, properties),
         ),
@@ -359,6 +385,10 @@ fn start(mut can: CanConfigurator<'_>) -> (CanTx<'_>, CanRx<'_>, Properties) {
 
 fn now_us() -> u32 {
     Instant::now().as_micros() as u32
+}
+
+fn now_ms() -> u64 {
+    Instant::now().as_millis()
 }
 
 // ---- to the Pi ---------------------------------------------------------------
@@ -419,7 +449,7 @@ fn send_info(ctx: &Ctx<'_>) {
         let s = ctx.shared.borrow();
         (s.imu, s.ina)
     };
-    let mut text: String<512> = String::new();
+    let mut text: String<576> = String::new();
     let _ = writeln!(text, "firmware=diag");
     let _ = writeln!(text, "protocol={}", diag_link::PROTOCOL);
     let _ = writeln!(text, "uid={}", uid::uid_hex());
@@ -431,6 +461,7 @@ fn send_info(ctx: &Ctx<'_>) {
     let _ = writeln!(text, "imu_startup=quiet-300ms");
     let _ = writeln!(text, "imu_diagnostics=2");
     let _ = writeln!(text, "imu_bus=clean-boundaries-v1");
+    let _ = writeln!(text, "health=1");
     let _ = write!(text, "buses=");
     for (i, name) in BUS_NAMES.iter().enumerate() {
         let _ = write!(text, "{}{name}", if i == 0 { "" } else { "," });
@@ -720,6 +751,7 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
     let mut next_diag = next_status;
     let mut last_service = next_status;
     let mut told_off = false;
+    let mut told_health = 0u16;
     loop {
         ticker.next().await;
         let now = Instant::now();
@@ -751,6 +783,18 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
                 .log("power: button held; every motor stopped; waiting for Pi shutdown");
             stop_all(ctx, Stop::Button);
         }
+        let flags = {
+            let mut s = ctx.shared.borrow_mut();
+            let ms = now.as_millis();
+            let lost = health::link_lost(s.lost, s.last_host.is_some(), ms);
+            s.health_flags = s.health.flags(ms, lost);
+            s.health_flags
+        };
+        if flags != told_health {
+            told_health = flags;
+            log_health(ctx, flags);
+            send_health(ctx, flags);
+        }
         if now >= next_status {
             next_status += STATUS_PERIOD;
             send_status(ctx, &properties);
@@ -758,8 +802,57 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
         if now >= next_diag {
             next_diag = now + Duration::from_secs(1);
             send_imu_diag(ctx);
+            send_health(ctx, flags);
         }
     }
+}
+
+/// HEALTH: version, the fault the LED shows, and every condition that holds.
+fn send_health(ctx: &Ctx<'_>, flags: u16) {
+    let head = [1, Fault::of(flags) as u8];
+    ctx.out.send(mcu::HEALTH, &[&head, &flags.to_le_bytes()]);
+}
+
+fn log_health(ctx: &Ctx<'_>, flags: u16) {
+    let mut text: String<120> = String::new();
+    let _ = write!(text, "health: ");
+    if flags == 0 {
+        let _ = write!(text, "all clear");
+    }
+    let held = health::NAMES.iter().filter(|(bit, _)| flags & bit != 0);
+    for (i, (_, name)) in held.enumerate() {
+        let _ = write!(text, "{}{name}", if i == 0 { "" } else { ", " });
+    }
+    ctx.out.log(&text);
+}
+
+/// Blue LED D1: board::heartbeat's beat while the controller is healthy, a
+/// fault's pattern while it is not, and dark once shutdown is asked for, as
+/// every image's is. Each cycle is chosen afresh, so a fault shows, and
+/// clears, within one heartbeat.
+async fn indicator(led: &mut Output<'_>, ctx: &Ctx<'_>) -> ! {
+    let show = async {
+        loop {
+            let fault = Fault::of(ctx.shared.borrow().health_flags);
+            for &(lit, ms) in fault.pattern() {
+                if lit {
+                    led.set_high();
+                } else {
+                    led.set_low();
+                }
+                Timer::after_millis(ms).await;
+            }
+        }
+    };
+    let shutting_down = async {
+        while !power::off_requested() {
+            Timer::after_millis(10).await;
+        }
+    };
+    select(show, shutting_down).await;
+    led.set_low();
+    core::future::pending::<()>().await;
+    unreachable!()
 }
 
 /// Lays numbers end to end, little-endian.
@@ -791,6 +884,7 @@ fn send_status(ctx: &Ctx<'_>, properties: &[&Properties; BUSES]) {
         buf: &mut buf,
         n: 0,
     };
+    let mut bus_off = false;
     {
         let s = ctx.shared.borrow();
         let now = Instant::now();
@@ -819,7 +913,10 @@ fn send_status(ctx: &Ctx<'_>, properties: &[&Properties; BUSES]) {
             put.u8(match props.bus_error_mode() {
                 BusErrorMode::ErrorActive => 0,
                 BusErrorMode::ErrorPassive => 1,
-                BusErrorMode::BusOff => 2,
+                BusErrorMode::BusOff => {
+                    bus_off = true;
+                    2
+                }
             });
             put.u8(props.tx_error_count());
             put.u8(props.rx_error_count());
@@ -831,6 +928,9 @@ fn send_status(ctx: &Ctx<'_>, properties: &[&Properties; BUSES]) {
             put.u32(counts.rx_drop);
             put.u32(counts.queue_drop);
         }
+    }
+    if bus_off {
+        ctx.shared.borrow_mut().health.bus_off(now_ms());
     }
     let n = put.n;
     ctx.out.send(mcu::STATUS, &[&buf[..n]]);
@@ -1068,7 +1168,7 @@ async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
                 imu_missed += 1;
                 if imu_missed == GIVE_UP_IMU {
                     imu_missed = 0;
-                    ctx.shared.borrow_mut().imu = None;
+                    ctx.shared.borrow_mut().imu_gone();
                     ctx.out
                         .log("i2c: the IMU has stopped answering; looking for it again");
                 }
@@ -1106,6 +1206,7 @@ async fn peripherals(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) -> ! {
             if ina_missed == GIVE_UP_INA {
                 ina_missed = 0;
                 s.ina = None;
+                s.health.ina_lost(now_ms());
                 drop(s);
                 ctx.out
                     .log("i2c: the INA226 has stopped answering; looking for it again");
@@ -1137,7 +1238,11 @@ async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
                 .is_ok()
                 && id == *b"TI"
             {
-                ctx.shared.borrow_mut().ina = Some(address);
+                {
+                    let mut s = ctx.shared.borrow_mut();
+                    s.ina = Some(address);
+                    s.health.ina_found();
+                }
                 log!(ctx.out, "i2c: INA226 at 0x{address:02X}");
                 break;
             }
@@ -1154,7 +1259,13 @@ async fn search(i2c: &mut I2c<'_, Async, Master>, ctx: &Ctx<'_>) {
             if read_imu_bus(i2c, address, &mut header, ctx).await.is_ok()
                 && diag_link::imu_header_length(&header, IMU_LONGEST).is_some()
             {
-                ctx.shared.borrow_mut().imu = Some(address);
+                {
+                    let mut s = ctx.shared.borrow_mut();
+                    s.imu = Some(address);
+                    // Its reports are asked for next, so it is silent from
+                    // now until the first one comes.
+                    s.health.imu_found(now_ms());
+                }
                 log!(ctx.out, "i2c: IMU at 0x{address:02X}");
                 start_imu_reports(i2c, address, ctx).await;
                 break;
@@ -1203,7 +1314,7 @@ async fn start_imu_reports(i2c: &mut I2c<'_, Async, Master>, address: u8, ctx: &
         packet[5] = report;
         packet[9..13].copy_from_slice(&IMU_REPORT_INTERVAL_US.to_le_bytes());
         if !write_imu(i2c, address, &mut packet, ctx).await {
-            ctx.shared.borrow_mut().imu = None;
+            ctx.shared.borrow_mut().imu_gone();
             ctx.out
                 .log("imu: default setup failed; looking for it again");
             return;
@@ -1265,6 +1376,7 @@ async fn poll_imu(
         let mut s = ctx.shared.borrow_mut();
         s.imu_diag.input_packets += 1;
         s.imu_diag.last_input_ms = Instant::now().as_millis() as u32;
+        s.health.imu_input();
     }
     ctx.out
         .send(mcu::IMU_PACKET, &[&t.to_le_bytes(), &packet[..n]]);
@@ -1274,7 +1386,7 @@ async fn poll_imu(
         let mut s = ctx.shared.borrow_mut();
         s.imu_diag.resets += 1;
         s.imu_sequence = [0; 6];
-        s.imu = None;
+        s.imu_gone();
         s.imu_quiet_until = Some(Instant::now() + IMU_BOOT_QUIET);
     }
     true
@@ -1306,7 +1418,7 @@ async fn run_job(i2c: &mut I2c<'_, Async, Master>, job: Job, ctx: &Ctx<'_>) {
                     let reset = packet.len() == 5 && packet[2] == 1 && packet[4] == 1;
                     if write_imu(i2c, address, &mut packet, ctx).await && reset {
                         let mut s = ctx.shared.borrow_mut();
-                        s.imu = None;
+                        s.imu_gone();
                         s.imu_sequence = [0; 6];
                         s.imu_quiet_until = Some(Instant::now() + IMU_BOOT_QUIET);
                     }
