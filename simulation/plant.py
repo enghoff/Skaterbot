@@ -245,12 +245,14 @@ MEASURED = {
     # model's legs ask for. Heavier or lower-slung legs, or a torque reading
     # that runs high; the legs are made heavier, up to a fifth, to cover it.
     "leg_mass_scale": (0.95, 1.2),
-    # The wheels in the air (B2): 0.010 Nm of friction and 0.0054 Nm s/rad of
-    # drag, against none in the simulator, and the wheel spinning up like one
-    # with 8.9e-4 kg m2 on its joint where the simulator had 2.3e-4. That was
-    # at a torque 1.07 times the command, which is what the legs measured, so
-    # per newton-metre commanded it is 8.3e-4; armature_scale spreads it.
-    "wheel_coulomb_nm": (0.005, 0.015),
+    # The wheels in the air (B2): 0.010 to 0.018 Nm of friction and 0.005 Nm
+    # s/rad of drag, against none in the simulator, and the wheel spinning up
+    # like one with 8.4e-4 to 8.9e-4 kg m2 on its joint where the simulator had
+    # 2.3e-4 -- two fits, the command's lag searched to 4 ms and to 14. That
+    # was at a torque 1.07 times the command, which is what the legs measured,
+    # so per newton-metre commanded it is about 8.3e-4; armature_scale spreads
+    # it.
+    "wheel_coulomb_nm": (0.005, 0.02),
     "wheel_viscous_nm_s_rad": (0.003, 0.008),
     "wheel_armature_kg_m2": 8.3e-4,
     # The IMU reads 16 ms behind the motors' reports, which arrive about
@@ -259,8 +261,9 @@ MEASURED = {
     "imu_delay_steps": (5, 8),
     "joint_delay_steps": (0, 1),
     # The wheels' fit put the command's lag at 4 ms, the top of what it was
-    # allowed to search; 2.5 to 7.5 ms.
-    "action_delay_steps": (1, 3),
+    # first allowed to search, and at 8 ms searched to 14, hardly better: 2.5
+    # to 10 ms.
+    "action_delay_steps": (1, 4),
 }
 
 # --------------------------------------------------------------------------
