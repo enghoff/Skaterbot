@@ -1,0 +1,54 @@
+{
+ "taken": "2026-11-04T05:29:49+00:00",
+ "unit": "50 us, measured on C5: 2000 tripped between 0.08 and 0.12 s quiet",
+ "changes": [
+  {
+   "motor": "A1",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  },
+  {
+   "motor": "A2",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  },
+  {
+   "motor": "B3",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  },
+  {
+   "motor": "B4",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  },
+  {
+   "motor": "C5",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  },
+  {
+   "motor": "C6",
+   "register": "TIMEOUT",
+   "was": 0,
+   "now": 4000,
+   "echoed": 4000,
+   "saved": true
+  }
+ ]
+}

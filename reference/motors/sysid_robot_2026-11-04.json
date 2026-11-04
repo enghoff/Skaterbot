@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-04T03:44:59+00:00",
+  "joints": {
+    "hip_pitch_right": {
+      "bus": "A",
+      "id": 2,
+      "sign": 1,
+      "zero": 0.0
+    },
+    "knee_right": {
+      "bus": "B",
+      "id": 4,
+      "sign": 1,
+      "zero": -0.05411
+    },
+    "wheel_drive_right": {
+      "bus": "C",
+      "id": 6,
+      "sign": -1,
+      "zero": 0.0
+    },
+    "hip_pitch_left": {
+      "bus": "A",
+      "id": 1,
+      "sign": -1,
+      "zero": 0.0
+    },
+    "knee_left": {
+      "bus": "B",
+      "id": 3,
+      "sign": -1,
+      "zero": 0.02443
+    },
+    "wheel_drive_left": {
+      "bus": "C",
+      "id": 5,
+      "sign": 1,
+      "zero": 0.0
+    }
+  },
+  "imu_axes": [
+    [
+      0.99448,
+      -0.01618,
+      0.10369
+    ],
+    [
+      -0.01771,
+      -0.99975,
+      0.01384
+    ],
+    [
+      0.10344,
+      -0.0156,
+      -0.99451
+    ]
+  ],
+  "imu_gravity_sign": -1,
+  "found": [
+    "A1",
+    "A2",
+    "B3",
+    "B4",
+    "C5",
+    "C6"
+  ],
+  "map": {
+    "joints": {
+      "hip_pitch_right": {
+        "bus": "A",
+        "id": 2,
+        "sign": 1,
+        "zero": 0.87378
+      },
+      "knee_right": {
+        "bus": "B",
+        "id": 4,
+        "sign": 1,
+        "zero": 1.75082
+      },
+      "wheel_drive_right": {
+        "bus": "C",
+        "id": 6,
+        "sign": -1,
+        "zero": 0.0
+      },
+      "hip_pitch_left": {
+        "bus": "A",
+        "id": 1,
+        "sign": -1,
+        "zero": -0.12751
+      },
+      "knee_left": {
+        "bus": "B",
+        "id": 3,
+        "sign": -1,
+        "zero": 0.79133
+      },
+      "wheel_drive_left": {
+        "bus": "C",
+        "id": 5,
+        "sign": 1,
+        "zero": 0.0
+      }
+    },
+    "imu_axes": [
+      [
+        0.98,
+        -0.16728,
+        0.10781
+      ],
+      [
+        -0.16959,
+        -0.98543,
+        0.01262
+      ],
+      [
+        0.10412,
+        -0.03065,
+        -0.99409
+      ]
+    ]
+  },
+  "motor_zero_set": "2026-11-04T05:01:57+00:00",
+  "imu_axes_from": "2026-11-04 on a table, accelerometer only (~/imu_captures.json): up from the shell level by phone (0,0 and, turned 45 deg, 0.2,-0.2: level within 0.4 deg), forward from a 43.2 deg nose-down tip with side-to-side at 0. Board 5.9 deg nose-up, 1.0 deg turned right, 0.8 deg rolled. The IMU makes the tip 46.5 deg.",
+  "zeros_from": "motors zeroed straight by eye 2026-11-04; knees corrected from the B5 slow sweeps (2026-11-04_121105_B5_v): right +3.1, left +1.4 degrees; hips within 0.3",
+  "imu_axes_rail": [
+    [
+      0.99077,
+      -0.07878,
+      0.11033
+    ],
+    [
+      -0.08077,
+      -0.99664,
+      0.01371
+    ],
+    [
+      0.10888,
+      -0.0225,
+      -0.9938
+    ]
+  ]
+}
