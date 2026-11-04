@@ -133,6 +133,13 @@ V of two strings per lug; the logs are named by date and test.
 - **Leg friction** about 0.045 Nm on every leg joint, from the slow sweeps
   (B5) and the leg fit alike; the simulator has none. The joints also stick
   before they move.
+- **The wheels** (B2, in the air) spin up like a wheel with 8.4 to 8.9e-4 kg m2
+  on its joint, nearly four times the simulator's 2.3e-4, and lose 0.010 to
+  0.018 Nm to friction and 0.005 Nm s/rad to drag, so that 0.1 Nm holds one
+  at about 15 rad/s rather than taking it to full speed. The command reaches
+  the torque 4 to 8 ms late; the fits can hardly tell the two apart. Those
+  numbers, as ranges, are simulation/plant.py's MEASURED, which the driving
+  task trains on.
 - **Gravity on the legs** takes 9 to 14 per cent more torque than the model
   says: the legs heavier or lower-slung than modelled, or the torque reading
   high.
@@ -227,4 +234,5 @@ controller if diagd does for 0.3 s, and the power button at any time.
   delays, battery range and noise into the task configuration and
   `simulation/plant.py`'s `DOMAIN_RANDOMISATION`, narrowed to a little more
   than the spread between repeat runs; and the training history records the
-  fine-tune that follows.
+  fine-tune that follows. The driving task has had this, from the first day on
+  the rail (`plant.py`'s `MEASURED`).

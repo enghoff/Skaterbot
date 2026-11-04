@@ -10,7 +10,15 @@ must outlive the pod lives on a network volume.
 
 ## Where it stands
 
-**The rough-ground balance policy is the one to use.** Trained from scratch on
+**`rough-2026-11-04_09-01-34_measured_fix` is the policy for the robot.** The
+balance policy below, fine-tuned on 4 November 2026 for 2 100 iterations on the
+robot as measured on the rail: its joints' friction, its wheels' inertia, its
+heavier legs and its delays, the IMU's 16 ms among them. On the measured robot
+it stays up through the 24 s script 96.9 % of the time, against 44.6 % for its
+parent, on 1 280 robots spread over every ground. It has not yet run on the
+robot. [TRAINING_HISTORY.md](TRAINING_HISTORY.md) has the rest.
+
+**The rough-ground balance policy is its parent.** Trained from scratch on
 24 September 2026 with 16 384 robots for 1 200 iterations -- 470 million steps,
 1 h 53 min on an RTX PRO 4500 -- with the costs on wheelspin, wheel stagger and
 out-of-range actions that the earlier policies needed (see Traps). On 1 280

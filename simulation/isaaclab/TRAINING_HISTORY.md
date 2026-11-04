@@ -80,7 +80,58 @@ which is the policy's choice and not the motors' (see `rew_lin_vel_error`),
 and the bottom 20 mm of the ride height's range, which no cost tried has
 moved it into.
 
-## The jump policy
+## The driving policy for the robot
+
+The policy to put on the robot first. It branches from stage 1, not from the
+jump chain, since nothing here needs a jump: 25 inputs and 6 outputs, the legs
+at a fixed kp 12, kd 0.4, which the robot was shown to run quietly (higher
+gains set the hips buzzing at 39 Hz, ../../docs/SYSID.md).
+
+| Stage | Run | From | Iterations x robots | What it added |
+|---|---|---|---|---|
+| D1 | `rough-2026-11-04_07-15-51_measured` | stage 1 model_1199 | 1 500 x 8 192 | The robot as measured on 4 November 2026 (`plant.py`'s `MEASURED`): friction and drag on every joint, the wheels' inertia at 8.3e-4 kg m2 where the simulator had 2.3e-4, the legs 0.95 to 1.2 times as heavy, the IMU 12.5-20 ms late, the encoders 0-2.5, commands 2.5-10, one command in a hundred lost. Trained with the bug below. |
+| D2 | **`rough-2026-11-04_09-01-34_measured_fix`** | D1 model_2698 | 600 x 8 192 | The same with the bug fixed. **The policy for the robot.** |
+
+**The bug.** `env.py` used a command a whole policy step late as its mark for
+a lost command, so every robot drawn 10 ms late lost all of its commands, held
+its starting pose and fell within two seconds. That was a quarter of the robots
+in training and in evaluation, and no earlier task could reach it: their
+commands were at most 7.5 ms late. It showed as falls in every row of every
+ground, nearly all of them in the first two seconds. Timing the falls, and
+setting them against each robot's draw, gave 100 % at 10 ms and 0 % at 2.5 to
+7.5. A lost command now has its own flag. The first figure given for stage 1 on
+the measured robot, 35.5 %, carried this bug; 44.6 % is the fair one.
+
+All scored by `evaluate.py --rough` on the measured robot, 1 280 robots:
+
+| | Upright after 24 s | Flat | Bumpy | Thresholds | Speed error, driving |
+|---|---|---|---|---|---|
+| Stage 1, on its own model (September) | 96.3 % | 100 % | 100 % | 74 % | 0.07-0.09 m/s |
+| Stage 1, on the measured robot | 44.6 % | 64 % | 15 % | 26 % | 0.15-0.22 m/s |
+| D1, on the measured robot, bug fixed | 96.3 % | 100 % | 100 % | 72 % | 0.05-0.06 m/s |
+| D2, on the measured robot | 96.9 % | 99 % | 100 % | 79 % | 0.05 m/s |
+
+Stage 1 lost robots in every phase of the script, most of them once it was
+asked to drive: 92 % were up after standing, 70 % after going forward, 55 %
+after backing. Most of what D2 still loses is on the taller thresholds, about 34 of
+its 40 falls, which is a 40 mm wheel's limit as it was in September.
+
+In MuJoCo (`drive.py --check`, using the run's friction, drag and wheel inertia
+at the middle of their ranges), D2 did not fall at 15 / 2.5 / 5 ms or at the
+longest delays trained, 20 / 2.5 / 10 ms, and held 0.46-0.48 m/s of the 0.5
+asked. Told to stand for 20 s it wanders 336 mm on its own and 7 to 22 mm with
+the hold loop, so the firmware wants the hold loop. Stage 1 in MuJoCo, given
+only the delays and none of the friction or inertia, stayed up with the IMU
+10 ms late and fell in 8 of 9 phases at 15, so the IMU's lag alone, past a
+policy step, was enough to topple it.
+
+**What this does not prove.** Neither simulator has met the robot's real
+stiction, whose form is a guess (`friction_actuator.py`'s tanh), nor its floor;
+the IMU's 7 per cent over-read of big tilts is not modelled; the motors'
+torque-speed line and the battery are still the rated figures, though at
++/-0.5 m/s the wheels use only about 40 % of their speed. **No policy has yet
+run on the robot.**
+
 
 From 27 September 2026 the robot drives on stage 10 and jumps on a second
 policy, handing over between them (`TwoPolicies` in
@@ -174,6 +225,7 @@ Each has its lesson in the comment of the setting it concerns.
 
 | Run | From | Tried | Why not |
 |---|---|---|---|
+| measured_scratch | scratch | D1's robot, from nothing, 2 400 iterations at 8 192 | stopped near iteration 350, at terrain level 0.6 where D1 was at 3 after the same half hour; it was also training with the bug |
 | envelope, envelope2-4 | jump4 | the whole envelope at once, then fine-tunes to recover | spun at 17 rad/s and stopped turning below 2.5 rad/s; never recovered. The ramp fixed it. |
 | rise2, rise5 | ramp | paying the torso's rise; leaning into turns | driving collapsed (rise2); top speed fell to 1.14, slow turns went, arcs rode on one wheel (rise5) |
 | jumponly, leanonly | ramp | each of rise5's changes alone | neither helped; leaning tipped the robot onto its outside wheel |
@@ -203,6 +255,12 @@ Each has its lesson in the comment of the setting it concerns.
 | symhigh | jumpsym300 | the same, clearance paid 2 000 /m | 119-126 mm, but rolled 7° (16° at worst), 21° between the knees pushing off, and fell 3 times in 60 below 1.1 m/s |
 
 ## Before fine-tuning for the robot
+
+Written before the robot existed. For the driving policy, D1 and D2 above have
+since done the first and most of the third, from the robot on the rail, and
+the fifth was measured and left alone: the sensors are far quieter than
+training assumes, which errs safe. The motor's curve and the battery are still
+open, and the jump task has had none of it.
 
 The settings that stand in for things nobody has measured, and what would
 replace each, in the order they matter:

@@ -75,6 +75,12 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._action_delay = torch.zeros_like(self._imu_delay)
         # The physics steps this policy step still running the last command.
         self._late_steps = torch.zeros_like(self._imu_delay)
+        # Whether this policy step's command was lost, so the next step keeps
+        # the last one that arrived. Its own flag, and not a lateness of a
+        # whole step: a command a whole step late still arrives, and the
+        # robot's can be (4-8 ms, docs/SYSID.md). Until 4 November 2026 the two
+        # were one, and every robot drawn 10 ms late lost every command.
+        self._command_lost = torch.zeros(n, 1, dtype=torch.bool, device=dev)
         self._substep = 0
         self._held_leg_targets = torch.zeros(n, 4, device=dev)
         self._held_wheel_torque = torch.zeros(n, 2, device=dev)
@@ -157,7 +163,7 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
     def _hold_last_command(self):
         """Start a policy step: keep what the motors ran last, pick the lateness."""
-        dropped = (self._late_steps >= self.cfg.decimation).unsqueeze(1)
+        dropped = self._command_lost
         self._held_leg_targets = torch.where(
             dropped, self._held_leg_targets, self._leg_targets
         )
@@ -177,6 +183,7 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         if p > 0.0:
             lost = torch.rand(self.num_envs, device=self.device) < p
             late = torch.where(lost, self.cfg.decimation, late)
+            self._command_lost = lost.unsqueeze(1)
         self._late_steps = late
 
     def _jittered(self, steps: torch.Tensor, most: int) -> torch.Tensor:

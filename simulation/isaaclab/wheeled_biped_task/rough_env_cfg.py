@@ -277,7 +277,7 @@ class WheeledBipedRoughEnvCfg(WheeledBipedBalanceEnvCfg):
 
     # The delays the robot measured (plant.MEASURED): the IMU 12.5 to 20 ms,
     # past the 10 ms of a policy step, the encoders up to 2.5 ms, a command
-    # 2.5 to 7.5 ms late, each a step off now and then and one command in a
+    # 2.5 to 10 ms late, each a step off now and then and one command in a
     # hundred lost -- the jump task's jitter and losses, which nothing has
     # measured yet.
     imu_delay_steps = MEASURED["imu_delay_steps"]

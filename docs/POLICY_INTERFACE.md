@@ -26,6 +26,7 @@ trained on and what the vendor documents say the parts can do.
 | Policy | 100 Hz, one input in, one output out, every 10 ms |
 | Physics it was trained against | 400 Hz |
 | Delays it is trained to tolerate (jump task, from September 2026) | IMU reading up to 10 ms old, encoder readings up to 5 ms, a command taking effect up to 5 ms late, each wandering by 2.5 ms now and then, and one command in a hundred lost |
+| Delays the robot measured, and the driving policy for it is trained on (November 2026) | IMU reading 12.5-20 ms old, encoder readings up to 2.5 ms, a command taking effect 2.5-10 ms late, with the same wander and losses |
 
 The policies before that were trained with no delay at all. In MuJoCo the
 adopted jump policy stands with 1.2° of rocking at no delay, 1.5° at
@@ -157,6 +158,10 @@ leaves the motors off rather than holding the last torque; and its
 **undervoltage threshold**, which the bill of materials puts at 21.6 V.
 
 ## Two policies: one drives, one jumps
+
+For now the robot needs only the first, and it is the smaller shape: the driving
+policy for the robot (`rough-2026-11-04_09-01-34_measured_fix`) is a balance
+policy, 25 inputs and 6 outputs. What follows is the plan for when it jumps.
 
 No single policy both drove well and jumped well: every fine-tune that tried
 traded one for the other
