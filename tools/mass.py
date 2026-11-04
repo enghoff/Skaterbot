@@ -40,9 +40,10 @@ real, the union column becomes the only one, and the drop is a MEASUREMENT
 ARTEFACT rather than a saving.
 
 A further bias, unchanged by any of this: printed infill is not modelled, so a
-real print comes out lighter than its solid volume suggests. Where every piece
-of an entry has been weighed, mass_budget.toml says so with `weighed_g` and the
-roll-up carries that instead; the baseline comparison still weighs the CAD.
+real print comes out lighter than its solid volume suggests. Where a piece has
+been weighed, mass_budget.toml says so with `weighed_g` and the roll-up carries
+that in place of the piece's CAD figure; the baseline comparison still weighs
+the CAD.
 """
 
 from __future__ import annotations
@@ -501,12 +502,18 @@ def main(argv: list[str] | None = None) -> int:
         summed, merged = weigh(bodies_of(part), density)
         against_base, _ = weigh(bodies_of(part), baseline_density)
         measured[part["file"]] = round(against_base, 1)
+        # A piece that has been on a scale swaps its CAD figure for its weight,
+        # print for print; the rest of its entry stays measured.
         pieces = part.get("piece", [])
-        on_scale = bool(pieces) and all("weighed_g" in piece for piece in pieces)
-        if on_scale:
-            summed = merged = (
-                sum(piece["weighed_g"] * piece["prints"] for piece in pieces)
-                / part["count"]
+        on_scale = [piece for piece in pieces if "weighed_g" in piece]
+        for piece in on_scale:
+            drawn, drawn_union = weigh(
+                bodies_of({"file": part["file"], "measure": [piece["export"]]}),
+                density,
+            )
+            summed += (piece["weighed_g"] - drawn) * piece["prints"] / part["count"]
+            merged += (
+                (piece["weighed_g"] - drawn_union) * piece["prints"] / part["count"]
             )
         printed_total += summed * part["count"]
         union_total += merged * part["count"]
@@ -527,7 +534,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.union:
             row += f" {merged:8.1f} {summed - merged:7.1f}"
         row += f" {part['count']:3d} {summed * part['count']:9.1f} {verdict:>8}"
-        print(row + ("  weighed" if on_scale else ""))
+        if on_scale:
+            row += "  weighed" if len(on_scale) == len(pieces) else "  part weighed"
+        print(row)
 
     print(f"{'printed structure':<{width}}  {'':8}{pad} {'':3} {printed_total:9.1f}")
     print()

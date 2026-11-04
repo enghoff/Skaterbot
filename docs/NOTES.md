@@ -3188,34 +3188,67 @@ than a filed one. In PLA, which prints a hole about 0.2 mm small, the delivered
 nuts will go in with a little play and still cannot turn. The thighs and shins
 are re-exported and the simulation model rebuilt.
 
-## The motors, the wheels and the legs, weighed — 2 November 2026
+## The motors, the wheels, the legs and the pelvis, weighed — 2 November 2026
 
 A DM-J3507-2EC is 165 g, 15 g over the 150 g of its manual, and a bare skate
 wheel is 73 g, 13 g over the 60 g that was only ever a catalogue figure. The
 legs in hand are Zbotic's prints of release 2088e6f, in PLA ordered at 100 %
 infill, and bare a thigh is 40 g and a shin 37 g, where the CAD at the
-budget's 0.93 g/cm³ made them 39.2 and 31.2. On the robot that is 90 g of
-motors, 26 g of wheels and 10 g of legs: 2 104.6 g against the 2 300 g
-ceiling, and 195.4 g of headroom where there was 316.
+budget's 0.93 g/cm³ made them 39.2 and 31.2. The pelvis shell comes out at
+217 g, where the CAD made it 171.6. On the robot that is 90 g of motors, 26 g
+of wheels, 10 g of legs and 32 g of pelvis: 2 137.0 g against the 2 300 g
+ceiling, and 163.0 g of headroom where there was 316.
 
-Neither leg part is solid. Solid PLA at about 1.24 g/cm³ would make a thigh
-52.3 g and a shin 41.4, so the thigh is 76 per cent full and the shin 89; a
-shin is mostly a 10 mm plate, so more of it is wall. Zbotic's own quote had
-them at 73 and 53 g. Whatever went into the order, these parts were not
+None of the printed parts is solid, and they are not equally far from it.
+Solid PLA at about 1.24 g/cm³ would make a thigh 52.3 g, a shin 41.4 and the
+shell 228.8, so the thigh is 76 per cent full, the shin 89 and the shell about
+95; a shin is mostly a 10 mm plate, so more of it is wall. Zbotic's own quote
+had the legs at 73 and 53 g. Whatever went into that order, the legs were not
 printed solid, and the strength figures elsewhere in these notes assume they
 were.
 
-Two leg assemblies were weighed the same day, and they are the first check
-the leg's hardware has had against a scale. A wheel, its motor and a shin, put
-together with what holds them, is 300 g; the same with the knee motor and a
-thigh added is 520 g. The simulation model, carrying every weighed figure
-above, makes them 305.2 and 526.8 g. So what is left on the leg -- the wheel
-adapter and cap, the wheel clamp, the M3 sets, the journals and the knee
-bearing, none of them weighed -- is modelled about 7 g a leg too heavy, which
-is inside what those estimates were ever worth, and is left alone.
+The pelvis was never on a scale by itself. The robot without its deck, its
+lid or anything electrical weighed 1 620 g, and the shell is what is left
+after the two legs as weighed, the two hip motors, and the hip's unweighed
+hardware: two bearings, two M3 sets and two journals, which go in only when a
+leg goes on. That hardware is estimated, so the shell's figure is good to
+about 5 g.
 
-The simulation carries the six motors, the two wheels and the four leg prints
-as weighed parts now. A weighed print's mesh is integrated at whatever uniform
-density gives its weight, and tools/mass.py rolls the weighed figure up in
-place of the CAD's, while gate C still compares the CAD. The meshes were
-re-exported and the model rebuilt, and it agrees with the CAD.
+Two leg assemblies were weighed the same day. A wheel, its motor and a shin,
+put together with what holds them, is 300 g; the same with the knee motor and
+a thigh added is 520 g. The simulation model, carrying the weighed figures
+above, makes the full leg 526.8 g, of which 4.1 g is the hip journal that
+the leg on the scale cannot have had. So what is left on the leg -- the wheel
+adapter and cap, the wheel clamp, the M3 sets, the knee journal and bearing,
+none of them weighed -- is modelled about 3 g a leg heavy, which is inside what
+those estimates were ever worth, and is left alone. The model of the whole
+1 620 g unit is 1 625.4 g, and that 5 g is the same two legs.
+
+The simulation carries the six motors, the two wheels, the four leg prints and
+the pelvis shell as weighed parts now, 82 per cent of the robot. A weighed
+print's mesh is integrated at whatever uniform density gives its weight, and
+tools/mass.py rolls the weighed figure up in place of the CAD's, piece by
+piece, while gate C still compares the CAD. The base link is 45 g heavier and
+the standing centre of mass 1.7 mm higher, at 193.4 mm. The meshes were
+re-exported and the model rebuilt, and it agrees with the CAD. The deck and
+the lid are still the CAD's figures.
+
+## The whole robot, weighed but for its lid — 3 November 2026
+
+Complete except for the lid, the robot weighs 2 046 g. Less the 1 620 g it
+weighed the day before without its deck or anything electrical, that leaves
+426 g for the deck and everything standing in the torso, where the budget
+carried 462.2: the deck at 25.5 g off the CAD, 235 g weighed (the battery,
+its series harness and the BMS), and 201.7 g of estimates for the boards,
+the capacitor bank and the wiring. The estimates are 36.2 g heavy between
+them, and nothing yet says which.
+
+The budget keeps each estimate as it was and carries the difference as a line
+of its own, and the simulation scales every unweighed item in the torso by
+the same factor, 0.82, to take it up. The model of the robot without its lid
+is 2 051.4 g, 5 g over the scale, and those 5 g are the two legs' unweighed
+hardware, found the day before. The roll-up is 2 100.8 g with the lid at the
+CAD's 46.7 g, and 199.2 g of headroom. In the simulation the base link is
+36 g lighter and the standing centre of mass 2.3 mm lower, at 191.1 mm. The
+lid is the last printed part not weighed; printed like the pelvis it would
+be about 59 g.

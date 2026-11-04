@@ -259,7 +259,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             shape="mesh",
             piece="pelvis-shell",
             at=(0.0, 0.0, 0.0),
-            source="measured",
+            source="weighed" if "pelvis-shell" in weighed else "measured",
             note="cad/torso.py:pelvisShell, twenty-two bodies",
         ),
         Solid(
@@ -268,7 +268,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             shape="mesh",
             piece="torso-cover",
             at=(0.0, 0.0, 0.0),
-            source="measured",
+            source="weighed" if "torso-cover" in weighed else "measured",
             note="cad/torso.py:torsoCover",
         ),
         # Bolted to four ledges on the shell walls and carrying two boards, so
@@ -279,7 +279,7 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             shape="mesh",
             piece="electronics-deck",
             at=(0.0, 0.0, 0.0),
-            source="measured",
+            source="weighed" if "electronics-deck" in weighed else "measured",
             note="cad/deck.py:electronicsDeck, plate and four SBC posts",
         ),
     ]
@@ -509,6 +509,21 @@ def build() -> tuple[dict[str, Link], list[Joint], dict[str, float]]:
             d["floorZ"],
         ),
     }
+    # THE TORSO'S CONTENTS WERE WEIGHED TOGETHER on 2026-11-03, and the
+    # estimates among them came out heavy. tools/mass_budget.toml carries the
+    # difference as a line of its own rather than rewriting estimates nobody can
+    # split, so each unweighed item here is scaled by the same factor to take it.
+    torso_fit_g = next(
+        row["total_g"]
+        for row in budget()["fixed"]
+        if row["label"] == "Torso contents, fitted to the scale"
+    )
+    soft_g = sum(row[1] for row in payload if row[3] != "weighed")
+    fit = 1.0 + torso_fit_g / soft_g
+    payload = [
+        (label, grams if source == "weighed" else grams * fit, key, source, *rest)
+        for label, grams, key, source, *rest in payload
+    ]
     for label, grams, key, source, material, draw, note in payload:
         width, depth, height, at_x, at_y, base_z = envelopes[key]
         base.solids.append(
