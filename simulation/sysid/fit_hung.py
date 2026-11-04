@@ -388,6 +388,11 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--no-plots", action="store_true")
     ap.add_argument(
+        "--delays-ms",
+        help="the command-to-torque delays to try, ms, comma-separated "
+        "(B2's wheels hit the default grid's 4 ms top on 2026-11-04)",
+    )
+    ap.add_argument(
         "--fixed-torso",
         action="store_true",
         help="the torso was held still (strung in a V), so no hinge",
@@ -397,7 +402,11 @@ def main(argv=None) -> int:
     log = logfile.load(args.log)
     print(logfile.describe(log))
     base = dict(rig.NOMINAL)
-    delays = DELAYS_MS
+    delays = (
+        tuple(float(x) for x in args.delays_ms.split(","))
+        if args.delays_ms
+        else DELAYS_MS
+    )
     scale_from = None
     if args.bench:
         bench = json.loads(args.bench.read_text(encoding="utf-8"))

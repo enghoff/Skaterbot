@@ -41,6 +41,7 @@ import isaaclab.sim as sim_utils
 import isaaclab.terrains as terrain_gen
 from isaaclab.envs import ViewerCfg
 from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainGeneratorCfg, TerrainImporterCfg
@@ -48,14 +49,22 @@ from isaaclab.utils.configclass import configclass
 from isaaclab_physx.physics import PhysxCfg
 
 from .env_cfg import (
+    ARMATURE_KG_M2,
     CROUCH_HIP_RAD,
     CROUCH_KNEE_RAD,
+    LEG_DAMPING_NM_S_RAD,
+    LEG_STIFFNESS_NM_RAD,
+    MAX_VELOCITY_RAD_S,
+    PEAK_TORQUE_NM,
     ROBOT_CFG,
     EventCfg,
     WheeledBipedBalanceEnvCfg,
     crouched_base_height_m,
     plant,
 )
+from .friction_actuator import FrictionDCMotorCfg
+
+MEASURED = plant.MEASURED
 
 # --------------------------------------------------------------------------
 # The ground
@@ -136,6 +145,55 @@ class RoughEventCfg(EventCfg):
         },
     )
 
+    # The legs heavier than the model, up to a fifth: holding them up took 9
+    # to 14 per cent more torque than it says (plant.MEASURED).
+    leg_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=["thigh_.*", "shin_.*"]),
+            "mass_distribution_params": MEASURED["leg_mass_scale"],
+            "operation": "scale",
+        },
+    )
+
+
+# --------------------------------------------------------------------------
+# The motors as the robot measured them, 4 November 2026
+#
+# The same motors and the same commands as the flat task, with the friction and
+# drag the robot showed on every joint, and the wheels' far larger inertia
+# (plant.MEASURED, docs/SYSID.md). Isaac Lab's own `friction` is a coefficient
+# on the joint's load, not a torque, so it stays at nothing and the friction is
+# the actuator's own (friction_actuator.py).
+
+MEASURED_ACTUATORS = {
+    "legs": FrictionDCMotorCfg(
+        joint_names_expr=["hip_pitch_.*", "knee_.*"],
+        effort_limit=PEAK_TORQUE_NM,
+        saturation_effort=PEAK_TORQUE_NM,
+        velocity_limit=MAX_VELOCITY_RAD_S,
+        stiffness=LEG_STIFFNESS_NM_RAD,
+        damping=LEG_DAMPING_NM_S_RAD,
+        friction=0.0,
+        armature=ARMATURE_KG_M2,
+        coulomb_nm=MEASURED["leg_coulomb_nm"],
+        viscous_nm_s_rad=MEASURED["leg_viscous_nm_s_rad"],
+    ),
+    "wheels": FrictionDCMotorCfg(
+        joint_names_expr=["wheel_drive_.*"],
+        effort_limit=PEAK_TORQUE_NM,
+        saturation_effort=PEAK_TORQUE_NM,
+        velocity_limit=MAX_VELOCITY_RAD_S,
+        stiffness=0.0,
+        damping=0.0,
+        friction=0.0,
+        armature=MEASURED["wheel_armature_kg_m2"],
+        coulomb_nm=MEASURED["wheel_coulomb_nm"],
+        viscous_nm_s_rad=MEASURED["wheel_viscous_nm_s_rad"],
+    ),
+}
+
 
 # --------------------------------------------------------------------------
 # The ride height
@@ -213,8 +271,20 @@ class WheeledBipedRoughEnvCfg(WheeledBipedBalanceEnvCfg):
     robot = ROBOT_CFG.replace(
         init_state=ROBOT_CFG.init_state.replace(
             pos=(0.0, 0.0, crouched_base_height_m() + plant.RESET_CLEARANCE_M + 0.03)
-        )
+        ),
+        actuators=MEASURED_ACTUATORS,
     )
+
+    # The delays the robot measured (plant.MEASURED): the IMU 12.5 to 20 ms,
+    # past the 10 ms of a policy step, the encoders up to 2.5 ms, a command
+    # 2.5 to 7.5 ms late, each a step off now and then and one command in a
+    # hundred lost -- the jump task's jitter and losses, which nothing has
+    # measured yet.
+    imu_delay_steps = MEASURED["imu_delay_steps"]
+    joint_delay_steps = MEASURED["joint_delay_steps"]
+    action_delay_steps = MEASURED["action_delay_steps"]
+    delay_jitter_prob = 0.1
+    command_drop_prob = 0.01
 
     # Termination by the torso touching anything, which on uneven ground is a
     # better test of a fall than a height would be.
