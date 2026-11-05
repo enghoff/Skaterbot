@@ -266,6 +266,24 @@ MEASURED = {
     "action_delay_steps": (1, 4),
 }
 
+# What the wheels did with the robot's weight on them, on a hard floor, from its first
+# drives on 5 November 2026 (docs/SYSID.md, "Why it wobbled"). Mean torque against
+# speed steps at zero, to 0.035 to 0.045 Nm either way; a steady 5 rad/s, with nothing
+# accelerating, takes 0.05 to 0.06, which puts the drag at about 0.003 Nm s/rad; a
+# stuck wheel breaks away at 0.05 to 0.07 (medians, four run-ups each way, from 0.043 to
+# 0.09 by quartile). All of it read from the motors' own torque, which at those slow
+# speeds was within 8 per cent of the command.
+ON_THE_FLOOR = {
+    "wheel_coulomb_nm": (0.025, 0.05),
+    "wheel_viscous_nm_s_rad": (0.002, 0.006),
+    "wheel_static_nm": (0.05, 0.07),
+    # The wheels' torque reading follows the logged command by 18 to 20 ms, and the
+    # phases round the robot's 7 Hz yaw shake close at about 30 ms in all. The IMU is
+    # 16 of that, and a command cannot be drawn later than 10 ms in training, so the
+    # IMU's range carries what is left over: 12.5 to 27.5 ms.
+    "imu_delay_steps": (5, 11),
+}
+
 # --------------------------------------------------------------------------
 # The solver
 #

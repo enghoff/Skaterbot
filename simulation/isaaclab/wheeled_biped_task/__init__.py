@@ -18,6 +18,7 @@ height (Biped-Wheeled-Rough-v0).
 TASK_ID = "Biped-Wheeled-Balance-v0"
 ROUGH_TASK_ID = "Biped-Wheeled-Rough-v0"
 JUMP_TASK_ID = "Biped-Wheeled-Jump-v0"
+DRIVE_TASK_ID = "Biped-Wheeled-Drive-v0"
 
 
 def register() -> list[str] | None:
@@ -56,6 +57,18 @@ def register() -> list[str] | None:
             kwargs={
                 "env_cfg_entry_point": f"{__name__}.jump_env_cfg:WheeledBipedJumpEnvCfg",
                 "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
+            },
+        )
+    if DRIVE_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_mirror_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveMirrorPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
             },
         )
     return None

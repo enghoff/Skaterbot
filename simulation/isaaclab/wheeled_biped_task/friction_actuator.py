@@ -13,7 +13,9 @@ The friction turns over smoothly through zero speed, over `coulomb_speed_rad_s`,
 because this is an explicit torque on a 2.5 ms step: a sharp one chatters. At
 0.1 rad/s it is stable on the lightest joint, a wheel at half its armature
 (0.015 Nm / 0.1 rad/s over 4.2e-4 kg m2, times 2.5 ms, is 0.9, under 2). It
-leaves out the sticking before a joint moves, which the robot also showed.
+leaves out the sticking before a joint moves, which the robot also showed, unless
+`static_nm` is given: a higher friction that falls away to `coulomb_nm` over
+`static_speed_rad_s`.
 
 Each robot draws its own friction and drag at startup, uniformly over the
 configured ranges, as the startup events draw its masses.
@@ -39,13 +41,14 @@ class FrictionDCMotor(DCMotor):
 
         self.coulomb_nm = draw(cfg.coulomb_nm)
         self.viscous_nm_s_rad = draw(cfg.viscous_nm_s_rad)
+        self.static_extra_nm = (draw(cfg.static_nm) - self.coulomb_nm).clamp(min=0.0)
 
     def compute(self, control_action, joint_pos: torch.Tensor, joint_vel: torch.Tensor):
         control_action = super().compute(control_action, joint_pos, joint_vel)
-        loss = (
-            self.coulomb_nm * torch.tanh(joint_vel / self.cfg.coulomb_speed_rad_s)
-            + self.viscous_nm_s_rad * joint_vel
-        )
+        fading = torch.exp(-torch.square(joint_vel / self.cfg.static_speed_rad_s))
+        loss = (self.coulomb_nm + self.static_extra_nm * fading) * torch.tanh(
+            joint_vel / self.cfg.coulomb_speed_rad_s
+        ) + self.viscous_nm_s_rad * joint_vel
         control_action.joint_efforts = control_action.joint_efforts - loss
         return control_action
 
@@ -62,3 +65,9 @@ class FrictionDCMotorCfg(DCMotorCfg):
 
     coulomb_speed_rad_s: float = 0.1
     """How quickly the friction turns over through zero speed."""
+
+    static_nm: tuple[float, float] = (0.0, 0.0)
+    """Friction torque just off a standstill, Nm, if it is more than coulomb_nm."""
+
+    static_speed_rad_s: float = 0.5
+    """How quickly that falls away to coulomb_nm with speed."""

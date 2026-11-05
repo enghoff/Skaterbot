@@ -10,7 +10,10 @@ from isaaclab_rl.rsl_rl import (
     RslRlMLPModelCfg,
     RslRlOnPolicyRunnerCfg,
     RslRlPpoAlgorithmCfg,
+    RslRlSymmetryCfg,
 )
+
+from .drive_symmetry import mirrored
 
 
 @configclass
@@ -78,6 +81,44 @@ class WheeledBipedRoughPPORunnerCfg(WheeledBipedPPORunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
+    )
+
+
+@configclass
+class WheeledBipedDriveMirrorPPORunnerCfg(WheeledBipedRoughPPORunnerCfg):
+    # Every batch and its mirror image, so that left and right come out alike
+    # (drive_symmetry.py). Twice the batch, and the same number of steps.
+    algorithm = WheeledBipedRoughPPORunnerCfg().algorithm.replace(
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True, data_augmentation_func=mirrored
+        )
+    )
+
+
+@configclass
+class WheeledBipedDriveFreshPPORunnerCfg(WheeledBipedRoughPPORunnerCfg):
+    # From nothing, with left and right held alike from the first step. The fine-tunes
+    # of the driving policy that started from its checkpoint kept its stance and its
+    # lean to one side, and turned twice as fast one way as the other. They inherited
+    # its exploration noise, 0.03 at most and 0.0007 on a knee, and at that noise a
+    # mirrored sample is probably so far from what the policy would do that PPO's clip
+    # takes its gradient away. So the mirror is charged directly as well, here, and the
+    # noise is held up: an entropy bonus between the 0.001 it collapsed on and the 0.005
+    # it grew to 1.56 on, and on a log scale, so that a small noise moves by a small step.
+    max_iterations = 4000
+    actor = WheeledBipedRoughPPORunnerCfg().actor.replace(
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=0.5, std_type="log"
+        )
+    )
+    algorithm = WheeledBipedRoughPPORunnerCfg().algorithm.replace(
+        entropy_coef=0.003,
+        symmetry_cfg=RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=True,
+            mirror_loss_coeff=5.0,
+            data_augmentation_func=mirrored,
+        ),
     )
 
 
