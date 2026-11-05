@@ -388,8 +388,18 @@ class Health:
 class Controller:
     """firmware/diag's half of the link, over one end of a socket pair."""
 
-    def __init__(self, sock: socket.socket, motors: dict[str, list[int]], faults=()):
+    def __init__(
+        self,
+        sock: socket.socket,
+        motors: dict[str, list[int]],
+        faults=(),
+        takes_drive=False,
+    ):
         self.sock = sock
+        # firmware/diag has no policy to give a DRIVE to, and counts one as
+        # making no sense, as this does unless told otherwise.
+        self.takes_drive = takes_drive
+        self.drive: dict | None = None
         self.t0 = time.monotonic()
         self.faults = {f for f in faults if f}
         if unknown := self.faults - set(FAULTS):
@@ -442,6 +452,7 @@ class Controller:
             "bitrate=1000000",
             "shutdown_led=1",
             "health=1",
+            *(["drive=1"] if self.takes_drive else []),
             "buses=A FDCAN1 J2 hips,B FDCAN2 J3 knees,C FDCAN3 J4 wheels",
             f"deadman_ms={int(DEADMAN_S * 1000)}",
             # What a search finds, which the firmware has by the time diagd
@@ -483,6 +494,8 @@ class Controller:
         elif kind == dl.CAN_SEND and 6 <= len(body) <= 14 and body[0] < 3:
             bus, flags, can_id = struct.unpack_from("<BBI", body)
             self.can_send(dl.BUSES[bus], can_id, body[6:], bool(flags & 1))
+        elif kind == dl.DRIVE and self.takes_drive and len(body) >= 8:
+            self.drive = dl.parse_drive(body)
         elif kind == dl.IMU_WRITE:
             with self.lock:
                 found = self.imu_found
@@ -714,15 +727,15 @@ DEFAULT_MOTORS = "A:1,2 B:3,4 C:5,6"
 
 
 def simulate(
-    motors: str = DEFAULT_MOTORS, faults=()
+    motors: str = DEFAULT_MOTORS, faults=(), takes_drive=False
 ) -> tuple[socket.socket, Controller]:
     """A simulated controller, running: the Pi's end of its link, and it."""
     ours, theirs = socket.socketpair()
-    controller = Controller(theirs, parse_motors(motors), faults)
+    controller = Controller(theirs, parse_motors(motors), faults, takes_drive)
     controller.start()
     return ours, controller
 
 
-def start(motors: str = DEFAULT_MOTORS, faults=()) -> socket.socket:
+def start(motors: str = DEFAULT_MOTORS, faults=(), takes_drive=False) -> socket.socket:
     """A simulated controller, running; returns the Pi's end of its link."""
-    return simulate(motors, faults)[0]
+    return simulate(motors, faults, takes_drive)[0]

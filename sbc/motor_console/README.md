@@ -77,6 +77,9 @@ readouts come from actual feedback.
   BPI restarts. WPA/WPA2 and WPA3 personal are supported where the adapter
   supports them; enterprise networks need their additional settings configured
   outside this page. A failed connection restores the previous network.
+- **Controller:** find, pair and forget Bluetooth game controllers, see what the
+  connected one is asking for, and set what a stick's end means. See
+  [Game controller](#game-controller).
 
 Each browser has its own diagd client. The daemon arbitrates control with other
 browsers and the desktop GUI. Other clients may always stop motors. Scans and
@@ -153,6 +156,124 @@ node --check sbc/motor_console/console.js
 The integration tests use the real WebSocket server, local API and simulated
 controller. They need port 7700 to be free, refuse to use an existing daemon,
 and stop their simulator when finished.
+
+## Game controller
+
+The console reads the first game controller Linux offers whether or not a page
+is open, and sends what it asks for to diagd fifty times a second. It moves nothing
+unless something is running a policy that listens, as `balance.py --drive` and
+`launcher.py` do. No button on the controller stops the motors, because that would
+drop the robot: letting go only stops the driving.
+
+| On the controller | Does |
+|---|---|
+| Right trigger | Forward, as far as it is pulled: letting go brings the speed to zero |
+| Left trigger | Back, the same |
+| Right stick, left and right | Turn |
+| D-pad, up and down | Leg height |
+| Bottom face button (A, Cross) | Jump |
+
+The turn, D-pad and jump are the MuJoCo driver's. The speed limits start at the
+top of what the robot's driving policy was trained on, 0.5 m/s and 1.5 rad/s. The
+page can lower them, and a restart puts them back rather than keeping what somebody
+last set. That policy cannot jump, so the jump button only counts for now. A controller stops counting as soon as Linux removes it,
+as switching it off does, or after 3 s without a single event, which is the only
+sign of one carried out of range until Bluetooth's own timeout. A trigger held hard
+against its stop sends nothing either, so after 3 s it has to be let go of and pulled
+again. What the firmware
+must do with all this is in
+[POLICY_INTERFACE.md](../../docs/POLICY_INTERFACE.md#the-operators-command).
+
+The installer runs `sbc/install_console_bluetooth.sh`. For an existing console,
+run that as root once, with the new files in place, and restart the console. It
+installs BlueZ and adds the service user to the `bluetooth` and `input` groups, so
+the console needs no helper running as root and no Python package beyond its own.
+It also keeps the adapter on at boot, so that a controller reconnects with no page
+open, and asks for a 2 s link timeout where the default is 20 s, on classic Bluetooth
+only: it does nothing for a low-energy controller, as the Xbox ones are. The Pi as it
+stood on 2026-11-04 already had BlueZ, the groups and the adapter on, and pairing and
+driving input work without this.
+
+The Pi's kernel has no drivers for particular controllers, so most reach it
+through the generic one, which reports buttons in a different order and has a
+PlayStation controller's triggers where its own driver has the right stick.
+`gamepad.py`'s `layout_of` allows for that. A stick also counts only once it has
+been seen in its middle since driving began, so a stick already pushed, or a
+trigger taken for one, asks for nothing.
+
+**On the robot, 2026-11-04, with no real controller.** Bluetooth comes up under
+the Pi's image: a BCM4345C0 radio, Bluetooth 5.0, with BlueZ 5.82. A 12 s scan from
+this console worked, and left the adapter not discoverable and not pairable. Wi-Fi
+lost nothing during it, though its round trip to the access point went from 7 ms on
+average and 32 at worst to 18 and 260. A virtual controller made through
+`/dev/uinput` was read by the running console: its command reached diagd and went
+no further, the controller's count of messages making no sense staying at 0, and
+the stop button it had then stopped the motors at the real controller.
+
+On a PC, pairing and forgetting ran against the real `bluetoothctl` 5.72 talking to
+python-dbusmock's copy of BlueZ, and a simulated controller that takes DRIVE
+received what the sticks asked for.
+
+**On the robot, 2026-11-04, with a real Xbox Wireless Controller** (045E:0B20,
+firmware 5.23). It has paired from test scripts and, since 2026-11-05, **from this
+page**, in 9 and 63 connection attempts, staying connected for the 90 s it was watched.
+Another (C0:D6:D5:EF:99:F0, 045E:0B13) advertises itself as a gamepad and gives no name
+until paired, and is listed as an unnamed controller. A test script paired it on the 14th
+try, it had an input device 1.1 s later and kept it for the 60 s watched; it has not yet
+been paired from this page, and none of its controls has been pressed and read. A third
+(40:8E:2C:42:E2:45, also 045E:0B13) pairs and does not work: see below. The first one's
+buttons were read one at a time, which is where
+`layout_of`'s Xbox line comes from. Three things were found:
+
+- BlueZ refuses this controller's pairing if no agent is registered, however it
+  looks ("No agent available for request type 2", then AuthenticationFailed).
+  Pairing therefore keeps a `bluetoothctl` open as the default agent.
+- Most connection attempts fail, and why is not known: 160 of 168 traced made a link
+  nothing from the controller reached the host on, ending after six connection events,
+  0.33 s at 48.75 ms, with "Connection Failed to be Established". For about its first 10 s after switch-on the controller sends only an
+  advertisement with the HID service; once its pairing button is held it sends Swift
+  Pair beacons as well, three to each HID one. 4 of 114 worked after a beacon and 4 of
+  54 after the HID one, too few to say either matters. Bluetooth shares its chip with
+  Wi-Fi, which is plausible as a cause and has not been tested. So pairing holds one
+  agent and a scan open and tries until one lands, which has taken 1, 2, 9, 10, 23,
+  14, about 22 and 63 tries, the last 42 s of the 60 s it allows.
+- 40:8E:2C:42:E2:45 pairs and then fails. It publishes preferred connection parameters of 332.5
+  to 500 ms, BlueZ's GAP plugin loads them, the kernel applies them to the live link,
+  and each setup request takes about a second. The controller ended the link 14 s after
+  pairing with the report map unread, so no input device was made (one trace,
+  2026-11-05; why it ends the link is not known). The other 045E:0B13 publishes 7.5 ms and
+  works, so the product number does not settle which a controller does. Whether the slow
+  link is the cause is untested: stopping that update, or correcting it at once, on this
+  controller would show it. Stopping it needs a change to the Bluetooth service on the
+  robot.
+- The page calls a controller connected only once the kernel has an input device for
+  its address. Before 2026-11-05 it went by `Connected: yes`, which is only a link, and
+  its message stayed up after the link had gone.
+- A pairing can lose its link at once. From this page on 2026-11-05 the keys were
+  exchanged after 15 s of tries, the controller then fell silent, and the link ended
+  0.4 s later under the 420 ms timeout a link starts with; three script pairings kept
+  it long enough for the controller to ask for 7.5 ms and a 3 s timeout. Pairing
+  therefore goes on connecting for 30 s and reports it if the controller never does.
+- One script pairing vanished from the Pi within about 15 s. A later one that vanished
+  was an Unpair command, which only Forget sends, so this may have been the same; its
+  trace ended too soon to say.
+
+Still to be seen:
+
+- that a pairing stays beyond the few minutes it has been watched;
+- which way the controls go on a real controller: the right trigger should be forward
+  and the right stick to the left a positive turn, read off the Forward and Turn readings;
+- whether a paired controller reconnects by itself when switched on, which it did
+  once, 5 s after dropping;
+- why the link dropped by itself that once, and how long a controller carried out
+  of range goes on being believed;
+- whether 3 s of silence ever cuts in on a thumb holding a stick at its end;
+- how Wi-Fi fares with a controller connected, rather than a scan running.
+
+```text
+uv run tools/test_gamepad.py
+sudo python3 tools/test_gamepad_linux.py    # on Linux; on the Pi too, without dbusmock
+```
 
 ## Wi-Fi helper
 

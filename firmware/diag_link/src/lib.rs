@@ -19,6 +19,9 @@ pub mod host {
     pub const STOP: u8 = 0x03;
     pub const SHUTDOWN: u8 = 0x04;
     pub const CAN_SEND: u8 = 0x10;
+    /// Additive: what the operator asks the policy for, [`super::Drive`]. A
+    /// daemon sends it only to an image whose INFO says `drive=1`.
+    pub const DRIVE: u8 = 0x11;
     pub const IMU_WRITE: u8 = 0x20;
     pub const I2C: u8 = 0x21;
 }
@@ -47,6 +50,40 @@ pub const PROTOCOL: u32 = 1;
 pub const MAX_MESSAGE: usize = 600;
 /// The longest SHTP packet passed either way.
 pub const MAX_IMU_PACKET: usize = 512;
+
+/// What the operator is asking the policy for, from a DRIVE's body.
+/// docs/POLICY_INTERFACE.md sets out what is to be done with it, and above all
+/// that one more than 200 ms old counts as not live.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Drive {
+    /// Forward speed, mm/s.
+    pub forward_mm_s: i16,
+    /// Turn rate, positive to the left, mrad/s.
+    pub turn_mrad_s: i16,
+    /// Leg height, hip to axle, in tenths of a millimetre.
+    pub height_tenth_mm: u16,
+    /// A controller is being heard, and has been within the last 3 seconds.
+    /// When false, the speed and the turn are zero.
+    pub live: bool,
+    /// Counts jump presses: a jump is asked for when this changes while live.
+    pub jump: u8,
+}
+
+impl Drive {
+    /// None if the body is too short. A later version may append to it.
+    pub fn parse(body: &[u8]) -> Option<Drive> {
+        if body.len() < 8 {
+            return None;
+        }
+        Some(Drive {
+            forward_mm_s: i16::from_le_bytes([body[0], body[1]]),
+            turn_mrad_s: i16::from_le_bytes([body[2], body[3]]),
+            height_tenth_mm: u16::from_le_bytes([body[4], body[5]]),
+            live: body[6] & 1 != 0,
+            jump: body[7],
+        })
+    }
+}
 
 /// Validate the BNO08x SHTP header before treating a read as a live sensor.
 /// Length includes the header; zero denotes no pending packet. In particular,
@@ -308,6 +345,28 @@ mod tests {
                 0x00
             ]
         );
+    }
+
+    /// `sbc/diag_link.py`'s check holds the same bytes: 0.5 m/s, a turn of
+    /// 1.5 rad/s to the right, 203.5 mm, live, the third jump.
+    #[test]
+    fn drive_known_answer() {
+        let body = [0xF4, 0x01, 0x24, 0xFA, 0xF3, 0x07, 0x01, 0x03];
+        assert_eq!(
+            wire(host::DRIVE, &body),
+            [0x0C, 0x11, 0xF4, 0x01, 0x24, 0xFA, 0xF3, 0x07, 0x01, 0x03, 0x2C, 0x92, 0x00]
+        );
+        assert_eq!(
+            Drive::parse(&body),
+            Some(Drive {
+                forward_mm_s: 500,
+                turn_mrad_s: -1500,
+                height_tenth_mm: 2035,
+                live: true,
+                jump: 3,
+            })
+        );
+        assert_eq!(Drive::parse(&body[..7]), None);
     }
 
     #[test]

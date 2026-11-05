@@ -2,3 +2,4 @@
 :root .plots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.plots h3{margin-bottom:6px}.plots canvas{display:block}
 :root .saved-network{justify-content:space-between;border-bottom:1px solid var(--line);padding:10px 0}#wifi-network{max-width:100%;width:380px}#wifi-password{max-width:240px;width:240px}.error{color:var(--red)}
 #ask{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:18px 22px;max-width:min(480px,calc(100vw - 32px))}#ask::backdrop{background:#0009}#ask form{margin:0}#ask p{margin:0 0 16px}#ask .toolbar{justify-content:end}
+#gamepad{display:grid;gap:14px}#gamepad h3{margin-top:14px}#pad-limits{margin:12px 0}

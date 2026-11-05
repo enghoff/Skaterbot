@@ -220,6 +220,7 @@ The Pi sends:
 | 0x03 | STOP | nothing; stop every motor |
 | 0x04 | SHUTDOWN | nothing; Linux has accepted shutdown: stop motors, latch OFF, stop the MCU heartbeat LED and start the grace period unless already running |
 | 0x10 | CAN_SEND | bus u8 (0 A, 1 B, 2 C), flags u8 (bit 0 extended ID), id u32, then 0 to 8 data bytes |
+| 0x11 | DRIVE | forward i16 mm/s, turn i16 mrad/s, height u16 in 0.1 mm, flags u8 (bit 0 live), jump u8; only to an image whose INFO says `drive=1`, which `firmware/diag` does not ([the operator's command](POLICY_INTERFACE.md#the-operators-command)) |
 | 0x20 | IMU_WRITE | one SHTP packet, header included, written to the IMU as it stands |
 | 0x21 | I2C | tag u8, address u8, read length u16, then the bytes to write |
 
@@ -393,11 +394,12 @@ carrying `"ev"`, to the streams the client subscribed to.
 | Request | Control | Does |
 |---|---|---|
 | `hello` `name` | | the controller's INFO, the daemon's settings, and who holds control |
-| `subscribe` `streams` | | any of `can`, `imu`, `imu.raw`, `imu.diag`, `status`, `log`; `status` and `log` by default |
+| `subscribe` `streams` | | any of `can`, `imu`, `imu.raw`, `imu.diag`, `status`, `log`, `drive`; `status` and `log` by default |
 | `ping` | | nothing: the keepalive |
 | `status` | | the latest status, decoded |
 | `control` `take` | | take control, or with `take: false` give it back |
 | `stop` | no | stop every motor |
+| `drive` `forward` `turn` `height` `live` `jump` | no | what the operator asks the policy for: on to the `drive` stream, and to the controller if it takes it, which `taken` in the answer says. It moves nothing by itself |
 | `can.send` `bus` `id` `data` `ext` | yes | one frame. `bus` is `A`, `B` or `C`, `data` hex |
 | `can.request` ... `expect` `timeout` | yes | one frame, answered by the first frame on the same bus whose data starts with `expect`, within `timeout` (0.02 s if not given) |
 | `imu.enable` `report` `hz` | yes | ask the IMU for a report at a rate; `hz` 0 stops it |
@@ -422,6 +424,7 @@ The events:
 | `status` | the controller's STATUS decoded, with the daemon's own counters, the link's state, and `health`: the fault the LEDs show, the conditions behind it, and what the Pi's LED was set to |
 | `log` | `t`, `text`: from the controller or the daemon |
 | `stopped` | `why`: every motor has just been told to stop |
+| `drive` | `forward`, `turn`, `height`, `live`, `jump`, as the `drive` request gave them, with speed and turn zero unless live |
 
 `t` is seconds of the controller's uptime. The client library moves every `t`
 onto its own `time.monotonic()`, by the smallest gap it has seen between a
@@ -498,6 +501,9 @@ wire. Stop the daemon first. Once the controller runs `firmware/diag`,
   and the Pi's timer trigger and sudo writes on the real sysfs. Whether the
   IMU's silent fault after a cold start is shown, and clears after the power
   cycle, can only be seen when it next happens.
+- **The game controller.** Everything in
+  [the console's list](../sbc/motor_console/README.md#game-controller), which
+  takes a real one. The Pi's radio itself works.
 - **I2C.** The carrier has detected INA226 at 0x40 and BNO085 at 0x4B. The
   earlier host recovery validation covered the IMU-only bus with the
   battery-monitor PCB removed for isolation. The user measured 3.299 V at

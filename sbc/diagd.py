@@ -70,7 +70,7 @@ IMU_ANSWER_S = 0.5
 # Lines held for a client that is not reading; past this, events are dropped.
 BACKLOG = 20_000
 
-STREAMS = {"can", "imu", "imu.raw", "imu.diag", "status", "log"}
+STREAMS = {"can", "imu", "imu.raw", "imu.diag", "status", "log", "drive"}
 
 # SH-2's input reports: name, fixed-point Q, values. The rotation vector's fifth
 # value is its accuracy estimate, in Q12 radians.
@@ -859,6 +859,37 @@ class Daemon:
         self.stop(f"asked by {client}")
         return {}
 
+    def op_drive(self, client: Client, m: dict) -> dict:
+        """What the operator is asking the policy for. It moves nothing by itself,
+        so it needs no control: it goes to whatever runs the policy, the
+        controller if its image says it takes it, and to the `drive` stream."""
+        forward, turn = float(m["forward"]), float(m["turn"])
+        height, live, jump = float(m["height"]), bool(m["live"]), int(m["jump"])
+        # What the message can carry, not what the robot may do: the limits on
+        # the operator are gamepad.py's, and the firmware's own.
+        if not (abs(forward) <= 30 and abs(turn) <= 30 and 0 <= height <= 1):
+            raise Refused("a drive command out of all range")
+        if not live:
+            forward = turn = 0.0
+        with self.lock:
+            if self.shutting_down or (self.status and self.status.get("off")):
+                raise Refused("the robot is shutting down")
+            taken = self.info.get("drive") == "1"
+        self.broadcast(
+            "drive",
+            {
+                "ev": "drive",
+                "forward": forward,
+                "turn": turn,
+                "height": height,
+                "live": live,
+                "jump": jump,
+            },
+        )
+        if taken:
+            self.mcu(dl.DRIVE, dl.drive(forward, turn, height, live, jump))
+        return {"taken": taken}
+
     def op_power_off(self, client: Client, m: dict) -> dict:
         self.need_control(client)
         return self.shutdown(f"power-off asked by {client}")
@@ -1062,6 +1093,7 @@ OPS = {
     "imu.diagnostics": Daemon.op_imu_diagnostics,
     "control": Daemon.op_control,
     "stop": Daemon.op_stop,
+    "drive": Daemon.op_drive,
     "power.off": Daemon.op_power_off,
     "can.send": Daemon.op_can_send,
     "can.request": Daemon.op_can_request,
@@ -1143,6 +1175,12 @@ def main() -> None:
         "imu-dead, imu-missing, ina-missing, bus-off",
     )
     ap.add_argument(
+        "--sim-drive",
+        action="store_true",
+        help="the simulated controller takes DRIVE, as firmware running a policy "
+        "will; firmware/diag does not",
+    )
+    ap.add_argument(
         "--led",
         default=None,
         help=f"the status LED's sysfs directory, or none (default {LED} on the "
@@ -1154,7 +1192,9 @@ def main() -> None:
         import diag_sim
 
         sock = diag_sim.start(
-            args.sim_motors or diag_sim.DEFAULT_MOTORS, args.sim_faults.split(",")
+            args.sim_motors or diag_sim.DEFAULT_MOTORS,
+            args.sim_faults.split(","),
+            args.sim_drive,
         )
         stream = SocketStream(sock, "a simulated controller (diag_sim.py)")
     else:

@@ -24,7 +24,9 @@ from collections import deque
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import console_bluetooth
 import diag_client
+import gamepad
 from aiohttp import WSMsgType, web
 
 HERE = Path(__file__).resolve().parent
@@ -762,6 +764,16 @@ async def websocket(request):
                 if op in ("wifi.connect", "wifi.forget"):
                     await asyncio.to_thread(session.stop, True)
                 result = await request.app["wifi"].action(message)
+            elif op.startswith("bluetooth."):
+                # Bluetooth shares the Pi's one radio with Wi-Fi, so a scan can
+                # stall this browser's own heartbeat. Stop first, not by surprise,
+                # but only what this page is running: a stop is for every motor,
+                # whoever holds them, and would drop a robot a policy is balancing.
+                if op in ("bluetooth.scan", "bluetooth.pair") and session.control:
+                    await asyncio.to_thread(session.stop)
+                result = await request.app["bluetooth"].action(message)
+            elif op == "pad.limits":
+                result = request.app["pad"].limits(message)
             elif op == "stop":
                 await asyncio.to_thread(session.stop)
                 result = "all motors stopped"
@@ -794,7 +806,8 @@ async def websocket(request):
         while not ws.closed:
             state = session.snapshot(after)
             after = state["seq"]
-            await ws.send_json(dict(type="state", **state))
+            pad = request.app["pad"].snapshot()
+            await ws.send_json(dict(type="state", pad=pad, **state))
             await asyncio.sleep(0.1)
 
     sender = asyncio.create_task(push())
@@ -860,16 +873,37 @@ def create_app(sim=False):
     app["manager"] = DaemonManager(sim)
     app["sessions"] = set()
     app["wifi"] = WifiManager(sim)
+    if sim:
+        bluetooth = console_bluetooth.SimulatedBluetooth()
+
+        def find():
+            there = bluetooth.connected
+            return gamepad.SimPad(lambda: bluetooth.connected) if there else None
+    else:
+        bluetooth, find = console_bluetooth.BluetoothManager(), gamepad.find_evdev_pad
+    app["bluetooth"] = bluetooth
+    app["pad"] = gamepad.PadManager(find)
     app.router.add_get("/", asset)
     app.router.add_get("/ws", websocket)
     app.router.add_get("/{name}", asset)
 
+    async def startup(app):
+        # At the console's start, not a browser's: driving needs no page open.
+        app["pad"].start()
+
     async def shutdown(app):
         for session in list(app["sessions"]):
             session.close()
+        await asyncio.to_thread(app["pad"].close)
         if app["wifi"].task:
             await app["wifi"].task
+        if app["bluetooth"].task:
+            # A pairing can run for a minute and this has seconds before it is killed,
+            # which would leave the adapter open. Cancelling still shuts it.
+            app["bluetooth"].task.cancel()
+            await asyncio.wait([app["bluetooth"].task], timeout=5)
 
+    app.on_startup.append(startup)
     app.on_shutdown.append(shutdown)
     return app
 
