@@ -15,14 +15,14 @@ Speed is on the analog triggers, the right (gas) forward and the left (brake) ba
 how far one is pulled asks for that much, and letting go asks for none. The turn,
 D-pad and jump are the MuJoCo driver's (simulation/mujoco/drive.py, Input.poll_pad).
 
-A dropped controller must not leave the robot driving, and three things watch for
-that. Linux taking the device away ends it at once, which is what happens when a
-controller is switched off. But a controller carried out of range says nothing,
-and until the link times out Linux goes on reporting its last state, so the last
-is a watch here: no event of any kind for SILENCE_S and the triggers and sticks
-count for nothing until the next one. Letting go ends it too, since both spring
-back. And each counts only once it has been seen at rest, so one already pulled, or
-a trigger mistaken for a stick, asks for nothing.
+A dropped controller must not leave the robot driving, and two things watch for
+that. Linux taking the device away ends it: at once when a controller is switched off,
+and when the link times out when one is carried out of range, Linux going on reporting
+its last state until then, for a time not yet measured. Letting go ends it too, since
+both spring back. And each counts only once it has been seen at rest, so one already
+pulled, or a trigger mistaken for a stick, asks for nothing. Silence ended it as well
+until 5 November 2026, but a control held still has nothing to report, so on the robot
+a held turn stopped after two revolutions, and it took letting go to start it again.
 """
 
 from __future__ import annotations
@@ -69,12 +69,6 @@ START_TURN_RAD_S = TOP_TURN_RAD_S
 DEAD_ZONE = 0.12
 # Holding the D-pad moves the leg height this fast.
 HEIGHT_RATE_M_S = 0.025
-# Silence from the controller before its last state stops counting. A thumb on a
-# stick all but never rests exactly enough to send nothing for this long, except
-# at the stick's end with the other axis quiet. Unmeasured on a real controller. A
-# trigger held hard against its stop is the same: after this long it stops counting,
-# and has to be let go of and pulled again.
-SILENCE_S = 3.0
 SEND_HZ = 50
 # Whoever reads the command needs to know the path is alive, not every frame:
 # the daemon's answer, saying whether the controller takes it, comes this often.
@@ -157,11 +151,9 @@ class Operator:
         self.jump = 0
         self.speed_limit = START_SPEED_M_S
         self.turn_limit = START_TURN_RAD_S
-        self.heard = now
         self.stepped = now
 
     def event(self, kind: int, code: int, value: int, now: float) -> None:
-        self.heard = now
         if kind == EV_ABS:
             if code == ABS_HAT0Y:
                 self.hat = -value
@@ -169,7 +161,7 @@ class Operator:
                 self.axes[code] = value
         elif kind == EV_KEY and value != 2:  # 2 is a key repeating
             (self.held.add if value else self.held.discard)(code)
-            if value and code == self.layout.jump and self.live(now):
+            if value and code == self.layout.jump:
                 self.jump = (self.jump + 1) & 0xFF
 
     def position(self, code: int) -> float:
@@ -212,9 +204,6 @@ class Operator:
         triggers = (self.layout.gas, self.layout.brake)
         return found | {code for code in triggers if self.pull(code) < DEAD_ZONE}
 
-    def live(self, now: float) -> bool:
-        return now - self.heard < SILENCE_S
-
     def why_not(self, now: float) -> str:
         layout = self.layout
         inputs = {layout.turn, layout.gas, layout.brake}
@@ -222,8 +211,6 @@ class Operator:
             return "this controller has no analog triggers to drive with"
         if self.resting() == inputs:
             return ""
-        if now - self.heard >= SILENCE_S:
-            return f"nothing heard for {SILENCE_S:g} s: let go, and pull again"
         if inputs - self.armed:
             return "let the triggers and the stick come back to rest"
         return ""
@@ -232,31 +219,27 @@ class Operator:
         """What is being asked for now, inside the trained ranges."""
         dt, self.stepped = now - self.stepped, now
         layout = self.layout
-        resting = self.resting()
-        live = self.live(now)
-        forward = turn = 0.0
         # What is at rest may start at any time, so that a quick pull after a long idle
-        # counts. What is pulled when it stops being live has to be let go of first.
-        self.armed = self.armed | resting if live else set(resting)
-        if live:
-            forward = self.trigger(layout.gas) - self.trigger(layout.brake)
-            forward *= self.speed_limit
-            # Left on a stick is its lowest value, as the policy's turn wants positive.
-            turn = -self.stick(layout.turn) * self.turn_limit
-            share = abs(forward) / TOP_SPEED_M_S + abs(turn) / TOP_TURN_RAD_S
-            if ENVELOPE and share > 1:
-                forward /= share
-                turn /= share
-            low, high = HEIGHT_RANGE_M
-            self.height = min(
-                high, max(low, self.height + self.hat * HEIGHT_RATE_M_S * min(dt, 0.1))
-            )
+        # counts.
+        self.armed |= self.resting()
+        forward = self.trigger(layout.gas) - self.trigger(layout.brake)
+        forward *= self.speed_limit
+        # Left on a stick is its lowest value, as the policy's turn wants positive.
+        turn = -self.stick(layout.turn) * self.turn_limit
+        share = abs(forward) / TOP_SPEED_M_S + abs(turn) / TOP_TURN_RAD_S
+        if ENVELOPE and share > 1:
+            forward /= share
+            turn /= share
+        low, high = HEIGHT_RANGE_M
+        self.height = min(
+            high, max(low, self.height + self.hat * HEIGHT_RATE_M_S * min(dt, 0.1))
+        )
         return {
             # -0.0 is not a thing to send to a person, or a log.
             "forward": round(forward, 3) + 0.0,
             "turn": round(turn, 3) + 0.0,
             "height": round(self.height, 4),
-            "live": live,
+            "live": True,
             "jump": self.jump,
         }
 

@@ -231,8 +231,9 @@ what the firmware does with them is this:
    `drive=1`, so that today's `firmware/diag` is never sent one.
 2. **Not live, or nothing for 200 ms, is a speed and a turn of zero.** It is not
    a reason to stop the motors: a robot told to stand still stays up, and a robot
-   with its motors cut falls over. Keep the last height. Not live means nothing has
-   been heard from the controller for 3 s. A live DRIVE is not leave to start the motors, or
+   with its motors cut falls over. Keep the last height. Not live means Linux has lost the
+   controller; a control held still sends nothing, and goes on counting until then, or
+   until it is let go of. A live DRIVE is not leave to start the motors, or
    to go on after a fall.
 3. **Nothing on the controller stops the motors**, since that would drop the robot.
    Stopping is the link's ordinary STOP, which every image already obeys.
@@ -254,6 +255,7 @@ running a policy off the controller can have the same numbers from diagd's
 It does not know where it is or which way it faces: holding a heading or a
 place has to be a loop outside it, turning a target into speed and turn
 commands. It does not see motor temperatures or fault codes, the battery, or
-whether it has fallen. **A tilt beyond about 20° cutting the motors** (NOTES.md),
+whether it has fallen. **A tilt beyond about 20° cutting the motors** (NOTES.md; `sbc/balance.py`
+uses 30°, and [SYSID.md](SYSID.md#running-the-policy-on-the-robot) says why),
 fault handling and any limit on the commands a person can give all belong to
 the firmware, around the policy, not in it.

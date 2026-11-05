@@ -62,7 +62,7 @@ pub struct Drive {
     pub turn_mrad_s: i16,
     /// Leg height, hip to axle, in tenths of a millimetre.
     pub height_tenth_mm: u16,
-    /// A controller is being heard, and has been within the last 3 seconds.
+    /// A controller is connected. One held still sends nothing and is still live.
     /// When false, the speed and the turn are zero.
     pub live: bool,
     /// Counts jump presses: a jump is asked for when this changes while live.

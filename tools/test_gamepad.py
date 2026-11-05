@@ -123,20 +123,11 @@ class OperatorTests(unittest.TestCase):
 
     def test_a_quick_pull_after_a_long_idle_counts(self):
         operator = ready()
-        later = gp.SILENCE_S + 5
+        later = 100.0
         self.assertEqual(operator.why_not(later), "")
         operator.command(later)
         operator.event(gp.EV_ABS, GAS, 255, later)
         self.assertAlmostEqual(operator.command(later)["forward"], gp.START_SPEED_M_S)
-
-    def test_coming_back_from_silence_pulled_wants_it_let_go_of(self):
-        operator = ready()
-        operator.event(gp.EV_ABS, GAS, 255, 0.0)
-        self.assertGreater(operator.command(0.0)["forward"], 0)
-        later = gp.SILENCE_S + 1
-        operator.command(later)
-        operator.event(gp.EV_ABS, GAS, 254, later)
-        self.assertEqual(operator.command(later)["forward"], 0.0)
 
     def test_a_trigger_taken_for_a_stick_cannot_drive(self):
         # Where this kernel's generic driver would have put a PlayStation
@@ -173,17 +164,19 @@ class OperatorTests(unittest.TestCase):
         want = gp.START_TURN_RAD_S * (0.5 - 0.12) / (1 - 0.12)
         self.assertAlmostEqual(operator.command(0.0)["turn"], want, places=2)
 
-    def test_silence_from_the_controller_stops_counting_what_it_last_said(self):
-        operator = ready(now=0.0)
-        operator.event(gp.EV_ABS, GAS, 255, 0.0)
-        self.assertTrue(operator.command(gp.SILENCE_S - 0.01)["live"])
-        later = gp.SILENCE_S + 0.01
-        command = operator.command(later)
-        self.assertEqual((command["forward"], command["live"]), (0.0, False))
-        self.assertIn("nothing heard", operator.why_not(later))
-        # Heard again, it is live again.
-        operator.event(gp.EV_ABS, GAS, 255, later)
-        self.assertTrue(operator.command(later)["live"])
+    def test_a_control_held_still_goes_on_counting_however_long(self):
+        # It has nothing to report: a held turn stopped after two revolutions.
+        for gas, stick in ((255, 0), (128, 64)):
+            operator = ready(now=0.0)
+            operator.event(gp.EV_ABS, GAS, gas, 0.0)
+            operator.event(gp.EV_ABS, gp.ABS_RX, stick, 0.0)
+            first = operator.command(0.0)
+            command = operator.command(600.0)
+            self.assertTrue(command["live"])
+            self.assertGreater(command["forward"], 0.0)
+            self.assertEqual(command["forward"], first["forward"])
+            self.assertEqual(command["turn"], first["turn"])
+            self.assertEqual(operator.why_not(600.0), "")
 
     def test_a_key_repeating_is_not_a_press(self):
         operator = ready()
@@ -252,13 +245,11 @@ class OperatorTests(unittest.TestCase):
         now = 0.0
         for _ in range(200):
             now += 0.02
-            operator.heard = now
             high = operator.command(now)["height"]
         self.assertEqual(high, gp.HEIGHT_RANGE_M[1])
         operator.event(gp.EV_ABS, gp.ABS_HAT0Y, 1, now)  # down
         for _ in range(500):
             now += 0.02
-            operator.heard = now
             low = operator.command(now)["height"]
         self.assertEqual(low, gp.HEIGHT_RANGE_M[0])
 
