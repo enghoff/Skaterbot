@@ -22,7 +22,7 @@
 //! On the robot it also holds the power on and turns it off: [`early_init`]
 //! raises the power switch board's HOLD as soon as it knows this image is to
 //! run, and starts [`power`]'s watch on the robot's button, which lets go of
-//! HOLD after a half-second press, or waits for Linux shutdown when the image
+//! HOLD after a two-second press, or waits for Linux shutdown when the image
 //! opts into graceful power-off (with timed and long-press forced-off fallbacks).
 //!
 //! The button still works whatever an image does, because the option bytes that
@@ -252,7 +252,7 @@ pub mod power {
     //! every image turns off the same way whatever else it does or fails to do.
     //! [`super::early_init`] starts SysTick, and every [`TICK_MS`] its handler
     //! reads the button on PB14, which the power board's D7 pulls low against
-    //! the MCU's pull-up. Normally a half-second press drops HOLD immediately.
+    //! the MCU's pull-up. Normally a two-second press drops HOLD immediately.
     //! An image that calls [`wait_for_sbc_shutdown`] instead latches a shutdown
     //! request while keeping HOLD high. The Pi's final shutdown hook then resets
     //! the MCU to release HOLD after Linux is safe. An eight-second button hold,
@@ -392,7 +392,7 @@ pub mod power {
         pac::GPIOB.idr().read().idr(SENSE_PIN) == Idr::LOW
     }
 
-    /// Whether a half-second press requested shutdown. This remains latched
+    /// Whether a two-second press requested shutdown. This remains latched
     /// through the grace period, even after the button is released.
     pub fn off_requested() -> bool {
         OFF.load(Ordering::Relaxed)

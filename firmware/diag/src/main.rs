@@ -27,7 +27,7 @@
 //! every motor ID the Pi has addressed and to 1 to 16, on all four modes' frame
 //! IDs, [`STOP_ROUNDS`] times, on all three buses. It stops when the Pi asks,
 //! when the Pi has said nothing for [`DEADMAN`], on the power button's
-//! half-second press, and as it starts.
+//! two-second press, and as it starts.
 //!
 //! Its LED, D1, beats board::heartbeat's heartbeat while all is well and shows
 //! a fault's pattern while something is wrong ([`health`]): the IMU missing or

@@ -3,7 +3,7 @@
 //! Host checks: rustc --test --edition=2024 board/src/power_button.rs
 
 pub const TICK_MS: u32 = 10;
-pub const OFF_PRESS_MS: u32 = 500;
+pub const OFF_PRESS_MS: u32 = 2_000;
 pub const RELEASE_MS: u32 = 50;
 pub const FORCE_OFF_MS: u32 = 8_000;
 pub const SHUTDOWN_GRACE_MS: u32 = 20_000;
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn a_second_press_needs_its_own_eight_seconds() {
         let mut b = Button::Up;
-        advance(&mut b, true, 2000, true);
+        advance(&mut b, true, OFF_PRESS_MS + 500, true);
         advance(&mut b, false, RELEASE_MS, true);
         assert_eq!(advance(&mut b, true, FORCE_OFF_MS - TICK_MS, true), (0, 0));
         assert_eq!(advance(&mut b, true, TICK_MS, true), (0, 1));
@@ -175,10 +175,11 @@ mod tests {
     #[test]
     fn bounce_does_not_count_as_a_release() {
         let mut b = Button::Up;
-        advance(&mut b, true, 1000, true);
+        let first = OFF_PRESS_MS + 500;
+        advance(&mut b, true, first, true);
         advance(&mut b, false, RELEASE_MS - TICK_MS, true);
         assert_eq!(
-            advance(&mut b, true, FORCE_OFF_MS - 1000 - RELEASE_MS, true),
+            advance(&mut b, true, FORCE_OFF_MS - first - RELEASE_MS, true),
             (0, 0)
         );
         assert_eq!(advance(&mut b, true, TICK_MS, true), (0, 1));

@@ -83,7 +83,7 @@ it can see:
 |---|---|---|---|
 | diagd | the client holding control: closed, or silent | 0.5 s | stops every motor, and takes control back |
 | controller | the Pi: no valid frame on the link | 0.3 s | stops every motor |
-| controller | the power button: the half-second press | at once | stops every motor |
+| controller | the power button: the two-second press | at once | stops every motor |
 
 The client library pings every 0.1 s and the daemon every 50 ms, so a link that
 is only slow does not trip either. Against the simulator, a controlling client
@@ -194,8 +194,14 @@ a bus-off held 5 s, and a link that stops are each shown with their own
 pattern; a shutdown leaves the LED dark through a standing fault and through
 diagd's exit; and a healthy robot's heartbeat is left untouched, with nothing
 written. The firmware's rules pass their host tests (`rustc --test
---edition=2024 diag/src/health.rs`), and it builds clean under clippy. Neither
-LED has yet been watched on the robot.
+--edition=2024 diag/src/health.rs`), and it builds clean under clippy.
+
+**On the robot, 2026-11-04:** flashed at 15:54, and the first boot reported the
+IMU silent. That was the real fault: asked directly, the IMU did not answer and
+sent no reports. The fast flicker was seen by eye, and a power-cycle cleared it,
+with health clear, the Pi's LED back on its heartbeat and the IMU sending about
+300 packets a second. Neither the link's blink nor the other-hardware pattern
+has been watched yet.
 
 ## The controller's link, J5
 
@@ -355,7 +361,7 @@ This uses systemd's final shutdown hook stage:
 https://www.freedesktop.org/software/systemd/man/253/systemd-poweroff.service.html
 
 The diagnostics firmware also uses this sequence for the physical button. A
-half-second press latches OFF and stops motors, while MCU HOLD remains high.
+two-second press latches OFF and stops motors, while MCU HOLD remains high.
 `diagd` notices OFF in controller status, blocks further control and runs the
 same shutdown callback without needing a client's ownership. Failed scheduling
 is retried once a second. The final Linux hook resets the MCU and drops SBC HOLD
