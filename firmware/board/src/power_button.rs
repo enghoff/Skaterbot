@@ -3,10 +3,34 @@
 //! Host checks: rustc --test --edition=2024 board/src/power_button.rs
 
 pub const TICK_MS: u32 = 10;
-pub const OFF_PRESS_MS: u32 = 500;
+pub const OFF_PRESS_MS: u32 = 2_000;
 pub const RELEASE_MS: u32 = 50;
 pub const FORCE_OFF_MS: u32 = 8_000;
 pub const SHUTDOWN_GRACE_MS: u32 = 20_000;
+/// Ticks running for the pin to count as a press: a quick tap is 50 ms or so, and a spike
+/// on the line from the motors is far shorter.
+pub const PRESS_TICKS: u8 = 2;
+
+/// Whether the pin has been low for long enough to be a finger.
+#[derive(Clone, Copy, Default)]
+pub struct Press {
+    low_ticks: u8,
+}
+
+impl Press {
+    pub const fn new() -> Self {
+        Self { low_ticks: 0 }
+    }
+
+    pub fn step(&mut self, pressed: bool) -> bool {
+        self.low_ticks = if pressed {
+            self.low_ticks.saturating_add(1)
+        } else {
+            0
+        };
+        self.low_ticks >= PRESS_TICKS
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Button {
@@ -136,6 +160,21 @@ mod tests {
     }
 
     #[test]
+    fn a_press_needs_two_ticks_running() {
+        let mut p = Press::new();
+        assert!(!p.step(true));
+        assert!(!p.step(false));
+        assert!(!p.step(true));
+        assert!(p.step(true));
+        assert!(p.step(true));
+        assert!(!p.step(false));
+        for _ in 0..1000 {
+            p.step(true);
+        }
+        assert!(p.step(true));
+    }
+
+    #[test]
     fn ignores_startup_press_and_short_press() {
         let mut b = Button::Starting { up_ms: 0 };
         assert_eq!(advance(&mut b, true, FORCE_OFF_MS + 1000, true), (0, 0));
@@ -166,7 +205,7 @@ mod tests {
     #[test]
     fn a_second_press_needs_its_own_eight_seconds() {
         let mut b = Button::Up;
-        advance(&mut b, true, 2000, true);
+        advance(&mut b, true, OFF_PRESS_MS + 500, true);
         advance(&mut b, false, RELEASE_MS, true);
         assert_eq!(advance(&mut b, true, FORCE_OFF_MS - TICK_MS, true), (0, 0));
         assert_eq!(advance(&mut b, true, TICK_MS, true), (0, 1));
@@ -175,10 +214,11 @@ mod tests {
     #[test]
     fn bounce_does_not_count_as_a_release() {
         let mut b = Button::Up;
-        advance(&mut b, true, 1000, true);
+        let first = OFF_PRESS_MS + 500;
+        advance(&mut b, true, first, true);
         advance(&mut b, false, RELEASE_MS - TICK_MS, true);
         assert_eq!(
-            advance(&mut b, true, FORCE_OFF_MS - 1000 - RELEASE_MS, true),
+            advance(&mut b, true, FORCE_OFF_MS - first - RELEASE_MS, true),
             (0, 0)
         );
         assert_eq!(advance(&mut b, true, TICK_MS, true), (0, 1));

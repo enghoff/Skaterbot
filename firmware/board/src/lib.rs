@@ -22,7 +22,7 @@
 //! On the robot it also holds the power on and turns it off: [`early_init`]
 //! raises the power switch board's HOLD as soon as it knows this image is to
 //! run, and starts [`power`]'s watch on the robot's button, which lets go of
-//! HOLD after a half-second press, or waits for Linux shutdown when the image
+//! HOLD after a two-second press, or waits for Linux shutdown when the image
 //! opts into graceful power-off (with timed and long-press forced-off fallbacks).
 //!
 //! The button still works whatever an image does, because the option bytes that
@@ -252,7 +252,7 @@ pub mod power {
     //! every image turns off the same way whatever else it does or fails to do.
     //! [`super::early_init`] starts SysTick, and every [`TICK_MS`] its handler
     //! reads the button on PB14, which the power board's D7 pulls low against
-    //! the MCU's pull-up. Normally a half-second press drops HOLD immediately.
+    //! the MCU's pull-up. Normally a two-second press drops HOLD immediately.
     //! An image that calls [`wait_for_sbc_shutdown`] instead latches a shutdown
     //! request while keeping HOLD high. The Pi's final shutdown hook then resets
     //! the MCU to release HOLD after Linux is safe. An eight-second button hold,
@@ -279,7 +279,7 @@ pub mod power {
     use embassy_stm32::pac::gpio::vals::{Idr, Moder, Pupdr};
     use embassy_stm32::pac::rcc::vals::Sw;
 
-    use crate::power_button::Button;
+    use crate::power_button::{Button, Press};
     pub use crate::power_button::{
         FORCE_OFF_MS, OFF_PRESS_MS, RELEASE_MS, SHUTDOWN_GRACE_MS, TICK_MS,
     };
@@ -298,6 +298,8 @@ pub mod power {
     static OFF: AtomicBool = AtomicBool::new(false);
     static GRACEFUL: AtomicBool = AtomicBool::new(false);
     static BUTTON: Mutex<RefCell<Button>> = Mutex::new(RefCell::new(Button::Starting { up_ms: 0 }));
+    static PRESS: Mutex<RefCell<Press>> = Mutex::new(RefCell::new(Press::new()));
+    static PRESSED_LATELY: AtomicBool = AtomicBool::new(false);
 
     /// Raises HOLD from the reset state, before clocks or embassy: the button
     /// has to be held until this runs, so it runs as early as it can. embassy's
@@ -348,12 +350,15 @@ pub mod power {
     pub(crate) fn tick() {
         unsafe { (*SYST::PTR).rvr.write(reload()) };
         let pressed = pressed();
-        let action = free(|cs| {
+        let (action, press) = free(|cs| {
             let mut button = BUTTON.borrow(cs).borrow_mut();
             let (next, action) = button.step(pressed, GRACEFUL.load(Ordering::Relaxed));
             *button = next;
-            action
+            (action, PRESS.borrow(cs).borrow_mut().step(pressed))
         });
+        if press {
+            PRESSED_LATELY.store(true, Ordering::Relaxed);
+        }
         if action.request_off {
             OFF.store(true, Ordering::Relaxed);
         }
@@ -392,7 +397,13 @@ pub mod power {
         pac::GPIOB.idr().read().idr(SENSE_PIN) == Idr::LOW
     }
 
-    /// Whether a half-second press requested shutdown. This remains latched
+    /// Whether the button has been down since this was last asked. The status goes out
+    /// ten times a second, and a quick tap can fall between two readings of the pin.
+    pub fn pressed_lately() -> bool {
+        PRESSED_LATELY.swap(false, Ordering::Relaxed)
+    }
+
+    /// Whether a two-second press requested shutdown. This remains latched
     /// through the grace period, even after the button is released.
     pub fn off_requested() -> bool {
         OFF.load(Ordering::Relaxed)
@@ -401,6 +412,11 @@ pub mod power {
 
 // --------------------------------------------------------------------------
 // Heartbeat
+
+/// [`heartbeat`]'s period and flash, for an image that beats it itself
+/// (the diag image, which shows faults on the same LED).
+pub const HEARTBEAT_PERIOD_MS: u64 = 300 + 6720 / 7;
+pub const HEARTBEAT_FLASH_MS: u64 = 70;
 
 /// The Banana Pi's heartbeat, on an LED of this board: two 70 ms flashes, the
 /// second a quarter of a period after the first, then dark to the end of it.
@@ -414,8 +430,8 @@ pub mod power {
 /// A latched shutdown request cancels the pattern and leaves this LED dark;
 /// the executor and its safety watchdog continue running.
 pub async fn heartbeat(led: &mut embassy_stm32::gpio::Output<'_>) -> ! {
-    const PERIOD_MS: u64 = 300 + 6720 / 7;
-    const FLASH_MS: u64 = 70;
+    const PERIOD_MS: u64 = HEARTBEAT_PERIOD_MS;
+    const FLASH_MS: u64 = HEARTBEAT_FLASH_MS;
     let beat = async {
         loop {
             led.set_high();

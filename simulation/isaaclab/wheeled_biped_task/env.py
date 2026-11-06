@@ -58,13 +58,16 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         # Terms paid once, on the step they happen, rather than as a rate.
         self._one_off_terms = {"terminated"}
 
-        # What the sensors read after each physics step of the last policy
-        # step, indexed by how many steps old the reading is, for the delays.
+        # What the sensors read after each physics step, indexed by how many
+        # steps old the reading is, for the delays. Long enough for the longest
+        # sensor delay and its jitter, and never shorter than a policy step:
+        # the IMU reads about 16 ms behind the motors (docs/SYSID.md), longer
+        # than the 10 ms a policy step lasts, which is all this once held.
         n, dev, d = self.num_envs, self.device, self.cfg.decimation
-        self._delays = (
-            max(self.cfg.imu_delay_steps[1], self.cfg.joint_delay_steps[1]) > 0
-        )
-        self._sensor_history = torch.zeros(n, d + 1, 16, device=dev)
+        longest = max(self.cfg.imu_delay_steps[1], self.cfg.joint_delay_steps[1])
+        self._delays = longest > 0
+        self._history_len = max(d, longest + 1) + 1
+        self._sensor_history = torch.zeros(n, self._history_len, 16, device=dev)
         self._history_stale = torch.ones(n, dtype=torch.bool, device=dev)
         self._env_index = torch.arange(n, device=dev)
         self._imu_delay = torch.zeros(n, dtype=torch.long, device=dev)
@@ -72,6 +75,12 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._action_delay = torch.zeros_like(self._imu_delay)
         # The physics steps this policy step still running the last command.
         self._late_steps = torch.zeros_like(self._imu_delay)
+        # Whether this policy step's command was lost, so the next step keeps
+        # the last one that arrived. Its own flag, and not a lateness of a
+        # whole step: a command a whole step late still arrives, and the
+        # robot's can be (4-8 ms, docs/SYSID.md). Until 4 November 2026 the two
+        # were one, and every robot drawn 10 ms late lost every command.
+        self._command_lost = torch.zeros(n, 1, dtype=torch.bool, device=dev)
         self._substep = 0
         self._held_leg_targets = torch.zeros(n, 4, device=dev)
         self._held_wheel_torque = torch.zeros(n, 2, device=dev)
@@ -154,7 +163,7 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
 
     def _hold_last_command(self):
         """Start a policy step: keep what the motors ran last, pick the lateness."""
-        dropped = (self._late_steps >= self.cfg.decimation).unsqueeze(1)
+        dropped = self._command_lost
         self._held_leg_targets = torch.where(
             dropped, self._held_leg_targets, self._leg_targets
         )
@@ -162,22 +171,30 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             dropped, self._held_wheel_torque, self._wheel_torque
         )
         self._substep = 0
-        late = self._jittered(self._action_delay)
+        # Age every reading by the policy step about to run: what was k steps
+        # old at the last look is k + decimation old at the next. The newest
+        # decimation slots are written again as this step runs.
+        if self._delays and self._history_len > self.cfg.decimation + 1:
+            self._sensor_history = torch.roll(
+                self._sensor_history, shifts=self.cfg.decimation, dims=1
+            )
+        late = self._jittered(self._action_delay, self.cfg.decimation)
         p = self.cfg.command_drop_prob
         if p > 0.0:
             lost = torch.rand(self.num_envs, device=self.device) < p
             late = torch.where(lost, self.cfg.decimation, late)
+            self._command_lost = lost.unsqueeze(1)
         self._late_steps = late
 
-    def _jittered(self, steps: torch.Tensor) -> torch.Tensor:
-        """An episode's delay, one step either way now and then."""
+    def _jittered(self, steps: torch.Tensor, most: int) -> torch.Tensor:
+        """An episode's delay, one step either way now and then, to `most`."""
         p = self.cfg.delay_jitter_prob
         if p <= 0.0:
-            return steps
+            return steps.clamp(0, most)
         shift = torch.randint_like(steps, -1, 2) * (
             torch.rand(steps.shape, device=self.device) < p
         )
-        return (steps + shift).clamp(0, self.cfg.decimation)
+        return (steps + shift).clamp(0, most)
 
     def _sample_delays(self, env_ids: torch.Tensor):
         c = self.cfg
@@ -225,9 +242,9 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             history = torch.where(stale, now.unsqueeze(1).expand_as(history), history)
             self._sensor_history = history
             self._history_stale[:] = False
-            i = self._env_index
-            imu = history[i, self._jittered(self._imu_delay), :6]
-            encoders = history[i, self._jittered(self._joint_delay), 6:]
+            i, most = self._env_index, self._history_len - 1
+            imu = history[i, self._jittered(self._imu_delay, most), :6]
+            encoders = history[i, self._jittered(self._joint_delay, most), 6:]
         else:
             imu, encoders = now[:, :6], now[:, 6:]
         # Noise and a per-episode offset on what the sensors read -- and only

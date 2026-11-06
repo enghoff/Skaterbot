@@ -11,6 +11,7 @@ apt-get install -y python3-aiohttp python3-serial avahi-daemon
 systemctl enable --now avahi-daemon
 usermod -aG dialout "$owner"
 SUDO_USER="$owner" bash "$here/install_console_wifi.sh"
+SUDO_USER="$owner" bash "$here/install_console_bluetooth.sh"
 # The physical power button needs diagd even before a browser has connected.
 cat > /etc/systemd/system/diagd.service <<EOF
 [Unit]

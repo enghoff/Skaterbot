@@ -8,6 +8,7 @@
 #     bash train.sh --evaluate-jump --policy <policy.pt>   # score a jump policy
 #     bash train.sh --evaluate-push --policy <policy.pt>   # shove it fore and aft
 #     bash train.sh --evaluate-steps --policy <policy.pt>  # drive it down steps
+#     bash train.sh --evaluate-drive --policy <policy.pt>  # across the motors' envelope
 #
 # Runs land in /workspace/runs/logs/rsl_rl/wheeled_biped_balance/<timestamp>/ on
 # the network volume, so they outlive the pod. setup_pod.sh must have run first,
@@ -54,6 +55,11 @@ fi
 if [ "${1:-}" = "--evaluate-steps" ]; then
     shift
     exec python -u "$HERE/../evaluate_steps.py" --headless "$@"
+fi
+
+if [ "${1:-}" = "--evaluate-drive" ]; then
+    shift
+    exec python -u "$HERE/../evaluate_drive.py" --headless "$@"
 fi
 
 if [ "${1:-}" = "--evaluate-envelope" ]; then

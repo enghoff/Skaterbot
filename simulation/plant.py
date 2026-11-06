@@ -223,6 +223,68 @@ DOMAIN_RANDOMISATION = {
 }
 
 # --------------------------------------------------------------------------
+# Measured on the robot, 4 November 2026
+#
+# Hung from strings and driven through sbc/sysid.py; the logs are in the
+# untracked exports/sysid/2026-11-04/ and docs/SYSID.md says what each test
+# found. Each figure is a range here, wide enough for what one day's fits on
+# one robot can claim. The driving task trains on these (rough_env_cfg.py);
+# the flat and jump tasks do not, so that what they were trained on stays as
+# their runs record it.
+MEASURED = {
+    # A friction torque on every leg joint, each way: 0.042 to 0.049 Nm from
+    # the slow sweeps (B5) on all four, 0.040 from the leg fit with the torso
+    # held (B1). The joints also stick before they move, which a torque that
+    # turns over smoothly through zero speed leaves out.
+    "leg_coulomb_nm": (0.03, 0.06),
+    # B1's fit puts 0.066 on top of the commanded damping, with the rotor's
+    # inertia pinned at its lower bound -- a fit that has not settled -- so
+    # this runs from none to a little past it.
+    "leg_viscous_nm_s_rad": (0.0, 0.07),
+    # B5: holding the legs up takes 9 to 14 per cent more torque than the
+    # model's legs ask for. Heavier or lower-slung legs, or a torque reading
+    # that runs high; the legs are made heavier, up to a fifth, to cover it.
+    "leg_mass_scale": (0.95, 1.2),
+    # The wheels in the air (B2): 0.010 to 0.018 Nm of friction and 0.005 Nm
+    # s/rad of drag, against none in the simulator, and the wheel spinning up
+    # like one with 8.4e-4 to 8.9e-4 kg m2 on its joint where the simulator had
+    # 2.3e-4 -- two fits, the command's lag searched to 4 ms and to 14. That
+    # was at a torque 1.07 times the command, which is what the legs measured,
+    # so per newton-metre commanded it is about 8.3e-4; armature_scale spreads
+    # it.
+    "wheel_coulomb_nm": (0.005, 0.02),
+    "wheel_viscous_nm_s_rad": (0.003, 0.008),
+    "wheel_armature_kg_m2": 8.3e-4,
+    # The IMU reads 16 ms behind the motors' reports, which arrive about
+    # 1.5 ms after their command: three runs agree, from the torso's jolts
+    # against the hips' torque. In 2.5 ms physics steps, 12.5 to 20 ms.
+    "imu_delay_steps": (5, 8),
+    "joint_delay_steps": (0, 1),
+    # The wheels' fit put the command's lag at 4 ms, the top of what it was
+    # first allowed to search, and at 8 ms searched to 14, hardly better: 2.5
+    # to 10 ms.
+    "action_delay_steps": (1, 4),
+}
+
+# What the wheels did with the robot's weight on them, on a hard floor, from its first
+# drives on 5 November 2026 (docs/SYSID.md, "Why it wobbled"). Mean torque against
+# speed steps at zero, to 0.035 to 0.045 Nm either way; a steady 5 rad/s, with nothing
+# accelerating, takes 0.05 to 0.06, which puts the drag at about 0.003 Nm s/rad; a
+# stuck wheel breaks away at 0.05 to 0.07 (medians, four run-ups each way, from 0.043 to
+# 0.09 by quartile). All of it read from the motors' own torque, which at those slow
+# speeds was within 8 per cent of the command.
+ON_THE_FLOOR = {
+    "wheel_coulomb_nm": (0.025, 0.05),
+    "wheel_viscous_nm_s_rad": (0.002, 0.006),
+    "wheel_static_nm": (0.05, 0.07),
+    # The wheels' torque reading follows the logged command by 18 to 20 ms, and the
+    # phases round the robot's 7 Hz yaw shake close at about 30 ms in all. The IMU is
+    # 16 of that, and a command cannot be drawn later than 10 ms in training, so the
+    # IMU's range carries what is left over: 12.5 to 27.5 ms.
+    "imu_delay_steps": (5, 11),
+}
+
+# --------------------------------------------------------------------------
 # The solver
 #
 # A 40 mm wheel at the actuator's 48 rad/s no-load speed covers 5 mm of ground

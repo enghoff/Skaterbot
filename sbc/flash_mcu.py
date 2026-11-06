@@ -37,7 +37,10 @@ First run 2026-10-16: bootloader 3.1, product ID 0x469, serial_check's 14 232
 bytes erased, written and read back, then its lines and its echo heard. On the
 robot with the hold, 2026-10-18: the same, the Pi up throughout. The first try
 that day had no answer from the bootloader on any attempt, and the next run
-worked unchanged; why is not known.
+worked unchanged. Every try failed that way on 2026-11-04 until the wait for
+the bootloader to start went from 0.1 s to 0.5 s (Control.reset), and even then
+the first of the three attempts went unanswered and the second worked, so the
+wait is not all of it.
 """
 
 from __future__ import annotations
@@ -239,8 +242,10 @@ class Control:
         time.sleep(0.02)
         self.nrst.set(1)
         # The MCU's internal pull-up has the board's 100 nF to charge, a few
-        # milliseconds, and the bootloader then wants a moment to start.
-        time.sleep(0.1)
+        # milliseconds, and the bootloader then wants a moment to start: more
+        # than 0.1 s, as on 2026-11-04 it missed every 0x7F sent that soon, and
+        # answered the first one at 0.5 s. An image raises its own hold at once.
+        time.sleep(0.5 if bootloader else 0.1)
         if not bootloader:
             self.boot0.set(0)
         self.in_bootloader = bootloader

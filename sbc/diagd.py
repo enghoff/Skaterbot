@@ -29,6 +29,12 @@ half a second, has every motor stopped and loses control. It pings the
 controller every 50 ms, and the controller stops every motor itself if those
 stop coming. Everything it hears and does that matters is printed here as well.
 
+It also shows the robot's health on the Pi's status LED, as the controller
+shows it on its own: the heartbeat while all is well, and a fault's blink
+while the IMU, the battery monitor, a CAN bus or the link between the two
+boards is not (docs/DIAGNOSTICS.md, "The heartbeat LEDs"). --led names the
+LED's sysfs directory; --led none leaves it alone.
+
 Only the standard library. On the Pi it reaches UART4 through flash_mcu.py's
 Port, which wants that file beside this one.
 """
@@ -47,6 +53,7 @@ import sys
 import threading
 import time
 from collections import deque
+from pathlib import Path
 
 import diag_link as dl
 
@@ -63,7 +70,7 @@ IMU_ANSWER_S = 0.5
 # Lines held for a client that is not reading; past this, events are dropped.
 BACKLOG = 20_000
 
-STREAMS = {"can", "imu", "imu.raw", "imu.diag", "status", "log"}
+STREAMS = {"can", "imu", "imu.raw", "imu.diag", "status", "log", "drive"}
 
 # SH-2's input reports: name, fixed-point Q, values. The rotation vector's fifth
 # value is its accuracy estimate, in Q12 radians.
@@ -85,6 +92,262 @@ LENGTHS |= {0x2A: 14, 0xFA: 5, 0xFB: 5}
 
 class Refused(Exception):
     pass
+
+
+# ---- the robot's health, on the Pi's LED -------------------------------------
+
+# As firmware/diag/src/health.rs has them, for a controller without HEALTH.
+GRACE_S = 3.0
+BUS_OFF_HOLD_S = 5.0
+# No status at all for this long after starting is a link fault too.
+FIRST_STATUS_S = 5.0
+# The controller sends HEALTH every second; older than this, it has stopped.
+HEALTH_FRESH_S = 2.5
+HEALTH_S = 0.2
+# The M4 Zero's red status LED, which robot_poweroff.py restores at boot.
+LED = "/sys/class/leds/red:status"
+# diagd's own condition, never on the wire.
+LINK_DOWN = 1 << 8
+CONDITIONS = dl.HEALTH_NAMES | {LINK_DOWN: "link down"}
+EXPLAINED = {
+    dl.IMU_MISSING: "the IMU has not answered on I2C for 3 s",
+    dl.IMU_SILENT: "the IMU answers on I2C but has sent no report since it was "
+    "found; power-cycle the robot",
+    dl.INA_MISSING: "the INA226 battery monitor has not answered for 3 s",
+    dl.BUS_OFF: "a CAN bus has gone bus-off",
+    dl.PI_SILENT: "the controller hears nothing from the Pi",
+    LINK_DOWN: "no status from the controller",
+}
+# Each fault's (lit ms, dark ms), the same on both boards' LEDs.
+PATTERNS = {"link": (500, 500), "imu": (100, 100), "hardware": (1000, 200)}
+# The heartbeat with a third, shorter flash: the fast speed mode, as the controller's
+# health.rs FAST has it. (lit, ms) in turn, at the controller's idle period of 1260 ms.
+FAST_BEAT = [(1, 70), (0, 245), (1, 70), (0, 140), (1, 40), (0, 695)]
+# A word that the fast mode is on holds this long unless it is said again.
+FAST_HOLD_S = 2.0
+SHOWN_AS = {
+    "link": "an even blink once a second",
+    "imu": "a fast flicker",
+    "hardware": "lit with a short wink dark",
+}
+
+
+def fault_of(flags: int) -> str | None:
+    """The fault an LED shows for these conditions: the link first, then the
+    IMU, then the rest, as the controller's own LED chooses."""
+    if flags & (LINK_DOWN | dl.PI_SILENT):
+        return "link"
+    if flags & (dl.IMU_MISSING | dl.IMU_SILENT):
+        return "imu"
+    if flags & (dl.INA_MISSING | dl.BUS_OFF):
+        return "hardware"
+    return None
+
+
+def describe(flags: int) -> str:
+    fault = fault_of(flags)
+    if fault is None:
+        return "all clear; the LEDs beat their heartbeat"
+    why = "; ".join(text for bit, text in EXPLAINED.items() if flags & bit)
+    return f"{fault} fault, shown as {SHOWN_AS[fault]}: {why}"
+
+
+class Health:
+    """The robot's health: the controller's own verdict, from HEALTH, or for an
+    image that does not send it what STATUS and IMU_DIAG show. Either way the
+    link is diagd's to judge, since a controller it cannot hear says nothing."""
+
+    def __init__(self, now: float):
+        self.started = now
+        self.firmware: tuple[float, int] | None = None
+        self.imu_missing_since: float | None = None
+        self.imu_found_since: float | None = None
+        self.ina_missing_since: float | None = None
+        self.bus_off_at: float | None = None
+
+    def heard(self, flags: int, now: float) -> None:
+        self.firmware = (now, flags)
+
+    def status(self, status: dict, now: float) -> None:
+        def since(held: bool, t: float | None) -> float | None:
+            return (now if t is None else t) if held else None
+
+        found = bool(status.get("imu_found"))
+        self.imu_missing_since = since(not found, self.imu_missing_since)
+        self.imu_found_since = since(found, self.imu_found_since)
+        ina = bool(status.get("ina_found"))
+        self.ina_missing_since = since(not ina, self.ina_missing_since)
+        buses = status.get("buses", {}).values()
+        if any(b.get("state") == "bus off" for b in buses):
+            self.bus_off_at = now
+
+    def flags(self, now: float, link_up: bool, ever_up: bool, imu_diag: dict) -> int:
+        if not link_up:
+            late = ever_up or now - self.started >= FIRST_STATUS_S
+            return LINK_DOWN if late else 0
+        if self.firmware and now - self.firmware[0] < HEALTH_FRESH_S:
+            return self.firmware[1]
+
+        def held(t: float | None) -> bool:
+            return t is not None and now - t >= GRACE_S
+
+        flags = 0
+        if held(self.imu_missing_since):
+            flags |= dl.IMU_MISSING
+        # Without HEALTH, silence is what IMU_DIAG shows: found, and not one
+        # input report since the controller started.
+        if held(self.imu_found_since) and imu_diag.get("input_packets") == 0:
+            flags |= dl.IMU_SILENT
+        if held(self.ina_missing_since):
+            flags |= dl.INA_MISSING
+        if self.bus_off_at is not None and now - self.bus_off_at < BUS_OFF_HOLD_S:
+            flags |= dl.BUS_OFF
+        return flags
+
+
+def board_model() -> str:
+    try:
+        return Path("/proc/device-tree/model").read_text()
+    except OSError:
+        return ""
+
+
+class Led:
+    """The Pi's status LED, through sysfs. While all is well it runs the
+    kernel's heartbeat trigger, exactly as robot_poweroff.py --start-heartbeat
+    leaves it; a fault is the timer trigger's square wave; and shutdown leaves
+    it dark, as --stop-heartbeat does. A path of None writes nothing and only
+    remembers what it would show.
+
+    The M4 Zero's red LED is lit at brightness 0, so on it the heartbeat is
+    inverted, dark is max_brightness, and a fault's lit and dark times swap
+    places in the timer's delays. Writes go through sudo when diagd may not
+    make them itself, as on the Pi, where it runs as admin."""
+
+    RETRY_S = 30.0
+
+    def __init__(self, path: str | None, inverted: bool | None = None):
+        self.path = Path(path) if path else None
+        if inverted is None:
+            inverted = self.path is not None and (
+                self.path.name == "red:status" and "BPI-M4-Zero" in board_model()
+            )
+        self.inverted = inverted
+        self.lock = threading.Lock()
+        self.held = False
+        self.sudo = False
+        self.failed = False
+        self.retry_at = 0.0
+        self.shown: str | None = self.current()
+        self.can_pattern = self.offers("pattern")
+
+    def offers(self, trigger: str) -> bool:
+        if self.path is None:
+            return True
+        try:
+            return (
+                trigger
+                in (self.path / "trigger")
+                .read_text()
+                .replace("[", " ")
+                .replace("]", " ")
+                .split()
+            )
+        except OSError:
+            return False
+
+    def current(self) -> str | None:
+        """heartbeat, if that is what the LED already shows; else unknown."""
+        if self.path is None:
+            return None
+        try:
+            if "[heartbeat]" not in (self.path / "trigger").read_text():
+                return None
+            invert = self.path / "invert"
+            if self.inverted and invert.read_text().strip() != "1":
+                return None
+        except OSError:
+            return None
+        return "heartbeat"
+
+    def writes(self, pattern: str) -> list[tuple[str, str]]:
+        if pattern == "fast":
+            # The pattern trigger ramps from each entry to the next, so each holds
+            # for its time and then steps in no time.
+            top = (self.path / "max_brightness").read_text().strip()
+            steps = []
+            for lit, ms in FAST_BEAT:
+                level = (
+                    ("0" if lit else top) if self.inverted else (top if lit else "0")
+                )
+                steps += [f"{level} {ms}", f"{level} 0"]
+            return [("trigger", "pattern"), ("pattern", " ".join(steps))]
+        if pattern == "heartbeat":
+            return [("trigger", "heartbeat")] + [("invert", "1")] * self.inverted
+        if pattern == "dark":
+            if self.inverted:
+                dark = (self.path / "max_brightness").read_text().strip()
+            else:
+                dark = "0"
+            return [("trigger", "none"), ("brightness", dark)]
+        lit, dark = PATTERNS[pattern]
+        on, off = (dark, lit) if self.inverted else (lit, dark)
+        return [("trigger", "timer"), ("delay_on", str(on)), ("delay_off", str(off))]
+
+    def write(self, name: str, value: str) -> None:
+        target = self.path / name
+        if not self.sudo:
+            try:
+                target.write_text(value)
+                return
+            except PermissionError:
+                self.sudo = True
+        result = subprocess.run(
+            ["sudo", "-n", "tee", str(target)],
+            input=value,
+            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=3,
+        )
+        if result.returncode:
+            raise OSError(result.stderr.strip() or f"sudo tee {target} refused")
+
+    def show(self, pattern: str, hold: bool = False) -> None:
+        """heartbeat, dark, or a fault in PATTERNS. hold keeps it whatever is
+        asked for after, which is what shutdown wants."""
+        with self.lock:
+            if self.held:
+                return
+            if pattern == "fast" and not self.can_pattern:
+                pattern = "heartbeat"
+            self.held = hold
+            if pattern == self.shown:
+                return
+            if self.path is None:
+                self.shown = pattern
+                return
+            if time.monotonic() < self.retry_at:
+                return
+            try:
+                for name, value in self.writes(pattern):
+                    self.write(name, value)
+            except (OSError, subprocess.SubprocessError) as error:
+                self.shown = None
+                self.retry_at = time.monotonic() + self.RETRY_S
+                if not self.failed:
+                    say(f"led: could not show {pattern} on {self.path}: {error}")
+                self.failed = True
+                return
+            self.shown = pattern
+
+    def release(self) -> None:
+        """On diagd's way out a fault's blink would outlive its judge, so the
+        heartbeat comes back. Dark, for a shutdown, stays."""
+        with self.lock:
+            leave = self.held or self.shown in (None, "heartbeat")
+        if not leave:
+            self.show("heartbeat")
 
 
 # ---- the controller's end ----------------------------------------------------
@@ -200,7 +463,7 @@ def say(text: str) -> None:
 
 
 class Daemon:
-    def __init__(self, stream, poweroff=None):
+    def __init__(self, stream, poweroff=None, led: Led | None = None):
         self.stream = stream
         self.lock = threading.RLock()
         self.write_lock = threading.Lock()
@@ -231,11 +494,15 @@ class Daemon:
         self.shutting_down = False
         self.button_shutdown_pending = False
         self.button_shutdown_retry_at = 0.0
+        self.fast_until = 0.0
         self.imu_diag: dict = {}
         self.imu_control: deque = deque(maxlen=32)
         self.imu_internal_errors: deque = deque(maxlen=32)
         self.imu_features: dict = {}
         self.imu_parse_errors = 0
+        self.led = led or Led(None)
+        self.health = Health(self.started)
+        self.health_flags = 0
 
     # -- to the controller -------------------------------------------------------
 
@@ -315,6 +582,10 @@ class Daemon:
             with self.lock:
                 self.imu_diag = dl.parse_imu_diag(body)
             self.broadcast("imu.diag", {"ev": "imu.diag", **self.imu_diag})
+        elif kind == dl.HEALTH:
+            _, flags = dl.parse_health(body)
+            with self.lock:
+                self.health.heard(flags, time.monotonic())
         elif kind == dl.INFO:
             info = dl.parse_info(body)
             if info != self.info:
@@ -351,6 +622,7 @@ class Daemon:
         with self.lock:
             self.status = status
             self.status_at = time.monotonic()
+            self.health.status(status, self.status_at)
             came_up = not self.link_up
             self.link_up = True
         if came_up:
@@ -395,7 +667,35 @@ class Daemon:
                 "control": str(self.owner) if self.owner else None,
             }
             status["imu_diag"] = dict(self.imu_diag)
+            status["health"] = self.health_event()
         return status
+
+    def health_event(self) -> dict:
+        flags = self.health_flags
+        return {
+            "fault": fault_of(flags),
+            "conditions": [name for bit, name in CONDITIONS.items() if flags & bit],
+            "led": self.led.shown,
+        }
+
+    def health_loop(self) -> None:
+        while self.running:
+            time.sleep(HEALTH_S)
+            self.check_health(time.monotonic())
+
+    def check_health(self, now: float) -> None:
+        """Judges the robot's health, says so when it changes, and shows it
+        on the Pi's LED unless a shutdown has the LED."""
+        with self.lock:
+            ever_up = self.status is not None
+            flags = self.health.flags(now, self.link_up, ever_up, self.imu_diag)
+            before, self.health_flags = self.health_flags, flags
+            shutting_down = self.shutting_down
+        if flags != before:
+            self.log(f"health: {describe(flags)}")
+        if not shutting_down:
+            fast = now < self.fast_until
+            self.led.show(fault_of(flags) or ("fast" if fast else "heartbeat"))
 
     def can_frame(self, body: bytes) -> None:
         t_us, bus, flags, can_id, data = dl.parse_can_recv(body)
@@ -573,17 +873,22 @@ class Daemon:
 
     def op_control(self, client: Client, m: dict) -> dict:
         take = m.get("take", True)
+        taken_from = None
         with self.lock:
             if take:
                 if self.shutting_down or (self.status and self.status.get("off")):
                     raise Refused("the robot is shutting down")
                 if self.owner not in (None, client):
-                    raise Refused(f"{self.owner} holds control")
+                    if not m.get("force"):
+                        raise Refused(f"{self.owner} holds control")
+                    taken_from = self.owner
                 self.owner = client
             elif self.owner is client:
                 self.owner = None
             else:
                 return {}
+        if taken_from is not None:
+            self.stop(f"{client} took control from {taken_from}")
         if take:
             self.log(f"control: {client} has it")
         else:
@@ -593,6 +898,49 @@ class Daemon:
 
     def op_stop(self, client: Client, m: dict) -> dict:
         self.stop(f"asked by {client}")
+        return {}
+
+    def op_drive(self, client: Client, m: dict) -> dict:
+        """What the operator is asking the policy for. It moves nothing by itself,
+        so it needs no control: it goes to whatever runs the policy, the
+        controller if its image says it takes it, and to the `drive` stream."""
+        forward, turn = float(m["forward"]), float(m["turn"])
+        height, live, jump = float(m["height"]), bool(m["live"]), int(m["jump"])
+        mode = int(m.get("mode", 0))
+        # What the message can carry, not what the robot may do: the limits on
+        # the operator are gamepad.py's, and the firmware's own.
+        if not (abs(forward) <= 30 and abs(turn) <= 30 and 0 <= height <= 1):
+            raise Refused("a drive command out of all range")
+        if not live:
+            forward = turn = 0.0
+        with self.lock:
+            if self.shutting_down or (self.status and self.status.get("off")):
+                raise Refused("the robot is shutting down")
+            taken = self.info.get("drive") == "1"
+        self.broadcast(
+            "drive",
+            {
+                "ev": "drive",
+                "forward": forward,
+                "turn": turn,
+                "height": height,
+                "live": live,
+                "jump": jump,
+                "mode": mode,
+            },
+        )
+        if taken:
+            self.mcu(dl.DRIVE, dl.drive(forward, turn, height, live, jump))
+        return {"taken": taken}
+
+    def op_indicate(self, client: Client, m: dict) -> dict:
+        """The robot is in its fast speed mode, or not: both LEDs add a short flash
+        to the heartbeat for FAST_HOLD_S, unless it is said again."""
+        fast = bool(m.get("fast"))
+        with self.lock:
+            self.fast_until = time.monotonic() + FAST_HOLD_S if fast else 0.0
+        self.mcu(dl.INDICATE, bytes([1 if fast else 0]))
+        self.check_health(time.monotonic())
         return {}
 
     def op_power_off(self, client: Client, m: dict) -> dict:
@@ -615,6 +963,8 @@ class Daemon:
                 self.shutting_down = False
             raise Refused(f"could not schedule power-off: {error}") from error
         self.log("power: motors stopped; system shutdown scheduled")
+        # The hook has darkened a heartbeat; a fault's blink is diagd's own.
+        self.led.show("dark", hold=True)
         # Notify only after Linux accepted shutdown. Failure to stop an LED
         # must not undo a successfully queued system power-off.
         if self.info.get("shutdown_led") == "1":
@@ -795,7 +1145,9 @@ OPS = {
     "status": Daemon.op_status,
     "imu.diagnostics": Daemon.op_imu_diagnostics,
     "control": Daemon.op_control,
+    "indicate": Daemon.op_indicate,
     "stop": Daemon.op_stop,
+    "drive": Daemon.op_drive,
     "power.off": Daemon.op_power_off,
     "can.send": Daemon.op_can_send,
     "can.request": Daemon.op_can_request,
@@ -870,15 +1222,42 @@ def main() -> None:
         default=None,
         help='the simulated motors\' CAN IDs, by bus (default "A:1,2 B:3,4 C:5,6")',
     )
+    ap.add_argument(
+        "--sim-faults",
+        default="",
+        help="faults for the simulated controller to have, comma-separated: "
+        "imu-dead, imu-missing, ina-missing, bus-off",
+    )
+    ap.add_argument(
+        "--sim-drive",
+        action="store_true",
+        help="the simulated controller takes DRIVE, as firmware running a policy "
+        "will; firmware/diag does not",
+    )
+    ap.add_argument(
+        "--led",
+        default=None,
+        help=f"the status LED's sysfs directory, or none (default {LED} on the "
+        "robot, none with --sim)",
+    )
     args = ap.parse_args()
 
     if args.sim:
         import diag_sim
 
-        sock = diag_sim.start(args.sim_motors or diag_sim.DEFAULT_MOTORS)
+        sock = diag_sim.start(
+            args.sim_motors or diag_sim.DEFAULT_MOTORS,
+            args.sim_faults.split(","),
+            args.sim_drive,
+        )
         stream = SocketStream(sock, "a simulated controller (diag_sim.py)")
     else:
         stream = SerialStream(args.port, args.baud)
+    led_path = args.led
+    if led_path is None:
+        led_path = None if args.sim or not os.path.isdir(LED) else LED
+    elif led_path == "none":
+        led_path = None
     host, port = address(args.listen)
     try:
         server = socket.create_server((host, port))
@@ -890,11 +1269,14 @@ def main() -> None:
         poweroff=(lambda: say("power: simulated shutdown; this computer stays on"))
         if args.sim
         else schedule_poweroff,
+        led=Led(led_path),
     )
     say(f"diagd: {stream.where}; clients on {host}:{port}. Ctrl-C to stop.")
     if host not in ("127.0.0.1", "localhost", "::1"):
         say("diagd: open to the network: anyone who can reach it can drive the motors")
-    for loop in (daemon.read_loop, daemon.timer_loop):
+    if led_path:
+        say(f"diagd: health on {led_path}")
+    for loop in (daemon.read_loop, daemon.timer_loop, daemon.health_loop):
         threading.Thread(target=loop, daemon=True).start()
     threading.Thread(target=daemon.accept_loop, args=(server,), daemon=True).start()
     # stop_diagd's SIGTERM ends it the way Ctrl-C does, motors stopped first.
@@ -912,6 +1294,7 @@ def main() -> None:
     except OSError:
         pass
     daemon.running = False
+    daemon.led.release()
     server.close()
     sys.exit("diagd: the link to the controller failed" if lost else 0)
 

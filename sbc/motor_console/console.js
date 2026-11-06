@@ -4,6 +4,7 @@ let ws, state = {}, schema = [], selected = null, sequence = 0, loaded = null;
 let reconnect, heartbeat, lastState = 0, shutdownRequested = false;
 let queuedCommand = null, queuedLimits = null, queuedZero = null, limitsLoaded = false;
 let autoScanNeeded = true, autoControlAfter = 0, wifiState = {}, wifiSignature = "";
+let bluetoothState = {}, bluetoothSignature = "", padLimitsLoaded = false;
 // A CAN ID change in flight: {from, to, master, target, until}. While it is
 // pending the selection stays put, and once it lands the selection follows the
 // motor to wherever it now answers, instead of falling back to the first motor.
@@ -95,6 +96,11 @@ function connect() {
       if(op?.startsWith("wifi.")) {
         if(message.ok){wifiState=message.result;renderWifi();}
         else {$("wifi-status").textContent=message.error;$("wifi-status").className="error";}
+      } else if(op?.startsWith("bluetooth.")) {
+        if(message.ok){bluetoothState=message.result;renderBluetooth();}
+        else {$("bt-status").textContent=message.error;$("bt-status").className="error";}
+      } else if(op==="pad.limits") {
+        if(!message.ok) notice(message.error,true);
       } else notice(message.ok ? `${op}: ${result}` : `${op || "Action"}: ${message.error}`, !message.ok);
       if (message.ok && op === "power.off") { shutdownRequested = true; notice("Power-off accepted; robot is shutting down"); render(); }
       if (op === "i2c") $("i2c-result").textContent = message.ok ? result : message.error;
@@ -125,7 +131,7 @@ function connect() {
       autoDiscover();
     }
   };
-  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); idChange = null; queuedCommand = queuedLimits = queuedZero = null; zeroRevisions.clear();history.clear();limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; render(); renderWifi(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
+  ws.onclose = () => { clearInterval(heartbeat); pending.clear(); idChange = null; queuedCommand = queuedLimits = queuedZero = null; zeroRevisions.clear();history.clear();limitsLoaded=false;autoScanNeeded=true; state = {}; loaded = null; lastState = 0; padLimitsLoaded = false; render(); renderWifi(); renderBluetooth(); if(shutdownRequested){notice("Shutdown requested; console disconnected. Refresh after turning the robot on again.");}else{notice("Console disconnected; reconnecting…",true); reconnect = setTimeout(connect,1500);} };
 }
 function cell(row,text,tag="td") { const element = document.createElement(tag); element.textContent = text ?? "—"; row.append(element); return element; }
 function reading(parent,title,value,unit="") {
@@ -187,7 +193,7 @@ function render() {
   if(state.limits && !limitsLoaded){for(const key of Object.keys(limits)) $("limits-form").elements[key].value=key==="rate"?state.rate:state.limits[key];limitsLoaded=true;}
   for(const input of $("limits-form").querySelectorAll("input")) input.disabled=!live||!connected||!state.control;
   for(const id of ["register-form","id-form","i2c-form"]) $(id).querySelector("button").disabled=!live||!state.control||(!m && ["register-form","id-form"].includes(id));
-  renderRegisters(m); renderSystem(); for(const key of ["pos","vel","torque"]) drawPlot(key); renderLog();
+  renderRegisters(m); renderSystem(); renderPad(); for(const key of ["pos","vel","torque"]) drawPlot(key); renderLog();
   $("footer-status").textContent=connected ? `${state.rate} Hz stream · ${state.status?.link_up?"controller online":"controller offline"}${m?.registers?.[9]===0?" · motor TIMEOUT off":""}` : state.error || "Waiting for diagd";
 }
 function buildRegisters(){
@@ -242,7 +248,55 @@ function renderWifi() {
   for(const control of document.querySelectorAll("#wifi button,#wifi input,#wifi select")) control.disabled=!online||busy;
   $("wifi-connect").disabled=!online||busy||!$("wifi-network").value;
 }
-document.querySelectorAll("[data-tab]").forEach(button=>button.onclick=()=>{document.querySelectorAll(".panel").forEach(panel=>panel.hidden=panel.id!==button.dataset.tab);document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("selected",b===button));if(button.dataset.tab==="wifi"){send("wifi.status");renderWifi();}});
+function renderDevices(id, devices, none, label, primary, act) {
+  $(id).replaceChildren();
+  for(const device of devices) {
+    const row=document.createElement("div"), name=document.createElement("span"), action=document.createElement("button");row.className="saved-network toolbar";
+    const link=!device.paired?"":device.ready?" · connected":device.connected?" · linked, setting up":" · not connected";
+    name.textContent=device.name+link;
+    action.textContent=label;action.type="button";if(primary&&device.gamepad)action.className="primary";
+    action.onclick=()=>act(device);
+    row.append(name,action);$(id).append(row);
+  }
+  if(!devices.length) $(id).textContent=none;
+}
+function renderBluetooth() {
+  const online=ws?.readyState===WebSocket.OPEN && !shutdownRequested, b=bluetoothState, paired=b.paired || [], found=b.found || [];
+  $("bt-adapter").textContent=b.available===undefined||b.available===null?"Loading Bluetooth status…":!b.available?"No Bluetooth adapter is answering on this computer":b.powered?"Bluetooth adapter on":"Bluetooth adapter off; finding a controller switches it on";
+  $("bt-status").textContent=b.error || b.message || "";
+  $("bt-status").className=b.error?"error":"muted";
+  const signature=JSON.stringify([paired,found]);
+  if(signature!==bluetoothSignature) {
+    bluetoothSignature=signature;
+    renderDevices("bt-paired",paired,"No paired controllers","Forget",false,device=>{
+      const forget=()=>{send("bluetooth.forget",{address:device.address});renderBluetooth();};
+      if(device.connected)ask(`Forget ${device.name}? It is connected, and would have to be paired again.`,forget);else forget();
+    });
+    renderDevices("bt-found",found,"Nothing found yet","Pair",true,device=>{bluetoothState.scanning=false;send("bluetooth.pair",{address:device.address});renderBluetooth();});
+  }
+  const busy=b.busy || [...pending.values()].some(op=>op.startsWith("bluetooth."));
+  for(const control of document.querySelectorAll("#bt-scan,#bt-paired button")) control.disabled=!online||busy||(control.id==="bt-scan"&&b.available===false);
+  // A scan gives way to a pairing: a controller's pairing mode runs out while it goes.
+  for(const control of document.querySelectorAll("#bt-found button")) control.disabled=!online||(busy&&!b.scanning);
+}
+function renderPad() {
+  const pad=state.pad, command=pad?.command, driving=Boolean(pad?.name&&command?.live);
+  $("pad-state").textContent=!pad?.name?"No controller":driving?"Driving":"Not driving";
+  $("pad-state").className=`badge ${driving?"good":pad?.name?"":"bad"}`;
+  $("pad-why").textContent=pad?.error||(pad?.name?`${pad.name}${pad.why_not?": "+pad.why_not:""}`:"No game controller is connected");
+  $("pad-why").className=pad?.error?"error":"";
+  $("pad-readings").replaceChildren();
+  reading($("pad-readings"),"Forward",fmt(command?.forward,2),"m/s");
+  reading($("pad-readings"),"Turn",fmt(command?.turn,2),"rad/s");
+  reading($("pad-readings"),"Leg height",fmt(command&&command.height*1000,1),"mm");
+  reading($("pad-readings"),"Jumps asked",command?command.jump:"—");
+  reading($("pad-readings"),"Buttons held",pad?.held?.length?pad.held.join(", "):"—");
+  $("pad-reach").textContent=!pad?.name?"":!pad.diagd?"diagd is not running, so none of this is going anywhere.":pad.taken?"Going to the policy on the controller.":"This reaches diagd, and from there any program on the Pi running a policy, as balance.py with --drive and launcher.py do. The controller's firmware runs no policy yet.";
+  const form=$("pad-limits");
+  if(pad && !padLimitsLoaded){form.elements.speed.max=pad.top_speed;form.elements.turn.max=pad.top_turn;form.elements.speed.value=pad.speed_limit;form.elements.turn.value=pad.turn_limit;padLimitsLoaded=true;}
+  for(const input of form.querySelectorAll("input")) input.disabled=!pad;
+}
+document.querySelectorAll("[data-tab]").forEach(button=>button.onclick=()=>{document.querySelectorAll(".panel").forEach(panel=>panel.hidden=panel.id!==button.dataset.tab);document.querySelectorAll("[data-tab]").forEach(b=>b.classList.toggle("selected",b===button));if(button.dataset.tab==="wifi"){send("wifi.status");renderWifi();}if(button.dataset.tab==="gamepad"){send("bluetooth.status");renderBluetooth();}});
 document.querySelectorAll("[data-op]").forEach(button=>button.onclick=()=>{
   const op=button.dataset.op;
   queuedCommand=queuedLimits=queuedZero=null;
@@ -262,6 +316,10 @@ $("wifi-scan").onclick=()=>{send("wifi.scan");renderWifi();};
 $("wifi-form").onsubmit=e=>{e.preventDefault();queuedCommand=queuedLimits=null;send("wifi.connect",{ssid:$("wifi-network").value,password:$("wifi-password").value});$("wifi-password").value="";renderWifi();};
 $("wifi-network").onchange=renderWifi;
 setInterval(()=>{if(!$("wifi").hidden && ws?.readyState===WebSocket.OPEN && !document.hidden && ![...pending.values()].some(op=>op.startsWith("wifi."))){send("wifi.status");}},2000);
+$("bt-scan").onclick=()=>{send("bluetooth.scan");renderBluetooth();};
+$("pad-limits").onsubmit=e=>e.preventDefault();
+$("pad-limits").oninput=()=>{if(validNumbers($("pad-limits")))send("pad.limits",formValues($("pad-limits")));};
+setInterval(()=>{if(!$("gamepad").hidden && ws?.readyState===WebSocket.OPEN && !document.hidden && ![...pending.values()].some(op=>op.startsWith("bluetooth."))){send("bluetooth.status");}},2000);
 $("register-form").onsubmit=e=>{e.preventDefault();send("write",{motor:selected,rid:$("reg-select").value,value:$("reg-value").value});};
 $("id-form").onsubmit=e=>{e.preventDefault();
   if(!selected) return;

@@ -425,8 +425,8 @@ post tops, and the keepout is gone from the layout.
   the MCU ([`docs/CARRIER.md`](CARRIER.md)). **The MCU's half is in firmware since 2026-10-16**
   (`firmware/board`, module `power`): HOLD high in the first instructions after
   reset, so the button need only be held about half a second. **Since
-  2026-10-17 a half-second press while running turns the robot off in every
-  image**, from a 10 ms timer interrupt in that shared crate rather than from
+  2026-10-17 a press while running turns the robot off in every image**, of half a
+  second until 2026-11-05 and two seconds since, for a press meant as a tap, from a 10 ms timer interrupt in that shared crate rather than from
   anything the image does: the press lets go of HOLD at once, and the power
   goes about 0.9 s after the button comes up, since a pressed button holds the
   switch closed by itself. The press is debounced — it counts as let go only

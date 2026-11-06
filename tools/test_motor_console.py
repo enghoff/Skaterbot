@@ -16,6 +16,8 @@ import aiohttp
 from aiohttp import web
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sbc"))
+import console_bluetooth  # noqa: E402
+import diag_client  # noqa: E402
 import motor_console as console  # noqa: E402
 
 
@@ -198,6 +200,35 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         await observer.until(lambda: observer.state["connected"])
         self.assertFalse(observer.state["control"])
         self.assertEqual(observer.state["motors"], [])
+
+    async def test_finding_a_controller_leaves_anothers_motors_running(self):
+        browser = await self.browser()
+        await browser.action("daemon.start")
+        await browser.until(lambda: browser.state.get("connected"))
+        balance = await asyncio.to_thread(diag_client.Robot, name="balance")
+        self.addCleanup(balance.close)
+        stops = []
+        balance.on("stopped", stops.append)
+        await asyncio.to_thread(balance.request, "control", take=True)
+        await browser.action("bluetooth.scan")
+        await browser.action(
+            "bluetooth.pair", address=console_bluetooth.SimulatedBluetooth.CONTROLLER
+        )
+        await asyncio.sleep(0.3)
+        self.assertEqual(stops, [], "a click on the page stopped somebody else's run")
+
+    async def test_finding_a_controller_stops_this_pages_own_motors(self):
+        browser = await self.browser()
+        await browser.action("daemon.start")
+        await browser.until(lambda: browser.state.get("connected"))
+        listener = await asyncio.to_thread(diag_client.Robot, name="listener")
+        self.addCleanup(listener.close)
+        stops = []
+        listener.on("stopped", stops.append)
+        await browser.action("take")
+        await browser.until(lambda: browser.state.get("control"))
+        await browser.action("bluetooth.scan")
+        await browser.until(lambda: stops, timeout=3)
 
     async def test_power_off_without_manual_control(self):
         import diagd

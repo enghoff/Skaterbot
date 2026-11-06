@@ -6,6 +6,7 @@
 
     python diagd.py --sim                        the daemon against this
     python diagd.py --sim --sim-motors "A:1,2 C:5"
+    python diagd.py --sim --sim-faults imu-dead  an IMU that never reports
 
 What it is for: running diagd.py, diag_client.py and bench/motor_gui.py end to
 end on any computer, with nothing plugged in. It speaks the controller's half of
@@ -14,7 +15,15 @@ simulated DM-J3507-2EC motors that answer the way bench/damiao.py says the real
 ones do: register reads, writes and saves, the status request, enable, disable,
 set zero and clear error sent to any mode's frame ID, and all four control
 modes, each answered with a feedback frame. An IMU on it answers SH-2's Set
-Feature, product ID and reset, and reports a robot standing still and level.
+Feature, Get Feature, product ID and reset, and reports a robot standing still
+and level. As the firmware does, it asks for the IMU's default reports when it
+finds it and after every reset, and judges its own health and sends it in
+HEALTH the way firmware/diag/src/health.rs does.
+
+Faults it can be given, at the start or with Controller.set_fault: imu-dead, an
+IMU that is found and answers its product ID but takes no Set Feature and sends
+no report, as the robot's has after some power-ons; imu-missing; ina-missing;
+and bus-off, bus C seen in bus-off.
 
 It is a model, and a coarse one: a motor is an inertia with some friction, a
 mode is a loop with round numbers in it, and nothing here was measured. What it
@@ -251,6 +260,8 @@ class Imu:
         self.seq = [0] * 6
         self.report_seq: dict[int, int] = {}
         self.outbox: list[bytes] = []
+        # Found and answering, but taking no Set Feature and reporting nothing.
+        self.dead = False
 
     def packet(self, channel: int, payload: bytes) -> bytes:
         header = struct.pack("<HBB", len(payload) + 4, channel, self.seq[channel])
@@ -264,6 +275,18 @@ class Imu:
         if channel == 1 and payload[:1] == b"\x01":
             self.intervals.clear()
             self.outbox.append(self.packet(1, b"\x01"))
+        elif channel == 2 and payload[:1] == b"\xfe" and len(payload) >= 2:
+            report = payload[1]
+            interval = round(self.intervals.get(report, 0) * 1e6)
+            self.outbox.append(
+                self.packet(
+                    2, struct.pack("<BBBHIII", 0xFC, report, 0, 0, interval, 0, 0)
+                )
+            )
+        elif self.dead:
+            if channel == 2 and payload[:1] == b"\xf9":
+                body = struct.pack("<BBBBIIH2x", 0xF8, 0, 3, 2, 10004148, 6, 13)
+                self.outbox.append(self.packet(2, body))
         elif channel == 2 and payload[:1] == b"\xfd" and len(payload) >= 9:
             report = payload[1]
             interval = struct.unpack_from("<I", payload, 5)[0]
@@ -310,14 +333,81 @@ class Imu:
 
 DEADMAN_S = 0.3
 INA226 = 0x40
+IMU_ADDRESS = 0x4A
+# The firmware's quiet period after starting and after an IMU reset, and how
+# often it looks again for a part it has not found.
+QUIET_S, SEARCH_S = 0.3, 1.0
+# What it asks the IMU for when it finds it: accel, gyro, gravity, game, 100 Hz.
+DEFAULT_REPORTS, DEFAULT_INTERVAL_US = (0x01, 0x02, 0x06, 0x08), 10_000
+FAULTS = ("imu-dead", "imu-missing", "ina-missing", "bus-off")
+
+
+class Health:
+    """firmware/diag/src/health.rs, in seconds of time.monotonic()."""
+
+    GRACE_S, BUS_OFF_HOLD_S, FIRST_CONTACT_S = 3.0, 5.0, 30.0
+
+    def __init__(self, now: float):
+        self.started = now
+        self.imu_missing_since: float | None = now
+        self.imu_silent_since: float | None = None
+        self.ina_missing_since: float | None = now
+        self.bus_off_at: float | None = None
+
+    def imu_found(self, now: float) -> None:
+        self.imu_missing_since = None
+        if self.imu_silent_since is None:
+            self.imu_silent_since = now
+
+    def imu_lost(self, now: float) -> None:
+        if self.imu_missing_since is None:
+            self.imu_missing_since = now
+
+    def ina_lost(self, now: float) -> None:
+        if self.ina_missing_since is None:
+            self.ina_missing_since = now
+
+    def flags(self, now: float, lost: bool, ever_heard: bool) -> int:
+        def held(t: float | None) -> bool:
+            return t is not None and now - t >= self.GRACE_S
+
+        flags = 0
+        if held(self.imu_missing_since):
+            flags |= dl.IMU_MISSING
+        if held(self.imu_silent_since):
+            flags |= dl.IMU_SILENT
+        if held(self.ina_missing_since):
+            flags |= dl.INA_MISSING
+        if self.bus_off_at is not None and now - self.bus_off_at < self.BUS_OFF_HOLD_S:
+            flags |= dl.BUS_OFF
+        if lost or (not ever_heard and now - self.started >= self.FIRST_CONTACT_S):
+            flags |= dl.PI_SILENT
+        return flags
 
 
 class Controller:
     """firmware/diag's half of the link, over one end of a socket pair."""
 
-    def __init__(self, sock: socket.socket, motors: dict[str, list[int]]):
+    def __init__(
+        self,
+        sock: socket.socket,
+        motors: dict[str, list[int]],
+        faults=(),
+        takes_drive=False,
+    ):
         self.sock = sock
+        # firmware/diag has no policy to give a DRIVE to, and counts one as
+        # making no sense, as this does unless told otherwise.
+        self.takes_drive = takes_drive
+        self.drive: dict | None = None
         self.t0 = time.monotonic()
+        self.faults = {f for f in faults if f}
+        if unknown := self.faults - set(FAULTS):
+            raise ValueError(f"no fault {', '.join(sorted(unknown))}: {FAULTS}")
+        self.health = Health(self.t0)
+        self.health_flags = 0
+        self.imu_found = self.ina_found = False
+        self.search_at = self.t0 + QUIET_S
         self.buses = {name: [Motor(i) for i in ids] for name, ids in motors.items()}
         for name in dl.BUSES:
             self.buses.setdefault(name, [])
@@ -327,6 +417,7 @@ class Controller:
         self.decoder = dl.Decoder()
         self.malformed = self.sent_dropped = 0
         self.imu = Imu()
+        self.imu.dead = "imu-dead" in self.faults
         self.imu_packets = 0
         self.last_host: float | None = None
         self.lost = False
@@ -360,10 +451,14 @@ class Controller:
             "baud=1500000",
             "bitrate=1000000",
             "shutdown_led=1",
+            "health=1",
+            *(["drive=1"] if self.takes_drive else []),
             "buses=A FDCAN1 J2 hips,B FDCAN2 J3 knees,C FDCAN3 J4 wheels",
             f"deadman_ms={int(DEADMAN_S * 1000)}",
-            "imu=0x4A",
-            f"ina226=0x{INA226:02X}",
+            # What a search finds, which the firmware has by the time diagd
+            # is up to ask.
+            "imu=none" if "imu-missing" in self.faults else f"imu=0x{IMU_ADDRESS:02X}",
+            "ina226=none" if "ina-missing" in self.faults else f"ina226=0x{INA226:02X}",
             "reset=power-on",
             "last_crash=",
         ]
@@ -399,9 +494,15 @@ class Controller:
         elif kind == dl.CAN_SEND and 6 <= len(body) <= 14 and body[0] < 3:
             bus, flags, can_id = struct.unpack_from("<BBI", body)
             self.can_send(dl.BUSES[bus], can_id, body[6:], bool(flags & 1))
+        elif kind == dl.DRIVE and self.takes_drive and len(body) >= 8:
+            self.drive = dl.parse_drive(body)
         elif kind == dl.IMU_WRITE:
             with self.lock:
-                self.imu.write(body)
+                found = self.imu_found
+                if found:
+                    self.imu.write(body)
+            if not found:
+                self.log("imu: a write from the Pi dropped: no IMU has answered")
         elif kind == dl.I2C and len(body) >= 4:
             tag, address, read = struct.unpack_from("<BBH", body)
             self.i2c(tag, address, body[4:], read)
@@ -440,7 +541,7 @@ class Controller:
         self.send(dl.CAN_RECV, body)
 
     def i2c(self, tag: int, address: int, write: bytes, read: int) -> None:
-        if address != INA226:
+        if address != INA226 or not self.ina_found:
             self.send(dl.I2C_RESULT, bytes([tag, 1]))
             return
         registers = {0x00: 0x4127, 0x02: round(self.vbus() / 1.25e-3), 0xFE: 0x5449}
@@ -468,21 +569,85 @@ class Controller:
     def vbus(self) -> float:
         return 24.6 - 0.02 * math.sin(time.monotonic())
 
+    def search(self, now: float) -> None:
+        """What the firmware's search finds, and the IMU's default reports
+        asked for as soon as it is found."""
+        with self.lock:
+            ina = not self.ina_found and "ina-missing" not in self.faults
+            imu = not self.imu_found and "imu-missing" not in self.faults
+            if ina:
+                self.ina_found = True
+                self.health.ina_missing_since = None
+            if imu:
+                self.imu_found = True
+                self.health.imu_found(now)
+                for report in DEFAULT_REPORTS:
+                    feature = struct.pack(
+                        "<BBBHIII", 0xFD, report, 0, 0, DEFAULT_INTERVAL_US, 0, 0
+                    )
+                    self.imu.write(struct.pack("<HBB", 21, 2, 0) + feature)
+        if ina:
+            self.log(f"i2c: INA226 at 0x{INA226:02X}")
+        if imu:
+            self.log(f"i2c: IMU at 0x{IMU_ADDRESS:02X}")
+            self.log("imu: default reports requested at 100 Hz")
+
+    def set_fault(self, fault: str, on: bool = True) -> None:
+        """Gives the controller a fault, or takes it away. An IMU that stops
+        being dead comes back as a module just powered on would, announcing a
+        reset, and the controller asks for its reports again."""
+        if fault not in FAULTS:
+            raise ValueError(f"no fault {fault!r}: {FAULTS}")
+        now = time.monotonic()
+        with self.lock:
+            (self.faults.add if on else self.faults.discard)(fault)
+            if fault == "imu-missing" and on:
+                self.imu_found = False
+                self.health.imu_lost(now)
+            elif fault == "ina-missing" and on:
+                self.ina_found = False
+                self.health.ina_lost(now)
+            elif fault == "imu-dead":
+                self.imu.dead = on
+                if on:
+                    self.imu.intervals.clear()
+                else:
+                    self.imu.write(struct.pack("<HBB", 5, 1, 0) + b"\x01")
+
+    def judge(self, now: float) -> None:
+        with self.lock:
+            flags = self.health.flags(now, self.lost, self.last_host is not None)
+            changed, self.health_flags = flags != self.health_flags, flags
+        if changed:
+            names = [name for bit, name in dl.HEALTH_NAMES.items() if flags & bit]
+            self.log(f"health: {', '.join(names) or 'all clear'}")
+            self.send(dl.HEALTH, dl.health(flags))
+
     def run(self) -> None:
         self.send(dl.STOPPED, bytes([3]))
         self.info()
-        self.log("i2c: INA226 at 0x40")
-        self.log("i2c: IMU at 0x4A")
         dt = 0.001
-        next_step = next_status = time.monotonic()
+        next_step = next_status = next_health = next_judge = time.monotonic()
         while self.running:
             now = time.monotonic()
+            if now >= self.search_at:
+                self.search_at = now + SEARCH_S
+                self.search(now)
             with self.lock:
                 for motors in self.buses.values():
                     for m in motors:
                         m.step(dt)
-                packets = self.imu.poll(now)
+                packets = self.imu.poll(now) if self.imu_found else []
                 self.imu_packets += len(packets)
+                for packet in packets:
+                    if packet[2] in (3, 4, 5):
+                        self.health.imu_silent_since = None
+                    elif packet[2] == 1 and packet[4:5] == b"\x01":
+                        # As the firmware does: look again after the quiet
+                        # period, and ask for the defaults again then.
+                        self.imu_found = False
+                        self.health.imu_lost(now)
+                        self.search_at = now + QUIET_S
                 silent = (
                     not self.lost
                     and self.last_host is not None
@@ -494,9 +659,15 @@ class Controller:
                 self.stop(1)
             for packet in packets:
                 self.send(dl.IMU_PACKET, self.t_us().to_bytes(4, "little") + packet)
+            if now >= next_judge:
+                next_judge += 0.02
+                self.judge(now)
             if now >= next_status:
                 next_status += 0.1
                 self.send(dl.STATUS, self.status())
+            if now >= next_health:
+                next_health += 1.0
+                self.send(dl.HEALTH, dl.health(self.health_flags))
             next_step += dt
             time.sleep(max(0.0, next_step - time.monotonic()))
 
@@ -513,6 +684,9 @@ class Controller:
                 }
                 for name in dl.BUSES
             }
+            if "bus-off" in self.faults:
+                buses["C"].update(state="bus off", tec=255)
+                self.health.bus_off_at = time.monotonic()
             return dl.status(
                 {
                     "t_us": self.t_us(),
@@ -521,9 +695,9 @@ class Controller:
                     "button": False,
                     "off": self.off,
                     "lost": self.lost,
-                    "imu_found": True,
-                    "ina_found": True,
-                    "vbus": self.vbus(),
+                    "imu_found": self.imu_found,
+                    "ina_found": self.ina_found,
+                    "vbus": self.vbus() if self.ina_found else None,
                     "link": {
                         "frames": self.decoder.frames,
                         "crc_errors": self.decoder.crc_errors,
@@ -552,8 +726,16 @@ def parse_motors(text: str) -> dict[str, list[int]]:
 DEFAULT_MOTORS = "A:1,2 B:3,4 C:5,6"
 
 
-def start(motors: str = DEFAULT_MOTORS) -> socket.socket:
-    """A simulated controller, running; returns the Pi's end of its link."""
+def simulate(
+    motors: str = DEFAULT_MOTORS, faults=(), takes_drive=False
+) -> tuple[socket.socket, Controller]:
+    """A simulated controller, running: the Pi's end of its link, and it."""
     ours, theirs = socket.socketpair()
-    Controller(theirs, parse_motors(motors)).start()
-    return ours
+    controller = Controller(theirs, parse_motors(motors), faults, takes_drive)
+    controller.start()
+    return ours, controller
+
+
+def start(motors: str = DEFAULT_MOTORS, faults=(), takes_drive=False) -> socket.socket:
+    """A simulated controller, running; returns the Pi's end of its link."""
+    return simulate(motors, faults, takes_drive)[0]

@@ -123,7 +123,7 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
     def _pre_physics_step(self, actions: torch.Tensor):
         # The first six are the balance task's; the last two set the legs' gains,
         # which go to the motors in the same command and are as late as it is.
-        dropped = (self._late_steps >= self.cfg.decimation).unsqueeze(1)
+        dropped = self._command_lost
         self._held_gains = torch.where(dropped, self._held_gains, self._gains)
         self._gains = actions[:, 6:8].clone().clamp(-1.0, 1.0)
         super()._pre_physics_step(actions[:, :6])

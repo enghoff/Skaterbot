@@ -22,11 +22,78 @@ import sys
 
 # The Pi's messages to the controller.
 HELLO, PING, STOP, SHUTDOWN = 0x01, 0x02, 0x03, 0x04
-CAN_SEND, IMU_WRITE, I2C = 0x10, 0x20, 0x21
+CAN_SEND, DRIVE, IMU_WRITE, I2C = 0x10, 0x11, 0x20, 0x21
+# One byte, bit 0 the fast speed mode, which the controller's LED shows for 2 s.
+INDICATE = 0x12
 # The controller's messages to the Pi.
 INFO, STATUS, STOPPED = 0x81, 0x82, 0x83
 CAN_RECV, IMU_PACKET, I2C_RESULT, LOG = 0x90, 0xA0, 0xA1, 0xE0
-IMU_DIAG = 0xA2
+IMU_DIAG, HEALTH = 0xA2, 0xA3
+
+# HEALTH's conditions, one bit each, as firmware/diag/src/health.rs judges them.
+IMU_MISSING, IMU_SILENT, INA_MISSING, BUS_OFF, PI_SILENT = (1 << n for n in range(5))
+HEALTH_NAMES = {
+    IMU_MISSING: "imu missing",
+    IMU_SILENT: "imu silent",
+    INA_MISSING: "ina226 missing",
+    BUS_OFF: "bus off",
+    PI_SILENT: "pi silent",
+}
+# HEALTH's fault: what the controller's LED shows.
+FAULTS = {0: None, 1: "link", 2: "imu", 3: "hardware"}
+
+
+# DRIVE: forward i16 mm/s, turn i16 mrad/s, height u16 in 0.1 mm, flags u8, jump
+# u8. A later version may append to the body and keeps these eight bytes.
+DRIVE_BODY = struct.Struct("<hhHBB")
+DRIVE_LIVE = 1
+
+
+def drive(forward: float, turn: float, height: float, live: bool, jump: int) -> bytes:
+    """The body of a DRIVE: what the operator is asking the policy for, in m/s,
+    rad/s and metres. See docs/POLICY_INTERFACE.md, "The operator's command"."""
+    return DRIVE_BODY.pack(
+        round(forward * 1000),
+        round(turn * 1000),
+        round(height * 10000),
+        DRIVE_LIVE if live else 0,
+        jump & 0xFF,
+    )
+
+
+def parse_drive(body: bytes) -> dict:
+    """The same, back in SI units, for diag_sim.py."""
+    forward, turn, height, flags, jump = DRIVE_BODY.unpack_from(body)
+    return {
+        "forward": forward / 1000,
+        "turn": turn / 1000,
+        "height": height / 10000,
+        "live": bool(flags & DRIVE_LIVE),
+        "jump": jump,
+    }
+
+
+def health(flags: int) -> bytes:
+    """The body of a HEALTH, for diag_sim.py: version, fault, conditions."""
+    if flags & PI_SILENT:
+        fault = 1
+    elif flags & (IMU_MISSING | IMU_SILENT):
+        fault = 2
+    elif flags & (INA_MISSING | BUS_OFF):
+        fault = 3
+    else:
+        fault = 0
+    return struct.pack("<BBH", 1, fault, flags)
+
+
+def parse_health(body: bytes) -> tuple[str | None, int]:
+    """(the fault the controller's LED shows, its conditions). A later version
+    may append to the body and keeps these four bytes as they are."""
+    version, fault, flags = struct.unpack_from("<BBH", body)
+    if version < 1:
+        raise ValueError(f"HEALTH version {version}")
+    return FAULTS.get(fault, f"fault {fault}"), flags
+
 
 IMU_DIAG_FIELDS = (
     "version",
@@ -274,6 +341,11 @@ VECTORS = [
         CAN_SEND,
         can_send(2, 0x7FF, bytes([0x01, 0x00, 0x33, 0x08])),
         "03 10 02 03 ff 07 01 02 01 05 33 08 c9 75 00",
+    ),
+    (
+        DRIVE,
+        drive(0.5, -1.5, 0.2035, True, 3),
+        "0c 11 f4 01 24 fa f3 07 01 03 2c 92 00",
     ),
 ]
 

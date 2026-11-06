@@ -56,12 +56,12 @@
 
   <link name="base_link">
     <inertial>
-      <origin xyz="0.000126584468 0.00346122016 -0.0266837188" rpy="0 0 0"/>
-      <mass value="1.035452"/>
-      <inertia ixx="3.786844400e-03" ixy="1.191182993e-06" ixz="-6.976588716e-07"
-               iyy="1.782967425e-03" iyz="-4.435493287e-05" izz="2.570591216e-03"/>
+      <origin xyz="0.000145581392 0.00392955683 -0.0274809075" rpy="0 0 0"/>
+      <mass value="1.044633"/>
+      <inertia ixx="3.860420938e-03" ixy="1.250005743e-06" ixz="-5.633103152e-07"
+               iyy="1.798331956e-03" iyz="-5.460764158e-05" izz="2.664613392e-03"/>
     </inertial>
-    <!-- pelvis shell, clevises and cover bosses — 171.6 g, measured: cad/torso.py:pelvisShell, twenty-two bodies -->
+    <!-- pelvis shell, clevises and cover bosses — 217.0 g, weighed: cad/torso.py:pelvisShell, twenty-two bodies -->
     <visual name="pelvis_shell__clevises_and_cover_bosses">
       <origin xyz="0 0 0" rpy="0 0 -1.57079633"/>
       <geometry>
@@ -125,7 +125,7 @@
       </geometry>
       <material name="cellGrey"/>
     </visual>
-    <!-- SBC — 45.0 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
+    <!-- SBC — 36.9 g, assumption: Raspberry-Pi-4-class board, 46 g published -->
     <visual name="sbc">
       <origin xyz="0 0 0.0321" rpy="0 0 0"/>
       <geometry>
@@ -133,7 +133,7 @@
       </geometry>
       <material name="pcbGreen"/>
     </visual>
-    <!-- controller carrier — 25.0 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
+    <!-- controller carrier — 20.5 g, assumption: STM32G474 core board, two CAN-FD transceivers, carrier and header -->
     <visual name="controller_carrier">
       <origin xyz="0 0.00255 0.0155" rpy="0 0 0"/>
       <geometry>
@@ -141,7 +141,7 @@
       </geometry>
       <material name="pcbGreen"/>
     </visual>
-    <!-- IMU — 3.0 g, assumption: BNO085 nano breakout -->
+    <!-- IMU — 2.5 g, assumption: BNO085 nano breakout -->
     <visual name="imu">
       <origin xyz="0.005 -0.038 0.003185" rpy="0 0 0"/>
       <geometry>
@@ -157,7 +157,7 @@
       </geometry>
       <material name="pcbGreen"/>
     </visual>
-    <!-- power switch board — 36.7 g, estimate: fuse, the four-FET on/off and low-battery switch, the seven output headers and its screws, on the posts. Provisional, never weighed -->
+    <!-- power switch board — 30.1 g, estimate: fuse, the four-FET on/off and low-battery switch, the seven output headers and its screws, on the posts. Provisional, never weighed -->
     <visual name="power_switch_board">
       <origin xyz="0 -0.04655 -0.013" rpy="0 0 0"/>
       <geometry>

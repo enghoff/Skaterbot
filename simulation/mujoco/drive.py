@@ -289,6 +289,19 @@ def build_model(cfg: dict, rough: float = 0.0, steps: float = 0.0) -> mujoco.MjM
         joint = spec.joint(name)
         joint.armature = group["armature"]
         joint.frictionloss = group["friction"]
+        # A run trained on the robot as measured (plant.MEASURED) carries its
+        # joints' friction and drag as torques drawn from a range, in its own
+        # actuator (friction_actuator.py). MuJoCo's frictionloss and damping
+        # are those same torques, so the middle of each range goes there.
+        if group.get("coulomb_nm") is not None:
+            joint.frictionloss = sum(group["coulomb_nm"]) / 2
+            damping = sum(group["viscous_nm_s_rad"]) / 2
+            # A number before MuJoCo 3.4 or so; since, the linear term first,
+            # then higher powers of speed.
+            if np.ndim(joint.damping) == 0:
+                joint.damping = damping
+            else:
+                joint.damping = [damping] + [0.0] * (len(joint.damping) - 1)
         # A hard stop, as PhysX's is. MuJoCo's default limit is a spring with a
         # 20 ms time constant, and a jump that folded the knee fast drove it to
         # 114 degrees against a 100 degree stop -- 14 degrees of travel the
@@ -476,6 +489,8 @@ class Controller:
         # The robot's delays, in physics steps: the IMU's reading, the
         # encoders', and a command's taking effect (set_conditions).
         self.delay = (0, 0, 0)
+        # Readings kept, newest first: enough for the longest sensor delay.
+        self.history_len = self.decimation + 1
         # The ground's height where the robot is placed (the top of --steps).
         self.floor_z = 0.0
         self.battery = 1.0
@@ -486,13 +501,16 @@ class Controller:
     def set_conditions(self, delay_ms=(0.0, 0.0, 0.0), battery: float = 1.0):
         """The robot's delays, IMU, encoders and command, and its battery.
 
-        A delay is rounded to whole physics steps, up to one policy step. The
-        battery is the motors' no-load speed as a share of the rated one.
+        A delay is rounded to whole physics steps. A sensor's may run past a
+        policy step, as the robot's IMU does (16 ms, docs/SYSID.md); a
+        command's cannot, since the next command replaces it. The battery is
+        the motors' no-load speed as a share of the rated one.
         """
         step_ms = self.m.opt.timestep * 1000.0
-        self.delay = tuple(
-            int(np.clip(round(ms / step_ms), 0, self.decimation)) for ms in delay_ms
-        )
+        imu, enc, cmd = (max(0, round(ms / step_ms)) for ms in delay_ms)
+        self.delay = (imu, enc, min(cmd, self.decimation))
+        self.history_len = max(self.decimation, imu, enc) + 1
+        self.history = None
         self.vmax = self.vmax_rated * battery
         self.battery = battery
 
@@ -575,10 +593,14 @@ class Controller:
     def observe(self, d) -> np.ndarray:
         now = self.reading(d)
         if self.history is None:
-            self.history = np.tile(now, (self.decimation + 1, 1))
+            self.history = np.tile(now, (self.history_len, 1))
         self.history[0] = now
         imu = self.history[self.delay[0], :6]
         encoders = self.history[self.delay[1], 6:]
+        # Age what is kept by a policy step: the physics steps to come refill
+        # the newest rows (motor_torques), and the older ones move down.
+        if self.history_len > self.decimation + 1:
+            self.history = np.roll(self.history, self.decimation, axis=0)
         command = self.command.copy()
         # Crouched from the press until both wheels are down again; then the
         # operator's height, not a second crouch.
@@ -1005,7 +1027,7 @@ def main() -> int:
         "--delay-ms",
         default="0,0,0",
         metavar="IMU,ENCODERS,COMMAND",
-        help="the robot's delays, rounded to physics steps; 5,2.5,2.5 is typical",
+        help="delays, rounded to physics steps; the robot measured 15,2.5,5",
     )
     parser.add_argument(
         "--battery",

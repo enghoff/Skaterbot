@@ -20,7 +20,7 @@
   <div id="motors" role="listbox" aria-label="Motors"></div>
 </aside>
 <div class="workspace">
-<nav aria-label="Diagnostics panels"><button class="selected" data-tab="drive">Drive</button><button data-tab="registers">Registers</button><button data-tab="system">System</button><button data-tab="wifi">Wi-Fi</button><button data-tab="traffic">CAN & log</button></nav>
+<nav aria-label="Diagnostics panels"><button class="selected" data-tab="drive">Drive</button><button data-tab="registers">Registers</button><button data-tab="system">System</button><button data-tab="wifi">Wi-Fi</button><button data-tab="gamepad">Controller</button><button data-tab="traffic">CAN & log</button></nav>
 <section id="drive" class="panel card">
   <div class="section-title"><h2 id="motor-title">Select a motor</h2><span id="motor-state" class="badge">—</span></div>
   <div id="readings" class="readings"></div>
@@ -60,6 +60,31 @@
   </form>
   <p class="muted">Saved networks reconnect automatically. Leave the password blank to reuse a saved network. Changing Wi-Fi may disconnect this page; reopen the console on the new network.</p>
   <h3>Saved networks</h3><div id="wifi-saved"></div>
+</section>
+<section id="gamepad" class="panel" hidden>
+  <article class="card">
+    <div class="section-title"><h2>Bluetooth</h2><button id="bt-scan" type="button">Find controllers</button></div>
+    <p id="bt-adapter" class="muted">Loading Bluetooth status…</p>
+    <p id="bt-status" role="status" aria-live="polite"></p>
+    <h3>Paired</h3><div id="bt-paired"></div>
+    <h3>Found</h3><div id="bt-found"></div>
+    <p class="muted">Put the controller in pairing mode before finding it. A paired controller connects by itself whenever it is switched on, with or without this page open. Looking for one can slow Wi-Fi, and stops this console's motors first.</p>
+  </article>
+  <article class="card">
+    <div class="section-title"><h2>Driving input</h2><span id="pad-state" class="badge">—</span></div>
+    <p id="pad-why" role="status" aria-live="polite"></p>
+    <div id="pad-readings" class="readings"></div>
+    <p id="pad-reach" class="muted"></p>
+    <form id="pad-limits" class="toolbar" novalidate><label>Top speed · m/s<input name="speed" type="number" min="0" step="0.1" required></label><label>Top turn · rad/s<input name="turn" type="number" min="0" step="0.1" required></label></form>
+    <p class="muted">What a trigger or stick at its end asks for. A restart puts both back to their starting values.</p>
+    <div class="table-scroll"><table><thead><tr><th>On the controller</th><th>Does</th></tr></thead><tbody>
+      <tr><td>Right trigger</td><td>Forward, as far as it is pulled: letting go brings the speed to zero</td></tr>
+      <tr><td>Left trigger</td><td>Back, the same</td></tr>
+      <tr><td>Right stick, left and right</td><td>Turn</td></tr>
+      <tr><td>D-pad, up and down</td><td>Leg height</td></tr>
+      <tr><td>Bottom face button (A, Cross)</td><td>Jump, once a policy that can is running</td></tr>
+    </tbody></table></div>
+  </article>
 </section>
 <section id="traffic" class="panel card" hidden><div class="section-title"><h2>CAN & log</h2><div class="toolbar"><label>Bus<select id="traffic-bus"><option value="">All</option><option>A</option><option>B</option><option>C</option></select></label><label>CAN ID<input id="traffic-id" placeholder="All"></label><label><input id="pause" type="checkbox"> Pause</label><button id="clear-log">Clear</button><button id="export-log">Export</button></div></div><pre id="log"></pre></section>
 </div>

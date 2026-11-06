@@ -281,8 +281,9 @@ class Robot:
 
     # -- the API, by name --------------------------------------------------------
 
-    def take_control(self) -> None:
-        self.request("control", take=True)
+    def take_control(self, force: bool = False) -> None:
+        """With `force`, from whoever holds it, stopping what they were doing."""
+        self.request("control", take=True, force=force)
 
     def release_control(self) -> None:
         self.request("control", take=False)

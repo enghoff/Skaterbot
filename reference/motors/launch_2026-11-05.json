@@ -1,0 +1,17 @@
+{
+  "full_nm": [
+    0.33,
+    0.389
+  ],
+  "watched_s": 26.7,
+  "stood_s": 9.4,
+  "air_s": 6.5,
+  "air_peak_nm": 0.005,
+  "each_nm": 0.182,
+  "air_nm": [
+    0.126,
+    0.133
+  ],
+  "date": "2026-11-05T01:40:34+00:00",
+  "log": "2026-11-05_071001_balance_lower_second-lowering.jsonl"
+}

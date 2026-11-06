@@ -26,6 +26,7 @@ trained on and what the vendor documents say the parts can do.
 | Policy | 100 Hz, one input in, one output out, every 10 ms |
 | Physics it was trained against | 400 Hz |
 | Delays it is trained to tolerate (jump task, from September 2026) | IMU reading up to 10 ms old, encoder readings up to 5 ms, a command taking effect up to 5 ms late, each wandering by 2.5 ms now and then, and one command in a hundred lost |
+| Delays the robot measured, and the driving policy for it is trained on (November 2026) | IMU reading 12.5-20 ms old, encoder readings up to 2.5 ms, a command taking effect 2.5-10 ms late, with the same wander and losses |
 
 The policies before that were trained with no delay at all. In MuJoCo the
 adopted jump policy stands with 1.2° of rocking at no delay, 1.5° at
@@ -158,6 +159,10 @@ leaves the motors off rather than holding the last torque; and its
 
 ## Two policies: one drives, one jumps
 
+For now the robot needs only the first, and it is the smaller shape: the driving
+policy for the robot (`rough-2026-11-04_09-01-34_measured_fix`) is a balance
+policy, 25 inputs and 6 outputs. What follows is the plan for when it jumps.
+
 No single policy both drove well and jumped well: every fine-tune that tried
 traded one for the other
 ([TRAINING_HISTORY.md](../simulation/isaaclab/TRAINING_HISTORY.md)). So the
@@ -203,11 +208,58 @@ lands in trouble. In MuJoCo, with the robot's delays, quickcrouch fell in 3 of
 With jumps held below 1.1 m/s, jumpsym300 fell in none of 60. Refuse the jump
 above 1 m/s, or slow down first.
 
+## The operator's command
+
+A game controller paired through the console gives index 6, 7 and 8 and the jump
+press, by way of `sbc/gamepad.py`, diagd, and a DRIVE message over J5
+([DIAGNOSTICS.md](DIAGNOSTICS.md#the-controllers-link-j5)). `diag_link::Drive`
+parses it. **The firmware at the far end of that does not exist yet**, so today
+the path ends at diagd, where a policy on the Pi, `sbc/balance.py --drive`, can read it.
+
+| In DRIVE | Unit | Becomes |
+|---|---|---|
+| forward | mm/s, i16 | index 6, in m/s |
+| turn, positive to the left | mrad/s, i16 | index 7, in rad/s |
+| height | 0.1 mm, u16 | index 8, scaled as that index says |
+| live | bit 0 of flags | see below |
+| jump | u8, counts presses | a change while live is a press: the jump, above |
+| mode | counts select's presses, in diagd's `drive` stream only | an odd change toggles the speed limit; see below |
+
+They come fifty times a second for as long as a controller is connected, and
+what the firmware does with them is this:
+
+1. **Announce it.** diagd sends a DRIVE only to an image whose INFO says
+   `drive=1`, so that today's `firmware/diag` is never sent one.
+2. **Not live, or nothing for 200 ms, is a speed and a turn of zero.** It is not
+   a reason to stop the motors: a robot told to stand still stays up, and a robot
+   with its motors cut falls over. Keep the last height. Not live means Linux has lost the
+   controller; a control held still sends nothing, and goes on counting until then, or
+   until it is let go of. A live DRIVE is not leave to start the motors, or
+   to go on after a fall.
+3. **Nothing on the controller stops the motors**, since that would drop the robot.
+   Stopping is the link's ordinary STOP, which every image already obeys.
+4. **Refuse a jump above 1 m/s**, measured, as the jump's section says. The
+   press is counted on the Pi, which does not know the robot's speed.
+
+A stick's end sends 1.8 m/s and 15 rad/s on starting, which the console can lower
+and not raise, and the height runs from 170 to 207 mm, starting at 203.5. Those are
+the trained ranges of the driving policy for the robot
+(`rough-2026-11-05_10-37-59_fresh2_18`, from 6 November 2026), kept as constants in
+`gamepad.py`: **change them with the run that is deployed**. `balance.py` scales them
+to its own limit: 1 m/s and 2 rad/s each time it takes over, and the whole trained
+range once select has been pressed, until it is pressed again. That run was trained
+inside the diamond between its two tops, and `balance.py` holds the command to it
+after scaling, from `envelope` in the packed policy. It cannot jump, so it has no use
+for the jump count. Something
+running a policy off the controller can have the same numbers from diagd's
+`drive` stream, and owes them the same 200 ms rule.
+
 ## What the policy does not do
 
 It does not know where it is or which way it faces: holding a heading or a
 place has to be a loop outside it, turning a target into speed and turn
 commands. It does not see motor temperatures or fault codes, the battery, or
-whether it has fallen. **A tilt beyond about 20° cutting the motors** (NOTES.md),
+whether it has fallen. **A tilt beyond about 20° cutting the motors** (NOTES.md; `sbc/balance.py`
+uses 30°, and [SYSID.md](SYSID.md#running-the-policy-on-the-robot) says why),
 fault handling and any limit on the commands a person can give all belong to
 the firmware, around the policy, not in it.
