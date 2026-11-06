@@ -13,9 +13,11 @@ Tool returns here, and tools/test_gamepad_linux.py holds the real thing to it.
 import asyncio
 import contextlib
 import json
+import os
 import re
 import socket
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -47,6 +49,7 @@ ON_GENERIC_HID = {
 
 
 GAS, BRAKE = gp.ABS_RZ, gp.ABS_Z  # on PLAYSTATION
+JUMP = gp.BTN_SOUTH  # on PLAYSTATION, through the generic driver
 
 
 def ready(ranges=PLAYSTATION, now=0.0):
@@ -434,6 +437,46 @@ class ScriptedPad:
         self.closed = True
 
 
+class RecordingRumble:
+    why_not = ""
+
+    def __init__(self):
+        self.played = []
+
+    def pulses(self, n):
+        self.played.append(n)
+
+    def close(self):
+        pass
+
+
+class RumbleTests(unittest.TestCase):
+    def test_the_report_is_hid_microsofts(self):
+        # report 3, both motors, triggers off, 60 of 100, 150 ms, no delay, once.
+        self.assertEqual(gp.rumble_report(0.15), bytes([3, 3, 0, 0, 60, 60, 15, 0, 0]))
+        self.assertEqual(gp.rumble_report(9.0)[6], 255)
+
+    def test_pulses_are_written_one_report_each(self):
+        fd, name = tempfile.mkstemp()
+        os.close(fd)
+        path = Path(name)
+        self.addCleanup(path.unlink)
+        rumble = gp.Rumble(str(path))
+        self.assertEqual(rumble.why_not, "")
+        rumble.pulses(2)
+        self.assertTrue(until(lambda: path.stat().st_size == 18))
+        rumble.close()
+        self.assertEqual(path.read_bytes(), gp.rumble_report(gp.PULSE_S) * 2)
+
+    def test_a_node_it_may_not_write_is_said_and_never_written(self):
+        rumble = gp.Rumble("/no/such/hidraw")
+        self.assertIn("cannot write", rumble.why_not)
+        rumble.pulses(1)  # nothing to write to, and no error
+
+    def test_a_controller_with_none_says_so(self):
+        self.assertTrue(gp.Rumble().why_not)
+
+
 def until(condition, timeout=3.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -610,6 +653,73 @@ class PathToThePolicy(unittest.TestCase):
         self.assertTrue(until(lambda: controller.drive is not None))
         self.assertEqual(controller.drive["forward"], 0.0)
         self.assertEqual(controller.drive["turn"], 0.0)
+
+    def policy(self, where):
+        """What runs the policy, as balance.py does it: select's presses since it
+        started toggle the speed mode, and each change is told to the daemon."""
+        robot = diag_client.Robot(where, name="policy", streams=("drive",))
+        self.addCleanup(robot.close)
+        state = {"base": None, "fast": False}
+
+        def heard(m):
+            if state["base"] is None:
+                state["base"] = m["mode"]
+            fast = (m["mode"] - state["base"]) % 2 == 1
+            if fast != state["fast"]:
+                state["fast"] = fast
+                robot.send("indicate", fast=fast)
+
+        robot.on("drive", heard)
+        return state
+
+    def press_select(self, pad):
+        pad.events = [(gp.EV_KEY, gp.BTN_SELECT, 1), (gp.EV_KEY, gp.BTN_SELECT, 0)]
+
+    def test_the_controller_buzzes_twice_going_fast_and_once_going_slow(self):
+        _, _, where = self.daemon(takes_drive=True)
+        self.policy(where)
+        pad = ScriptedPad()
+        pad.rumble = RecordingRumble()
+        manager = self.manager(where, pad)
+        self.hold(manager, pad)
+        self.assertTrue(until(lambda: manager.snapshot()["fast"] is False))
+        self.press_select(pad)
+        self.assertTrue(until(lambda: pad.rumble.played == [2]), pad.rumble.played)
+        self.press_select(pad)
+        self.assertTrue(until(lambda: pad.rumble.played == [2, 1]), pad.rumble.played)
+        time.sleep(0.3)
+        self.assertEqual(pad.rumble.played, [2, 1], "buzzed for nothing")
+
+    def test_a_press_that_nothing_takes_is_answered_by_nothing(self):
+        _, _, where = self.daemon(takes_drive=True)
+        pad = ScriptedPad()
+        pad.rumble = RecordingRumble()
+        manager = self.manager(where, pad)
+        self.hold(manager, pad)
+        self.assertTrue(until(lambda: manager.snapshot()["fast"] is False))
+        self.press_select(pad)
+        self.assertTrue(until(lambda: manager.snapshot()["command"]["mode"] == 1))
+        time.sleep(gp.MODE_WATCH_S + 0.2)
+        self.assertEqual(pad.rumble.played, [])
+
+    def test_a_controller_coming_back_does_not_count_its_presses_again(self):
+        _, _, where = self.daemon(takes_drive=True)
+        first, second = ScriptedPad(), ScriptedPad()
+        found = [second, first]
+        manager = gp.PadManager(
+            find=lambda: found.pop() if found else None,
+            connect=lambda: diag_client.Robot(where, name="c", streams=()),
+        )
+        manager.start()
+        self.addCleanup(manager.close)
+        self.hold(manager, first)
+        self.press_select(first)
+        first.events += [(gp.EV_KEY, JUMP, 1), (gp.EV_KEY, JUMP, 0)]
+        self.assertTrue(until(lambda: manager.snapshot()["command"]["mode"] == 1))
+        first.gone.set()
+        self.hold(manager, second)
+        sent = manager.snapshot()["command"]
+        self.assertEqual((sent["mode"], sent["jump"]), (1, 1))
 
     def test_limits_stay_inside_what_the_policy_was_trained_on(self):
         manager = gp.PadManager(find=lambda: None, connect=Mock())

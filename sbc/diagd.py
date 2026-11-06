@@ -917,6 +917,9 @@ class Daemon:
             if self.shutting_down or (self.status and self.status.get("off")):
                 raise Refused("the robot is shutting down")
             taken = self.info.get("drive") == "1"
+            # The speed mode as the policy last said, which the controller answers
+            # a press of select with.
+            fast = time.monotonic() < self.fast_until
         self.broadcast(
             "drive",
             {
@@ -931,7 +934,7 @@ class Daemon:
         )
         if taken:
             self.mcu(dl.DRIVE, dl.drive(forward, turn, height, live, jump))
-        return {"taken": taken}
+        return {"taken": taken, "fast": fast}
 
     def op_indicate(self, client: Client, m: dict) -> dict:
         """The robot is in its fast speed mode, or not: both LEDs add a short flash

@@ -16,6 +16,8 @@ how far one is pulled asks for that much, and letting go asks for none. The turn
 D-pad and jump are the MuJoCo driver's (simulation/mujoco/drive.py, Input.poll_pad).
 Select is the speed mode: each press is counted and sent, and what runs the policy
 toggles between its slow limit and its fast one, starting slow each time it takes over.
+Once the daemon says the policy has changed it, the controller rumbles twice going
+fast and once going slow, so a press nothing took is answered by nothing.
 
 A dropped controller must not leave the robot driving, and two things watch for
 that. Linux taking the device away ends it: at once when a controller is switched off,
@@ -80,6 +82,13 @@ SEND_HZ = 50
 ASK_S = 1.0
 RECONNECT_S = 1.0
 RESCAN_S = 1.0
+# A change of speed mode is answered on the controller: two pulses of rumble going
+# fast, one going slow. Only once the daemon says the policy has changed it, so that
+# a press nothing took is answered by nothing. A press is watched this long for that,
+# with the daemon asked every frame meanwhile.
+MODE_WATCH_S = 1.0
+# Each pulse and the gap after it, and its strength out of the controller's 100.
+PULSE_S, PULSE_GAP_S, PULSE_STRENGTH = 0.15, 0.15, 60
 
 
 @dataclass(frozen=True)
@@ -276,17 +285,90 @@ def bits(data: bytes) -> set[int]:
     return {i for i in range(len(data) * 8) if data[i // 8] >> (i % 8) & 1}
 
 
+def rumble_report(seconds: float, strength: int = PULSE_STRENGTH) -> bytes:
+    """A Microsoft controller's rumble over Bluetooth, as Linux's hid-microsoft
+    writes it (xb1s_ff_report): report 3; which motors, bit 0 the weak and bit 1 the
+    strong; the left and right triggers' strength and the strong and weak motors',
+    each out of 100; how long, in 10 ms; a delay before it, in 10 ms; and how many
+    times more. It stops by itself, so a program gone mid-pulse leaves nothing on."""
+    ticks = max(1, min(255, round(seconds * 100)))
+    return bytes([0x03, 0x03, 0, 0, strength, strength, ticks, 0, 0])
+
+
+def hidraw_of(event_path: str) -> str | None:
+    """The hidraw node of the HID device an event node came from, if any."""
+    name = os.path.basename(event_path)
+    found = sorted(glob.glob(f"/sys/class/input/{name}/device/device/hidraw/hidraw*"))
+    return f"/dev/{os.path.basename(found[0])}" if found else None
+
+
+class Rumble:
+    """Pulses on a controller's motors. The robot's kernel has neither hid-microsoft
+    nor force feedback through hid-generic, so the report goes to the controller's
+    hidraw node as it is. That node is root's alone until install_console_bluetooth.sh
+    gives a Microsoft controller's to the input group. `why_not` says why there are
+    none."""
+
+    def __init__(self, path: str | None = None, why_not: str = ""):
+        self.lock = threading.Lock()
+        self.fd = None
+        self.why_not = why_not
+        if path is None:
+            self.why_not = why_not or "no hidraw node for this controller"
+            return
+        try:
+            # Windows, where the tests run, has no O_NONBLOCK.
+            self.fd = os.open(path, os.O_WRONLY | getattr(os, "O_NONBLOCK", 0))
+        except OSError as error:
+            self.why_not = f"cannot write {path}: {error.strerror}"
+
+    def pulses(self, n: int) -> None:
+        """n pulses, on a thread of their own, so that nothing waits on the gaps."""
+        if self.fd is not None:
+            threading.Thread(target=self.play, args=(n,), daemon=True).start()
+
+    def play(self, n: int) -> None:
+        for i in range(n):
+            if i:
+                # A report replaces the one before it, so the next waits for the gap.
+                time.sleep(PULSE_S + PULSE_GAP_S)
+            with self.lock:
+                if self.fd is None:
+                    return  # closed: the number may be another file's by now
+                try:
+                    os.write(self.fd, rumble_report(PULSE_S))
+                except OSError as error:
+                    self.why_not = f"the controller refused a rumble: {error.strerror}"
+                    return
+
+    def close(self) -> None:
+        with self.lock:
+            fd, self.fd = self.fd, None
+        if fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+
+
 class EvdevPad:
     """A real controller, read from its device node with the standard library, so
     that it needs nothing installed on the Pi. The read raises OSError once Linux
     has taken the device away."""
 
-    def __init__(self, fd: int, name: str, axes: dict, keys: set[int], vendor: int):
+    def __init__(
+        self,
+        fd: int,
+        name: str,
+        axes: dict,
+        keys: set[int],
+        vendor: int,
+        rumble: Rumble | None = None,
+    ):
         self.fd = fd
         self.name = name
         self.ranges = {axis: info[1:3] for axis, info in axes.items()}
         self.values = {axis: info[0] for axis, info in axes.items()}
         self.layout = layout_of(axes, keys, vendor)
+        self.rumble = rumble or Rumble(why_not="none known for this controller")
         self.dropping = False
 
     def read(self, timeout: float) -> list[tuple[int, int, int]]:
@@ -319,6 +401,7 @@ class EvdevPad:
         return ABSINFO.unpack(bytes(buffer))[0]
 
     def close(self) -> None:
+        self.rumble.close()
         with contextlib.suppress(OSError):
             os.close(self.fd)
 
@@ -350,7 +433,9 @@ def open_pad(path: str) -> EvdevPad | None:
             }
             name = ask(EVIOCGNAME_BASE, 256).split(b"\0", 1)[0].decode(errors="replace")
             _, vendor, _, _ = struct.unpack("<4H", ask(EVIOCGID, 8))
-            return EvdevPad(fd, name, axes, keys, vendor)
+            # Report 3 is only known to be a rumble on Microsoft's.
+            rumble = Rumble(hidraw_of(path)) if vendor == MICROSOFT else None
+            return EvdevPad(fd, name, axes, keys, vendor, rumble)
     except OSError:
         pass  # gone since it was listed, or not a device that answers these
     os.close(fd)
@@ -437,6 +522,17 @@ class PadManager:
         self.sent = None
         self.speed_limit = START_SPEED_M_S
         self.turn_limit = START_TURN_RAD_S
+        # Select's and the jump button's presses, kept across controllers: what runs
+        # the policy acts on the difference, so a count starting again at nothing
+        # when a controller comes back would read as presses, a flipped speed mode or
+        # up to 255 jumps.
+        self.counts = (0, 0)
+        self.rumble: Rumble | None = None
+        # The policy's speed mode as the daemon last told it, None if it does not.
+        self.fast: bool | None = None
+        # Watching for a press to change it: until when, and from what.
+        self.watch_until = 0.0
+        self.watch_from: bool | None = None
         self.running = False
         self.threads: list[threading.Thread] = []
 
@@ -477,11 +573,34 @@ class PadManager:
         with self.lock:
             operator.speed_limit = self.speed_limit
             operator.turn_limit = self.turn_limit
+            operator.mode, operator.jump = self.counts
             self.operator, self.name, self.error = operator, pad.name, ""
+            self.rumble = getattr(pad, "rumble", None)
 
     def detach(self) -> None:
         with self.lock:
-            self.operator, self.name = None, None
+            if self.operator:
+                self.counts = (self.operator.mode, self.operator.jump)
+            self.operator, self.name, self.rumble = None, None, None
+            self.watch_until = 0.0
+
+    def pressed(self, before: dict | None, command: dict | None, now: float) -> None:
+        """Select pressed since the last frame: watch for the policy to answer it.
+        Under the lock."""
+        if before and command and command["mode"] != before["mode"]:
+            self.watch_until, self.watch_from = now + MODE_WATCH_S, self.fast
+
+    def answered(self, fast: bool | None, now: float) -> None:
+        """The daemon's word on the speed mode, and the pulses if a press changed it."""
+        with self.lock:
+            watching = now < self.watch_until and self.watch_from is not None
+            changed = fast is not None and fast != self.watch_from
+            self.fast = fast
+            rumble = self.rumble if watching and changed else None
+            if watching and changed:
+                self.watch_until = 0.0
+        if rumble:
+            rumble.pulses(2 if fast else 1)
 
     def event(self, kind: int, code: int, value: int, now: float) -> None:
         with self.lock:
@@ -526,6 +645,7 @@ class PadManager:
                     command = dict(self.sent, forward=0.0, turn=0.0, live=False)
                     self.sent = None
                 else:
+                    self.pressed(self.sent, command, now)
                     self.sent = command
                 robot = self.robot
             if robot is not None and robot.error:
@@ -549,9 +669,12 @@ class PadManager:
                 # Connecting can take a while, and this command was from before it.
                 continue
             try:
-                if now >= next_ask:
+                if now >= next_ask or now < self.watch_until:
                     next_ask = now + ASK_S
-                    self.taken = robot.request("drive", wait=0.5, **command)["taken"]
+                    answer = robot.request("drive", wait=0.5, **command)
+                    self.taken = answer["taken"]
+                    # A daemon from before 6 November 2026 says nothing of it.
+                    self.answered(answer.get("fast"), time.monotonic())
                 else:
                     robot.send("drive", **command)
             except diag_client.RobotError as error:
@@ -581,6 +704,8 @@ class PadManager:
                 held=self.held_names(operator) if operator else [],
                 diagd=self.robot is not None and not self.robot.error,
                 taken=self.taken,
+                fast=self.fast,
+                rumble=(self.rumble.why_not or "ready") if self.rumble else "",
                 speed_limit=self.speed_limit,
                 turn_limit=self.turn_limit,
                 top_speed=TOP_SPEED_M_S,

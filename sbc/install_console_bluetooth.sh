@@ -19,6 +19,14 @@ usermod -aG bluetooth,input "$owner"
 modprobe uhid || echo "no uhid module: a low-energy controller may not appear"
 echo uhid > /etc/modules-load.d/bipedal-controller.conf
 
+# The console answers a change of speed mode with the controller's rumble, written to
+# its hidraw node, which is root's alone otherwise. Only a Microsoft controller's
+# over Bluetooth (bus 0005, vendor 045E), the one whose rumble report is known.
+echo 'SUBSYSTEM=="hidraw", KERNELS=="0005:045E:*", GROUP="input", MODE="0660"' \
+    > /etc/udev/rules.d/60-bipedal-controller.rules
+udevadm control --reload-rules
+udevadm trigger --subsystem-match=hidraw
+
 # Sets one key in one section of main.conf, leaving the rest as it was found.
 option() {
     local section=$1 key=$2 value=$3
