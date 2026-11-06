@@ -284,6 +284,85 @@ ON_THE_FLOOR = {
     "imu_delay_steps": (5, 11),
 }
 
+# The motors' torque against speed, measured on the robot on 6 November 2026 (sysid.py
+# W1, docs/SYSID.md): a wheel pushed at 1.5 Nm while a hand slowed it, the pack at
+# 24.7-24.9 V. Full torque to 37.5 rad/s, then a straight fall of 0.09 Nm per rad/s to
+# nothing at 54-55 rad/s, the free top speed too. As Isaac Lab's DC motor, torque =
+# saturation x (1 - speed / no-load), under the 3 Nm peak: the rated figures' line
+# from 3 Nm to 48.2 rad/s gave 0.5 Nm at 40 rad/s where the motor gives 1.2-1.4. The
+# peak itself is the manual's: the spin-ups were too quick to reach it. The wheels are
+# the same motor as the legs, so this is the legs' curve as well. A nearly flat pack
+# was not measured; top speed should fall about with its voltage.
+MOTOR_CURVE = {
+    "saturation_nm": 4.95,
+    "no_load_rad_s": 55.0,
+    "pack_v": 24.8,
+}
+
+# What the robot's driving on 6 November 2026 showed that the tasks before D6 had wrong,
+# from its logs and MuJoCo held against them (the robot's own loop, 16 ms IMU, 6 ms
+# commands). Together these put MuJoCo on the robot in every column measured: the hold
+# asking +0.13 m/s standing (the robot +0.12 to +0.19), 0.80 m/s at 1.15 asked (0.6 to
+# 0.85), 1.14 at a full pull (0.85 to 1.3), -1.01 in reverse at -1.0 (-1.0 to -1.1), the
+# torso 2.4 degrees back driving (2.0 to 2.6). Without them MuJoCo drove D3 at 1.0 and
+# 1.55 m/s, stood it at 170 mm rocking at half the robot's rate, and missed the rock's
+# frequency.
+#
+# THE WHEELS' TORQUE, which follows what is sent late and short. The torque each wheel
+# reports, against the command, fitted as gain x a first-order lag of the command 4 to
+# 8 ms late (the link's delay, which the tasks' action delay already draws), standing at
+# 207 and 170 mm, both wheels alike: lag 12 to 15 ms, gain 0.79 to 0.91, residual 0.006
+# to 0.034 Nm. The tasks before had a pure 2.5 to 10 ms delay and stood a longer IMU
+# delay in for the rest (ON_THE_FLOOR's imu_delay_steps), which rocks at 2.5 to 2.7 Hz
+# where the robot rocks at 1.5 to 1.7. The reported torque is the motor's own estimate
+# and may be filtered itself, so the lag is fitted and not proven; that MuJoCo with it
+# rocks as the robot does is the case for it.
+WHEEL_RESPONSE = {
+    "lag_s": (0.005, 0.020),
+    "gain": (0.75, 1.0),
+}
+# THE LEGS' TORQUE, AS LATE. Fitted on 6 November 2026 from the robot's own logs (session
+# scratchpad leglag/): the torque each hip and knee reported against what the motor's
+# position-and-damping law asked for, rebuilt from the command and the motor's own
+# position and speed on the controller's clock. 0-2.5 ms of delay and an 8-12 ms first-
+# order lag on the robot driving (kp 12) and jumping (kp 6), 8-16 ms on the rail, at
+# 0.9-1.05 of what is asked; the lag explains 90-99 % of the torque's variance, none
+# 0-46 %, and holds from about 2 to 30 Hz (above that the motor gives less still: 0.2 of
+# the asked at 39 Hz, the old kp 40 buzz). It is real torque, not a filtered reading: on
+# the rail the joints' acceleration, from the encoders alone, is in step with the
+# reported torque and 30-55 degrees behind the law's. In a jump the knees limit at about
+# 3.25 Nm before the lag. The robot's torso shake at 11-22 Hz in its jumps is driven
+# through the legs (the hips' and knees' speeds predict 96 % of it), and MuJoCo with
+# this lag got halfway to it where the wheels' lag alone added nothing. The motor also
+# damps on a speed it reports about 4 ms late, at 0.9 of the true rate, which is not
+# drawn here.
+LEG_RESPONSE = {
+    "lag_s": (0.008, 0.014),
+    "gain": (0.9, 1.05),
+}
+# THE WHEELS' FRICTION ON THE FLOOR at speed, from the torque they held driving steadily:
+# 0.06-0.07 Nm a wheel at 16-18 rad/s, 0.09-0.10 at 29, which is 0.03 Nm and 0.002 Nm
+# s/rad, the low end of ON_THE_FLOOR's (fitted from slow run-ups on 5 November). Drawn
+# about those. The breakaway is ON_THE_FLOOR's, which this did not measure.
+ON_THE_FLOOR_DRIVING = {
+    "wheel_coulomb_nm": (0.02, 0.04),
+    "wheel_viscous_nm_s_rad": (0.001, 0.003),
+    "wheel_static_nm": ON_THE_FLOOR["wheel_static_nm"],
+}
+# THE IMU'S ZERO. The BNO085 reads the torso about 3 degrees more nose-down than it is
+# since its accelerometer calibrated itself again on 5 November at about 16:10: the length
+# of gravity it reports stepped from 9.95 to 9.75 m/s2 then, and the robot has driven
+# slower forward than asked and faster back ever since, where on the 5th it overshot.
+# MuJoCo with the IMU 2.7 degrees off reproduced the speeds; D3 fell braking from a full
+# pull with it 1.2 degrees the other way, and at a full pull at -2.7. The chip may
+# calibrate itself again, so the tasks draw the zero each episode rather than learn one
+# value; the robot's own calibration is a separate fix. And the torso's centre of mass,
+# which nothing has measured fore and aft and which looks to the policy much the same:
+# 14 mm back in MuJoCo drove D3 at 0.91 and 1.42 m/s, the IMU 2.7 degrees off at 0.88
+# and 1.37. The IMU is the one the gravity length's step dates.
+IMU_TILT_DEG = {"pitch": 2.0, "roll": 2.0}
+TORSO_COM_X_M = (-0.010, 0.010)
+
 # --------------------------------------------------------------------------
 # The solver
 #

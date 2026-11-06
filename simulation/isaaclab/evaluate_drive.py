@@ -30,6 +30,26 @@ parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--policy", required=True, help="exported TorchScript policy.pt")
 parser.add_argument("--robots-per-cell", type=int, default=64)
 parser.add_argument("--motor", type=float, default=50.0, help="no-load speed, rad/s")
+parser.add_argument(
+    "--measured",
+    action="store_true",
+    help="the motors' measured curve (WheeledBipedDriveMeasuredEnvCfg); --motor then 55",
+)
+parser.add_argument(
+    "--low",
+    action="store_true",
+    help="the measured motors and the 155 mm ride height (WheeledBipedDriveLowEnvCfg)",
+)
+parser.add_argument(
+    "--d6",
+    action="store_true",
+    help="D6's task: the robot as it drove, from 165 mm (WheeledBipedDriveD6EnvCfg)",
+)
+parser.add_argument(
+    "--d6-legs",
+    action="store_true",
+    help="D6's task with the legs' torque late too (WheeledBipedDriveD6LegsEnvCfg)",
+)
 add_launcher_args(parser)
 args = parser.parse_args()
 
@@ -37,7 +57,11 @@ import isaaclab.terrains as terrain_gen  # noqa: E402
 import torch  # noqa: E402
 from wheeled_biped_task.drive_env_cfg import (  # noqa: E402
     TOP_WHEEL_RAD_S,
+    WheeledBipedDriveD6EnvCfg,
+    WheeledBipedDriveD6LegsEnvCfg,
     WheeledBipedDriveEnvCfg,
+    WheeledBipedDriveLowEnvCfg,
+    WheeledBipedDriveMeasuredEnvCfg,
 )
 
 STAND_S = 1.0
@@ -56,6 +80,10 @@ ARCS = (
     (1.5, 3.0),
 )
 HEIGHTS = (0.170, 0.180, 0.190, 0.200, 0.207)
+if args.low:
+    HEIGHTS = (0.155, 0.160, 0.170, 0.180, 0.190, 0.200, 0.207)
+if args.d6 or args.d6_legs:
+    HEIGHTS = (0.165, 0.170, 0.180, 0.190, 0.200, 0.207)
 
 
 def cells(default_height: float) -> list[tuple[float, float, float]]:
@@ -70,7 +98,16 @@ def cells(default_height: float) -> list[tuple[float, float, float]]:
 
 
 def main() -> int:
-    cfg = WheeledBipedDriveEnvCfg()
+    if args.d6_legs:
+        cfg = WheeledBipedDriveD6LegsEnvCfg()
+    elif args.d6:
+        cfg = WheeledBipedDriveD6EnvCfg()
+    elif args.low:
+        cfg = WheeledBipedDriveLowEnvCfg()
+    elif args.measured:
+        cfg = WheeledBipedDriveMeasuredEnvCfg()
+    else:
+        cfg = WheeledBipedDriveEnvCfg()
     # All of the field flat, and robots placed anywhere on it.
     gen = cfg.terrain.terrain_generator
     gen.sub_terrains = {"flat": terrain_gen.MeshPlaneTerrainCfg(proportion=1.0)}
@@ -104,6 +141,7 @@ def main() -> int:
         env._commands[:, :2] = 0.0
         env._command_targets[:, :2] = 0.0
         env._commands[:, 2] = cfg.default_leg_height_m
+        env._command_targets[:, 2] = cfg.default_leg_height_m
 
         fallen = torch.zeros(env.num_envs, dtype=torch.bool, device=dev)
         gone = torch.zeros(env.num_envs, dtype=torch.bool, device=dev)
@@ -127,7 +165,10 @@ def main() -> int:
             if k == round(STAND_S / env.step_dt):
                 env._command_targets[:, 0] = speed
                 env._command_targets[:, 1] = turn
-                env._commands[:, 2] = height
+                # A task that slews the ride height moves to it, as the robot does.
+                env._command_targets[:, 2] = height
+                if not cfg.command_slew_height_m_s:
+                    env._commands[:, 2] = height
             with torch.inference_mode():
                 actions = policy(obs["policy"])
             obs, _, terminated, truncated, _ = env.step(actions)

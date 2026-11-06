@@ -90,6 +90,10 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._battery = torch.ones(n, device=dev)
         # Each robot's sensor offsets for the episode (cfg.sensor_bias_std).
         self._sensor_bias = torch.zeros(n, 16, device=dev)
+        # How each robot's IMU sits in its torso this episode (cfg.imu_tilt_deg): the
+        # chip's axes as columns in the torso's frame, so a torso vector v reads R^T v.
+        self._imu_tilted = tuple(self.cfg.imu_tilt_deg) != (0.0, 0.0)
+        self._imu_axes = torch.eye(3, device=dev).repeat(n, 1, 1)
         self._rated_speed = {
             name: act.velocity_limit.clone()
             for name, act in self.robot.actuators.items()
@@ -207,6 +211,23 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
                 lo, hi + 1, (len(env_ids),), device=self.device
             )
 
+    def _draw_imu_axes(self, n: int) -> torch.Tensor:
+        """(n, 3, 3): an IMU turned by a pitch and a roll drawn evenly within
+        cfg.imu_tilt_deg, its axes as columns in the torso's frame."""
+        most = torch.deg2rad(torch.tensor(self.cfg.imu_tilt_deg, device=self.device))
+        pitch, roll = ((torch.rand(n, 2, device=self.device) * 2.0 - 1.0) * most).T
+        cp, sp, cr, sr = pitch.cos(), pitch.sin(), roll.cos(), roll.sin()
+        zero = torch.zeros_like(cp)
+        # About y by the pitch, then about x by the roll.
+        return torch.stack(
+            (
+                torch.stack((cp, sp * sr, sp * cr), dim=-1),
+                torch.stack((zero, cr, -sr), dim=-1),
+                torch.stack((-sp, cp * sr, cp * cr), dim=-1),
+            ),
+            dim=1,
+        )
+
     # -- sensing
 
     def _sensor_reading(self) -> torch.Tensor:
@@ -219,10 +240,15 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         joint_pos = data.joint_pos.torch
         joint_vel = data.joint_vel.torch
         default = data.default_joint_pos.torch
+        ang_vel = data.root_ang_vel_b.torch
+        gravity = data.projected_gravity_b.torch
+        if self._imu_tilted:
+            ang_vel = torch.einsum("nji,nj->ni", self._imu_axes, ang_vel)
+            gravity = torch.einsum("nji,nj->ni", self._imu_axes, gravity)
         return torch.cat(
             (
-                data.root_ang_vel_b.torch * 0.25,
-                data.projected_gravity_b.torch,
+                ang_vel * 0.25,
+                gravity,
                 joint_pos[:, self._leg_ids] - default[:, self._leg_ids],
                 joint_vel[:, self._leg_ids] * 0.05,
                 joint_vel[:, self._wheel_ids] * 0.05,
@@ -337,6 +363,15 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
             * torch.sum(
                 torch.square((self._raw_actions.abs() - 1.0).clamp(min=0.0)), dim=1
             ),
+            # The legs kept off the end of their action, where the wheels are left
+            # to balance alone (WheeledBipedDriveD6EnvCfg).
+            "leg_action_reserve": c.rew_leg_action_reserve
+            * torch.sum(
+                torch.square(
+                    (self._actions[:, :4].abs() - c.leg_action_reserve).clamp(min=0.0)
+                ),
+                dim=1,
+            ),
         }
         return terms
 
@@ -411,6 +446,8 @@ class WheeledBipedBalanceEnv(DirectRLEnv):
         self._sensor_bias[env_ids] = self.cfg.sensor_bias_std * torch.randn(
             len(env_ids), 16, device=self.device
         )
+        if self._imu_tilted:
+            self._imu_axes[env_ids] = self._draw_imu_axes(len(env_ids))
         default_legs = self.robot.data.default_joint_pos.torch[env_ids][
             :, self._leg_ids
         ]
