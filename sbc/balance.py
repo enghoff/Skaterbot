@@ -173,6 +173,10 @@ LAUNCH_FILE = HERE / "launch.json"
 LOG_ALL_S = 300.0
 # Each time it takes over it gets LOG_ALL_S more, up to this much in all: about 500 MB.
 LOG_MOST_S = 1800.0
+# Past those, the readings of the last few seconds are still kept in memory, and
+# written out ahead of anything that happens -- a fall, a lift, a recovery -- so a
+# fall at any hour comes with what led up to it.
+LOG_RING_S = 5.0
 
 # Past the policy's own resting lean, so that its answer is a clear one.
 DRY_TIP_DEG = 12.0
@@ -184,23 +188,36 @@ class QueuedWriter:
     """sysid_tests' LogWriter on a thread of its own: a slow SD card, or the
     time to format a record, must never hold up a policy step. After LOG_ALL_S it
     keeps only what happened, not every reading: at over 1 GB an hour, a run with no
-    end would otherwise fill the card."""
+    end would otherwise fill the card. The last LOG_RING_S of readings are held all
+    the same, and go into the log just ahead of whatever happens next."""
 
     READINGS = {"f", "c", "i", "p", "s"}
 
-    def __init__(self, path: Path, header: dict):
+    def __init__(self, path: Path, header: dict, ring_s: float = LOG_RING_S):
         self.inner = st.LogWriter(path, header)
         self.all_until = clock() + LOG_ALL_S
         self.all_left = LOG_MOST_S - LOG_ALL_S
+        self.ring_s = ring_s
+        self.ring: deque = deque()  # (when, reading) past all_until
+        self.lock = threading.Lock()
         self.queue: deque = deque()
         self.running = True
         self.thread = threading.Thread(target=self._drain, daemon=True)
         self.thread.start()
 
     def write(self, record: dict) -> None:
-        if record.get("k") in self.READINGS and clock() > self.all_until:
-            return
-        self.queue.append(record)
+        now = clock()
+        with self.lock:
+            if record.get("k") in self.READINGS:
+                if now > self.all_until:
+                    self.ring.append((now, record))
+                    while self.ring and self.ring[0][0] < now - self.ring_s:
+                        self.ring.popleft()
+                    return
+            elif self.ring:
+                self.queue.extend(r for _, r in self.ring)
+                self.ring.clear()
+            self.queue.append(record)
 
     def more(self) -> None:
         """It is about to do something worth keeping every reading of."""
@@ -236,7 +253,11 @@ class Operator:
     The controller's select button toggles between two pairs of limits: --max-speed and
     --max-turn, which it starts with each time it takes over, and --fast-speed and
     --fast-turn, by default the whole of what the policy was trained on. A press counts
-    only while it is running: one from before it took over changes nothing."""
+    only while it is running: one from before it took over changes nothing.
+
+    The ride height starts each take-over at the crouch's, whatever is asked, stays
+    there HEIGHT_HOLD_S, and then goes to what is asked, the controller's or --height,
+    no faster than the D-pad moves it."""
 
     FRESH_S = 0.2
     SPEED_RAMP_M_S2 = 0.6
@@ -247,11 +268,29 @@ class Operator:
     # nothing: at 2.5 it stopped in 0.81 s, the policy's own braking the limit.
     STOP_RAMP_M_S2 = 1.5
     TURN_STOP_RAD_S2 = 8.0
+    # Speed times turn, the sideways acceleration of a turn. It fell over sideways twice
+    # on 2026-11-06 turning hard at speed, in fast mode, where the diamond allows 6.75
+    # m/s2. The logs had it through 5 rolling 4 degrees, three or four times what MuJoCo
+    # rolls, which no turn there tips: its legs do not flex sideways and the robot's
+    # do. So the turn gives way past this, the speed kept; on the spot it is untouched.
+    SIDEWAYS_M_S2 = 4.0
+    # The height asked from the first step was the D-pad's 155 mm, kept from the run
+    # before, at three take-overs on 2026-11-06 at 19:41-19:43: D5 folded its knees
+    # 0.85 rad in 0.15 s under a hand still on the torso, its wheels came off the floor
+    # and spun to 55 rad/s, and the lift rule stopped it each time. MuJoCo did the same
+    # with a hand letting go over a second and the torso 6 degrees nose-down, and stood
+    # this way, the crouch's height held and then the D-pad's rate, gamepad.py's
+    # HEIGHT_RATE_M_S (launch_check.py's case 18).
+    HEIGHT_HOLD_S = 1.5
+    HEIGHT_RATE_M_S = 0.025
 
     def __init__(self, robot, meta: dict, args):
-        self.height = meta["default_height"] if args.height is None else args.height
         self.lo, self.hi = meta["height_range"]
-        self.height = min(max(self.height, self.lo), self.hi)
+        self.start_height = min(max(meta["default_height"], self.lo), self.hi)
+        self.height = self.start_height
+        asked = self.start_height if args.height is None else args.height
+        self.asked_height = min(max(asked, self.lo), self.hi)
+        self.took_over: float | None = None
         self.top_speed = max(map(abs, meta["speed_range"]))
         self.top_turn = max(map(abs, meta["turn_range"]))
         self.envelope = bool(meta.get("envelope", False))
@@ -272,11 +311,17 @@ class Operator:
             within(fast_speed, self.top_speed),
             within(fast_turn, self.top_turn),
         )
+        self.sideways = getattr(args, "max_sideways", None) or self.SIDEWAYS_M_S2
         self.robot = robot
         self.fast = False
         self.told_at = -1.0
         self.presses: int | None = None
         self.max_speed, self.max_turn = self.slow
+        # The jump button, counted as select is: presses since taking over, for the
+        # loop to take; and a cap on the speed asked for while a jump is under way.
+        self.jumps: int | None = None
+        self.jump_presses = 0
+        self.speed_cap: float | None = None
         self.last: tuple[float, dict] | None = None
         self.speed = self.turn = 0.0
         self.stepped: float | None = None
@@ -288,6 +333,9 @@ class Operator:
 
     def ask(self, now: float) -> tuple[float, float, float]:
         speed, turn = self.wanted(now)
+        if self.speed_cap is not None:
+            # Under the cap at the braking rate, being a fall towards nought.
+            speed = min(max(speed, -self.speed_cap), self.speed_cap)
         dt = 0.0 if self.stepped is None else now - self.stepped
         self.stepped = now
         self.speed = self.ramp(
@@ -296,6 +344,14 @@ class Operator:
         self.turn = self.ramp(
             self.turn, turn, self.TURN_RAMP_RAD_S2, self.TURN_STOP_RAD_S2, dt
         )
+        # On what it is doing, after the ramps, so a turn while still rolling counts.
+        if abs(self.speed * self.turn) > self.sideways:
+            self.turn = math.copysign(self.sideways / abs(self.speed), self.turn)
+        if self.took_over is None:
+            self.took_over = now
+        if now - self.took_over >= self.HEIGHT_HOLD_S:
+            step = self.HEIGHT_RATE_M_S * dt
+            self.height += min(max(self.asked_height - self.height, -step), step)
         return self.speed, self.turn, self.height
 
     @staticmethod
@@ -311,11 +367,21 @@ class Operator:
         return now + min(max(want - now, -step), step)
 
     def reset(self) -> None:
-        """Taking over: from a standstill, and slow."""
+        """Taking over: from a standstill, slow, and at the crouch's height."""
         self.speed = self.turn = 0.0
         self.stepped = None
+        self.height = self.start_height
+        self.took_over = None
         self.set_fast(False)
         self.presses = None if self.last is None else self.last[1].get("mode")
+        self.jumps = None if self.last is None else self.last[1].get("jump")
+        self.jump_presses = 0
+        self.speed_cap = None
+
+    def take_jumps(self) -> int:
+        """The jump button's presses since this was last asked."""
+        n, self.jump_presses = self.jump_presses, 0
+        return n
 
     def set_fast(self, fast: bool) -> None:
         if fast != self.fast:
@@ -342,12 +408,17 @@ class Operator:
             return 0.0, 0.0
         heard, m = self.last
         if m.get("height"):
-            self.height = min(max(float(m["height"]), self.lo), self.hi)
+            self.asked_height = min(max(float(m["height"]), self.lo), self.hi)
         presses = m.get("mode")
         if presses is not None:
             if self.presses is not None and (int(presses) - self.presses) % 2:
                 self.set_fast(not self.fast)
             self.presses = int(presses)
+        jumps = m.get("jump")
+        if jumps is not None:
+            if self.jumps is not None:
+                self.jump_presses += (int(jumps) - self.jumps) % 256
+            self.jumps = int(jumps)
         self.tell(now)
         if now - heard > self.FRESH_S or not m.get("live"):
             return 0.0, 0.0
@@ -708,6 +779,7 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
         to("letdown", now)
         return {j: f(0.0, rig.latest) for j, f in letdown.items()} | wheels_off
 
+    jumper = bal if isinstance(bal, pl.TwoPolicies) else None
     failing_since = None
     while True:
         now = clock()
@@ -839,8 +911,16 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
                 cmds = None
         elif phase == "policy":
             cmds = None
+            if jumper is not None:
+                op.speed_cap = jumper.speed_cap
             speed, turn, height = op.ask(now)
-            if touch is not None:
+            if jumper is not None:
+                jump_presses(jumper, op, rig, view, touch, now)
+            busy = jumper is not None and jumper.busy
+            if touch is not None and busy:
+                # Its own take-off and landing are not somebody picking it up.
+                touch.light_since = None
+            if touch is not None and not busy:
                 spin = max(abs(rig.latest[j].v) for j in st.WHEELS)
                 if touch.lifted(now, rig.latest, spin, t):
                     words = f"it is off the floor, the wheels at {spin:.0f} rad/s"
@@ -901,6 +981,32 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
         t0 += pl.PERIOD_S
         if clock() - t0 > 5 * pl.PERIOD_S:
             t0 = clock()
+
+
+def jump_presses(jumper, op, rig, view: View, touch, now: float) -> None:
+    """Each press of the jump button answered, a jump or why not, and whatever the jump
+    has done since, into the log: a note is what keeps the readings around it."""
+    notes = []
+    for _ in range(op.take_jumps()):
+        step = view.step
+        fb = rig.latest
+        g = step["g"] if step else None
+        speed = (
+            pl.ground_speed(fb, float(step["w"][1]), jumper.meta["wheel_radius"])
+            if step
+            else 0.0
+        )
+        loaded = None
+        if touch is not None and touch.air is not None:
+            loaded = min(touch.pulls(fb)) >= pl.JUMP_KNEE_LOADED_NM
+        why = jumper.press(g, speed, loaded)
+        if why:
+            notes.append(f"refused: {why}")
+    notes += jumper.events
+    jumper.events.clear()
+    for words in notes:
+        rig.writer.write({"k": "n", "h": round(now, 6), "jump": words})
+        view.note = f"jump: {words}"
 
 
 def not_ready(step: dict | None, crouch: dict) -> str | None:
@@ -1051,6 +1157,13 @@ def session(args) -> int:
     try:
         regs = get_ready(rig, robot, is_powered)
         bal = pl.Balancer(net, wheel_limit=args.wheel_limit)
+        if args.jump_policy and is_powered:
+            bal = pl.TwoPolicies(
+                bal,
+                pl.JumpBalancer(pl.Net(args.jump_policy), wheel_limit=args.wheel_limit),
+                args.jump_height,
+                volts=lambda: (robot.status or {}).get("vbus"),
+            )
         imu = pl.Imu(robot_file["imu_axes"], robot_file["imu_gravity_sign"])
         # With the motors off a tilt harms nothing, and is what is asked for.
         wheel_vmax = min(float(regs[j].get("VMAX", 55.0)) for j in st.WHEELS)
@@ -1095,6 +1208,9 @@ def session(args) -> int:
             "imu_axes": robot_file["imu_axes"],
             "imu_gravity_sign": robot_file["imu_gravity_sign"],
             "policy": bal.meta,
+            "jump_policy": bal.jumping.meta
+            if isinstance(bal, pl.TwoPolicies)
+            else None,
             "label": args.label,
         }
         rig.writer = QueuedWriter(path, header)
@@ -1280,6 +1396,18 @@ def main(argv=None) -> int:
     ap.add_argument("mode", choices=("dry", "hold", "run", "lower", "launch"))
     ap.add_argument("--robot", default=diag_client.DEFAULT_ROBOT)
     ap.add_argument("--policy", type=Path, default=HERE / "policy.npz")
+    ap.add_argument(
+        "--jump-policy",
+        type=Path,
+        help="a jump policy's pack: the controller's A button then jumps (with --drive)",
+    )
+    ap.add_argument(
+        "--jump-height",
+        type=float,
+        default=0.03,
+        help="m of wheel clearance a jump is asked for, held to what the policy was "
+        "trained on; set here and never from the controller (default 0.03)",
+    )
     ap.add_argument("--robot-file", type=Path, help="in place of sysid_robot.json")
     ap.add_argument(
         "--seconds",
@@ -1323,6 +1451,12 @@ def main(argv=None) -> int:
         type=float,
         default=1.5,
         help="rad/s at a stick's end, with --drive",
+    )
+    ap.add_argument(
+        "--max-sideways",
+        type=float,
+        help=f"m/s2 of speed times turn before a turn gives way "
+        f"(default {Operator.SIDEWAYS_M_S2:g})",
     )
     ap.add_argument(
         "--past-trained",

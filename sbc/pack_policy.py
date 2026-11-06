@@ -13,8 +13,13 @@ hand and only numpy is needed to run it. The network is read by
 firmware/policy/export.py's reader, which holds it against onnxruntime before
 this writes anything, as it does for the firmware.
 
-It refuses a policy whose commands could take a leg outside its window in
-sbc/sysid_tests.py, the owner's limit on the shins among them.
+It refuses a balance policy whose commands could take a leg outside its window in
+sbc/sysid_tests.py, the owner's limit on the shins among them. A jump policy's legs
+reach further, 0.6 and 1.2 rad about the crouch, so its targets are held inside the
+windows instead, and the pack says so (`leg_held_to_windows`).
+
+A jump policy's pack carries a `jump` section as well: what docs/POLICY_INTERFACE.md's
+hand-over needs from its run (sbc/policy_loop.py's TwoPolicies).
 """
 
 from __future__ import annotations
@@ -84,8 +89,9 @@ def settings(cfg: dict) -> dict:
             f"this run's legs are at kp {legs['stiffness']}, kd {legs['damping']}. The "
             "robot's hips buzz at 39 Hz at higher gains (docs/SYSID.md): look first."
         )
-    if cfg.get("observe_battery") or cfg.get("jump_clearance_m"):
-        sys.exit("this loop runs a balance policy, and this run has more inputs")
+    jumps = cfg.get("jump_clearance_m") is not None
+    if cfg.get("observe_battery") and not jumps:
+        sys.exit("this loop runs a balance or a jump policy, and this run is neither")
     travel, radius = urdf_facts()
     factor = robot["soft_joint_pos_limit_factor"]
     crouch = [pose["hip_pitch_.*"] if "hip" in j else pose["knee_.*"] for j in st.LEGS]
@@ -96,15 +102,20 @@ def settings(cfg: dict) -> dict:
         mid, half = (a + b) / 2, (b - a) / 2 * factor
         lo.append(mid - half)
         hi.append(mid + half)
+    held = False
     for k, j in enumerate(st.LEGS):
         least = max(crouch[k] - abs(leg_scale[k]), lo[k])
         most = min(crouch[k] + abs(leg_scale[k]), hi[k])
         low, high = st.WINDOWS[j]
         if least < low or most > high:
-            sys.exit(
-                f"{j}: its commands reach {least:.2f} to {most:.2f}, outside {low} to {high}"
-            )
-    return {
+            if not jumps:
+                sys.exit(
+                    f"{j}: its commands reach {least:.2f} to {most:.2f}, "
+                    f"outside {low} to {high}"
+                )
+            lo[k], hi[k] = max(lo[k], low), min(hi[k], high)
+            held = True
+    meta = {
         "legs": list(st.LEGS),
         "wheels": list(st.WHEELS),
         "crouch": crouch,
@@ -124,7 +135,20 @@ def settings(cfg: dict) -> dict:
         "scale_height": bool(cfg.get("scale_height_command", False)),
         "max_tilt_rad": cfg["max_tilt_rad"],
         "decimation": cfg["decimation"],
+        "leg_held_to_windows": held,
     }
+    if jumps:
+        meta["jump"] = {
+            "clearance_m": list(cfg["jump_clearance_m"]),
+            "leg_gain_range": cfg["leg_gain_range"],
+            "crouch_s": cfg.get("jump_crouch_s", 0.0),
+            "crouch_tolerance_m": cfg.get("jump_crouch_tolerance_m", 0.005),
+            "window_s": cfg.get("jump_window_s", 1.5),
+            "takeoff_window_s": cfg["jump_takeoff_window_s"],
+            "observe_battery": bool(cfg.get("observe_battery", False)),
+            "score_to_target": bool(cfg.get("jump_score_to_target", False)),
+        }
+    return meta
 
 
 def main() -> int:

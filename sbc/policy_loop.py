@@ -146,6 +146,103 @@ class Imu:
         return self.axes @ np.asarray(gyro, dtype=float), g / np.linalg.norm(g)
 
 
+# The chip starts its estimate of which way is down over again when it is shaken hard
+# enough. A jump on the robot on 2026-11-06 shook it at up to 7 g, and for half a second
+# its gravity report read exactly (0, 0, +9.8) in its own frame, the robot upside down,
+# then wandered back over a second or more at the wrong length. The fall check believed
+# it and let go of a robot standing at 4 degrees. So a report of the wrong length, or one
+# further than GRAVITY_JUMP_RAD from where the gyro has turned the last one believed, is
+# not believed, and the gyro turns that one on, for GYRO_CARRY_S at most.
+GRAVITY_M_S2 = 9.80665
+# Standing and driving on the robot its reports were 9.55 to 9.70 m/s2 long, but
+# replayed over every run of 5 and 6 November, set down by hand or driven, they reached
+# 9.0 and 10.6 for half a second at a time; starting over, 4.9, 6.3 and 15.9.
+GRAVITY_LENGTH_TOLERANCE = 0.20
+# Judged as each new report comes in, against the last one believed turned on by the gyro
+# since: a jump turns the torso at 10 rad/s, and the chip's gravity comes 30 to 60 times
+# a second and later than its gyro, so a closer mark doubted good reports in MuJoCo.
+GRAVITY_JUMP_RAD = math.radians(25.0)
+GYRO_CARRY_S = 1.5
+# A longer gap between two readings is not turned through: nothing was seen of it.
+CARRY_STEP_MAX_S = 0.05
+
+
+class Attitude:
+    """Gravity's direction in the torso's frame: the chip's report while it can be
+    believed, and while it cannot, the last one believed turned by the gyro.
+    `doubted_for` is how long it has not been, and `why` the reason."""
+
+    def __init__(self, imu: Imu):
+        self.imu = imu
+        self.g: np.ndarray | None = None
+        self.at: float | None = None
+        self.last_raw: np.ndarray | None = None
+        self.believed: np.ndarray | None = None
+        self.doubted_for = 0.0
+        self.why = ""
+
+    def read(self, now: float, gyro, gravity) -> tuple[np.ndarray, np.ndarray]:
+        w = self.imu.axes @ np.asarray(gyro, dtype=float)
+        raw = np.asarray(gravity, dtype=float)
+        dt = 0.0 if self.at is None else min(max(now - self.at, 0.0), CARRY_STEP_MAX_S)
+        self.at = now
+        if self.g is not None:
+            # A direction fixed in the world, seen from a body turning at w.
+            g = self.g - np.cross(w, self.g) * dt
+            self.g = g / np.linalg.norm(g)
+        fresh = self.last_raw is None or not np.array_equal(raw, self.last_raw)
+        self.last_raw = raw
+        if not fresh:
+            # The same report as last step: judged already, and the gyro carries on.
+            if self.why:
+                self.doubted_for += dt
+                return w, self.g if self.g is not None else self._unit(raw)
+            if self.believed is not None:
+                return w, self.believed
+        return self._judge(raw, w, dt)
+
+    def _unit(self, raw: np.ndarray) -> np.ndarray:
+        length = float(np.linalg.norm(raw))
+        if length == 0.0:
+            return np.array([0.0, 0.0, -1.0])
+        return self.imu.axes @ raw * self.imu.gravity_sign / length
+
+    def _judge(self, raw: np.ndarray, w: np.ndarray, dt: float):
+        length = float(np.linalg.norm(raw))
+        unit = self._unit(raw)
+        why = ""
+        if length == 0.0 or (raw[0] == 0.0 and raw[1] == 0.0 and raw[2] > 0.0):
+            # (0, 0, +9.8) exactly: which way is down as the chip has it starting over,
+            # and on this robot upside down.
+            why = "reads straight along the chip's own axis, as it does starting over"
+        elif abs(length - GRAVITY_M_S2) > GRAVITY_LENGTH_TOLERANCE * GRAVITY_M_S2:
+            why = f"reads {length:.1f} m/s2 long"
+        elif self.g is not None:
+            off = math.acos(min(max(float(unit @ self.g), -1.0), 1.0))
+            if off > GRAVITY_JUMP_RAD:
+                why = f"turned {math.degrees(off):.0f} degrees more than the gyro saw"
+        if not why:
+            self.g = unit
+            self.believed = unit
+            self.doubted_for = 0.0
+            self.why = ""
+            return w, unit
+        self.doubted_for += dt
+        self.why = why
+        if self.g is None:
+            # Nothing believed yet to carry: what it says, as it always was.
+            return w, unit
+        return w, self.g
+
+    def believe_anyway(self) -> None:
+        """Carried as long as it can be: the next report is taken as it is."""
+        self.g = None
+        self.believed = None
+        self.last_raw = None
+        self.doubted_for = 0.0
+        self.why = ""
+
+
 def nose_down(g: np.ndarray) -> float:
     """The torso's pitch from gravity's direction, radians, nose down positive."""
     return math.atan2(g[0], -g[2])
@@ -223,6 +320,272 @@ class Balancer:
         for k, j in enumerate(st.WHEELS):
             cmds[j] = st.Cmd(t=float(wheels[k]))
         return cmds
+
+
+# ---- jumping ---------------------------------------------------------------------
+#
+# docs/POLICY_INTERFACE.md, "Two policies: one drives, one jumps": the driving policy
+# runs until a jump is asked for, then a jump policy takes the robot through its crouch,
+# the jump and the landing, and hands it back. simulation/mujoco/drive.py's TwoPolicies
+# is the reference. Nothing is reset at a hand-over: the incoming policy is fed what the
+# outgoing one would have been, its own last outputs being the outgoing one's,
+# converted to its own action scaling.
+
+CLEARANCE_SCALE = 10.0
+TIMER_CLIP_S = 2.0
+BATTERY_SCALE = 5.0
+RATED_VOLTS = 24.0
+# Hip to knee and knee to axle (POLICY_INTERFACE.md): a leg's height from its angles alone.
+LEG_LINK_M = 0.105
+# The jump policy does not drive fast: handed a robot at 1.2 to 1.4 m/s it fell on
+# landing, and below 1.1 never (MuJoCo, September). So a press above this brakes first,
+# the operator's speed held under JUMP_SPEED_CAP_M_S until the jump is over.
+JUMP_TOP_SPEED_M_S = 1.0
+JUMP_SPEED_CAP_M_S = 0.9
+JUMP_BRAKE_GIVE_UP_S = 3.0
+# And having braked, under JUMP_TOP_SPEED_M_S this long before the crouch: handed over
+# the moment it got there, still pitched back from braking, the September jump policy
+# fell on landing in MuJoCo, where pressed at 0.5 m/s it landed and stood.
+JUMP_BRAKED_S = 0.5
+# The ride height asked for stays at the bottom this long after the trigger, then the
+# operator's again (POLICY_INTERFACE.md, the jump's step 3).
+JUMP_HOLD_BOTTOM_S = 0.5
+# A press is refused tilted past this, or with either knee carrying less than this
+# above what it felt in the air: both wheels have to be on the floor.
+JUMP_TILT_DEG = 15.0
+JUMP_KNEE_LOADED_NM = 0.05
+# After the hand-back, this long more before anything may take the landing for a lift.
+JUMP_SETTLE_S = 0.5
+# Handed back this long after the trigger, landed and still crouched, however long the
+# run's window. On the robot on 2026-11-06 the jump policy landed a 30 mm jump, stood
+# itself up and then tipped over backwards 0.7 s after the trigger, still in charge
+# until 1.5 s; the driving policy is the one proven on the robot. In MuJoCo, handed
+# back here, every case of launch_check's 17 landed and stood, at the robot's delays
+# and longer ones. The longest flight the jump runs make is 0.21 s, at 120 mm.
+JUMP_HAND_BACK_S = 0.5
+
+
+def leg_heights(fb: dict) -> list[float]:
+    """Each leg's hip-to-axle height, from its joint angles alone."""
+    return [
+        LEG_LINK_M * (math.cos(fb[hip].p) + math.cos(fb[knee].p - fb[hip].p))
+        for hip, knee in (
+            ("hip_pitch_right", "knee_right"),
+            ("hip_pitch_left", "knee_left"),
+        )
+    ]
+
+
+class JumpBalancer(Balancer):
+    """A jump policy: the balance policy's 25 inputs and then the trigger, the target
+    clearance and the time since the trigger, and the battery if it was trained with it;
+    its 6 outputs and then the legs' stiffness and damping, as powers of the run's
+    leg_gain_range about the driving policy's 12 Nm/rad and 0.4 Nm s/rad."""
+
+    def __init__(self, net: Net, wheel_limit: float | None = None):
+        super().__init__(net, wheel_limit)
+        j = self.meta.get("jump")
+        if not j or self.meta["n_obs"] < 28 or self.meta["n_act"] != 8:
+            raise ValueError("not a jump policy's pack: see sbc/pack_policy.py")
+        self.jump = j
+        self.gain_range = float(j["leg_gain_range"])
+        self.trigger = 0.0
+        self.target = 0.0
+        self.timer = 0.0
+        self.volts: float | None = None
+        self.leg_kp, self.leg_kd = self.kp, self.kd
+
+    def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
+        o = super().observe(fb, w, g, speed, turn, height)
+        o[25] = self.trigger
+        o[26] = self.target * CLEARANCE_SCALE * self.trigger
+        o[27] = min(self.timer, TIMER_CLIP_S) * self.trigger
+        if self.meta["n_obs"] > 28:
+            volts = RATED_VOLTS if self.volts is None else self.volts
+            o[28] = (volts / RATED_VOLTS - 1.0) * BATTERY_SCALE
+        return o
+
+    def decide(self, obs: np.ndarray) -> dict[str, st.Cmd]:
+        cmds = super().decide(obs)
+        self.leg_kp = self.kp * self.gain_range ** float(self.actions[6])
+        self.leg_kd = self.kd * self.gain_range ** float(self.actions[7])
+        for j in st.LEGS:
+            cmds[j] = dataclasses.replace(cmds[j], kp=self.leg_kp, kd=self.leg_kd)
+        return cmds
+
+
+def converted(actions: np.ndarray, src: Balancer, dst: Balancer) -> np.ndarray:
+    """`src`'s last outputs as `dst`'s: the same leg angles and wheel torques asked for,
+    in `dst`'s scaling, clipped as its own are; a jump policy's gains at their middle."""
+    out = np.zeros(dst.meta["n_act"], dtype=np.float32)
+    angles = src.crouch + src.leg_scale * actions[:4]
+    out[:4] = (angles - dst.crouch) / dst.leg_scale
+    out[4:6] = actions[4:6] * src.wheel_scale / dst.wheel_scale
+    return np.clip(out, -1.0, 1.0)
+
+
+class TwoPolicies:
+    """The driving policy and a jump policy behind one balancer's face, handing over
+    between them. `press` asks for a jump; the rest of a step is a balancer's.
+
+    States: "drive"; "braking", the driving policy still driving, the operator's speed
+    held under JUMP_SPEED_CAP_M_S until the robot is under JUMP_TOP_SPEED_M_S;
+    "crouch", the jump policy asked for its lowest ride height, the trigger still 0,
+    until the legs are within the run's tolerance of it or its jump_crouch_s has passed;
+    "jump", the trigger up, the bottom height held JUMP_HOLD_BOTTOM_S, and the robot
+    handed back JUMP_HAND_BACK_S after the trigger, or at the run's jump_window_s if
+    that is sooner. No landing is detected:
+    POLICY_INTERFACE.md has why none is needed. What happens goes into `events`."""
+
+    def __init__(
+        self,
+        driving: Balancer,
+        jumping: JumpBalancer,
+        clearance: float,
+        volts=None,
+    ):
+        self.driving = driving
+        self.jumping = jumping
+        j = jumping.jump
+        lo, hi = j["clearance_m"]
+        self.clearance = min(max(float(clearance), lo), hi)
+        self.crouch_s = float(j["crouch_s"]) or 0.6
+        self.bottom = float(jumping.meta["height_range"][0])
+        self.tolerance = float(j["crouch_tolerance_m"])
+        self.window_s = min(float(j["window_s"]), JUMP_HAND_BACK_S)
+        self.volts = volts
+        self.events: list[str] = []
+        self.reset()
+
+    # -- a balancer's face, with the driving policy's settings
+
+    @property
+    def meta(self) -> dict:
+        return self.driving.meta
+
+    @property
+    def kp(self) -> float:
+        return self.driving.kp
+
+    @property
+    def kd(self) -> float:
+        return self.driving.kd
+
+    @property
+    def actions(self) -> np.ndarray:
+        return self.active.actions
+
+    @property
+    def last_wheels(self) -> tuple[float, float]:
+        return self.active.last_wheels
+
+    @property
+    def obs(self) -> np.ndarray:
+        return self.active.obs
+
+    def reset(self) -> None:
+        self.driving.reset()
+        self.jumping.reset()
+        self.jumping.trigger = 0.0
+        self.active = self.driving
+        self.state = "drive"
+        self.t = 0.0
+        self.since_back = math.inf
+        self.slow_for = 0.0
+
+    # -- what balance.py asks of it
+
+    @property
+    def busy(self) -> bool:
+        """Jumping, or just back from it: nothing should take this for a lift."""
+        return self.state in ("crouch", "jump") or self.since_back < JUMP_SETTLE_S
+
+    @property
+    def assist(self) -> bool:
+        """Whether Trim and Hold may act: not while the jump policy has the robot."""
+        return self.active is self.driving
+
+    @property
+    def speed_cap(self) -> float | None:
+        return None if self.state == "drive" else JUMP_SPEED_CAP_M_S
+
+    def press(self, g, speed: float, loaded: bool | None) -> str | None:
+        """A press of the jump button. None if it is taken up, or why not."""
+        if self.state != "drive":
+            doing = "braking for" if self.state == "braking" else "in"
+            return f"already {doing} a jump"
+        if g is not None and math.degrees(tilt(g)) > JUMP_TILT_DEG:
+            return f"tilted {math.degrees(tilt(g)):.0f} degrees"
+        if loaded is False:
+            return "a wheel is not on the floor"
+        self.t = 0.0
+        if abs(speed) > JUMP_TOP_SPEED_M_S:
+            self.state = "braking"
+            self.slow_for = 0.0
+            self.events.append(f"pressed at {speed:+.2f} m/s: braking first")
+            return None
+        self.events.append(f"pressed at {speed:+.2f} m/s")
+        self._crouch()
+        return None
+
+    def _crouch(self) -> None:
+        d, j = self.driving, self.jumping
+        j.actions = converted(d.actions, d, j)
+        j.last_wheels = d.last_wheels
+        j.trigger = 0.0
+        self.active = j
+        self.state, self.t = "crouch", 0.0
+        self.events.append(f"crouching to {self.bottom * 1000:.0f} mm, jump policy on")
+
+    def _hand_back(self) -> None:
+        d, j = self.driving, self.jumping
+        d.actions = converted(j.actions, j, d)
+        d.last_wheels = j.last_wheels
+        j.trigger = 0.0
+        self.active = d
+        self.state, self.t = "drive", 0.0
+        self.since_back = 0.0
+        self.events.append("handed back to the driving policy")
+
+    def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
+        self.t += PERIOD_S
+        self.since_back += PERIOD_S
+        if self.state == "braking":
+            rolling = ground_speed(fb, float(w[1]), self.meta["wheel_radius"])
+            self.slow_for = (
+                self.slow_for + PERIOD_S if abs(rolling) < JUMP_TOP_SPEED_M_S else 0.0
+            )
+            if self.slow_for >= JUMP_BRAKED_S:
+                self._crouch()
+            elif self.t > JUMP_BRAKE_GIVE_UP_S:
+                self.state, self.t = "drive", 0.0
+                self.events.append(
+                    f"refused: still at {rolling:+.2f} m/s after "
+                    f"{JUMP_BRAKE_GIVE_UP_S:g} s of braking"
+                )
+        if self.state == "crouch":
+            low = float(np.mean(leg_heights(fb)))
+            if low <= self.bottom + self.tolerance or self.t >= self.crouch_s:
+                self.state, self.t = "jump", 0.0
+                self.events.append(
+                    f"jump: legs at {low * 1000:.0f} mm, "
+                    f"target {self.clearance * 1000:.0f} mm"
+                )
+        if self.state == "jump" and self.t >= self.window_s:
+            self._hand_back()
+        if self.active is self.jumping:
+            j = self.jumping
+            jumping = self.state == "jump"
+            j.trigger = 1.0 if jumping else 0.0
+            j.target = self.clearance
+            j.timer = self.t if jumping else 0.0
+            j.volts = self.volts() if callable(self.volts) else self.volts
+            if self.state == "crouch" or (jumping and self.t < JUMP_HOLD_BOTTOM_S):
+                height = self.bottom
+        return self.active.observe(fb, w, g, speed, turn, height)
+
+    def decide(self, obs: np.ndarray) -> dict[str, st.Cmd]:
+        return self.active.decide(obs)
 
 
 def ground_speed(fb: dict, pitch_rate: float, wheel_radius: float) -> float:
@@ -625,6 +988,7 @@ class Stepper:
     ):
         self.balancer = balancer
         self.imu = imu
+        self.attitude = Attitude(imu)
         self.rig = rig
         self.guard = guard
         self.clock = clock
@@ -651,6 +1015,7 @@ class Stepper:
         self.revived_at: dict[str, float] = {}
         self.said: set[str] = set()
         self.recoveries: list[str] = []
+        self.assisted = True
 
     def speak(self) -> None:
         """Every motor spoken to, so that it reports where it is now."""
@@ -674,7 +1039,18 @@ class Stepper:
         fb = dict(self.rig.latest)
         self.guard.trouble = {}
         gyro, gravity = self.guard.sensors(now, self.rig)
-        w, g = self.imu.torso(gyro, gravity)
+        w, g = self.attitude.read(now, gyro, gravity)
+        if self.attitude.doubted_for > 0.0:
+            self.guard.trouble["imu gravity"] = (
+                f"IMU: gravity {self.attitude.why}: carried on the gyro"
+            )
+            if self.attitude.doubted_for > GYRO_CARRY_S:
+                if self.guard.recover:
+                    raise Lost(
+                        f"IMU: gravity not believable for "
+                        f"{self.attitude.doubted_for:.1f} s"
+                    )
+                self.attitude.believe_anyway()
         self.guard.check(now, fb, g)
         if self.guard.recover:
             self.revive(now)
@@ -757,9 +1133,18 @@ class Stepper:
             self.missed += 1
         asked_speed, asked_turn = speed, turn
         speed, turn = self.governed(fb, speed, turn)
-        if self.trim is not None:
+        # A jump policy has the robot: what Trim and Hold learned is the driving
+        # policy's, and the jump moves it. Back from one, they start afresh.
+        assist = getattr(self.balancer, "assist", True)
+        if assist and not self.assisted:
+            if self.trim is not None:
+                self.trim.reset()
+            if self.hold is not None:
+                self.hold.holding = False
+        self.assisted = assist
+        if self.trim is not None and assist:
             speed, turn = self.trim.command(speed, turn, fb, w, g, PERIOD_S)
-        if self.hold is not None:
+        if self.hold is not None and assist:
             speed, turn = self.hold.command(speed, turn, fb, w, g, PERIOD_S)
         b = self.balancer
         told = self.pretend(fb) if self.pretend else fb

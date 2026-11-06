@@ -177,7 +177,9 @@ CmdFn = Callable[[float, dict], Cmd]
 class Segment:
     """A stretch of a test. It ends when `until` says so, after `duration`
     seconds at the most; or, if it asks the operator something, when they have
-    answered, and their answer goes into the log under `answer`."""
+    answered, and their answer goes into the log under `answer`. A `coach`, given
+    the time into the segment and the latest reports, says what the person doing
+    the test should do now; the runner prints it every `coach_s`."""
 
     name: str
     commands: dict[str, CmdFn]
@@ -185,6 +187,9 @@ class Segment:
     until: Callable[[float, dict], bool] | None = None
     prompt: str | None = None
     answer: str | None = None
+    coach: Callable[[float, dict], str | None] | None = None
+    coach_s: float = 1.0
+    quiet: bool = False  # not announced as it starts
 
     def __post_init__(self):
         if self.prompt is None and self.duration is None:
@@ -831,6 +836,126 @@ def _c1(a):
     return segs, _leg_limits({w: 5.0 for w in WHEELS})
 
 
+HAND_S = 20.0
+HAND_REST_S = 20.0
+
+
+def _w_wheel(a) -> str:
+    wheel = a.joint or WHEELS[0]
+    if wheel not in WHEELS:
+        raise ValueError(f"W1 runs a wheel: --joint {' or '.join(WHEELS)}")
+    return wheel
+
+
+def _w1(a):
+    """One wheel's torque against speed, on the robot, with nothing taken off it.
+
+    First, hands off, full torque each way from standstill until the wheel stops
+    gaining speed: the low end of the curve, in the 15 ms or so the wheel takes to
+    reach its top. Then a steady push of --hold-torque, twice, while a hand on the
+    tread slows the wheel from its top speed down: each speed it settles at is
+    where the motor can give no more than the hand takes, the top of the curve.
+    The legs are left off and the robot is held by hand."""
+    wheel = _w_wheel(a)
+    top = min(0.95 * a.vmax, 52.0)
+    spins = 2 * a.repeats
+
+    def speed(fb) -> float:
+        return abs(fb[wheel].v) if wheel in fb else 0.0
+
+    def torque(fb) -> float:
+        return abs(fb[wheel].tau) if wheel in fb else 0.0
+
+    def squeeze(t, fb, seen):
+        """Slow it from its top speed to a crawl in a straight line over the push:
+        firmer when it runs ahead of that, easier when it falls behind."""
+        v = speed(fb)
+        left = HAND_S - t
+        if t < 2.0:
+            seen["top"] = max(seen.get("top", 0.0), v)
+            return f"SPINNING UP. Rest the cloth on the tread, barely touching.  {v:4.1f} rad/s"
+        start = max(seen.get("top", 0.0), 30.0)
+        want = max(15.0, start * (1.0 - (t - 2.0) / (HAND_S - 4.0)))
+        if v > want + 6.0:
+            say = "FIRMER"
+        elif v < want - 6.0:
+            say = "EASE OFF a little"
+        else:
+            say = "good, keep tightening slowly"
+        return (
+            f"{say:<28} {left:4.0f} s left   wheel {v:4.1f} rad/s (aim {want:4.1f}), "
+            f"{torque(fb):4.2f} Nm"
+        )
+
+    def resting(t, fb, span):
+        return f"LET GO and rest. Next push in {span - t:3.0f} s"
+
+    segs = [
+        Segment(
+            "HANDS OFF THE TREAD, hold the shin: six quick spin-ups now",
+            {wheel: brake(0.05)},
+            1.0,
+        )
+    ]
+    for rep in range(a.repeats):
+        for sign in (1.0, -1.0):
+            seen = {"peak": 0.0, "since": 0.0}
+
+            def plateau(t, fb, sign=sign, seen=seen):
+                v = sign * fb[wheel].v if wheel in fb else 0.0
+                if v > seen["peak"] + 0.3:
+                    seen["peak"], seen["since"] = v, t
+                return v >= top or (v > 20.0 and t - seen["since"] > 0.3)
+
+            done = 2 * rep + (1 if sign > 0 else 2)
+            segs.append(
+                Segment(
+                    f"  spin-up {done} of {spins}, hands off",
+                    {wheel: const(Cmd(t=sign * a.full_torque))},
+                    2.0,
+                    until=plateau,
+                )
+            )
+            segs.append(
+                Segment(
+                    "brake", {wheel: brake(0.5)}, 3.0, until=stopped(wheel), quiet=True
+                )
+            )
+            segs.append(Segment("rest", {wheel: brake(0.3)}, 0.5, quiet=True))
+    segs.append(
+        Segment(
+            "GET READY: cloth in hand, not touching yet. The wheel will spin and keep "
+            "spinning, then you slow it over 20 s, following the prompts",
+            {wheel: brake(0.3)},
+            4.0,
+            coach=lambda t, fb: f"starting in {4.0 - t:2.0f} s",
+        )
+    )
+    for k in (1, 2):
+        seen: dict = {}
+        segs.append(
+            Segment(
+                f"PUSH {k} OF 2: squeeze gradually, light to firm",
+                {wheel: const(Cmd(t=a.hold_torque))},
+                HAND_S,
+                coach=lambda t, fb, seen=seen: squeeze(t, fb, seen),
+            )
+        )
+        if k == 1:
+            segs.append(
+                Segment(
+                    "LET GO: it stops itself",
+                    {wheel: brake(0.3)},
+                    HAND_REST_S,
+                    coach=lambda t, fb: resting(t, fb, HAND_REST_S),
+                    coach_s=5.0,
+                )
+            )
+    segs.append(Segment("LET GO. Finished.", {wheel: brake(0.3)}, 2.0))
+    # Under VMAX, past which a report's speed wraps round and reads backwards.
+    return segs, Limits(speed={wheel: min(top + 8.0, a.vmax - 5.0)}, hot_c=a.hot_c)
+
+
 TESTS: dict[str, Test] = {
     t.key: t
     for t in (
@@ -971,6 +1096,19 @@ TESTS: dict[str, Test] = {
             _c1,
             lambda a: JOINTS,
             options="--repeats",
+        ),
+        Test(
+            "W1",
+            "A wheel's torque against speed, braked by hand",
+            "table",
+            "The robot on the table, its legs off and the wheel clear of everything. "
+            "Hold the shin just above the wheel's motor with one hand throughout. "
+            "Hands off for the spin-ups; then, gloved, slow the tread with the other "
+            "hand, gradually, light to firm, through each 20 s push. Never the hub.",
+            1000.0,
+            _w1,
+            lambda a: (_w_wheel(a),),
+            options="--joint, --repeats, --full-torque, --hold-torque, --hot-c",
         ),
     )
 }

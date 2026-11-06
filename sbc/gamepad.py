@@ -19,6 +19,13 @@ toggles between its slow limit and its fast one, starting slow each time it take
 Once the daemon says the policy has changed it, the controller rumbles twice going
 fast and once going slow, so a press nothing took is answered by nothing.
 
+The D-pad's ride height goes back to the top of its range whenever the robot is
+disarmed, so that every run starts high, however low the last one was left: the
+owner's rule, 6 November 2026. A run that took over already low had been D5's fall.
+Disarmed is what flash_robot.sh means by it, nothing holding control, as diagd's
+status says; while that lasts the height is held at the top, and the D-pad moves it
+again once a run holds control.
+
 A dropped controller must not leave the robot driving, and two things watch for
 that. Linux taking the device away ends it: at once when a controller is switched off,
 and when the link times out when one is carried out of range, Linux going on reporting
@@ -519,6 +526,11 @@ class PadManager:
         self.error = ""
         self.robot = None
         self.taken: bool | None = None
+        # Whether anything holds control, as diagd's status last said; None until it
+        # has. The ride height, kept across controllers, and put back to the top of
+        # its range whenever nothing holds control.
+        self.armed: bool | None = None
+        self.height = HEIGHT_RANGE_M[1]
         self.sent = None
         self.speed_limit = START_SPEED_M_S
         self.turn_limit = START_TURN_RAD_S
@@ -574,6 +586,7 @@ class PadManager:
             operator.speed_limit = self.speed_limit
             operator.turn_limit = self.turn_limit
             operator.mode, operator.jump = self.counts
+            operator.height = self.height
             self.operator, self.name, self.error = operator, pad.name, ""
             self.rumble = getattr(pad, "rumble", None)
 
@@ -581,6 +594,7 @@ class PadManager:
         with self.lock:
             if self.operator:
                 self.counts = (self.operator.mode, self.operator.jump)
+                self.height = self.operator.height
             self.operator, self.name, self.rumble = None, None, None
             self.watch_until = 0.0
 
@@ -601,6 +615,17 @@ class PadManager:
                 self.watch_until = 0.0
         if rumble:
             rumble.pulses(2 if fast else 1)
+
+    def control(self, status: dict) -> None:
+        """diagd's status: with nothing holding control, the robot is disarmed, and
+        the ride height goes back to the top."""
+        holder = (status.get("status", status).get("pi") or {}).get("control")
+        with self.lock:
+            self.armed = bool(holder)
+            if not holder:
+                self.height = HEIGHT_RANGE_M[1]
+                if self.operator:
+                    self.operator.height = self.height
 
     def event(self, kind: int, code: int, value: int, now: float) -> None:
         with self.lock:
@@ -670,11 +695,14 @@ class PadManager:
                 continue
             try:
                 if now >= next_ask or now < self.watch_until:
+                    due = now >= next_ask
                     next_ask = now + ASK_S
                     answer = robot.request("drive", wait=0.5, **command)
                     self.taken = answer["taken"]
                     # A daemon from before 6 November 2026 says nothing of it.
                     self.answered(answer.get("fast"), time.monotonic())
+                    if due:
+                        self.ask_control(robot)
                 else:
                     robot.send("drive", **command)
             except diag_client.RobotError as error:
@@ -683,6 +711,17 @@ class PadManager:
                 with self.lock:
                     self.taken = None
                     self.error = "" if robot.error else str(error)
+
+    def ask_control(self, robot) -> None:
+        """Whether anything holds control. A daemon with no status yet refuses, and
+        that leaves the height as it is; a broken connection says so itself."""
+        try:
+            status = robot.request("status", wait=0.5)
+        except diag_client.RobotError:
+            with self.lock:
+                self.armed = None
+            return
+        self.control(status)
 
     @staticmethod
     def held_names(operator: Operator) -> list[str]:
@@ -704,6 +743,7 @@ class PadManager:
                 held=self.held_names(operator) if operator else [],
                 diagd=self.robot is not None and not self.robot.error,
                 taken=self.taken,
+                armed=self.armed,
                 fast=self.fast,
                 rumble=(self.rumble.why_not or "ready") if self.rumble else "",
                 speed_limit=self.speed_limit,

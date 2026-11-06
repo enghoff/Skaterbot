@@ -486,6 +486,46 @@ def until(condition, timeout=3.0):
     return False
 
 
+class RideHeight(unittest.TestCase):
+    """The D-pad's height back at the top whenever the robot is disarmed."""
+
+    def attached(self, height=None):
+        manager = gp.PadManager(find=lambda: None)
+        manager.attach(ScriptedPad(), 0.0)
+        if height is not None:
+            manager.operator.height = height
+        return manager
+
+    def test_the_first_controller_starts_at_the_top(self):
+        self.assertEqual(self.attached().operator.height, gp.HEIGHT_RANGE_M[1])
+
+    def test_nothing_holding_control_puts_it_back_at_the_top(self):
+        manager = self.attached(gp.HEIGHT_RANGE_M[0])
+        manager.control({"status": {"pi": {"control": None}}})
+        self.assertEqual(manager.operator.command(0.0)["height"], gp.HEIGHT_RANGE_M[1])
+        self.assertIs(manager.snapshot()["armed"], False)
+
+    def test_a_run_holding_control_keeps_the_dpads_height(self):
+        manager = self.attached(0.18)
+        manager.control({"status": {"pi": {"control": "balance (127.0.0.1:35918)"}}})
+        self.assertAlmostEqual(manager.operator.command(0.0)["height"], 0.18)
+        self.assertIs(manager.snapshot()["armed"], True)
+
+    def test_a_controller_coming_back_mid_run_keeps_its_height(self):
+        manager = self.attached(0.18)
+        manager.detach()
+        manager.attach(ScriptedPad(), 1.0)
+        self.assertAlmostEqual(manager.operator.height, 0.18)
+
+    def test_a_daemon_with_no_status_yet_leaves_it(self):
+        manager = self.attached(0.18)
+        refusing = Mock()
+        refusing.request.side_effect = diag_client.RobotError("no status yet")
+        manager.ask_control(refusing)
+        self.assertAlmostEqual(manager.operator.height, 0.18)
+        self.assertIsNone(manager.snapshot()["armed"])
+
+
 class PathToThePolicy(unittest.TestCase):
     """The real daemon and the simulated controller, over a real socket."""
 
@@ -538,7 +578,7 @@ class PathToThePolicy(unittest.TestCase):
         self.assertTrue(until(lambda: controller.drive["turn"] != 0), controller.drive)
         self.assertAlmostEqual(controller.drive["forward"], gp.START_SPEED_M_S)
         self.assertAlmostEqual(controller.drive["turn"], -gp.START_TURN_RAD_S)
-        self.assertAlmostEqual(controller.drive["height"], gp.DEFAULT_HEIGHT_M)
+        self.assertAlmostEqual(controller.drive["height"], gp.HEIGHT_RANGE_M[1])
         self.assertTrue(until(lambda: manager.snapshot()["taken"] is True))
         # Letting go is seen at the controller as speed and turn of nothing.
         pad.events = [(gp.EV_ABS, GAS, 0), (gp.EV_ABS, gp.ABS_RX, 128)]
@@ -624,6 +664,31 @@ class PathToThePolicy(unittest.TestCase):
             until(lambda: not controller.drive["live"]),
             "the controller was left believing it is still being driven",
         )
+
+    def test_disarmed_the_height_goes_back_to_the_top(self):
+        daemon, _, where = self.daemon(takes_drive=False)
+        heard = []
+        listener = diag_client.Robot(where, name="listener", streams=("drive",))
+        self.addCleanup(listener.close)
+        listener.on("drive", heard.append)
+        self.assertTrue(until(lambda: daemon.status is not None))
+        run = diag_client.Robot(where, name="balance", streams=())
+        self.addCleanup(run.close)
+        run.take_control()
+        pad = ScriptedPad()
+        manager = self.manager(where, pad)
+        self.hold(manager, pad)
+        self.assertTrue(until(lambda: manager.snapshot()["armed"] is True))
+        pad.events = [(gp.EV_ABS, gp.ABS_HAT0Y, 1)]  # down
+        self.assertTrue(until(lambda: heard and heard[-1]["height"] < 0.2))
+        pad.events = [(gp.EV_ABS, gp.ABS_HAT0Y, 0)]
+        time.sleep(1.2)
+        self.assertLess(heard[-1]["height"], 0.2, "a run's height was put back")
+        run.release_control()
+        self.assertTrue(
+            until(lambda: heard[-1]["height"] == gp.HEIGHT_RANGE_M[1]), heard[-1]
+        )
+        self.assertIs(manager.snapshot()["armed"], False)
 
     def test_a_shutting_down_robot_refuses_it(self):
         daemon, controller, where = self.daemon(takes_drive=True)

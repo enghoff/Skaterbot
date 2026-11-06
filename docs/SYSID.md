@@ -188,6 +188,27 @@ Then the tests, on the Pi, beside diagd; `python3 sysid.py list` describes each:
     python3 sysid.py B3
     python3 sysid.py B4 --repeats 10
     python3 sysid.py C1 --repeats 5
+    python3 sysid.py W1 --joint wheel_drive_right --hold-torque 1.5 --hot-c 70 --yes
+
+W1 measures a motor's torque against speed with nothing taken off the robot, since there is no spare motor for A3: one wheel, the robot on a table with its legs off, spun up from standstill at full torque hands-off, then pushed at a steady 1.5 Nm while a gloved hand slows the tread from its top speed. The wheel motors are the knees' model, so this is the knees' curve too.
+
+**What W1 found, 6 November 2026**, on the right wheel with the pack at 24.7-24.9 V
+(nearly full), the winding never past 60 °C. Pushing at 1.5 Nm while a hand slowed
+the wheel, the torque it delivered was:
+
+| Speed, rad/s | up to 37.5 | 37.5-40 | 40-42.5 | 42.5-45 | 45-47.5 | 47.5-50 | 50-52.5 | 52.5-55 |
+|---|---|---|---|---|---|---|---|---|
+| Torque, Nm (median) | all 1.5 asked | 1.41 | 1.20 | 0.99 | 0.81 | 0.52 | 0.29 | 0.10 |
+
+Above 37.5 rad/s that is a straight line, 0.09 Nm less for every rad/s, reaching
+nothing at 54-55 rad/s, which is also the top it reached spinning free. In Isaac
+Lab's DC-motor form that is a saturation torque of 4.95 Nm and a speed limit of
+55 rad/s, under the 3 Nm effort limit, where the simulator has had 3 Nm and
+48.2 rad/s: at 40 rad/s the motor gives 1.2-1.4 Nm and the simulator allowed 0.5.
+Where the line meets 3 Nm, about 22 rad/s, is extrapolated: the full-torque
+spin-ups were over too quickly, about 40 ms, for the motor's torque to rise to
+3 Nm, so the peak itself is still the manual's figure. A nearly flat pack has not
+been measured; top speed should fall about in proportion to its voltage.
 
 Each writes `~/sysid_logs/<when>_<test>.jsonl`. Copy them to the PC and fit:
 
