@@ -160,5 +160,116 @@ class Ramps(unittest.TestCase):
         self.assertAlmostEqual(t, 1.2, places=1)
 
 
+class HeightOnTakingOver(unittest.TestCase):
+    """The crouch's height first, whatever is asked, then the D-pad's rate: the D-pad's
+    low height kept from the run before folded D5's knees under the owner's hand on
+    2026-11-06."""
+
+    def ride(self, op, height, seconds, t0=0.0):
+        t, seen = t0, []
+        while t < t0 + seconds - 1e-9:
+            op.last = (t, {"forward": 0.0, "turn": 0.0, "live": True, "height": height})
+            seen.append((t, op.ask(t)[2]))
+            t += 0.01
+        return seen
+
+    def test_it_starts_at_the_crouch_whatever_is_asked(self):
+        op = operator()
+        seen = self.ride(op, 0.17, op.HEIGHT_HOLD_S - 0.01)
+        self.assertTrue(all(h == META["default_height"] for _, h in seen))
+
+    def test_then_it_goes_down_at_the_dpads_rate(self):
+        op = operator()
+        seen = self.ride(op, 0.17, op.HEIGHT_HOLD_S + 1.0)
+        self.assertAlmostEqual(seen[-1][1], 0.2035 - 0.025 * 1.0, places=6)
+        steps = [a[1] - b[1] for a, b in zip(seen, seen[1:])]
+        self.assertLessEqual(max(steps), 0.025 * 0.01 + 1e-12)
+
+    def test_it_gets_there_and_stays(self):
+        op = operator()
+        seen = self.ride(op, 0.17, op.HEIGHT_HOLD_S + 2.0)
+        self.assertAlmostEqual(seen[-1][1], 0.17)
+        self.assertTrue(all(h >= 0.17 for _, h in seen))
+
+    def test_up_again_at_the_same_rate(self):
+        op = operator()
+        self.ride(op, 0.17, op.HEIGHT_HOLD_S + 2.0)
+        seen = self.ride(op, 0.207, 0.5, t0=op.HEIGHT_HOLD_S + 2.0)
+        self.assertAlmostEqual(seen[-1][1], 0.17 + 0.025 * 0.5, places=6)
+
+    def test_taking_over_again_starts_at_the_crouch_again(self):
+        op = operator()
+        self.ride(op, 0.17, op.HEIGHT_HOLD_S + 2.0)
+        op.reset()
+        seen = self.ride(op, 0.17, 1.0, t0=10.0)
+        self.assertTrue(all(h == META["default_height"] for _, h in seen))
+
+    def test_a_height_from_the_command_line_is_gone_to_the_same_way(self):
+        op = operator(height=0.18)
+        t = 0.0
+        while t < op.HEIGHT_HOLD_S - 1e-9:
+            self.assertEqual(op.ask(t)[2], 0.2035)
+            t += 0.01
+        while t < op.HEIGHT_HOLD_S + 2.0:
+            h = op.ask(t)[2]
+            t += 0.01
+        self.assertAlmostEqual(h, 0.18)
+
+    def test_a_height_past_the_trained_range_is_held_to_it(self):
+        op = operator()
+        seen = self.ride(op, 0.155, op.HEIGHT_HOLD_S + 3.0)
+        self.assertAlmostEqual(seen[-1][1], META["height_range"][0])
+
+
+class Sideways(unittest.TestCase):
+    """Speed times turn held under SIDEWAYS_M_S2, on what is being done, not asked."""
+
+    def drive(self, op, forward, turn, seconds, t0=0.0):
+        t = t0
+        top = 0.0
+        while t < t0 + seconds:
+            op.last = (t, {"forward": forward, "turn": turn, "live": True, "mode": 1})
+            speed, yaw, _ = op.ask(t)
+            top = max(top, abs(speed * yaw))
+            t += 0.01
+        return speed, yaw, top
+
+    def fast(self):
+        op = operator()
+        heard(op, 0.0, mode=0)
+        heard(op, 0.0, mode=1)
+        return op
+
+    def test_a_hard_turn_at_speed_gives_way(self):
+        op = self.fast()
+        self.drive(op, 1.8 * 0.6, 0.0, 3.0)
+        speed, yaw, top = self.drive(op, 1.8 * 0.6, 15.0, 3.0, t0=3.0)
+        self.assertLessEqual(top, op.SIDEWAYS_M_S2 + 1e-9)
+        self.assertAlmostEqual(abs(speed * yaw), op.SIDEWAYS_M_S2, places=6)
+
+    def test_the_speed_is_kept(self):
+        op = self.fast()
+        before, _, _ = self.drive(op, 1.0, 0.0, 4.0)
+        speed, _, _ = self.drive(op, 1.0, 6.0, 2.0, t0=4.0)
+        self.assertAlmostEqual(speed, before)
+
+    def test_turning_on_the_spot_untouched(self):
+        op = self.fast()
+        speed, yaw, _ = self.drive(op, 0.0, 15.0, 6.0)
+        self.assertEqual(speed, 0.0)
+        self.assertAlmostEqual(yaw, 15.0)
+
+    def test_still_rolling_after_letting_go_counts(self):
+        op = self.fast()
+        self.drive(op, 1.8, 0.0, 4.0)
+        _, _, top = self.drive(op, 0.0, 15.0, 1.5, t0=4.0)
+        self.assertLessEqual(top, op.SIDEWAYS_M_S2 + 1e-9)
+
+    def test_slow_mode_never_reaches_it(self):
+        op = operator()
+        _, _, top = self.drive(op, 1.8, 15.0, 5.0)
+        self.assertLessEqual(top, 1.0 * 2.0 + 1e-9)
+
+
 if __name__ == "__main__":
     unittest.main()

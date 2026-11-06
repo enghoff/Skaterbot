@@ -19,6 +19,16 @@ TASK_ID = "Biped-Wheeled-Balance-v0"
 ROUGH_TASK_ID = "Biped-Wheeled-Rough-v0"
 JUMP_TASK_ID = "Biped-Wheeled-Jump-v0"
 DRIVE_TASK_ID = "Biped-Wheeled-Drive-v0"
+# The driving and jump tasks on the motors as measured (plant.MOTOR_CURVE).
+DRIVE_MEASURED_TASK_ID = "Biped-Wheeled-Drive-Measured-v0"
+JUMP_MEASURED_TASK_ID = "Biped-Wheeled-Jump-Measured-v0"
+# The measured driving task down to a 155 mm ride height (WheeledBipedDriveLowEnvCfg).
+DRIVE_LOW_TASK_ID = "Biped-Wheeled-Drive-Low-v0"
+# D6: the low task on the robot as its driving showed it (WheeledBipedDriveD6EnvCfg).
+DRIVE_D6_TASK_ID = "Biped-Wheeled-Drive-D6-v0"
+# D6 and the jump with the legs' torque as late as the robot's (plant.LEG_RESPONSE).
+DRIVE_D6_LEGS_TASK_ID = "Biped-Wheeled-Drive-D6-Legs-v0"
+JUMP_LAG_TASK_ID = "Biped-Wheeled-Jump-Lag-v0"
 
 
 def register() -> list[str] | None:
@@ -69,6 +79,70 @@ def register() -> list[str] | None:
                 "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
                 "rsl_rl_mirror_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveMirrorPPORunnerCfg",
                 "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_MEASURED_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_MEASURED_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveMeasuredEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_LOW_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_LOW_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveLowEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_D6_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_D6_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD6EnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_D6_LEGS_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_D6_LEGS_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD6LegsEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if JUMP_LAG_TASK_ID not in gym.registry:
+        gym.register(
+            id=JUMP_LAG_TASK_ID,
+            entry_point=f"{__name__}.jump_env:WheeledBipedJumpEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.jump_measured_env_cfg:WheeledBipedJumpLagEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
+            },
+        )
+    if JUMP_MEASURED_TASK_ID not in gym.registry:
+        gym.register(
+            id=JUMP_MEASURED_TASK_ID,
+            entry_point=f"{__name__}.jump_env:WheeledBipedJumpEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.jump_measured_env_cfg:WheeledBipedJumpMeasuredEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
             },
         )
     return None

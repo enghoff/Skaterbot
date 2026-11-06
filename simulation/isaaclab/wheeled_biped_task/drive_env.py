@@ -21,10 +21,17 @@ class WheeledBipedDriveEnv(WheeledBipedRoughEnv):
         super().__init__(cfg, render_mode, **kwargs)
         # Where the speed and turn commands are headed. The commands the policy sees
         # and is scored on move towards these at a limited rate.
-        self._command_targets = torch.zeros_like(self._commands)
+        self._command_targets = self._commands.clone()
         step = self.step_dt
+        # The ride height too, if the task slews it: then each episode starts from the
+        # crouch's height, where the robot is taken over, and moves to what is asked.
+        self._slewed = 3 if cfg.command_slew_height_m_s > 0.0 else 2
         self._slew = torch.tensor(
-            [cfg.command_slew_m_s2 * step, cfg.command_slew_rad_s2 * step],
+            [
+                cfg.command_slew_m_s2 * step,
+                cfg.command_slew_rad_s2 * step,
+                cfg.command_slew_height_m_s * step,
+            ][: self._slewed],
             device=self.device,
         )
         # The robot's field, tiles and the flat border beyond them, as the jump task's.
@@ -40,13 +47,14 @@ class WheeledBipedDriveEnv(WheeledBipedRoughEnv):
     # -- acting
 
     def _pre_physics_step(self, actions: torch.Tensor):
-        before = self._commands[:, :2].clone()
+        n = self._slewed
+        before = self._commands[:, :n].clone()
         # This draws a new command for each robot whose time has come.
         super()._pre_physics_step(actions)
         due = (self._command_timer == 0.0).unsqueeze(1)
         self._command_targets = torch.where(due, self._commands, self._command_targets)
-        change = self._command_targets[:, :2] - before
-        self._commands[:, :2] = before + torch.max(
+        change = self._command_targets[:, :n] - before
+        self._commands[:, :n] = before + torch.max(
             torch.min(change, self._slew), -self._slew
         )
 
@@ -107,3 +115,5 @@ class WheeledBipedDriveEnv(WheeledBipedRoughEnv):
             env_ids = torch.arange(self.num_envs, device=self.device)
         self._command_targets[env_ids] = self._commands[env_ids]
         self._commands[env_ids, :2] = 0.0
+        if self._slewed > 2:
+            self._commands[env_ids, 2] = self.cfg.default_leg_height_m

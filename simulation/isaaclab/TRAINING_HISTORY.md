@@ -24,10 +24,10 @@ optimiser, what a fine-tune resumes from), the exported `policy.pt` and
 `policy.onnx` (the observation normaliser baked in), `params/`, a video, the
 TensorBoard log and the evaluations' output.
 
-**Nothing in git holds a trained policy.** Lose the volume and this machine's
-`exports/`, and the chain has to be retrained from scratch -- about ten GPU
-hours. The adopted runs are small (1.3 MB a checkpoint); keeping them
-somewhere durable is worth deciding before the robot is built.
+The policies the robot has driven on, D2 and D3, are also in git under
+`../../policies/` since 6 November 2026: their exported files, params and git
+record, not their checkpoints. Everything else lives only on the volume and in
+this machine's `exports/`.
 
 ## The adopted chain
 
@@ -155,7 +155,80 @@ Picked up while running it is cut 1.1 s after the lift, against D2's 0.3 s: lift
 pumps its legs at 2 Hz before its wheels spin up. A rule on the knees' average load
 caught it sooner in MuJoCo, and was dropped: replayed over the robot's runs of that
 morning it fired with the robot on the floor, whose knees carry less than MuJoCo's.
-It has not run on the robot.
+It has been on the robot since 5 November.
+
+**D4, D3 on the motors as measured (6 November 2026).** The wheel motors' curve was
+measured on the robot that morning (`../../docs/SYSID.md`'s W1): full torque to 37.5
+rad/s, then falling to nothing at 55, where training had assumed a straight line to
+48.2. `Biped-Wheeled-Drive-Measured-v0` puts that curve into the actuators, scales the
+no-load speed with the battery from 0.8 to 1.02, and opens the whole envelope at once,
+to 2.2 m/s and 25 rad/s. `rough-2026-11-06_05-54-42_d4_measured` is D3 model_3799 with
+1 000 iterations x 8 192 robots of it. Both scored by `evaluate_drive.py --measured
+--motor 55`:
+
+| | Upright, spun at 20 / 25 rad/s | Upright, asked 2.2 m/s | Held, asked 1.0 / 1.5 / 2.0 m/s | Spins asked 6 / 12 rad/s |
+|---|---|---|---|---|
+| D3 | 39-41 % / 2-3 % | 75 % forward, 89 % back | 0.92 / 1.27 / 1.56 m/s | 6.3 / 12.1 rad/s |
+| D4 | 94-97 % / 70-88 % | 98 % forward, 97 % back | 0.87 / 1.20 / 1.42 m/s | 7.0 / 13.9 rad/s |
+
+Inside the envelope the robot is driven in, 1.8 m/s and 15 rad/s, both stay up
+throughout; D4 is the better of the two outside it, and tracks speed slightly worse and
+spins a sixth faster than asked. Cases 1-16 of `launch_check.py` pass on it. Case 17,
+the September jump policy handed over from it, fell jumping from standing where it had
+landed from D3; that jump policy is a stand-in and falls at the robot's delays either
+way. D4 has not run on the robot.
+
+**D5, down to 155 mm (6 November 2026).** On the robot D3 stood at 170 mm rocking at
+1.5 Hz and drove there calmly. `Biped-Wheeled-Drive-Low-v0` gives the knee 1.0 rad of
+action and the hip 0.5, so the legs reach 155 mm with the shin short of the owner's 90
+degrees forward, and asks for 155 to 207 mm. Two fine-tunes of D4 model_4798, 1 500
+iterations each: `rough-2026-11-06_11-42-09_d5_low` as D4 was trained, and
+`rough-2026-11-06_11-43-08_d5_low_calm` with the cost on pitching and rolling three
+times as high (`rew_ang_vel_xy` -0.6). Standing still in MuJoCo on the robot's own loop
+(16 ms IMU, 6 ms commands), pitch rate in rad/s, and the speed reached at a full pull in
+fast mode (1.8 m/s asked):
+
+| | 155 mm | 160 | 170 | 185 | 204 | Full pull at 155 / 170 / 204 mm |
+|---|---|---|---|---|---|---|
+| D3 | | | 0.27 | 0.11 | 0.02 | - / 1.54 / 1.59 m/s |
+| d5_low | 0.03 | 0.03 | 0.22 | 0.08 | 0.12 | 1.31 / 1.18 / 1.25 m/s |
+| d5_low_calm | 0.10 | 0.17 | 0.10 | 0.07 | 0.10 | 1.22 / 1.37 / 1.27 m/s |
+
+Training's own scoring agrees on the speed: asked 2.0 m/s the two hold 1.19 and 1.28,
+where D3 held 1.56 and D4 1.42. So both give up about a fifth of D3's top speed for the
+lower stance. Cases 1-16 of `launch_check.py` pass on both; case 17's stand-in jump falls
+from both, as from D4. d5_low_calm went on the robot that evening, and came off it half an hour
+later. Lowered to 155 mm while standing it leant back 8-12 degrees with the knees at the
+end of their action, rocked, and after 2.5 s fell. Taken over with the height already at
+155, as the controller keeps it between runs, it pitched 13-21 degrees nose-down within
+half a second with the wheels at their 55 rad/s, the knees swinging through their whole
+range, three times running. MuJoCo had shown neither. D3 went back on, and the
+controller's height back to 170-207 mm.
+
+Note on that speed: D3 on the robot reaches 1.1-1.3 m/s at a full pull and about 0.7 at
+1.0 m/s asked, against 1.55 and 1.0 in MuJoCo at any height. Riding low it loses less of
+that, so it drives faster low; the shortfall is the robot's, not the stance's, and is not
+explained yet.
+
+**D6, prepared (6 November 2026), not yet trained.** `Biped-Wheeled-Drive-D6-v0`
+(`WheeledBipedDriveD6EnvCfg`) is the low task on the robot as that evening's logs showed
+it (plant.py, after MOTOR_CURVE): the wheels' torque through a 5-20 ms lag at 0.75-1.0 of
+what is asked, the IMU back to its measured 12.5-20 ms, the IMU's zero 2 degrees either
+way and the torso's centre of mass 10 mm fore or aft per episode, the wheels' friction at
+the speeds it drove; and of its own making, the ride height slewed at 50 mm/s from the
+crouch's, and a floor of 165 mm with the hip's action 0.6, off the corner of the legs'
+reach. launch_check.py's rig has the wheels' lag too (13 ms, 0.85) since then.
+`evaluate_drive.py --d6` scores it. To be fine-tuned from D5 or D4 on a pod.
+
+The same evening the robot, its IMU levelled, drove D3 low: at 170 mm both hips' actions
+sat at their end and the knees' at 0.92, and it pitched three to five times as fast
+standing there as at 207 mm. So D6 also charges a leg's action past 0.9 of its range
+(`rew_leg_action_reserve`, -50). And the robot's logs showed the legs' torque as late as
+the wheels', 8-12 ms (plant.LEG_RESPONSE), which the friction actuator can now put after
+the position loop (`lag_after_pd`): `Biped-Wheeled-Drive-D6-Legs-v0` is D6 with it, and
+`Biped-Wheeled-Jump-Lag-v0` the measured jump task with both motors' lags. Training from
+d5_low_calm model_6297, 1 500 iterations each: `d6` on D6, and `d6_legs` on D6 with the
+legs' lag; and `jl_lag` from jm_smooth model_15988 on the lagged jump task.
 
 
 From 27 September 2026 the robot drives on stage 10 and jumps on a second
@@ -197,6 +270,64 @@ against the 120 asked for, and the runs that won it back lost robustness in
 MuJoCo (symlong, symhigh, below). Every fall above was on landing, most of
 them faster than the jump policy can drive, which is why the firmware should
 not jump above 1 m/s.
+
+**The jump on the measured robot, at a height asked (6 November 2026).** jumpsym300,
+handed over from D3 in MuJoCo, landed at the delays it was trained to (IMU 4 ms,
+commands 2 ms) and fell half a second after landing at the robot's (16 / 6 ms).
+`Biped-Wheeled-Jump-Measured-v0` is the jump task on D4's robot: the measured motor
+curve and battery, the delays measured on the robot, and the height asked anywhere from 20 to 120
+mm, paid for reaching it and charged for passing it (`jump_score_to_target`,
+`rew_jump_overshoot`). Two runs from jumpsym300 model_12990, 1 500 iterations x 8 192
+robots each: `jump-2026-11-06_05-55-42_jm_target` charging overshoot -1 000 /m, and
+`jump-2026-11-06_05-56-42_jm_soft` at -300. Scored by `evaluate_jump.py --measured
+--crouch-s 0.6`, 64 robots a cell, standing, at 0.5 and at 1 m/s:
+
+| Run | Asked 20 / 30 / 50 mm | Asked 80 / 120 mm | Upright | Pitch at peak | Turned |
+|---|---|---|---|---|---|
+| jm_target | 25-27 / 32-35 / 43-47 mm | 54-61 / 60-65 mm | 95-100 % | 8-12° | 7-15° |
+| jm_soft | 31-32 / 36-39 / 47 mm | 59-60 / 65-69 mm | 95-100 % | 10-20° | 11-27° |
+
+Both follow the height asked to 50 mm and top out at 60-70 mm, which on the measured
+motors is the most there is; jumpsym300 cleared 105 mm on the rated ones. Then case 17
+of `launch_check.py`, the A button handed over from the driving policy, one try each of
+standing, at 0.5 m/s, braking from 1.5 m/s, and pressed twice, at 30 and 60 mm:
+
+| Driving + jump | IMU 16 / commands 6 ms | 26 / 10 ms | Cleared, asked 30 mm |
+|---|---|---|---|
+| D3 + jm_target | 8 of 8 | 7 of 8 | 30-34 mm |
+| D3 + jm_soft | 8 of 8 | 6 of 8 | 35-39 mm |
+| D4 + jm_target | 8 of 8 | 6 of 8 | 31-46 mm |
+| D4 + jm_soft | 8 of 8 | 6 of 8 | 45-48 mm |
+
+Every fall was at the longer delays, past the 12.5-20 ms the robot's IMU was measured
+at, and all but two of them jumping just after braking from 1.5 m/s. D3 with jm_target
+is the pair for the robot's first jumps: it lands every case at the robot's delays and
+clears what is asked.
+
+**On the robot, and smoother (6 November 2026, afternoon).** D3 with jm_target fell
+both times it was tried, standing still at 30 mm. The jump shook the torso at up to 7 g,
+buzzing at about 50 Hz: the jump policy reversed its wheel torques almost every step,
+which it does in MuJoCo too, where it costs nothing. The first time the IMU started its
+estimate over and the tilt guard let go of a robot standing at 4 degrees
+(`../../docs/POLICY_INTERFACE.md`, "Jumping on the Pi", has what was done about it);
+the second time it landed, stood itself up and tipped over backwards 0.7 s after the
+trigger, still on the jump policy. Two runs from jm_target model_14489, 1 500
+iterations x 8 192 robots each, charged the change of command in the jump as much as
+when driving (`jump_action_rate_scale=1.0`, where it had been a fifth):
+`jump-2026-11-06_08-52-38_jm_smooth` at the usual `rew_action_rate` of -0.05, and
+`jump-2026-11-06_08-53-36_jm_smooth_hard` at -0.25.
+
+| Run | Asked 20 / 30 / 50 mm | Asked 80 / 120 mm | Upright | Pitch at peak | Wheel command's change a step, MuJoCo | Reversals in 1.5 s |
+|---|---|---|---|---|---|---|
+| jm_target | 25-27 / 32-35 / 43-47 mm | 54-61 / 60-65 mm | 95-100 % | 8-12° | 0.27 | 43 |
+| jm_smooth | 23 / 30-31 / 41-44 mm | 59-63 / 63-69 mm | 97-100 % | 10-13° | 0.15 | 18 |
+| jm_smooth_hard | 21-25 / 28-32 / 41-43 mm | 54-60 / 63-66 mm | 97-100 % | 12-16° | 0.16 | 24 |
+
+Half the jitter, not none of it, and five times the charge bought no more. Both landed
+all sixteen of case 17 with D3, at 16 / 6 ms and at 26 / 10, tilting 4-10 degrees where
+jm_target had tilted 10-18; jm_smooth cleared 29-30 mm asked for 30. Handed back 0.5 s
+after the trigger rather than 1.5, landed and still crouched, it landed all sixteen too,
+and that is how the robot now hands back. jm_smooth is the one for the robot.
 
 ## What the policy is trained across
 

@@ -246,9 +246,17 @@ def balance_command(args) -> list[str]:
     command = [sys.executable, str(HERE / "balance.py"), "launch", "--yes", "--drive"]
     command += ["--seconds", "0", "--touch-wait", "0"]
     command += ["--button", "--phase-file", str(args.phase_file)]
-    # Slow, which every run starts in; select on the controller toggles to the policy's
-    # whole trained range, 1.8 m/s and 15 rad/s for the one deployed on 2026-11-06.
+    # Slow, which every run starts in; select on the controller toggles to fast, which
+    # is 1.8 m/s and 15 rad/s: D3's whole trained range, where the robot has been
+    # driven, and inside D5's 2.2 m/s and 25 rad/s, whose top the wheels' 50 rad/s
+    # stop in sbc/policy_loop.py would cut short.
     command += ["--max-speed", "1.0", "--max-turn", "2.0"]
+    command += ["--fast-speed", "1.8", "--fast-turn", "15.0"]
+    # A jump policy put beside the driving one is used: the A button jumps, as high as
+    # balance.py's --jump-height, 30 mm unless that is changed here.
+    jump = HERE / "policy_jump.npz"
+    if jump.exists():
+        command += ["--jump-policy", str(jump)]
     if args.rt:
         command.append("--rt")
     return command

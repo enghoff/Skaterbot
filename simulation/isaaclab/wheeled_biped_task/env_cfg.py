@@ -296,6 +296,11 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     # Off here: the flat task's policy was trained with its actions clipped
     # before it saw them. The rough task switches it on.
     rew_action_bound = 0.0
+    # A leg's action past this much of its range, charged as the square of the
+    # excess: a leg held at the end of its action has nothing left to balance with.
+    # Off here.
+    rew_leg_action_reserve = 0.0
+    leg_action_reserve = 0.9
     # Being still when told to stand: paid when the speed and turn commands
     # are both zero, and falling off with the joints' and the torso's motion.
     # Bounded, so a shove is recovered from rather than ridden out stiffly.
@@ -319,6 +324,10 @@ class WheeledBipedBalanceEnvCfg(DirectRLEnvCfg):
     # them (scaled). Off here.
     sensor_noise_std = 0.0
     sensor_bias_std = 0.0
+    # The IMU mounted turned from the torso, as the chip's own zero leaves it: up to
+    # this many degrees of pitch and of roll, drawn evenly per episode, turning both the
+    # gravity and the turn rate the policy reads (not what it is scored on). Off here.
+    imu_tilt_deg = (0.0, 0.0)
     # Whether the ride-height command reaches the policy as -1 to 1 over its
     # range rather than in metres (a task with one says so).
     scale_height_command = False

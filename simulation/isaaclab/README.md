@@ -202,6 +202,17 @@ couple of minutes. The reason for the snapshot is in the script: the volume is
 a network filesystem that writes big files quickly and small files at forty a
 second, and Isaac Sim is a hundred thousand small files.
 
+**A pod bills from the moment it is created, so nothing on it should wait for a
+person or a poll from outside.** Have everything ready before creating it -- the
+code to copy up, the run script, the checkpoints to start from on the volume --
+and start one chain on the pod itself, in the background: setup, then the
+starting checkpoints copied to local disk, a smoke run of a few iterations, the
+runs, and the export, scoring and copy back to the volume. Whatever watches from
+outside waits for files the chain writes, `/root/setup.done` (written last by
+`setup_pod.sh`, only if it succeeded) and the run script's own status file,
+never for a line of a log. On 2026-11-06 a wait for the wrong log line left a
+$2.49-an-hour pod idle for ten minutes after setup had finished.
+
 The project itself is at `/workspace/biped`, copied up from a checkout rather
 than cloned, so that uncommitted work can be trained on. Copy it up again after
 changing anything.

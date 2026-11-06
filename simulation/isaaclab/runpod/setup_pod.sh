@@ -112,3 +112,6 @@ fi
 
 echo "== done"
 python -c "import isaacsim, torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+# What a pipeline waits for, rather than a line of this log: on 2026-11-06 a wait for
+# the wrong line left a $2.49/h pod idle for ten minutes after setup had finished.
+date -u +%FT%TZ > /root/setup.done

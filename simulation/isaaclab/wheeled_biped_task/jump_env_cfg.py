@@ -252,6 +252,16 @@ class WheeledBipedJumpEnvCfg(WheeledBipedRoughEnvCfg):
     jump_score_max = True
     rew_jump_height = 100.0  # 400 when it was all that was scored
     jump_window_s = 1.5
+    # AND SO EVERY JUMP WAS AS HIGH AS IT COULD GO, which is no way to start on a
+    # robot that has never landed one: the owner wants to begin small and work up.
+    # With this on, clearance and the centre of mass's rise are paid only up to
+    # the target (the centre of mass up to jump_com_share of it), and every metre
+    # past the target costs rew_jump_overshoot. The target is still drawn from
+    # jump_clearance_m. The tuck that scored on clearance alone is why the centre
+    # of mass is paid as well; the cap keeps a small jump from being a push.
+    jump_score_to_target = False
+    jump_com_share = 0.6
+    rew_jump_overshoot = 0.0
     # AND STILL NO CROUCH: scored so, at 400 and at 1000 per metre, it took
     # off 30 ms after the trigger as before and cleared 95 and 103 mm. The
     # tuck was already learned, and a half-learned crouch pays less than it:

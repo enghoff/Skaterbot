@@ -90,6 +90,7 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
             "jump_com_rise",
             "liftoff_skew",
             "jump_body_rise",
+            "jump_overshoot",
         }
 
         # The ground's half-width each way: the tiles, from their centres,
@@ -424,15 +425,26 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
             # crouch and push costs nothing; the jump lasts until then.
             closing = active & (self._jump_t >= c.jump_window_s)
             scored = closing & (self._landed_t >= 0.0)
-            terms["jump_height"] = c.rew_jump_height * scored.float() * self._peak
+            peak, com = self._peak, self.com_rise()
+            if c.jump_score_to_target:
+                # A jump as high as asked: clearance and the centre of mass's rise
+                # are paid up to the target and no further, and going past the
+                # target costs, so a small request gets a small jump.
+                target = self._jump_target
+                terms["jump_overshoot"] = (
+                    c.rew_jump_overshoot
+                    * scored.float()
+                    * (peak - target).clamp(min=0.0)
+                )
+                peak = torch.minimum(peak, target)
+                com = torch.minimum(com, c.jump_com_share * target)
+            terms["jump_height"] = c.rew_jump_height * scored.float() * peak
             # And the torso's own rise in flight, which a tuck does not earn.
             terms["jump_body_rise"] = (
                 c.rew_jump_body_rise * scored.float() * self.rise()
             )
             # And the whole robot's centre of mass, which is what a jump is.
-            terms["jump_com_rise"] = (
-                c.rew_jump_com_rise * scored.float() * self.com_rise()
-            )
+            terms["jump_com_rise"] = c.rew_jump_com_rise * scored.float() * com
             recovered = closing
         self._jump_active &= ~(recovered | missed)
         return terms

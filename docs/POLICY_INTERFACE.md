@@ -249,10 +249,52 @@ the trained ranges of the driving policy for the robot
 to its own limit: 1 m/s and 2 rad/s each time it takes over, and the whole trained
 range once select has been pressed, until it is pressed again. That run was trained
 inside the diamond between its two tops, and `balance.py` holds the command to it
-after scaling, from `envelope` in the packed policy. It cannot jump, so it has no use
-for the jump count. Something
+after scaling, from `envelope` in the packed policy. It cannot jump itself: the jump
+count is for a second, jump policy, below. Something
 running a policy off the controller can have the same numbers from diagd's
 `drive` stream, and owes them the same 200 ms rule.
+
+### Jumping on the Pi
+
+`sbc/balance.py --jump-policy PATH` runs the hand-over above on the Pi, with a jump
+run packed by `sbc/pack_policy.py` (whose pack then carries a `jump` section: the
+run's clearance range, `leg_gain_range`, crouch time and tolerance, and window).
+`sbc/launcher.py` passes it whenever `sbc/policy_jump.npz` is there. The controller's
+A button (Cross on a PlayStation one) is the jump, counted like select: only presses
+after the policy has taken over count, each once. In `sbc/policy_loop.py`,
+`TwoPolicies` runs it:
+
+* **How high is set on the Pi, never on the controller**: `--jump-height`, 30 mm
+  unless changed, held to the clearances the run was trained on.
+* **A press is refused**, and the refusal logged with why, while a jump is already
+  under way, tilted past 15 degrees, or with either knee carrying under 0.05 Nm more
+  than in the air (a wheel off the floor). **Above 1 m/s it brakes first**: the
+  operator's speed is held under 0.9 m/s, falling at the usual braking rate, and the
+  crouch starts once the wheels have said it is under 1 m/s for half a second, or
+  the press is refused after 3 s of trying.
+* **The hand-over carries the outputs across as angles and torques**: the driving
+  policy moves a hip 0.4 rad and a knee 0.8 rad per unit, a jump policy 0.6 and 1.2,
+  so the last outputs each is shown are the other's converted to the same leg angles
+  and wheel torques, clipped to ±1, and a jump policy's gains start at their middle.
+  Its legs are held inside the windows in `sbc/sysid_tests.py` all the same, the
+  owner's limit on the shins among them.
+* **It is handed back 0.5 s after the trigger** (`JUMP_HAND_BACK_S`), landed and still
+  crouched, not at the run's 1.5 s window. On the robot on 6 November 2026 the jump
+  policy landed, stood itself up and tipped over backwards 0.7 s after the trigger while
+  still in charge; the driving policy, the one proven on the robot, stands it up instead.
+* **The lift detector is off from the crouch until 0.5 s after the hand-back**, so its
+  own take-off is not taken for being picked up; Trim and Hold are off while the jump
+  policy has the robot, and start afresh after. The tilt guard and every recovery are
+  as they are while driving: nothing about a jump cuts the motors.
+* **A tilt the gyro did not see is not a fall** (`Attitude`, for every run, not only
+  jumps). The same day a jump shook the IMU at 7 g and it started its estimate over:
+  its gravity read the robot upside down for half a second, and the tilt guard let go
+  of a robot standing at 4 degrees. A gravity report more than 25 degrees from where
+  the gyro has turned the last one believed, or more than 20 per cent off 9.8 m/s² long,
+  is not believed; the gyro carries the last one for up to 1.5 s, and past that a robot
+  that is driving is let down gently.
+* Each press, refusal, crouch, trigger and hand-back is a note in the run's log, so
+  the seconds before each are kept however long the run.
 
 ## What the policy does not do
 

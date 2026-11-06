@@ -39,6 +39,16 @@ parser.add_argument(
 )
 parser.add_argument("--speeds", default="0,1.0", help="forward speeds, m/s")
 parser.add_argument(
+    "--measured",
+    action="store_true",
+    help="on the robot as measured (jump_measured_env_cfg.py), not the September model",
+)
+parser.add_argument(
+    "--lag",
+    action="store_true",
+    help="with the legs' and wheels' torque late, as the robot's (WheeledBipedJumpLagEnvCfg)",
+)
+parser.add_argument(
     "--crouch-s",
     type=float,
     default=0.0,
@@ -50,6 +60,10 @@ args = parser.parse_args()
 
 import torch  # noqa: E402
 from wheeled_biped_task.jump_env_cfg import WheeledBipedJumpEnvCfg  # noqa: E402
+from wheeled_biped_task.jump_measured_env_cfg import (  # noqa: E402
+    WheeledBipedJumpLagEnvCfg,
+    WheeledBipedJumpMeasuredEnvCfg,
+)
 
 TARGETS_M = tuple(float(t) / 1000.0 for t in args.targets_mm.split(","))
 SPEEDS_M_S = tuple(float(v) for v in args.speeds.split(","))
@@ -72,7 +86,12 @@ def policy_inputs(path: str) -> int:
 
 def main() -> int:
     cells = [(t, v) for t in TARGETS_M for v in SPEEDS_M_S]
-    cfg = WheeledBipedJumpEnvCfg()
+    if args.lag:
+        cfg = WheeledBipedJumpLagEnvCfg()
+    elif args.measured:
+        cfg = WheeledBipedJumpMeasuredEnvCfg()
+    else:
+        cfg = WheeledBipedJumpEnvCfg()
     # On the flat field: training puts steps in a share of it.
     cfg.steps_fraction = 0.0
     # A policy trained before the battery was one of its inputs has one fewer.
