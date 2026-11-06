@@ -207,6 +207,21 @@ listing:
   are Ø6.5, and gate I fits adapter, screws, wheel, cap and clamp in order. The
   same screws at the hip and knee are the next thing to walk.
 
+**Found on the robot.**
+
+- **The legs flex sideways into an A under the robot's weight** (owner,
+  6 November 2026). Every screw and joint is tight: no one part is at fault,
+  but the printed thigh and shin each give a little, and over the leg's whole
+  length it shows at the wheel, helped by the wheel standing to the side of the
+  leg. The wheels ride partly on their edges and the shin's bottom end comes
+  closer to the floor, not yet badly. A rubber band between the two shins, just
+  above the wheel motors, holds them straight, and the driving policy runs as
+  before. No gate measures stiffness and neither simulator models it. Nothing
+  to change now; the next print of the thigh and shin should be stiffened
+  sideways where a section-by-section bending check along the leg says it pays,
+  and a jump should not be tried on the band, since a landing loads the legs
+  outward hardest.
+
 **The distribution board is out of stock.** Robu, its only seller, showed the
 SwiftWing PDB-02-XT60 out of stock at ₹450 when read in a browser later on
 30 September. The pelvis posts and the power switch board are drawn to it. A
