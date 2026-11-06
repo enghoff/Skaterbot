@@ -229,6 +229,8 @@ struct Shared {
     health: Health,
     /// What [`Health::flags`] said at the last tick, which the LED shows.
     health_flags: u16,
+    /// Until when the LED shows the fast speed mode, from the Pi's INDICATE.
+    fast_until: Option<Instant>,
 }
 
 impl Shared {
@@ -258,6 +260,7 @@ impl Shared {
             imu_diag: ImuDiag::default(),
             health: Health::new(),
             health_flags: 0,
+            fast_until: None,
         }
     }
 
@@ -550,6 +553,11 @@ fn handle(kind: u8, body: &[u8], ctx: &Ctx<'_>) {
             Err(_) => false,
         },
         host::I2C => i2c_request(body, ctx),
+        host::INDICATE if body.len() == 1 => {
+            ctx.shared.borrow_mut().fast_until = (body[0] & 1 != 0)
+                .then(|| Instant::now() + Duration::from_millis(health::FAST_HOLD_MS));
+            true
+        }
         _ => false,
     };
     if !ok {
@@ -833,8 +841,12 @@ fn log_health(ctx: &Ctx<'_>, flags: u16) {
 async fn indicator(led: &mut Output<'_>, ctx: &Ctx<'_>) -> ! {
     let show = async {
         loop {
-            let fault = Fault::of(ctx.shared.borrow().health_flags);
-            for &(lit, ms) in fault.pattern() {
+            let (fault, fast) = {
+                let s = ctx.shared.borrow();
+                let fast = s.fast_until.is_some_and(|t| Instant::now() < t);
+                (Fault::of(s.health_flags), fast)
+            };
+            for &(lit, ms) in fault.shown(fast) {
                 if lit {
                     led.set_high();
                 } else {
@@ -891,7 +903,7 @@ fn send_status(ctx: &Ctx<'_>, properties: &[&Properties; BUSES]) {
         put.u32(now.as_micros() as u32);
         put.u32(now.as_millis() as u32);
         let flags = power::held() as u8
-            | (power::pressed() as u8) << 1
+            | (power::pressed_lately() as u8) << 1
             | (power::off_requested() as u8) << 2
             | (s.lost as u8) << 3
             | (s.imu.is_some() as u8) << 4

@@ -14,6 +14,8 @@ stopping the motors is the robot's own power button.
 Speed is on the analog triggers, the right (gas) forward and the left (brake) back:
 how far one is pulled asks for that much, and letting go asks for none. The turn,
 D-pad and jump are the MuJoCo driver's (simulation/mujoco/drive.py, Input.poll_pad).
+Select is the speed mode: each press is counted and sent, and what runs the policy
+toggles between its slow limit and its fast one, starting slow each time it takes over.
 
 A dropped controller must not leave the robot driving, and two things watch for
 that. Linux taking the device away ends it: at once when a controller is switched off,
@@ -47,17 +49,20 @@ EV_SYN, SYN_REPORT, SYN_DROPPED = 0x00, 0x00, 0x03
 ABS_HAT0Y = 0x11
 BTN_SOUTH, BTN_EAST, BTN_C, BTN_WEST = 0x130, 0x131, 0x132, 0x134
 BTN_Z, BTN_TL, BTN_TR = 0x135, 0x136, 0x137
+BTN_TL2, BTN_SELECT = 0x138, 0x13A
 SONY, MICROSOFT = 0x054C, 0x045E
 
 # The trained ranges of the driving policy for the robot, from its run's
-# params/env.yaml (exports/rl/rough-2026-11-04_09-01-34_measured_fix):
+# params/env.yaml (exports/rl/rough-2026-11-05_10-37-59_fresh2_18):
 # command_lin_vel_x, command_yaw_rate and command_leg_height_m. The exported run is
-# the authority: check these against whichever is deployed. A policy trained with
-# command_envelope, as the jump runs are, reaches further (1.928 m/s, 22 rad/s) and
-# wants speed and turn held inside the diamond between them: ENVELOPE, then.
-TOP_SPEED_M_S = 0.5
-TOP_TURN_RAD_S = 1.5
-HEIGHT_RANGE_M = (0.185, 0.207)
+# the authority: check these against whichever is deployed. A trigger's or a stick's
+# end sends the whole of it, and balance.py scales that to its own limits. That
+# policy was trained inside the diamond between the two tops, which balance.py
+# holds it to after scaling, so ENVELOPE, which would hold it here, is off: here it
+# would halve a slow limit's full turn and full speed together for nothing.
+TOP_SPEED_M_S = 1.8
+TOP_TURN_RAD_S = 15.0
+HEIGHT_RANGE_M = (0.170, 0.207)
 ENVELOPE = False
 # default_leg_height_m in the same file: the crouch trained around.
 DEFAULT_HEIGHT_M = 0.2035
@@ -85,6 +90,10 @@ class Layout:
     gas: int | None
     brake: int | None
     jump: int
+    # Select on an Xbox controller, by its report's order after the gaps; Share on a
+    # PlayStation one. Neither yet seen pressed on the robot: the console shows the
+    # code of whatever is held.
+    mode: int = BTN_SELECT
 
 
 def triggers_of(axes, turn: int) -> tuple[int | None, int | None]:
@@ -120,7 +129,7 @@ def layout_of(axes, keys, vendor: int = 0) -> Layout:
     """
     turn = ABS_RX if ABS_RX in axes else ABS_Z
     if vendor == SONY and {BTN_C, BTN_Z} & set(keys):
-        return Layout(ABS_Z, ABS_RY, ABS_RX, BTN_EAST)
+        return Layout(ABS_Z, ABS_RY, ABS_RX, BTN_EAST, BTN_TL2)
     return Layout(turn, *triggers_of(axes, turn), BTN_SOUTH)
 
 
@@ -149,6 +158,7 @@ class Operator:
         self.hat = 0
         self.height = DEFAULT_HEIGHT_M
         self.jump = 0
+        self.mode = 0
         self.speed_limit = START_SPEED_M_S
         self.turn_limit = START_TURN_RAD_S
         self.stepped = now
@@ -163,6 +173,8 @@ class Operator:
             (self.held.add if value else self.held.discard)(code)
             if value and code == self.layout.jump:
                 self.jump = (self.jump + 1) & 0xFF
+            if value and code == self.layout.mode:
+                self.mode = (self.mode + 1) & 0xFF
 
     def position(self, code: int) -> float:
         """An axis from -1 to 1, its middle 0."""
@@ -241,6 +253,7 @@ class Operator:
             "height": round(self.height, 4),
             "live": True,
             "jump": self.jump,
+            "mode": self.mode,
         }
 
 
@@ -553,7 +566,7 @@ class PadManager:
         """What is being held, by what it does here, and by Linux's code if it
         does nothing: which is how to see a controller's real layout."""
         layout = operator.layout
-        roles = {layout.jump: "jump"}
+        roles = {layout.jump: "jump", layout.mode: "speed mode"}
         return sorted(roles.get(code, f"button {code:#x}") for code in operator.held)
 
     def snapshot(self) -> dict:

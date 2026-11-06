@@ -117,6 +117,7 @@ not running at all; no fault pattern is ever steady or dark.
 | The LED | Means | What to do |
 |---|---|---|
 | two short flashes every 1.26 s | healthy | nothing |
+| the same, with a third, shorter flash | healthy, and driving in the fast speed mode | nothing |
 | a fast flicker, five times a second | the IMU: found but sending no reports, or not answering at all | power-cycle the robot; if it persists, check the IMU's cable |
 | an even blink, once a second | the link: the controller hears nothing from the Pi, or the Pi nothing from the controller | see whether diagd is running, and whether the controller is running `firmware/diag` |
 | lit, with a short wink dark every 1.2 s | other hardware: the INA226 battery monitor is not answering, or a CAN bus went bus-off | check the battery monitor and the CAN wiring |
@@ -226,6 +227,7 @@ The Pi sends:
 | 0x03 | STOP | nothing; stop every motor |
 | 0x04 | SHUTDOWN | nothing; Linux has accepted shutdown: stop motors, latch OFF, stop the MCU heartbeat LED and start the grace period unless already running |
 | 0x10 | CAN_SEND | bus u8 (0 A, 1 B, 2 C), flags u8 (bit 0 extended ID), id u32, then 0 to 8 data bytes |
+| 0x12 | INDICATE | u8, bit 0 the fast speed mode: both LEDs add a short third flash to the heartbeat for 2 s unless it is said again; an image that predates it counts it malformed |
 | 0x11 | DRIVE | forward i16 mm/s, turn i16 mrad/s, height u16 in 0.1 mm, flags u8 (bit 0 live), jump u8; only to an image whose INFO says `drive=1`, which `firmware/diag` does not ([the operator's command](POLICY_INTERFACE.md#the-operators-command)) |
 | 0x20 | IMU_WRITE | one SHTP packet, header included, written to the IMU as it stands |
 | 0x21 | I2C | tag u8, address u8, read length u16, then the bytes to write |
@@ -244,7 +246,7 @@ The controller sends:
 | 0xE0 | LOG | time u32 µs, then a line of text |
 
 STATUS is fixed at 127 bytes: time u32 µs; uptime u32 ms; flags u8 (bit 0 HOLD
-high, 1 button down, 2 off asked for, 3 link lost, 4 IMU found, 5 INA226 found);
+high, 1 button down at any time since the last STATUS, 2 off asked for, 3 link lost, 4 IMU found, 5 INA226 found);
 the battery bus u16 in mV; what the controller made of the Pi's bytes -- whole
 messages, CRC failures, messages too long, UART errors, messages that held
 together but made no sense -- and messages to the Pi dropped for want of room,
@@ -477,6 +479,11 @@ as the robot's has after some power-ons; `imu-missing`, `ina-missing` and
 answering register reads, writes and saves, enabling, disabling, setting zero
 and following all four modes, plus an IMU that reports gravity. The GUI drives
 it exactly as it drives the robot.
+
+**Flash with `bash sbc/flash_robot.sh <image.elf>`, which refuses while the robot is
+armed.** Taking the daemon down for a flash stops every motor, and a robot standing on them
+falls. Nobody holding control is what disarmed means; `--check` says which it is, and does
+nothing else.
 
 **Flashing** needs UART4 too. The daemon, `flash_mcu.py` and `wheel_check.py`
 all open it through `flash_mcu.py`'s Port, which takes an exclusive lock on it,

@@ -22,6 +22,10 @@ pub mod host {
     /// Additive: what the operator asks the policy for, [`super::Drive`]. A
     /// daemon sends it only to an image whose INFO says `drive=1`.
     pub const DRIVE: u8 = 0x11;
+    /// Additive: bit 0 of its one byte, the robot is in its fast speed mode, which
+    /// the LED shows for 2 s unless it is said again. An image that does not know
+    /// it counts it as malformed and shows nothing.
+    pub const INDICATE: u8 = 0x12;
     pub const IMU_WRITE: u8 = 0x20;
     pub const I2C: u8 = 0x21;
 }

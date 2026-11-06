@@ -119,6 +119,8 @@ def settings(cfg: dict) -> dict:
         "height_range": list(cfg["command_leg_height_m"]),
         "speed_range": list(cfg["command_lin_vel_x"]),
         "turn_range": list(cfg["command_yaw_rate"]),
+        # Trained inside the diamond between the two tops, not the rectangle.
+        "envelope": "command_envelope_start" in cfg,
         "scale_height": bool(cfg.get("scale_height_command", False)),
         "max_tilt_rad": cfg["max_tilt_rad"],
         "decimation": cfg["decimation"],

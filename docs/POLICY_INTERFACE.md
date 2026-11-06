@@ -223,6 +223,7 @@ the path ends at diagd, where a policy on the Pi, `sbc/balance.py --drive`, can 
 | height | 0.1 mm, u16 | index 8, scaled as that index says |
 | live | bit 0 of flags | see below |
 | jump | u8, counts presses | a change while live is a press: the jump, above |
+| mode | counts select's presses, in diagd's `drive` stream only | an odd change toggles the speed limit; see below |
 
 They come fifty times a second for as long as a controller is connected, and
 what the firmware does with them is this:
@@ -240,13 +241,16 @@ what the firmware does with them is this:
 4. **Refuse a jump above 1 m/s**, measured, as the jump's section says. The
    press is counted on the Pi, which does not know the robot's speed.
 
-A stick's end asks for 0.5 m/s and 1.5 rad/s on starting, which the console can
-lower and not raise, and the height runs from 185 to 207 mm, starting at 203.5.
-Those are the trained ranges of the driving policy for the robot
-(`rough-2026-11-04_09-01-34_measured_fix`), kept as constants in `gamepad.py`:
-**change them with the run that is deployed**, and for a run with
-`command_envelope` set `ENVELOPE` too. That policy cannot jump, so it has no use
-for the jump count yet. Something
+A stick's end sends 1.8 m/s and 15 rad/s on starting, which the console can lower
+and not raise, and the height runs from 170 to 207 mm, starting at 203.5. Those are
+the trained ranges of the driving policy for the robot
+(`rough-2026-11-05_10-37-59_fresh2_18`, from 6 November 2026), kept as constants in
+`gamepad.py`: **change them with the run that is deployed**. `balance.py` scales them
+to its own limit: 1 m/s and 2 rad/s each time it takes over, and the whole trained
+range once select has been pressed, until it is pressed again. That run was trained
+inside the diamond between its two tops, and `balance.py` holds the command to it
+after scaling, from `envelope` in the packed policy. It cannot jump, so it has no use
+for the jump count. Something
 running a policy off the controller can have the same numbers from diagd's
 `drive` stream, and owes them the same 200 ms rule.
 

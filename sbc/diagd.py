@@ -120,6 +120,11 @@ EXPLAINED = {
 }
 # Each fault's (lit ms, dark ms), the same on both boards' LEDs.
 PATTERNS = {"link": (500, 500), "imu": (100, 100), "hardware": (1000, 200)}
+# The heartbeat with a third, shorter flash: the fast speed mode, as the controller's
+# health.rs FAST has it. (lit, ms) in turn, at the controller's idle period of 1260 ms.
+FAST_BEAT = [(1, 70), (0, 245), (1, 70), (0, 140), (1, 40), (0, 695)]
+# A word that the fast mode is on holds this long unless it is said again.
+FAST_HOLD_S = 2.0
 SHOWN_AS = {
     "link": "an even blink once a second",
     "imu": "a fast flicker",
@@ -234,6 +239,22 @@ class Led:
         self.failed = False
         self.retry_at = 0.0
         self.shown: str | None = self.current()
+        self.can_pattern = self.offers("pattern")
+
+    def offers(self, trigger: str) -> bool:
+        if self.path is None:
+            return True
+        try:
+            return (
+                trigger
+                in (self.path / "trigger")
+                .read_text()
+                .replace("[", " ")
+                .replace("]", " ")
+                .split()
+            )
+        except OSError:
+            return False
 
     def current(self) -> str | None:
         """heartbeat, if that is what the LED already shows; else unknown."""
@@ -250,6 +271,17 @@ class Led:
         return "heartbeat"
 
     def writes(self, pattern: str) -> list[tuple[str, str]]:
+        if pattern == "fast":
+            # The pattern trigger ramps from each entry to the next, so each holds
+            # for its time and then steps in no time.
+            top = (self.path / "max_brightness").read_text().strip()
+            steps = []
+            for lit, ms in FAST_BEAT:
+                level = (
+                    ("0" if lit else top) if self.inverted else (top if lit else "0")
+                )
+                steps += [f"{level} {ms}", f"{level} 0"]
+            return [("trigger", "pattern"), ("pattern", " ".join(steps))]
         if pattern == "heartbeat":
             return [("trigger", "heartbeat")] + [("invert", "1")] * self.inverted
         if pattern == "dark":
@@ -287,6 +319,8 @@ class Led:
         with self.lock:
             if self.held:
                 return
+            if pattern == "fast" and not self.can_pattern:
+                pattern = "heartbeat"
             self.held = hold
             if pattern == self.shown:
                 return
@@ -460,6 +494,7 @@ class Daemon:
         self.shutting_down = False
         self.button_shutdown_pending = False
         self.button_shutdown_retry_at = 0.0
+        self.fast_until = 0.0
         self.imu_diag: dict = {}
         self.imu_control: deque = deque(maxlen=32)
         self.imu_internal_errors: deque = deque(maxlen=32)
@@ -659,7 +694,8 @@ class Daemon:
         if flags != before:
             self.log(f"health: {describe(flags)}")
         if not shutting_down:
-            self.led.show(fault_of(flags) or "heartbeat")
+            fast = now < self.fast_until
+            self.led.show(fault_of(flags) or ("fast" if fast else "heartbeat"))
 
     def can_frame(self, body: bytes) -> None:
         t_us, bus, flags, can_id, data = dl.parse_can_recv(body)
@@ -837,17 +873,22 @@ class Daemon:
 
     def op_control(self, client: Client, m: dict) -> dict:
         take = m.get("take", True)
+        taken_from = None
         with self.lock:
             if take:
                 if self.shutting_down or (self.status and self.status.get("off")):
                     raise Refused("the robot is shutting down")
                 if self.owner not in (None, client):
-                    raise Refused(f"{self.owner} holds control")
+                    if not m.get("force"):
+                        raise Refused(f"{self.owner} holds control")
+                    taken_from = self.owner
                 self.owner = client
             elif self.owner is client:
                 self.owner = None
             else:
                 return {}
+        if taken_from is not None:
+            self.stop(f"{client} took control from {taken_from}")
         if take:
             self.log(f"control: {client} has it")
         else:
@@ -865,6 +906,7 @@ class Daemon:
         controller if its image says it takes it, and to the `drive` stream."""
         forward, turn = float(m["forward"]), float(m["turn"])
         height, live, jump = float(m["height"]), bool(m["live"]), int(m["jump"])
+        mode = int(m.get("mode", 0))
         # What the message can carry, not what the robot may do: the limits on
         # the operator are gamepad.py's, and the firmware's own.
         if not (abs(forward) <= 30 and abs(turn) <= 30 and 0 <= height <= 1):
@@ -884,11 +926,22 @@ class Daemon:
                 "height": height,
                 "live": live,
                 "jump": jump,
+                "mode": mode,
             },
         )
         if taken:
             self.mcu(dl.DRIVE, dl.drive(forward, turn, height, live, jump))
         return {"taken": taken}
+
+    def op_indicate(self, client: Client, m: dict) -> dict:
+        """The robot is in its fast speed mode, or not: both LEDs add a short flash
+        to the heartbeat for FAST_HOLD_S, unless it is said again."""
+        fast = bool(m.get("fast"))
+        with self.lock:
+            self.fast_until = time.monotonic() + FAST_HOLD_S if fast else 0.0
+        self.mcu(dl.INDICATE, bytes([1 if fast else 0]))
+        self.check_health(time.monotonic())
+        return {}
 
     def op_power_off(self, client: Client, m: dict) -> dict:
         self.need_control(client)
@@ -1092,6 +1145,7 @@ OPS = {
     "status": Daemon.op_status,
     "imu.diagnostics": Daemon.op_imu_diagnostics,
     "control": Daemon.op_control,
+    "indicate": Daemon.op_indicate,
     "stop": Daemon.op_stop,
     "drive": Daemon.op_drive,
     "power.off": Daemon.op_power_off,

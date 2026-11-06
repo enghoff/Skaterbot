@@ -30,5 +30,7 @@ KillMode=mixed
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
+# One started by hand would answer every press as well, and undo what this one did.
+pkill -f '^python3 l[a]uncher' || true
 systemctl enable --now robot-launcher.service
 systemctl --no-pager status robot-launcher.service | head -5

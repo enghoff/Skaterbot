@@ -108,6 +108,7 @@ class Rig:
         self.raw: dict[str, tuple] = {}
         self.imu: dict[str, tuple[float, list]] = {}
         self.stopped_by: str | None = None
+        self.stopped_why: str | None = None
         self.counts = {"f": 0, "c": 0, "i": 0}
         for letter in sorted({w.bus for w in wiring.values()}):
             can = robot.can(letter)
@@ -186,6 +187,7 @@ class Rig:
             )
 
     def _stopped(self, m: dict) -> None:
+        self.stopped_why = m.get("why")
         self.stopped_by = f"diagd or the controller stopped the motors ({m.get('why')})"
 
     # -- what goes out --------------------------------------------------------------
@@ -265,6 +267,13 @@ class Rig:
         time.sleep(0.01)
         for j in joints:
             self.buses[self.wiring[j].bus].enable(self.motors[j])
+
+    def clear_fault(self, joint: str) -> None:
+        """Out of a fault state, which enabling will not leave by itself."""
+        self.buses[self.wiring[joint].bus].clear_error(self.motors[joint])
+
+    def wake(self, joint: str) -> None:
+        self.buses[self.wiring[joint].bus].enable(self.motors[joint])
 
     def disable(self, joints) -> None:
         for _ in range(3):

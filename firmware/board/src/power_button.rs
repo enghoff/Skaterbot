@@ -7,6 +7,30 @@ pub const OFF_PRESS_MS: u32 = 2_000;
 pub const RELEASE_MS: u32 = 50;
 pub const FORCE_OFF_MS: u32 = 8_000;
 pub const SHUTDOWN_GRACE_MS: u32 = 20_000;
+/// Ticks running for the pin to count as a press: a quick tap is 50 ms or so, and a spike
+/// on the line from the motors is far shorter.
+pub const PRESS_TICKS: u8 = 2;
+
+/// Whether the pin has been low for long enough to be a finger.
+#[derive(Clone, Copy, Default)]
+pub struct Press {
+    low_ticks: u8,
+}
+
+impl Press {
+    pub const fn new() -> Self {
+        Self { low_ticks: 0 }
+    }
+
+    pub fn step(&mut self, pressed: bool) -> bool {
+        self.low_ticks = if pressed {
+            self.low_ticks.saturating_add(1)
+        } else {
+            0
+        };
+        self.low_ticks >= PRESS_TICKS
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Button {
@@ -133,6 +157,21 @@ mod tests {
             cuts += action.cut_power as u32;
         }
         (requests, cuts)
+    }
+
+    #[test]
+    fn a_press_needs_two_ticks_running() {
+        let mut p = Press::new();
+        assert!(!p.step(true));
+        assert!(!p.step(false));
+        assert!(!p.step(true));
+        assert!(p.step(true));
+        assert!(p.step(true));
+        assert!(!p.step(false));
+        for _ in 0..1000 {
+            p.step(true);
+        }
+        assert!(p.step(true));
     }
 
     #[test]

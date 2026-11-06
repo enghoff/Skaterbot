@@ -47,7 +47,27 @@ IMU_STALE_S = 0.1
 # Past what a step should ever take, the robot has been running blind.
 STEP_LATE_S = 0.05
 
-WHEEL_SPEED_CAP = 50.0  # the report's speed wraps at VMAX, 55
+# A wheel's report wraps round at its VMAX, so past this it cannot be read: VMAX less
+# a margin. 55 is what every motor was set to until 6 November 2026, and is assumed
+# where nobody says.
+WHEEL_VMAX = 55.0
+WHEEL_MARGIN_RAD_S = 5.0
+WHEEL_SPEED_CAP = WHEEL_VMAX - WHEEL_MARGIN_RAD_S
+
+# Armed and driving, nothing short of the robot lying on the floor cuts its motors:
+# whatever can be recovered from is, and what cannot be is let down gently. The owner's
+# rule, 6 November 2026, after a wheel past its cap had dropped the robot three times
+# the day before. Past this it is lying down: training gave up there too.
+FALLEN_DEG = 60.0
+# A sensor silent this long is not coming back soon enough to balance on.
+LOST_S = 0.5
+# A motor in a fault state is cleared, then enabled, no oftener than this.
+REVIVE_S = 0.05
+# Over this, a wheel slows the command, by GOVERN_PER_S of it a second, until it is back
+# under this less GOVERN_BAND; and a winding over its hot limit slows it to a stop.
+WHEEL_GOVERN_BELOW_CAP = 10.0
+GOVERN_BAND = 5.0
+GOVERN_PER_S = 0.25
 
 # How long both knees must feel the weight before it counts. Handling it in the air
 # passes in less: a 2 cm shake at 6 Hz, in MuJoCo, makes them feel 0.13 Nm for 40 ms
@@ -76,6 +96,12 @@ LIFT_EARLY_S = 2.0
 LIFT_EARLY_SPIN_RAD_S = 30.0
 # Nothing on the floor keeps its knees this light for this long, however slow its wheels.
 LIFT_SURE_S = 1.0
+# And the wheels speeding up by this much while the knees are light: off the floor
+# nothing holds them back. Braking hard from 1.6 m/s in MuJoCo on 6 November 2026 the
+# knees went light for 0.2 s with the wheels at 21 rad/s, slowing from 44, which the
+# rule without this took for a lift, and on the robot would have braked the wheels
+# at speed and dropped it.
+LIFT_SPEEDING_UP_RAD_S = 5.0
 
 
 class Net:
@@ -223,6 +249,13 @@ class Hold:
     the robot has slowed, or letting go of a trigger would reel it back to where the
     trigger was let go. The heading is the turn rate about gravity added up, rather than
     the IMU's game rotation, since it only has to last until somebody next drives.
+
+    Asked for nothing, the policy trained from scratch on 2026-11-05 creeps backwards at
+    0.046 m/s in MuJoCo, and on the robot up to 0.084: faster than SLOWED_M_S was, so that it never counted as
+    stopped, and with nothing to hold it went 590 mm in 13 s. So it counts as stopped
+    under a looser SLOWED_M_S, or after SLOWED_S whatever, and what it creeps at,
+    standing, is learned the way Trim learns while driving and asked against, held
+    from one stop to the next since the creep is the policy's own.
     """
 
     HEADING_BAND_RAD = (math.radians(2.0), math.radians(6.0))
@@ -231,9 +264,17 @@ class Hold:
     PLACE_GAIN = 0.3
     MAX_TURN_RAD_S = 0.3
     MAX_SPEED_M_S = 0.1
-    # Under both of these it has stopped, and whatever it does now is drift.
-    SLOWED_M_S = 0.03
-    SLOWED_RAD_S = 0.1
+    # Under both of these it has stopped, and whatever it does now is drift; or this long
+    # after it was let go of, whatever it is doing.
+    SLOWED_M_S = 0.08
+    SLOWED_RAD_S = 0.2
+    SLOWED_S = 1.5
+    # What it creeps at standing, learned with these time constants' inverses.
+    CREEP_SPEED_GAIN = 0.5
+    CREEP_TURN_GAIN = 1.0
+    # On the robot on 2026-11-06 it crept at up to 0.084 m/s, 4.8 m in a minute.
+    MAX_CREEP_M_S = 0.15
+    MAX_CREEP_RAD_S = 0.2
 
     def __init__(self, wheel_radius: float):
         self.wheel_radius = wheel_radius
@@ -241,6 +282,8 @@ class Hold:
         self.slowed = False
         self.heading = self.rolled = 0.0
         self.turning = self.moving = False
+        self.creep_speed = self.creep_turn = 0.0
+        self.waited = 0.0
 
     def command(
         self, speed: float, turn: float, fb: dict, w, g, dt: float
@@ -253,13 +296,21 @@ class Hold:
             self.slowed = False
             self.heading = self.rolled = 0.0
             self.turning = self.moving = False
+            self.waited = 0.0
         turning = -float(np.dot(w, g))
         rolling = ground_speed(fb, float(w[1]), self.wheel_radius)
         if not self.slowed:
-            self.slowed = (
+            self.waited += dt
+            self.slowed = self.waited >= self.SLOWED_S or (
                 abs(rolling) < self.SLOWED_M_S and abs(turning) < self.SLOWED_RAD_S
             )
             return 0.0, 0.0
+        cap = self.MAX_CREEP_M_S
+        self.creep_speed -= self.CREEP_SPEED_GAIN * rolling * dt
+        self.creep_speed = min(max(self.creep_speed, -cap), cap)
+        cap = self.MAX_CREEP_RAD_S
+        self.creep_turn -= self.CREEP_TURN_GAIN * turning * dt
+        self.creep_turn = min(max(self.creep_turn, -cap), cap)
         self.heading += turning * dt
         self.rolled += rolling * dt
         lo, hi = self.HEADING_BAND_RAD
@@ -271,8 +322,8 @@ class Hold:
         cap = self.MAX_SPEED_M_S
         back_speed = min(max(-self.PLACE_GAIN * self.rolled, -cap), cap)
         return (
-            back_speed if self.moving else 0.0,
-            back_turn if self.turning else 0.0,
+            (back_speed if self.moving else 0.0) + self.creep_speed,
+            (back_turn if self.turning else 0.0) + self.creep_turn,
         )
 
 
@@ -301,6 +352,7 @@ class Touch:
         self.usual: list[float] | None = None
         self.since: float | None = None
         self.light_since: float | None = None
+        self.light_spin = 0.0
         # What `lower` watched, for touch_numbers.
         self.samples: list[tuple[float, float, float]] = []
 
@@ -347,20 +399,25 @@ class Touch:
             return False
         if self.light_since is None:
             self.light_since = now
+            self.light_spin = spin
+        self.light_spin = min(self.light_spin, spin)
         light = now - self.light_since
         least = LIFT_EARLY_SPIN_RAD_S if running_s < LIFT_EARLY_S else LIFT_SPIN_RAD_S
-        return light >= LIFT_SURE_S or (light >= LIFT_CONFIRM_S and spin > least)
+        speeding = spin > self.light_spin + LIFT_SPEEDING_UP_RAD_S
+        return light >= LIFT_SURE_S or (
+            light >= LIFT_CONFIRM_S and spin > least and speeding
+        )
 
 
 # ---- what stops it ---------------------------------------------------------------
 
 
-def limits(legs_limp: bool = False) -> st.Limits:
+def limits(legs_limp: bool = False, wheel_vmax: float = WHEEL_VMAX) -> st.Limits:
     """A motor that faults, overheats, overspeeds or stops answering, and a leg
     out of its window, as every test on the robot has it. Legs nobody is
     commanding can be anywhere."""
     speed = {j: st.LEG_SPEED_CAP for j in st.LEGS}
-    speed.update({j: WHEEL_SPEED_CAP for j in st.WHEELS})
+    speed.update({j: wheel_vmax - WHEEL_MARGIN_RAD_S for j in st.WHEELS})
     return st.Limits(speed=speed, windows={} if legs_limp else dict(st.WINDOWS))
 
 
@@ -369,35 +426,65 @@ class Tipped(st.Abort):
     a launch waits to be picked up again."""
 
 
+class Lost(st.Abort):
+    """Driving, a sensor has been silent for too long to balance on. A launch lets the
+    robot down gently, and waits to be picked up again."""
+
+
 class Guard:
     """What stops a run. With `free` set, nothing is standing and nothing is being
     driven, so a robot may be carried at any angle and its limp legs swing as they
-    like: only a motor's own faults count."""
+    like: only a motor's own faults count, and a sensor gone quiet is waited for.
+
+    With `recover` set, it is armed and driving, and only lying on the floor stops it,
+    past FALLEN_DEG, or a sensor gone for LOST_S. Everything else is put in `trouble`,
+    for the stepper to deal with: a motor's fault, by clearing it; a wheel too fast or a
+    winding too hot, by slowing; a reading late, or a leg out of its place or too
+    fast, by carrying on."""
 
     def __init__(self, tilt_deg: float, lim: st.Limits):
         self.tilt_rad = math.radians(tilt_deg)
         self.windows = lim.windows
         self.free = False
+        self.recover = False
         self.speed = lim.speed
+        self.hot_c = lim.hot_c
+        self.stale_s = lim.stale_s
         self.motors = st.Sequencer(
             [], dataclasses.replace(lim, windows={}, speed={}), st.JOINTS
         )
+        self.trouble: dict[str, str] = {}
+        self.faulted: set[str] = set()
+        self.slow_down = False
 
     def sensors(self, now: float, rig) -> tuple[list, list]:
         readings = []
         for report in ("gyro", "gravity"):
             heard = rig.imu.get(report)
-            if heard is None or now - heard[0] > IMU_STALE_S:
-                raise st.Abort(
-                    f"IMU: no {report} report for {IMU_STALE_S * 1000:.0f} ms"
-                )
+            age = math.inf if heard is None else now - heard[0]
+            if age > IMU_STALE_S:
+                words = f"IMU: no {report} report for {IMU_STALE_S * 1000:.0f} ms"
+                if heard is None or not (self.free or self.recover):
+                    raise st.Abort(words)
+                if self.recover and age > LOST_S:
+                    raise Lost(f"IMU: no {report} report for {age * 1000:.0f} ms")
+                self.trouble["imu"] = words
             readings.append(heard[1])
         return readings[0], readings[1]
 
     def check(self, now: float, fb: dict, g: np.ndarray) -> None:
-        self.motors.check(now, fb)
-        if self.free:
+        if self.recover:
+            self.weather(now, fb, g)
             return
+        if self.free:
+            # Carried or waiting: a report gone quiet is waited for, a fault is not.
+            fresh = {j: f for j, f in fb.items() if now - f.at <= self.stale_s}
+            for j in st.JOINTS:
+                if j in fb and j not in fresh:
+                    fresh[j] = dataclasses.replace(fb[j], at=now)
+            self.motors.check(now, fresh)
+            return
+        self.motors.check(now, fb)
         # A knee flung past its cap, as it was by a crash on 2026-11-05, is a fall too.
         for j, cap in self.speed.items():
             if abs(fb[j].v) > cap:
@@ -411,6 +498,41 @@ class Guard:
                 f"tilted {math.degrees(angle):.0f} degrees, past "
                 f"{math.degrees(self.tilt_rad):.0f}"
             )
+
+    def weather(self, now: float, fb: dict, g: np.ndarray) -> None:
+        """Armed and driving: what is wrong, kept rather than acted on, but for lying
+        down and a motor gone silent for LOST_S."""
+        trouble = self.trouble
+        self.faulted = set()
+        self.slow_down = False
+        for j in st.JOINTS:
+            f = fb.get(j)
+            if f is None:
+                raise Lost(f"{j}: never heard")
+            age = now - f.at
+            if age > LOST_S:
+                raise Lost(f"{j}: no report for {age * 1000:.0f} ms")
+            if age > self.stale_s:
+                trouble[j] = f"no report for {self.stale_s * 1000:.0f} ms"
+            if f.state >= 0x8:
+                self.faulted.add(j)
+                trouble[j] = f"motor fault, state {f.state:X}"
+            if f.t_rotor >= self.hot_c:
+                self.slow_down = True
+                trouble[j] = f"winding at {f.t_rotor} C"
+            cap = self.speed.get(j)
+            if cap is not None and abs(f.v) > cap:
+                trouble[j] = f"{f.v:+.1f} rad/s, past the {cap:g} cap"
+            window = self.windows.get(j)
+            if window and not window[0] <= f.p <= window[1]:
+                trouble[j] = f"at {f.p:+.3f} rad, outside {window}"
+        angle = tilt(g)
+        if angle > math.radians(FALLEN_DEG):
+            raise Tipped(
+                f"tilted {math.degrees(angle):.0f} degrees, past {FALLEN_DEG:g}"
+            )
+        if angle > self.tilt_rad:
+            trouble["tilt"] = f"tilted {math.degrees(angle):.0f} degrees"
 
 
 class Trim:
@@ -524,6 +646,11 @@ class Stepper:
         self.gaps: list[float] = []
         self.thinks: list[float] = []
         self.missed = 0
+        # Armed and driving: what slows the command, from 1 for nothing to 0 for all.
+        self.govern = 1.0
+        self.revived_at: dict[str, float] = {}
+        self.said: set[str] = set()
+        self.recoveries: list[str] = []
 
     def speak(self) -> None:
         """Every motor spoken to, so that it reports where it is now."""
@@ -545,10 +672,55 @@ class Stepper:
         """Every motor's report and the IMU, in the torso's frame, checked."""
         now = self.clock()
         fb = dict(self.rig.latest)
+        self.guard.trouble = {}
         gyro, gravity = self.guard.sensors(now, self.rig)
         w, g = self.imu.torso(gyro, gravity)
         self.guard.check(now, fb, g)
+        if self.guard.recover:
+            self.revive(now)
+        self.tell(now)
         return now, fb, w, g
+
+    def revive(self, now: float) -> None:
+        """A motor in a fault state is disabled, and on the floor at speed that is a
+        fall: it is cleared, and on the next try enabled, while the rest drive on."""
+        for j in self.guard.faulted:
+            if now - self.revived_at.get(j, -1.0) < REVIVE_S:
+                continue
+            first = j not in self.revived_at or now - self.revived_at[j] > 1.0
+            self.revived_at[j] = now
+            try:
+                if first:
+                    self.rig.clear_fault(j)
+                else:
+                    self.rig.wake(j)
+            except (AttributeError, OSError):
+                pass
+
+    def tell(self, now: float) -> None:
+        """Each kind of trouble once, as it starts, into the log."""
+        trouble = self.guard.trouble
+        for name, words in trouble.items():
+            if name not in self.said:
+                text = f"{name}: {words}" if not words.startswith(name) else words
+                self.recoveries.append(text)
+                if self.writer:
+                    self.writer.write(
+                        {"k": "n", "h": round(now, 6), "recovering": text}
+                    )
+        self.said = set(trouble)
+
+    def governed(self, fb: dict, speed: float, turn: float) -> tuple[float, float]:
+        """Slowing what is asked while a wheel is too fast or a winding too hot, and
+        coming back once neither is."""
+        cap = min(self.guard.speed.get(j, math.inf) for j in st.WHEELS)
+        soft = cap - WHEEL_GOVERN_BELOW_CAP
+        fastest = max(abs(fb[j].v) for j in st.WHEELS if j in fb)
+        if fastest > soft or self.guard.slow_down:
+            self.govern = max(0.0, self.govern - GOVERN_PER_S * PERIOD_S)
+        elif fastest < soft - GOVERN_BAND:
+            self.govern = min(1.0, self.govern + GOVERN_PER_S * PERIOD_S)
+        return speed * self.govern, turn * self.govern
 
     def step(
         self,
@@ -570,13 +742,21 @@ class Stepper:
             gap = now - self.last_step
             self.gaps.append(gap)
             if gap > STEP_LATE_S:
-                raise st.Abort(f"a step took {gap * 1000:.0f} ms")
+                words = f"a step took {gap * 1000:.0f} ms"
+                if not self.guard.recover:
+                    raise st.Abort(words)
+                self.recoveries.append(words)
+                if self.writer:
+                    self.writer.write(
+                        {"k": "n", "h": round(now, 6), "recovering": words}
+                    )
         self.last_step = now
         self.waits.append(now - self.asked_at)
         self.ages.append(now - min(fb[j].at for j in st.JOINTS))
         if not self.heard_all():
             self.missed += 1
         asked_speed, asked_turn = speed, turn
+        speed, turn = self.governed(fb, speed, turn)
         if self.trim is not None:
             speed, turn = self.trim.command(speed, turn, fb, w, g, PERIOD_S)
         if self.hold is not None:

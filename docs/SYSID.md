@@ -472,14 +472,47 @@ which is over 1 GB an hour.
 ### With no computer
 
 `sbc/launcher.py` runs all the time, holding no control and moving nothing, and starts
-`balance.py launch` at a tap of the robot's power button, under 0.4 s, which arms it.
-Half a second held still stops every motor and turns the robot off. Another tap stops
-every motor and disarms it. It says what happened in `launcher.log`, and if the motor
-console's tab holds control or there is no launch.json, that is where it says so, and
-nothing moves. `sudo bash sbc/install_launcher.sh` runs it from boot, once `lower` has
-written launch.json, and `systemctl disable --now robot-launcher` takes it off.
-`tools/test_launcher.py` holds its rules, and starts and stops it through the simulated
-diagd.
+`balance.py launch` at a tap of the robot's power button, which arms it. Any press
+counts that is let go of inside the two seconds that stop every motor and turn the robot
+off. Another tap stops every motor and disarms it, unless the robot is lying limp, when
+it wakes it. It says what happened in `launcher.log`. `sudo bash sbc/install_launcher.sh`
+runs it from boot, once `lower` has written launch.json, and `systemctl disable --now
+robot-launcher` takes it off. `tools/test_launcher.py` holds its rules, and starts and
+stops it through the simulated diagd.
+
+**Armed and driving, nothing short of lying on the floor cuts the motors** (from 6
+November 2026, the owner's rule). Tilted past 30 degrees it drives on, to 60, where
+training gave up, though in MuJoCo no shove that took it past 30 was recovered from:
+it falls under its own control, not dropped. A leg too fast or out of its window, a step late, a report missing for
+up to half a second, the IMU's included, are driven through; a motor in a fault state is
+cleared and enabled again while the others drive on; the controller stopping the motors
+because the Pi fell silent, or because it restarted, has them enabled again at once; a
+wheel within 10 rad/s of its cap, or a winding over 90 C, slows the command until it is
+not; and anything unforeseen in a step is skipped, for half a second at most. Only a
+sensor silent for longer than that lets it down, gently, over two seconds, rather than
+dropping it. A tap of the button, the console's stop and the power button are still
+obeyed. `launch_check.py` case 16 holds each of these in MuJoCo; none has yet happened
+on the robot. The wheels' VMAX went from 55 to 70 the same day (`sbc/set_wheel_vmax.py`),
+so their cap is 65 rad/s, 2.6 m/s, where it was 50: it fired three times on 5 November,
+at 15:52, 17:59 and 18:02, and each time dropped the robot. And being picked up now needs
+the wheels speeding up while the knees are light: braking hard from 1.6 m/s in MuJoCo
+made the knees light for 0.2 s with the wheels slowing, and was taken for a lift.
+
+A press gets an answer unless the robot cannot run, which is an IMU or a CAN bus gone, a
+motor not answering or set up wrongly, or a battery under the motors' 21.6 V trip, each
+looked at three times before it counts. Until 5 November 2026 much less than that kept a
+press from being answered, and most of it left no trace. The launcher did not start at
+boot until `install_launcher.sh` had been run. A press was read once in each 100 ms
+status, so a quick one could fall between two of them, and one held for 0.4 to 2 s
+counted for nothing; the firmware now holds a press of 20 ms or more over until the next
+status. A press within a second of the last run ending was ignored, five times that day,
+with somebody pressing again each time, and it is now kept and acted on. A motor
+console's tab holding control refused it, and now gives way. One second of each start
+went on loading, and half a second on an answer from the IMU that always went missing, of
+about 2 s from the tap: one run stands loaded and waiting now, and the IMU is not waited
+for. And it lay limp if the legs were out of their window, which legs left limp can stay
+in however the robot is lifted, with the knees 73 degrees the wrong way at the last of
+them: 170 s after its tap, until a hand had moved them.
 
 Armed, it stays armed. Picked up while running, which is the two knees averaging under
 0.10 Nm for 0.15 s with the wheels past 20 rad/s, or for a second however slow, it stops
@@ -487,7 +520,9 @@ the wheels, puts the legs back in the crouch and waits for the floor. Fallen ove
 30 degrees, with a leg out of its place or moving past its cap, or with a wheel past 50
 rad/s, it lets go of every motor at once, and once it has been upright with its legs
 hanging still for half a second, which is somebody holding it up, it gets ready and
-waits for the floor. A tap on a robot on its folded legs arms it the same way. A tap on
+waits for the floor, and a tap does the same at once, wherever its legs are. A tap on a
+robot not armed sends its legs to the crouch in the same gentle second from wherever
+they are, which from a slump on the floor is not something it was trained for. A tap on
 one with its weight already on its wheels starts it there, on what the knees read in the
 air last time or at the measuring run: on 2026-11-05 a re-arm refused eight times over
 for being set down within 2 s of the tap, going limp each time with no word why, until

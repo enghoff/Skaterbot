@@ -132,6 +132,31 @@ torque-speed line and the battery are still the rated figures, though at
 +/-0.5 m/s the wheels use only about 40 % of their speed. **No policy has yet
 run on the robot.**
 
+**D3, trained from nothing for the motors' whole envelope (5 November 2026).** D2 on the
+robot leaned 8 degrees back standing and up to 18 turning, turned faster one way than
+the other, and fell in Isaac Lab past 6 rad/s. Fine-tuning it towards a wider envelope
+and mirror symmetry (`drive_sym5`, `drive_mirror`) kept its lean and its lopsided turns,
+probably because its exploration noise had all but gone, so two runs were trained from
+nothing instead, on the driving task (`Biped-Wheeled-Drive-v0`,
+`WheeledBipedDriveFreshPPORunnerCfg`): mirrored data and a mirror loss, the torso's lean
+charged -30, and the envelope opening over 48 000 steps. 3 800 iterations each.
+
+| Run | Envelope's tips | Upright after 24 s, rough | Held, asked 1.5 / 2.0 m/s | Spins held | Lean standing |
+|---|---|---|---|---|---|
+| `rough-2026-11-05_10-36-30_fresh2_full` | 2.2 m/s, 25 rad/s | 99.1 % | 1.25 / 1.34 m/s | to 20 rad/s, overshooting by a third | +0.9° |
+| **`rough-2026-11-05_10-37-59_fresh2_18`** | 1.8 m/s, 15 rad/s | 97.4 % | 1.26 / 1.54 m/s | to 12 rad/s, within 1 % | -0.6° |
+
+Both follow the ride height from 170 to 207 mm and turn alike either way. The second is
+the one to put on the robot: its turns are what is asked. In MuJoCo on the floor's
+measured friction, with `Trim`, it held 0.5 to 1.5 m/s and turns to 6 rad/s within 1
+degree of upright, where D2 leaned 8 to 16 degrees back and tipped past 30 at 1.5 m/s
+and 3 rad/s; `balance_check.py` and all fourteen cases of `launch_check.py` pass on it.
+Picked up while running it is cut 1.1 s after the lift, against D2's 0.3 s: lifted, it
+pumps its legs at 2 Hz before its wheels spin up. A rule on the knees' average load
+caught it sooner in MuJoCo, and was dropped: replayed over the robot's runs of that
+morning it fired with the robot on the floor, whose knees carry less than MuJoCo's.
+It has not run on the robot.
+
 
 From 27 September 2026 the robot drives on stage 10 and jumps on a second
 policy, handing over between them (`TwoPolicies` in

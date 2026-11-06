@@ -161,8 +161,9 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(operator.command(0.0)["turn"], 0.0)
         # Half way: rescaled from the zone's edge, as drive.py's axis() does.
         operator.event(gp.EV_ABS, gp.ABS_RX, round(127.5 - 63.75), 0.0)
-        want = gp.START_TURN_RAD_S * (0.5 - 0.12) / (1 - 0.12)
-        self.assertAlmostEqual(operator.command(0.0)["turn"], want, places=2)
+        want = (0.5 - 0.12) / (1 - 0.12)
+        turn = operator.command(0.0)["turn"] / gp.START_TURN_RAD_S
+        self.assertAlmostEqual(turn, want, places=2)
 
     def test_a_control_held_still_goes_on_counting_however_long(self):
         # It has nothing to report: a held turn stopped after two revolutions.
@@ -201,6 +202,17 @@ class OperatorTests(unittest.TestCase):
         operator.event(gp.EV_ABS, gp.ABS_RX, 0, 0.0)
         return operator.command(0.0)
 
+    def test_select_is_counted_as_the_speed_mode(self):
+        operator = ready()
+        self.assertEqual(operator.command(0.0)["mode"], 0)
+        for _ in range(2):
+            operator.event(gp.EV_KEY, gp.BTN_SELECT, 1, 0.0)
+            operator.event(gp.EV_KEY, gp.BTN_SELECT, 2, 0.0)
+            operator.event(gp.EV_KEY, gp.BTN_SELECT, 0, 0.0)
+        command = operator.command(0.1)
+        self.assertEqual(command["mode"], 2)
+        self.assertEqual(command["jump"], 0)
+
     def test_the_driving_policy_takes_full_speed_and_turn_together(self):
         # Its run has no command_envelope: each was trained over its whole range.
         command = self.full_stick_both_ways()
@@ -214,7 +226,7 @@ class OperatorTests(unittest.TestCase):
         self.assertAlmostEqual(command["turn"], gp.TOP_TURN_RAD_S / 2, places=2)
 
     def test_the_ranges_are_the_deployed_runs(self):
-        run = "rough-2026-11-04_09-01-34_measured_fix"
+        run = "rough-2026-11-05_10-37-59_fresh2_18"
         path = (
             Path(__file__).resolve().parents[1] / "exports/rl" / run / "params/env.yaml"
         )
@@ -223,7 +235,9 @@ class OperatorTests(unittest.TestCase):
         text = path.read_text()
 
         def pair(name):
-            found = re.search(rf"^{name}: !!python/tuple\n- (.+)\n- (.+)$", text, re.M)
+            found = re.search(
+                rf"^{name}:(?: !!python/tuple)?\n- (.+)\n- (.+)$", text, re.M
+            )
             return float(found[1]), float(found[2])
 
         self.assertEqual(
@@ -347,7 +361,7 @@ class LayoutTests(unittest.TestCase):
         operator.event(gp.EV_KEY, gp.BTN_TL, 1, 0.0)
         operator.event(gp.EV_KEY, 0x13A, 1, 0.0)
         self.assertEqual(
-            gp.PadManager.held_names(operator), ["button 0x136", "button 0x13a"]
+            gp.PadManager.held_names(operator), ["button 0x136", "speed mode"]
         )
 
 

@@ -39,8 +39,14 @@ most --touch-wait, and starts the policy the moment both knees have it, with no 
 from anyone. Picked up while running it stops the wheels, puts the legs back in the
 crouch and waits for the floor again; fallen over it lets go of everything and waits
 to be picked up, which it knows by being upright with its legs hanging. So one tap arms
-it for as long as it runs, and that goes for being armed on the floor as well. --once
-makes either of those the end of the run. docs/SYSID.md has what to do with your hands.
+it for as long as it runs, and that goes for being armed on the floor as well: a tap
+always sends the legs to the crouch, gently, wherever they are. --once makes either of
+those the end of the run. docs/SYSID.md has what to do with your hands.
+
+--button is how launcher.py runs it. It loads, and then waits for launcher.py's word to
+begin, so that a tap is answered without the second loading takes; it takes control from
+whatever holds it, the button being the nearer hand; it says what it is doing in
+--phase-file; and told to wake while limp, it does.
 
 It stops the motors if the torso tilts past --tilt, a motor faults, overheats,
 overspeeds or stops answering, a leg leaves its window, the IMU stops, or a step
@@ -80,10 +86,16 @@ import sysid_tests as st  # noqa: E402
 
 clock = sysid.clock
 
-# What the rail tests ran, so the IMU is as it was when it was measured. Gravity is
-# asked for first: asked for second, under the traffic of a 400 Hz gyro, its answer
-# went missing and cost half a second every time on 2026-11-05.
+# What the rail tests ran, so the IMU is as it was when it was measured. Asked without
+# waiting for an answer, since the answer about gravity went missing on the robot at
+# every start on 2026-11-05, and cost half a second each time while the report it was
+# about came through, at 92 Hz. Whether it worked is whether the readings come.
 IMU_REPORTS = {"gravity": 100.0, "gyro": 400.0}
+IMU_ASK_GAP_S = 0.02
+# The gyro has reached what was asked of it, well enough to stop looking. As the
+# controller leaves it, it is at IMU_DEFAULT_HZ.
+IMU_SETTLED_GYRO_HZ = 200.0
+IMU_LOOKS = 4
 # As the controller leaves them when it finds the IMU.
 IMU_DEFAULT_HZ = 100.0
 # The rail saw gravity at 25 to 60 Hz when it asked for 100, and the gyro at 250 to
@@ -100,16 +112,31 @@ LETDOWN_S = 2.0
 AIR_EASE_S = 1.0
 AIR_FIRM_S = 0.25
 
+# What there is no running without. Anything else in the robot's health is for its
+# LEDs to show, and not for keeping a press from being answered: no battery reading, say.
+CANNOT_RUN = {"imu missing", "imu silent", "bus off", "link down"}
+# A look that finds something wrong gets this many more before it counts: a request can
+# go missing, and readings can stop for a moment, in the traffic of a robot being handled.
+READY_LOOKS = 3
+READY_AGAIN_S = 0.2
+
 # How near the start training was, loosened a little: it starts within 3 degrees
 # and exactly in the crouch. A robot further off than this is not being started.
 START_TILT_DEG = 10.0
 START_LEGS_RAD = 0.2
 LOWEST_VOLTS = 21.6
 
-# The cut-off. POLICY_INTERFACE.md's 20 degrees is too near: in MuJoCo this
+# The cut-off, but for a robot armed for good and driving, which goes on to
+# policy_loop.FALLEN_DEG. POLICY_INTERFACE.md's 20 degrees is too near: in MuJoCo this
 # policy rests about 8 degrees nose-up, and a 0.3 m/s shove takes it to 16.
 # Training only gave up at 60, and the strings catch it anyway.
 TILT_DEG = 30.0
+# Driving, the controller stopping the motors for these is put right, and it drives on:
+# the Pi silent past its deadman, and the controller restarted. A stop asked for, which
+# is a tap of the button or the console's, and the power button, are obeyed.
+RESTART_AFTER = {"silent", "starting"}
+# Driving, a step that raises something unforeseen is skipped, for at most this long.
+FAILING_S = 0.5
 
 # Waiting for the floor, in the crouch. A lower bend makes the weight show more, and
 # handling show as much more, and the policy starts far harder from it: 0.55 Nm on
@@ -204,25 +231,52 @@ class Operator:
     --max-speed, and a stick's end --max-turn. What is asked moves towards that at a
     limited rate, stopping included, because it is a change of command that sets the
     robot swinging, not the speed (docs/SYSID.md): in MuJoCo at 0.5 m/s a sudden one
-    leans it to 17 degrees, and this to 14."""
+    leans it to 17 degrees, and this to 14.
+
+    The controller's select button toggles between two pairs of limits: --max-speed and
+    --max-turn, which it starts with each time it takes over, and --fast-speed and
+    --fast-turn, by default the whole of what the policy was trained on. A press counts
+    only while it is running: one from before it took over changes nothing."""
 
     FRESH_S = 0.2
     SPEED_RAMP_M_S2 = 0.6
     TURN_RAMP_RAD_S2 = 3.0
+    # Slowing, the command falls as fast as training moved it, the operator having let
+    # go to stop. In MuJoCo from 1 m/s it stopped in 0.84 s over 0.57 m, against 1.77 s
+    # and 0.98 m at 0.6, leaning 6 degrees back where it had 3. Faster still gained
+    # nothing: at 2.5 it stopped in 0.81 s, the policy's own braking the limit.
+    STOP_RAMP_M_S2 = 1.5
+    TURN_STOP_RAD_S2 = 8.0
 
     def __init__(self, robot, meta: dict, args):
         self.height = meta["default_height"] if args.height is None else args.height
         self.lo, self.hi = meta["height_range"]
         self.height = min(max(self.height, self.lo), self.hi)
-        top_speed = max(map(abs, meta["speed_range"]))
-        top_turn = max(map(abs, meta["turn_range"]))
+        self.top_speed = max(map(abs, meta["speed_range"]))
+        self.top_turn = max(map(abs, meta["turn_range"]))
+        self.envelope = bool(meta.get("envelope", False))
         # A policy goes on answering past what it was trained on, for a while: the one
         # trained to 0.5 m/s and 1.5 rad/s stays up at 1 m/s and 3 rad/s in both simulators.
         beyond = getattr(args, "past_trained", False)
-        self.max_speed = args.max_speed if beyond else min(args.max_speed, top_speed)
-        self.max_turn = args.max_turn if beyond else min(args.max_turn, top_turn)
-        self.speed_share = self.max_speed / top_speed
-        self.turn_share = self.max_turn / top_turn
+
+        def within(asked, top):
+            return asked if beyond else min(asked, top)
+
+        self.slow = (
+            within(args.max_speed, self.top_speed),
+            within(args.max_turn, self.top_turn),
+        )
+        fast_speed = getattr(args, "fast_speed", None) or self.top_speed
+        fast_turn = getattr(args, "fast_turn", None) or self.top_turn
+        self.quick = (
+            within(fast_speed, self.top_speed),
+            within(fast_turn, self.top_turn),
+        )
+        self.robot = robot
+        self.fast = False
+        self.told_at = -1.0
+        self.presses: int | None = None
+        self.max_speed, self.max_turn = self.slow
         self.last: tuple[float, dict] | None = None
         self.speed = self.turn = 0.0
         self.stepped: float | None = None
@@ -236,15 +290,52 @@ class Operator:
         speed, turn = self.wanted(now)
         dt = 0.0 if self.stepped is None else now - self.stepped
         self.stepped = now
-        most = self.SPEED_RAMP_M_S2 * dt
-        self.speed += min(max(speed - self.speed, -most), most)
-        most = self.TURN_RAMP_RAD_S2 * dt
-        self.turn += min(max(turn - self.turn, -most), most)
+        self.speed = self.ramp(
+            self.speed, speed, self.SPEED_RAMP_M_S2, self.STOP_RAMP_M_S2, dt
+        )
+        self.turn = self.ramp(
+            self.turn, turn, self.TURN_RAMP_RAD_S2, self.TURN_STOP_RAD_S2, dt
+        )
         return self.speed, self.turn, self.height
 
+    @staticmethod
+    def ramp(now: float, want: float, rise: float, fall: float, dt: float) -> float:
+        """Towards what is wanted, at `fall` while it heads for nought, `rise` away."""
+        if want * now < 0.0 or abs(want) < abs(now):
+            target = 0.0 if want * now < 0.0 else want
+            step = fall * dt
+            now += min(max(target - now, -step), step)
+            if now != 0.0 or target == want:
+                return now
+        step = rise * dt
+        return now + min(max(want - now, -step), step)
+
     def reset(self) -> None:
+        """Taking over: from a standstill, and slow."""
         self.speed = self.turn = 0.0
         self.stepped = None
+        self.set_fast(False)
+        self.presses = None if self.last is None else self.last[1].get("mode")
+
+    def set_fast(self, fast: bool) -> None:
+        if fast != self.fast:
+            print(f"speed mode: {'fast' if fast else 'slow'}", flush=True)
+            self.fast = fast
+            self.tell(0.0, force=True)
+        self.max_speed, self.max_turn = self.quick if fast else self.slow
+
+    def tell(self, now: float, force: bool = False) -> None:
+        """The LEDs add a flash to the heartbeat while it is fast. diagd forgets in
+        2 s, so it is said again each second, and a run that has died says nothing."""
+        if self.robot is None or not (
+            force or (self.fast and now - self.told_at > 1.0)
+        ):
+            return
+        self.told_at = now
+        try:
+            self.robot.send("indicate", fast=self.fast)
+        except diag_client.RobotError:
+            pass
 
     def wanted(self, now: float) -> tuple[float, float]:
         if self.last is None:
@@ -252,12 +343,22 @@ class Operator:
         heard, m = self.last
         if m.get("height"):
             self.height = min(max(float(m["height"]), self.lo), self.hi)
+        presses = m.get("mode")
+        if presses is not None:
+            if self.presses is not None and (int(presses) - self.presses) % 2:
+                self.set_fast(not self.fast)
+            self.presses = int(presses)
+        self.tell(now)
         if now - heard > self.FRESH_S or not m.get("live"):
             return 0.0, 0.0
-        speed = float(m["forward"]) * self.speed_share
-        turn = float(m["turn"]) * self.turn_share
+        # The controller sends the policy's whole range; this is that share of the limit.
+        speed = float(m["forward"]) * self.max_speed / self.top_speed
+        turn = float(m["turn"]) * self.max_turn / self.top_turn
         speed = min(max(speed, -self.max_speed), self.max_speed)
         turn = min(max(turn, -self.max_turn), self.max_turn)
+        share = abs(speed) / self.top_speed + abs(turn) / self.top_turn
+        if self.envelope and share > 1.0:
+            speed, turn = speed / share, turn / share
         return speed, turn
 
 
@@ -290,7 +391,7 @@ def connect(args):
     except diag_client.RobotError as error:
         raise SystemExit(str(error))
     try:
-        robot.take_control()
+        robot.take_control(force=getattr(args, "button", False))
     except diag_client.RobotError as error:
         robot.close()
         raise SystemExit(
@@ -315,8 +416,30 @@ def imu_rates(rig, seconds: float = 0.25) -> dict[str, float]:
     return {r: n / seconds for r, n in seen.items()}
 
 
+def ask_imu(robot, hz_of) -> None:
+    for report, hz in hz_of.items():
+        try:
+            robot.send("imu.enable", report=report, hz=hz)
+        except diag_client.RobotError:
+            pass
+        time.sleep(IMU_ASK_GAP_S)
+
+
 def get_ready(rig, robot, powered: bool) -> dict:
-    """Refuses, in plain words, a robot that should not be started."""
+    """Refuses, in plain words, a robot that should not be started, and only that, having
+    looked more than once."""
+    for left in range(READY_LOOKS - 1, -1, -1):
+        try:
+            return looks_ready(rig, robot, powered)
+        except (SystemExit, diag_client.RobotError) as why:
+            if not left:
+                raise SystemExit(str(why)) from None
+            print(f"  not ready yet: {why}")
+            time.sleep(READY_AGAIN_S)
+    raise AssertionError
+
+
+def looks_ready(rig, robot, powered: bool) -> dict:
     rig.find()
     regs = rig.registers()
     for joint, r in regs.items():
@@ -325,12 +448,15 @@ def get_ready(rig, robot, powered: bool) -> dict:
         if powered and not float(r.get("TIMEOUT", 0.0)):
             raise SystemExit(f"{joint}: no communication time-out set (docs/SYSID.md)")
     status = diag_client.wait_for_status(robot)
-    health = status.get("health") or {}
-    if health.get("fault"):
+    conditions = (status.get("health") or {}).get("conditions", [])
+    serious = [c for c in conditions if c in CANNOT_RUN]
+    if serious:
         raise SystemExit(
-            f"the robot reports a fault: {', '.join(health.get('conditions', []))}. "
+            f"the robot reports a fault: {', '.join(serious)}. "
             "If it is the IMU, power-cycle the robot."
         )
+    if conditions:
+        print(f"  carrying on past: {', '.join(conditions)}")
     volts = status.get("vbus")
     if powered and volts is not None and volts < LOWEST_VOLTS:
         raise SystemExit(f"the battery is at {volts:.1f} V: charge it first")
@@ -338,14 +464,11 @@ def get_ready(rig, robot, powered: bool) -> dict:
     # request can go missing under the traffic of a healthy one, as it did on the
     # robot on 2026-11-04 with 300 packets a second arriving: sysid.py carries on
     # past that too.
-    for report, hz in IMU_REPORTS.items():
-        try:
-            robot.request("imu.enable", report=report, hz=hz)
-        except diag_client.RobotError as error:
-            print(
-                f"  the IMU did not answer the request for its {report} report: {error}"
-            )
-    rates = imu_rates(rig)
+    ask_imu(robot, IMU_REPORTS)
+    for _ in range(IMU_LOOKS):
+        rates = imu_rates(rig)
+        if rates["gyro"] >= IMU_SETTLED_GYRO_HZ and rates["gravity"] > 0:
+            break
     for report, least in IMU_LEAST_HZ.items():
         if rates[report] < least:
             raise SystemExit(
@@ -539,12 +662,18 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
     ease_s, firm_s = (EASE_S, FIRM_S) if touch is None else (AIR_EASE_S, AIR_FIRM_S)
     # Waits to be stood up for as long as it runs. Only a launch can, knowing the floor.
     rearm = touch is not None and getattr(args, "rearm", False)
+    woken = getattr(args, "woken", None)
+    phase_file = getattr(args, "phase_file", None)
 
     def easing():
         return {j: st.ease(j, crouch[j], ease_s, EASE_KP, EASE_KD) for j in st.LEGS}
 
     ease = easing()
     back = {}
+    # A stop from before the motors come on has nothing to do with this run: taking control
+    # from a console's tab makes one. On 2026-11-05 one ended a run as it began, and the
+    # press that started it looked as if it had done nothing.
+    rig.stopped_by = None
     rig.enable(st.JOINTS)
     phase, began = "ease", clock()
     t0 = clock()
@@ -557,10 +686,20 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
         phase, began = name, now
         view.phase = name
         stepper.guard.free = rearm and name != "policy"
+        stepper.guard.recover = rearm and name == "policy"
         rig.writer.write({"k": "n", "h": round(now, 6), "seg": name})
+        if woken is not None:
+            woken.clear()
+        if phase_file is not None:
+            try:
+                phase_file.write_text(name)
+            except OSError:
+                pass
 
-    fit = stepper.imu is None or legs_problem(rig, args.tilt, stepper.imu) is None
-    to("ease" if fit or not rearm else "limp", began)
+    # Whatever the pose: somebody has just asked for it, and limp legs can stay where they
+    # were left, 73 degrees the wrong way on 2026-11-05, which lifting it did not change.
+    # That run lay limp for 170 s after its tap, until a hand had moved them.
+    to("ease", began)
 
     def let_down(now: float, why: str = "done"):
         nonlocal letdown, ending
@@ -569,15 +708,29 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
         to("letdown", now)
         return {j: f(0.0, rig.latest) for j, f in letdown.items()} | wheels_off
 
+    failing_since = None
     while True:
         now = clock()
         t = now - began
         if rig.stopped_by:
-            raise st.Abort(rig.stopped_by)
+            why = getattr(rig, "stopped_why", None)
+            if not (stepper.guard.recover and why in RESTART_AFTER):
+                raise st.Abort(rig.stopped_by)
+            # The motors are stopped and it is falling: on again, at once.
+            rig.writer.write(
+                {"k": "n", "h": round(now, 6), "recovering": rig.stopped_by}
+            )
+            rig.stopped_by = rig.stopped_why = None
+            rig.enable(st.JOINTS)
         speed, turn, height = 0.0, 0.0, op.height
         if phase == "limp":
             cmds = limp
             g = view.step["g"] if view.step else None
+            if woken is not None and woken.is_set():
+                hanging_since = None
+                ease = easing()
+                to("ease", now)
+                g = None
             hangs = (
                 g is not None
                 and math.degrees(pl.tilt(g)) < pl.TOUCH_TILT_DEG
@@ -713,6 +866,16 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
                 to("limp", now)
         try:
             step = stepper.step(t0, speed, turn, height, override=cmds)
+            failing_since = None
+        except pl.Lost as why:
+            if not rearm:
+                raise
+            # Not lying down, but unable to balance: down gently, rather than dropped.
+            rig.writer.write({"k": "n", "h": round(now, 6), "lost": str(why)})
+            view.note = str(why)
+            let_down(now, str(why))
+            t0 += pl.PERIOD_S
+            continue
         except pl.Tipped as why:
             if not rearm:
                 raise
@@ -720,6 +883,17 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
             rig.writer.write({"k": "n", "h": round(now, 6), "fell": str(why)})
             view.note = str(why)
             to("limp", now)
+            t0 += pl.PERIOD_S
+            continue
+        except st.Abort:
+            raise
+        except Exception as error:  # noqa: BLE001 - driving, anything is tried again
+            if not stepper.guard.recover:
+                raise
+            failing_since = now if failing_since is None else failing_since
+            if now - failing_since > FAILING_S:
+                raise
+            rig.writer.write({"k": "n", "h": round(now, 6), "recovering": repr(error)})
             t0 += pl.PERIOD_S
             continue
         step["want"] = bal.last_wheels
@@ -879,8 +1053,10 @@ def session(args) -> int:
         bal = pl.Balancer(net, wheel_limit=args.wheel_limit)
         imu = pl.Imu(robot_file["imu_axes"], robot_file["imu_gravity_sign"])
         # With the motors off a tilt harms nothing, and is what is asked for.
+        wheel_vmax = min(float(regs[j].get("VMAX", 55.0)) for j in st.WHEELS)
         guard = pl.Guard(
-            args.tilt if is_powered else 180.0, pl.limits(legs_limp=not is_powered)
+            args.tilt if is_powered else 180.0,
+            pl.limits(legs_limp=not is_powered, wheel_vmax=wheel_vmax),
         )
         hold = (
             pl.Hold(bal.meta["wheel_radius"])
@@ -894,6 +1070,9 @@ def session(args) -> int:
             )
             touch.usual = usual_air(args)
         args.rearm = args.mode == "launch" and not args.once
+        args.woken = threading.Event() if args.button else None
+        if args.button:
+            threading.Thread(target=listen, args=(args.woken,), daemon=True).start()
         if is_powered and not args.rearm:
             problem = legs_problem(rig, args.tilt, imu)
             if problem:
@@ -1006,11 +1185,11 @@ def session(args) -> int:
         if moved_motors and rig.motors:
             rig.disable(list(rig.motors))
         time.sleep(0.1)
-        for report in IMU_REPORTS:
-            try:
-                robot.request("imu.enable", report=report, hz=IMU_DEFAULT_HZ)
-            except diag_client.RobotError:
-                pass
+        ask_imu(robot, dict.fromkeys(IMU_REPORTS, IMU_DEFAULT_HZ))
+        try:
+            robot.send("indicate", fast=False)
+        except diag_client.RobotError:
+            pass
     try:
         robot.release_control()
     except diag_client.RobotError:
@@ -1032,9 +1211,16 @@ def session(args) -> int:
     return 0 if reason == "done" and not bad else 1
 
 
+def listen(woken: threading.Event) -> None:
+    """launcher.py's words, once it has begun."""
+    for line in sys.stdin:
+        if line.strip() == "wake":
+            woken.set()
+
+
 def operate(args, go, stop, done, view) -> None:
     """The operator's end: Enter to start, Enter to stop, or a count to start."""
-    if args.mode == "dry":
+    if args.mode == "dry" or args.button:
         done.wait()
         return
     if args.mode == "run":
@@ -1112,6 +1298,16 @@ def main(argv=None) -> int:
         "--no-hold", action="store_true", help="do not hold heading and place"
     )
     ap.add_argument(
+        "--fast-speed",
+        type=float,
+        help="m/s at a full pull once select is pressed (default: the policy's top)",
+    )
+    ap.add_argument(
+        "--fast-turn",
+        type=float,
+        help="rad/s at a stick's end once select is pressed (default: the policy's top)",
+    )
+    ap.add_argument(
         "--no-trim",
         action="store_true",
         help="do not nudge what the policy is asked towards what it then does",
@@ -1185,6 +1381,14 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--label")
     ap.add_argument("--out")
+    ap.add_argument(
+        "--button",
+        action="store_true",
+        help="launcher.py's: wait for its word, take control from whatever holds it",
+    )
+    ap.add_argument(
+        "--phase-file", type=Path, help="where to say what it is doing, for launcher.py"
+    )
     args = ap.parse_args(argv)
     if args.seconds is None:
         args.seconds = {"hold": 20.0, "lower": 60.0}.get(args.mode, 30.0)
@@ -1197,6 +1401,12 @@ def main(argv=None) -> int:
     signal.signal(signal.SIGTERM, stop_cleanly)
     if hasattr(signal, "SIGHUP"):
         signal.signal(signal.SIGHUP, stop_cleanly)
+    if args.button:
+        try:
+            if not sys.stdin.readline():
+                return 0  # launcher.py went, and never asked
+        except KeyboardInterrupt:
+            return 0
     return session(args)
 
 

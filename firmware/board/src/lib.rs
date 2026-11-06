@@ -279,7 +279,7 @@ pub mod power {
     use embassy_stm32::pac::gpio::vals::{Idr, Moder, Pupdr};
     use embassy_stm32::pac::rcc::vals::Sw;
 
-    use crate::power_button::Button;
+    use crate::power_button::{Button, Press};
     pub use crate::power_button::{
         FORCE_OFF_MS, OFF_PRESS_MS, RELEASE_MS, SHUTDOWN_GRACE_MS, TICK_MS,
     };
@@ -298,6 +298,8 @@ pub mod power {
     static OFF: AtomicBool = AtomicBool::new(false);
     static GRACEFUL: AtomicBool = AtomicBool::new(false);
     static BUTTON: Mutex<RefCell<Button>> = Mutex::new(RefCell::new(Button::Starting { up_ms: 0 }));
+    static PRESS: Mutex<RefCell<Press>> = Mutex::new(RefCell::new(Press::new()));
+    static PRESSED_LATELY: AtomicBool = AtomicBool::new(false);
 
     /// Raises HOLD from the reset state, before clocks or embassy: the button
     /// has to be held until this runs, so it runs as early as it can. embassy's
@@ -348,12 +350,15 @@ pub mod power {
     pub(crate) fn tick() {
         unsafe { (*SYST::PTR).rvr.write(reload()) };
         let pressed = pressed();
-        let action = free(|cs| {
+        let (action, press) = free(|cs| {
             let mut button = BUTTON.borrow(cs).borrow_mut();
             let (next, action) = button.step(pressed, GRACEFUL.load(Ordering::Relaxed));
             *button = next;
-            action
+            (action, PRESS.borrow(cs).borrow_mut().step(pressed))
         });
+        if press {
+            PRESSED_LATELY.store(true, Ordering::Relaxed);
+        }
         if action.request_off {
             OFF.store(true, Ordering::Relaxed);
         }
@@ -390,6 +395,12 @@ pub mod power {
     /// Whether the button is down this moment, as read, without the debounce.
     pub fn pressed() -> bool {
         pac::GPIOB.idr().read().idr(SENSE_PIN) == Idr::LOW
+    }
+
+    /// Whether the button has been down since this was last asked. The status goes out
+    /// ten times a second, and a quick tap can fall between two readings of the pin.
+    pub fn pressed_lately() -> bool {
+        PRESSED_LATELY.swap(false, Ordering::Relaxed)
     }
 
     /// Whether a two-second press requested shutdown. This remains latched

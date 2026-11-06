@@ -23,6 +23,11 @@ pub const FIRST_CONTACT_MS: u64 = 30_000;
 /// diag image asserts the two agree.
 pub const HEARTBEAT_PERIOD_MS: u64 = 300 + 6720 / 7;
 pub const HEARTBEAT_FLASH_MS: u64 = 70;
+/// The extra flash a healthy robot adds in its fast speed mode, after the beat's two.
+pub const FAST_FLASH_MS: u64 = 40;
+/// How long a word that the fast mode is on holds, unless it is said again: a policy
+/// that has stopped saying so is not driving fast.
+pub const FAST_HOLD_MS: u64 = 2_000;
 
 /// What HEALTH carries, one bit a condition.
 pub const IMU_MISSING: u16 = 1 << 0;
@@ -58,6 +63,19 @@ const HEARTBEAT: [(bool, u64); 4] = [
         HEARTBEAT_PERIOD_MS - HEARTBEAT_PERIOD_MS / 4 - HEARTBEAT_FLASH_MS,
     ),
 ];
+/// The heartbeat with a third, shorter flash, as long after the second as the second
+/// is after the first, less a little: the fast speed mode.
+const FAST: [(bool, u64); 6] = [
+    (true, HEARTBEAT_FLASH_MS),
+    (false, HEARTBEAT_PERIOD_MS / 4 - HEARTBEAT_FLASH_MS),
+    (true, HEARTBEAT_FLASH_MS),
+    (false, HEARTBEAT_PERIOD_MS / 6 - HEARTBEAT_FLASH_MS),
+    (true, FAST_FLASH_MS),
+    (
+        false,
+        HEARTBEAT_PERIOD_MS - HEARTBEAT_PERIOD_MS / 4 - HEARTBEAT_PERIOD_MS / 6 - FAST_FLASH_MS,
+    ),
+];
 /// An even blink, once a second.
 const LINK: [(bool, u64); 2] = [(true, 500), (false, 500)];
 /// A fast flicker, five times a second.
@@ -85,6 +103,16 @@ impl Fault {
             Self::Link => &LINK,
             Self::Imu => &IMU,
             Self::Hardware => &HARDWARE,
+        }
+    }
+
+    /// The same, with the fast mode's extra flash on the heartbeat. A fault's pattern
+    /// is shown as it is: the fault matters more.
+    pub fn shown(self, fast: bool) -> &'static [(bool, u64)] {
+        if fast && self == Self::Healthy {
+            &FAST
+        } else {
+            self.pattern()
         }
     }
 }
@@ -286,5 +314,16 @@ mod tests {
             assert_ne!(p, Fault::Healthy.pattern());
             assert!(p.iter().any(|s| s.0) && p.iter().any(|s| !s.0));
         }
+    }
+
+    #[test]
+    fn fast_beat_keeps_the_period() {
+        let healthy: u64 = Fault::Healthy.pattern().iter().map(|p| p.1).sum();
+        let fast: u64 = Fault::Healthy.shown(true).iter().map(|p| p.1).sum();
+        assert_eq!(fast, healthy);
+        let flashes = Fault::Healthy.shown(true).iter().filter(|p| p.0).count();
+        assert_eq!(flashes, 3);
+        assert_eq!(Fault::Imu.shown(true), Fault::Imu.pattern());
+        assert_eq!(Fault::Healthy.shown(false), Fault::Healthy.pattern());
     }
 }

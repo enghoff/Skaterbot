@@ -3,22 +3,26 @@
     python3 launcher.py
 
 It holds no control and moves no motor, so it can run all the time, beside the motor
-console, and does nothing until asked. To ask, tap the robot's power button, for under
-TAP_S. The firmware takes two seconds held as the way to turn the robot off, stopping
-every motor, and that still works.
+console, and does nothing until asked. To ask, tap the robot's power button. Any press
+counts that is let go of before the two seconds the firmware takes as the way to turn the
+robot off, stopping every motor, and that still works.
 
-Asked, it runs `balance.py launch --drive`: pick the robot up by the torso, tap, and
-the legs go to the crouch. Lower it, let go as the wheels touch, and it takes over by
-itself, and drives as the controller asks. It has no time limit, and there must never
-be one: its end would drop a robot somebody is driving. A tap arms it, and it stays
-armed: picked up, or fallen over and picked up, it gets ready again by itself and takes
-over when next put down. The next tap stops every motor at once, and disarms it. No
-button on the game controller does: letting go of its triggers stops the driving and
-leaves it standing.
+Asked, it runs `balance.py launch --drive`, and the legs go to the crouch whatever the
+robot's pose. Lower it, let go as the wheels touch, and it takes over by itself, and
+drives as the controller asks. It has no time limit, and there must never be one: its end
+would drop a robot somebody is driving. A tap arms it, and it stays armed: picked up, or
+fallen over and picked up, it gets ready again by itself and takes over when next put
+down. The next tap stops every motor at once, and disarms it, unless the robot is lying
+limp, when a tap wakes it instead, since stopping what is already limp would look like
+nothing at all. No button on the game controller does either: letting go of its triggers
+stops the driving and leaves it standing.
 
-If the robot is not fit to start, because the motor console's tab holds control or
-there is no launch.json, nothing moves, and launcher.log says why. Its motors wake
-when it is lifted only once it has been armed: a robot not tapped stays limp.
+A press must get an answer unless something is seriously wrong. So what only looks like
+a reason to wait is not one: a tap while the last run is still ending arms it again as
+soon as that has gone, a tap while one is starting leaves it to start, and a motor
+console's tab holding control gives way to it. What is left is balance.py's to refuse, in
+get_ready, and launcher.log says why. Its motors wake when it is lifted only once it has
+been armed: a robot not tapped stays limp.
 """
 
 from __future__ import annotations
@@ -37,12 +41,17 @@ sys.path.insert(0, str(HERE))
 
 import diag_client  # noqa: E402
 
-# Well under the two seconds that turn the robot off. Status comes ten times a second.
-TAP_S = 0.4
-# After it stops, for a press that was meant to stop it not to start it again.
-QUIET_S = 1.0
 RECONNECT_S = 1.0
-ENDING_S = 10.0
+# How long a run told to stop gets to save its log, with its motors already stopped.
+ENDING_S = 5.0
+# Longer than getting ready takes, however many looks that needs. After this, one that
+# has not said what it is doing is treated as any other, and a tap stops it.
+STARTING_S = 10.0
+# A run takes a moment of the Pi's time to start, which is not for the moment it is
+# starting one of its own. And one failing to start must not be retried in a tight loop.
+SPARE_AFTER_S = 5.0
+SPARE_AGAIN_S = 5.0
+LIMP = "limp"
 
 
 class Tap:
@@ -50,20 +59,16 @@ class Tap:
     events, so that it can be tested with none of the rest."""
 
     def __init__(self):
-        self.down_at: float | None = None
+        self.down = False
 
-    def heard(self, m: dict, now: float) -> bool:
-        """A tap is down and up again, soon enough not to be turning the robot off."""
+    def heard(self, m: dict) -> bool:
+        """A tap is down and up again, short of turning the robot off. Status comes ten
+        times a second, and the firmware holds a press over until the next one goes."""
         if m.get("off"):
-            self.down_at = None
+            self.down = False
             return False
-        down = bool(m.get("button"))
-        if down and self.down_at is None:
-            self.down_at = now
-        elif not down and self.down_at is not None:
-            held, self.down_at = now - self.down_at, None
-            return held < TAP_S
-        return False
+        was, self.down = self.down, bool(m.get("button"))
+        return was and not self.down
 
 
 class Launcher:
@@ -73,7 +78,12 @@ class Launcher:
         self.tap = Tap()
         self.tapped: queue.Queue[bool] = queue.Queue()
         self.child: subprocess.Popen | None = None
-        self.quiet_until = 0.0
+        # One already loaded and waiting for the word, since loading takes a second.
+        self.spare: subprocess.Popen | None = None
+        self.spare_at = -SPARE_AGAIN_S
+        self.started_at = 0.0
+        self.stopping_at: float | None = None
+        self.again = False
         self.running = True
         self.out = open(args.log, "a", buffering=1, encoding="utf-8")
 
@@ -83,7 +93,7 @@ class Launcher:
     # -- on the reader's thread: nothing here may wait
 
     def _status(self, m: dict) -> None:
-        if self.tap.heard(m, time.monotonic()):
+        if self.tap.heard(m):
             self.tapped.put(True)
 
     # -- on the main thread
@@ -93,43 +103,112 @@ class Launcher:
         robot.on("status", self._status)
         return robot
 
-    def asked(self, robot) -> None:
-        now = time.monotonic()
-        if self.child is not None:
-            self.say("the button asked for it to stop")
+    def phase(self) -> str | None:
+        """What the run says it is doing. None until it has begun to do anything; what
+        cannot be read counts as doing something, so that a tap stops it."""
+        try:
+            return self.args.phase_file.read_text().strip() or "unknown"
+        except FileNotFoundError:
+            return None
+        except OSError:
+            return "unknown"
+
+    def warm(self) -> subprocess.Popen:
+        self.spare_at = time.monotonic()
+        return subprocess.Popen(
+            self.command,
+            cwd=HERE,
+            stdin=subprocess.PIPE,
+            stdout=self.out,
+            stderr=subprocess.STDOUT,
+        )
+
+    def word(self, child: subprocess.Popen, what: bytes) -> None:
+        child.stdin.write(what + b"\n")
+        child.stdin.flush()
+
+    def start(self) -> None:
+        self.say(f"the button asked: {' '.join(self.command)}")
+        self.args.phase_file.unlink(missing_ok=True)
+        child, self.spare = self.spare, None
+        if child is None or child.poll() is not None:
+            child = self.warm()
+        # One still loading reads this when it is ready for it.
+        try:
+            self.word(child, b"go")
+        except OSError:
+            child = self.warm()
+            self.word(child, b"go")
+        self.child = child
+        self.started_at = time.monotonic()
+
+    def stop(self, robot) -> None:
+        self.say("the button asked for it to stop")
+        self.stopping_at = time.monotonic()
+        try:
             robot.stop()
+        finally:
             # A tap before it has taken control has nothing there for that to stop.
             self.child.terminate()
-        elif now < self.quiet_until:
-            self.say("the button asked, too soon after the last one: ignored")
-        else:
-            self.say(f"the button asked: {' '.join(self.command)}")
-            self.child = subprocess.Popen(
-                self.command,
-                cwd=HERE,
-                stdin=subprocess.DEVNULL,
-                stdout=self.out,
-                stderr=subprocess.STDOUT,
+
+    def asked(self, robot) -> None:
+        if self.child is None:
+            self.start()
+        elif self.stopping_at is not None:
+            # Motors already stopped, and the same again, as many times as it takes.
+            self.again = not self.again
+            self.say(
+                f"the button asked while it ends: {'arms' if self.again else 'stays off'} after"
             )
+        else:
+            phase = self.phase()
+            young = time.monotonic() - self.started_at < STARTING_S
+            if phase is None and young:
+                self.say("the button asked while it starts: left to start")
+            elif phase == LIMP:
+                self.say("the button asked while it is limp: waking it")
+                try:
+                    self.word(self.child, b"wake")
+                except OSError:
+                    self.stop(robot)
+            else:
+                self.stop(robot)
 
     def watch_child(self) -> None:
+        now = time.monotonic()
         if self.child is not None and self.child.poll() is not None:
             self.say(f"it ended, with exit code {self.child.returncode}")
             self.child = None
-            self.quiet_until = time.monotonic() + QUIET_S
+            self.stopping_at = None
+            if self.again:
+                self.again = False
+                try:
+                    self.start()
+                except OSError as error:
+                    self.say(f"it could not start again: {error}")
+        elif self.stopping_at is not None and now - self.stopping_at > ENDING_S:
+            self.say("it has not gone: killing it")
+            self.child.kill()
+            self.stopping_at = now
+        wanted = self.spare is None or self.spare.poll() is not None
+        settled = self.child is None or now - self.started_at > SPARE_AFTER_S
+        if wanted and settled and now - self.spare_at > SPARE_AGAIN_S:
+            try:
+                self.spare = self.warm()
+            except OSError as error:
+                self.say(f"it could not load a spare: {error}")
 
-    def stop_child(self) -> None:
+    def end(self, child: subprocess.Popen | None) -> None:
         """balance.py takes a TERM as a reason to stop the motors, and diagd stops
         them anyway the moment it goes."""
-        if self.child is None:
+        if child is None:
             return
-        self.child.terminate()
+        child.terminate()
         try:
-            self.child.wait(ENDING_S)
+            child.wait(ENDING_S)
         except subprocess.TimeoutExpired:
-            self.child.kill()
-            self.child.wait()
-        self.child = None
+            child.kill()
+            child.wait()
 
     def run(self) -> None:
         self.say("waiting for the button")
@@ -140,6 +219,7 @@ class Launcher:
                 self.say(f"lost diagd: {robot.error}")
                 robot.close()
                 robot = None
+                self.tap = Tap()
             if robot is None:
                 try:
                     robot = self.connect()
@@ -155,7 +235,8 @@ class Launcher:
                 self.asked(robot)
             except (OSError, diag_client.RobotError) as error:
                 self.say(f"the button asked, and it failed: {error}")
-        self.stop_child()
+        self.end(self.child)
+        self.end(self.spare)
         if robot is not None:
             robot.close()
         self.say("stopped")
@@ -164,6 +245,10 @@ class Launcher:
 def balance_command(args) -> list[str]:
     command = [sys.executable, str(HERE / "balance.py"), "launch", "--yes", "--drive"]
     command += ["--seconds", "0", "--touch-wait", "0"]
+    command += ["--button", "--phase-file", str(args.phase_file)]
+    # Slow, which every run starts in; select on the controller toggles to the policy's
+    # whole trained range, 1.8 m/s and 15 rad/s for the one deployed on 2026-11-06.
+    command += ["--max-speed", "1.0", "--max-turn", "2.0"]
     if args.rt:
         command.append("--rt")
     return command
@@ -174,6 +259,12 @@ def main(argv=None) -> int:
     ap.add_argument("--robot", default=diag_client.DEFAULT_ROBOT)
     ap.add_argument("--rt", action="store_true", help="the loop at real-time priority")
     ap.add_argument("--log", type=Path, default=HERE / "launcher.log")
+    ap.add_argument(
+        "--phase-file",
+        type=Path,
+        default=Path("/dev/shm/bipedal_phase"),
+        help="where a run says what it is doing: in memory, so that it never waits on a disk",
+    )
     ap.add_argument(
         "--command",
         nargs=argparse.REMAINDER,
