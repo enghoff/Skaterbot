@@ -71,6 +71,30 @@ UP = np.array([0.0, 0.0, 1.0])
 
 # The wheels' VMAX on the robot from 6 November 2026, which sets their cap.
 WHEEL_VMAX = 70.0
+# How the wheels' torque follows what is sent, from the robot's own logs of 6 November
+# 2026: the torque each wheel reports against the command, fitted as gain x first-order
+# lag of the command 4-8 ms late, standing at 207 and 170 mm, both wheels alike: lag 12
+# to 15 ms, gain 0.79 to 0.91, residual 0.006 to 0.034 Nm (0.007 standing at 207: 4 ms,
+# 15 ms, 0.91). The delay is the rig's cmd_s and report_s, 6 + 1.5 ms. Without the lag
+# MuJoCo stood D3 at 170 mm rocking at 0.28 rad/s and 2.0 Hz where the robot rocked at
+# 0.61 and 1.55 Hz; with 12 ms and 0.85, 0.73 at 1.70 Hz. The reported torque is the
+# motor's own estimate and may be filtered itself, so the lag is fitted, not proven.
+WHEEL_LAG_S = 0.013
+WHEEL_GAIN = 0.85
+# How the legs' torque follows what the motor's own position-and-damping law asks, from
+# the robot's logs of the same day (plant.LEG_RESPONSE): each hip and knee a first-order
+# lag of 8 to 12 ms after the motor's torque limit, 0 to 2.5 ms late, at 0.9 to 1.05 of
+# what is asked, driving at kp 12 and jumping at kp 6. Drawn at the middle of that, with
+# the 0 to 2.5 ms left out. Unlike the wheels', this is real torque and not a filtered
+# reading: on the rail the joints' acceleration, from the encoders alone, kept step with
+# it. The motor's damping on a speed it reads about 4 ms late is not drawn.
+# With it D3, which drives well on the robot, cruises 0.5 m/s in a 1.6 Hz surge, its
+# wheels between 0 and 23 rad/s, and case 16's hard shove lands mid-surge and tips it;
+# at gain 0.9, inside the fit, it cruises steadily and passes as before. Whether the
+# robot surges there is not known: its logs of 6 November have no steady stretch at
+# 0.25-0.5 m/s. Until one is driven, judge a policy against D3 at both gains.
+LEG_LAG_S = 0.010
+LEG_GAIN = 1.0
 # Simulated seconds with no end before a check gives up: one armed for good never ends by
 # itself, and a check that hung said nothing at all.
 LONGEST_S = 120.0
@@ -96,10 +120,13 @@ class Notes:
         self.rearm = False
         self.recovering: list[str] = []
         self.lost = None
+        self.jumps: list[tuple[float, str]] = []
 
     def write(self, m: dict) -> None:
         if m.get("k") != "n":
             return
+        if "jump" in m:
+            self.jumps.append((m["h"], m["jump"]))
         if "recovering" in m:
             self.recovering.append(m["recovering"])
         if "lost" in m:
@@ -121,13 +148,29 @@ class Notes:
 class HandRig(bc.SimRig):
     """SimRig, with a hand on the torso that follows `target`, and `upright`."""
 
-    def __init__(self, *a, hand=None, **k):
-        super().__init__(*a, **k)
+    def __init__(
+        self,
+        *a,
+        hand=None,
+        wheel_lag_s=WHEEL_LAG_S,
+        wheel_gain=WHEEL_GAIN,
+        leg_lag_s=LEG_LAG_S,
+        leg_gain=LEG_GAIN,
+        **k,
+    ):
+        super().__init__(
+            *a, wheel_lag_s=wheel_lag_s, wheel_gain=wheel_gain, leg_lag_s=leg_lag_s,
+            leg_gain=leg_gain, **k,
+        )  # fmt: skip
         self.stopped_by = self.stopped_why = None
         # Motors in a fault state: disabled, no torque, until cleared and enabled.
         self.dead: dict[str, bool] = {}
         self.woken: list[str] = []
         self.imu_quiet_until = -1.0
+        # The chip starting its estimate over, as a jump's shaking made it on the robot
+        # on 2026-11-06: gravity read straight along its own axis until the first time,
+        # then at the wrong length until the second.
+        self.imu_restart: tuple[float, float] | None = None
         self.stall = 0.0
         self.writer = Notes(self)
         self.hand = hand or (lambda rig: None)
@@ -201,6 +244,13 @@ class HandRig(bc.SimRig):
         super()._physics(dt)
         if quiet is not None:
             self.imu = quiet
+        if self.imu_restart is not None and "gravity" in self.imu:
+            frozen, wrong = self.imu_restart
+            at, v = self.imu["gravity"]
+            if self.t < frozen:
+                self.imu["gravity"] = (at, [0.0, 0.0, 9.800781])
+            elif self.t < wrong:
+                self.imu["gravity"] = (at, [1.6 * x for x in v])
         self.floor += 0.05 * (self._pressing() - self.floor)
         if self.first_touch is None and self.on_wheels() > 0.02:
             self.first_touch = self.t
@@ -281,11 +331,13 @@ def run(
     rearm=False,
     woken=False,
     rig_class=None,
+    jump_net=None,
+    jump_height=0.12,
 ):
     """balance.powered, on a hand's script. What it ended with, and the rig."""
     rig = (rig_class or HandRig)(
         ctx.ctl, ctx.robot_file, cmd_s=cmd_ms / 1000, report_s=0.0015, imu_s=imu_ms / 1000,
-        gyro_hz=400.0, gravity_hz=30.0, seed=seed, hand=hand,
+        gyro_hz=400.0, gravity_hz=30.0, seed=seed, hand=hand, **getattr(ctx, "lags", {}),
     )  # fmt: skip
     rig.m.opt.timestep = 0.0005
     rig.hang()
@@ -303,6 +355,8 @@ def run(
     rig.hand = watched
     balance.clock = lambda: rig.t
     bal = pl.Balancer(ctx.net)
+    if jump_net is not None:
+        bal = pl.TwoPolicies(bal, pl.JumpBalancer(jump_net), jump_height, volts=24.8)
     stepper = pl.Stepper(
         bal, pl.Imu(ctx.robot_file["imu_axes"], ctx.robot_file["imu_gravity_sign"]), rig,
         pl.Guard(30.0, pl.limits(wheel_vmax=WHEEL_VMAX)), clock=lambda: rig.t, wait=rig.advance,
@@ -422,10 +476,43 @@ def steadied_lowering(rig_begin=2.0):
     return hand
 
 
+# The driving policy on the robot, D3 since 2026-11-05 (D5 went on and came off again on
+# 2026-11-06), which the suite judges unless told otherwise. balance_check.py's RUN is the
+# one trained only to 0.5 m/s, on which case 15's fast mode cannot pass.
+DEPLOYED_RUN = ROOT / "exports" / "rl" / "rough-2026-11-05_10-37-59_fresh2_18"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--run", type=Path, default=bc.RUN)
+    ap.add_argument("--run", type=Path, default=DEPLOYED_RUN)
     ap.add_argument("--quick", action="store_true", help="one delay, fewer ways down")
+    ap.add_argument(
+        "--jump-run",
+        type=Path,
+        default=JUMP_RUN,
+        help="a jump run packed by sbc/pack_policy.py, for the A button's case",
+    )
+    ap.add_argument(
+        "--jump-delays",
+        default="4,2",
+        metavar="IMU,COMMAND",
+        help="ms, for the A button's case: the stand-in was trained to 10 ms at most, "
+        "and a policy trained on the robot's should pass at 16,6 as the rest do",
+    )
+    ap.add_argument(
+        "--wheel-lag-ms",
+        type=float,
+        default=WHEEL_LAG_S * 1000,
+        help="the wheels' torque lag, measured; 0 for none",
+    )
+    ap.add_argument("--wheel-gain", type=float, default=WHEEL_GAIN)
+    ap.add_argument(
+        "--leg-lag-ms",
+        type=float,
+        default=LEG_LAG_S * 1000,
+        help="the legs' torque lag, after their limit, measured; 0 for none",
+    )
+    ap.add_argument("--leg-gain", type=float, default=LEG_GAIN)
     args = ap.parse_args()
     cfg, onnx = drive.load_run(args.run)
     ctl = drive.Controller(drive.build_model(cfg), cfg, onnx)
@@ -433,6 +520,16 @@ def main() -> int:
         ctl=ctl,
         net=pl.Net(args.run / "exported" / "policy.npz"),
         robot_file=json.loads(bc.ROBOT_FILE.read_text()),
+        lags=dict(
+            wheel_lag_s=args.wheel_lag_ms / 1000,
+            wheel_gain=args.wheel_gain,
+            leg_lag_s=args.leg_lag_ms / 1000,
+            leg_gain=args.leg_gain,
+        ),
+    )
+    print(
+        f"the wheels' torque {args.wheel_gain:g} of asked through {args.wheel_lag_ms:g} ms, "
+        f"the legs' {args.leg_gain:g} through {args.leg_lag_ms:g} ms"
     )
     good = True
 
@@ -546,7 +643,7 @@ def main() -> int:
             rig.d.qpos[rig.m.jnt_qposadr[rig.m.joint(j).id]] = 1.85
         mujoco.mj_forward(rig.m, rig.d)
 
-    rig = HandRig(ctl, ctx.robot_file, 0.006, 0.0015, 0.016, 400.0, 30.0)
+    rig = HandRig(ctl, ctx.robot_file, 0.006, 0.0015, 0.016, 400.0, 30.0, **ctx.lags)
     rig.m.opt.timestep = 0.0005
     rig.hang()
     folded(rig)
@@ -887,6 +984,12 @@ def main() -> int:
 
         return do
 
+    def restart(frozen_s, wrong_s):
+        def do(rig):
+            rig.imu_restart = (rig.t + frozen_s, rig.t + frozen_s + wrong_s)
+
+        return do
+
     def stall(rig):
         rig.stall = 0.15
 
@@ -922,6 +1025,11 @@ def main() -> int:
         ),
         ("a knee's motor faults", trouble(6.0, fault("knee_right")), "motor fault"),
         ("the IMU silent 0.3 s", trouble(6.0, quiet(0.3)), "IMU"),
+        (
+            "the IMU starting over, as a jump made it",
+            trouble(6.0, restart(0.5, 0.8)),
+            "carried on the gyro",
+        ),
         ("a step 150 ms late", trouble(6.0, stall), "a step took"),
         ("the controller's deadman", trouble(6.0, deadman), "silent"),
         ("shoved hard", trouble(6.0, shove), None),
@@ -957,8 +1065,151 @@ def main() -> int:
         flush=True,
     )
 
+    why, rig = run(
+        "launch", lowers(), ctx, seconds=12.0, rearm=True,
+        script=trouble(6.0, restart(0.5, 3.0)),
+    )  # fmt: skip
+    n = rig.writer
+    fine = n.lost is not None and "letdown" in n.phases and n.fell is None
+    good &= fine
+    print(
+        f"   {'let down' if fine else 'FAILED'}: the IMU starting over and not back in "
+        f"{pl.GYRO_CARRY_S:g} s: {n.lost}; went through {' '.join(n.phases)}",
+        flush=True,
+    )
+
+    imu_ms, cmd_ms = (float(x) for x in args.jump_delays.split(","))
+    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms)
+
+    good &= taken_over_low(ctx)
+
     print("passed" if good else "FAILED")
     return 0 if good else 1
+
+
+def taken_over_low(ctx) -> bool:
+    """Case 18: the D-pad's height left at the bottom of the trained range by the run
+    before, and the hand that puts it down staying on it. On 2026-11-06 at 19:41-19:43
+    D5, taking over at 155 mm, folded its knees 0.85 rad in 0.15 s under the owner's
+    hand, its wheels came off the floor and spun to 55 rad/s, and the lift rule stopped
+    it, three times running. Here, with the height asked from the first step and no
+    crouch held first, D5 is cut with its wheels at 30 to 33 rad/s, and D3 at 170 mm is
+    cut or reaches 33. balance.py's Operator now takes over at the crouch's height."""
+    print("18. put down with the height already asked low, a hand staying on it")
+    low = ctx.net.meta["height_range"][0]
+
+    def asked_low(_rig):
+        return {"forward": 0.0, "turn": 0.0, "live": True, "height": low}
+
+    def nose_down(rig):
+        p = math.radians(6.0)
+        rig.upright = np.array([math.sin(p), 0.0, math.cos(p)])
+
+    good = True
+    for name, hand in (
+        ("staying a second, then letting go over one", lowers(react=1.0, release=1.0)),
+        ("letting go over two seconds", lowers(release=2.0)),
+    ):
+        why, rig = run(
+            "launch", hand, ctx, seconds=10.0, then=nose_down, script=asked_low
+        )
+        # Without the crouch first the wheels reach 30 rad/s and more; with it 11 to 18.
+        legs = float(np.mean(pl.leg_heights(rig.latest)))
+        fine = why == "stood" and rig.peak_spin < 20.0
+        good &= fine
+        print(
+            f"   {'stood' if fine else 'FAILED: ' + why}: {name}, {low * 1000:.0f} mm "
+            f"asked; wheels to {rig.peak_spin:.1f} rad/s, tilted to {rig.peak_tilt:.1f} "
+            f"deg, legs at {legs * 1000:.0f} mm",
+            flush=True,
+        )
+    return good
+
+
+# The stand-in jump policy for case 17: the September candidate, trained on the model
+# before the robot was measured, so the case judges the plumbing and not the jump. With
+# the robot's delays, IMU 16 ms and commands 6, it lands and then tips over within half
+# a second, still on the jump policy; with the delays it was trained to, 10 ms at most,
+# it lands and hands back standing, here as in September (TRAINING_HISTORY.md).
+JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-09-28_06-13-36_jumpsym300"
+
+
+def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool:
+    print(
+        f"17. the A button jumps, on the jump policy, and hands back "
+        f"(IMU {imu_ms:g} ms, commands {cmd_ms:g} ms)"
+    )
+    pack = jump_run / "exported" / "policy.npz"
+    if not pack.exists():
+        print(f"   FAILED: no {pack}: uv run sbc/pack_policy.py {jump_run}", flush=True)
+        return False
+    jump_net = pl.Net(pack)
+    good = True
+
+    def pressing(at, forward, fast=False, again=None):
+        seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None}
+
+        def script(rig):
+            if rig.first_touch is None:
+                return None
+            t = rig.t - rig.first_touch
+            presses = (t >= at) + (again is not None and t >= at + again)
+            if t >= at and seen["press"] is None:
+                seen["press"] = rig.t
+            if t >= at - 0.1:
+                clear = float(np.min(rig.ctl.clearance_now(rig.d)))
+                seen["clear"] = max(seen["clear"], clear)
+                seen["low"] = min(
+                    seen["low"], float(np.mean(pl.leg_heights(rig.latest)))
+                )
+                seen["tilt"] = max(seen["tilt"], rig.tilt_deg())
+            return {
+                "forward": forward,
+                "turn": 0.0,
+                "live": True,
+                "height": None,
+                "mode": int(fast and t >= 1.0),
+                "jump": int(presses),
+            }
+
+        return script, seen
+
+    cases = (
+        ("standing", dict(at=5.0, forward=0.0)),
+        ("at 0.5 m/s", dict(at=6.0, forward=1.8)),
+        ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5, fast=True)),
+        ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
+    )
+    for name, k in cases:
+        script, seen = pressing(**k)
+        why, rig = run(
+            "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
+            jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms,
+        )  # fmt: skip
+        n = rig.writer
+        said = [w for _, w in n.jumps]
+        back = next((h for h, w in n.jumps if w.startswith("handed back")), None)
+        took = None if back is None or seen["press"] is None else back - seen["press"]
+        fine = (
+            why == "stood"
+            and n.fell is None
+            and "lifted" not in n.phases
+            and any(w.startswith("jump:") for w in said)
+            and back is not None
+        )
+        if k.get("again") is not None:
+            fine &= any(w.startswith("refused: already") for w in said)
+        if k.get("fast"):
+            fine &= any("braking first" in w for w in said)
+        good &= fine
+        print(
+            f"   {'ok' if fine else 'FAILED'}: {name}: {why}; legs down to "
+            f"{seen['low'] * 1000:.0f} mm, wheels cleared {seen['clear'] * 1000:.0f} mm, "
+            f"tilted to {seen['tilt']:.1f} deg; back {took and round(took, 2)} s after the "
+            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:400],
+            flush=True,
+        )
+    return good
 
 
 if __name__ == "__main__":
