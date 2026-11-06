@@ -66,8 +66,21 @@ class SimRig:
         gravity_hz: float,
         seed: int = 0,
         broken: str | None = None,
+        wheel_lag_s: float = 0.0,
+        wheel_gain: float = 1.0,
+        leg_lag_s: float = 0.0,
+        leg_gain: float = 1.0,
     ):
         self.ctl, self.m = ctl, ctl.m
+        # The wheels' torque as the motor makes it: the command, scaled and through a
+        # first-order lag. launch_check.py's HandRig gives the measured values; here
+        # they are off, the torque being the command at once.
+        self.wheel_lag_s, self.wheel_gain = wheel_lag_s, wheel_gain
+        self.wheel_tau = np.zeros(2)
+        # The legs' the same, but after the motor's torque limit, which is where the
+        # robot's logs put their lag (plant.LEG_RESPONSE). Off here too.
+        self.leg_lag_s, self.leg_gain = leg_lag_s, leg_gain
+        self.leg_tau = np.zeros(4)
         self.d = mujoco.MjData(self.m)
         self.rng = np.random.default_rng(seed)
         self.cmd_s, self.report_s, self.imu_s = cmd_s, report_s, imu_s
@@ -146,7 +159,19 @@ class SimRig:
                 for k, c in enumerate(cmds)
             ]
         )
+        want = tau[4:6] * self.wheel_gain
+        if self.wheel_lag_s > 0.0:
+            self.wheel_tau += dt / (self.wheel_lag_s + dt) * (want - self.wheel_tau)
+        else:
+            self.wheel_tau = want
+        tau[4:6] = self.wheel_tau
         self.tau = self.ctl._saturate(tau, v)
+        want = self.tau[0:4] * self.leg_gain
+        if self.leg_lag_s > 0.0:
+            self.leg_tau += dt / (self.leg_lag_s + dt) * (want - self.leg_tau)
+        else:
+            self.leg_tau = want
+        self.tau[0:4] = self.leg_tau
         if self.broken == "wheel":
             self.tau[4] = -self.tau[4]
         d.ctrl[self.act] = self.tau
