@@ -463,7 +463,8 @@ def play(rig: Rig, segments, limits, joints, rate: float) -> str:
                 for e in events:
                     rig.writer.write({"k": "n", "h": round(now, 6), **e})
                     if "seg" in e and "answer" not in e:
-                        print(f"  {e['seg']}", flush=True)
+                        if not seq.segments[e["i"]].quiet:
+                            print(f"\n  {e['seg']}", flush=True)
                 if cmds is None:
                     break
                 for j, c in cmds.items():
@@ -499,16 +500,28 @@ def play(rig: Rig, segments, limits, joints, rate: float) -> str:
 
     worker = threading.Thread(target=loop, daemon=True)
     worker.start()
+    coached = (None, 0.0)  # which segment was last coached, and when
     try:
         while not done.is_set():
             with lock:
                 prompt = seq.prompt
+                seg, start = seq.segment, seq.start
             if prompt:
                 answer = input(f"\n{prompt} ")
                 with lock:
                     seq.answer(answer.strip())
-            else:
-                done.wait(0.05)
+                continue
+            if seg is not None and seg.coach is not None and start is not None:
+                now = clock()
+                if coached[0] is not seg or now - coached[1] >= seg.coach_s:
+                    coached = (seg, now)
+                    try:
+                        say = seg.coach(now - start, dict(rig.latest))
+                    except Exception as error:  # a coach never stops a test
+                        say = f"({error!r})"
+                    if say:
+                        print(f"    {say}", flush=True)
+            done.wait(0.05)
     except (KeyboardInterrupt, EOFError):
         done.set()
         rig.stop()
@@ -812,11 +825,21 @@ def levelling(args) -> int:
 
         threading.Thread(target=poll, daemon=True).start()
         samples: list[list[float]] = []
+        # The gravity report beside the accelerometer, whose length is what diagd
+        # holds the robot standing still to from now on: the accelerometer's
+        # zero-g offset is the up these axes rest on, and when the IMU's own
+        # calibration moved it on 2026-11-05 the length stepped by 0.2 m/s2.
+        gravities: list[list[float]] = []
+        lengths: list[float] = []
         grab = {"on": False}
 
         def on_imu(m):
-            if m["report"] == "accel" and grab["on"]:
+            if not grab["on"]:
+                return
+            if m["report"] == "accel":
                 samples.append(m["v"])
+            elif m["report"] == "gravity":
+                gravities.append(m["v"])
 
         robot.on("imu", on_imu)
 
@@ -828,6 +851,7 @@ def levelling(args) -> int:
             deadline = clock() + 6.0
             while clock() < deadline:
                 samples.clear()
+                gravities.clear()
                 spots: dict[str, list[float]] = {j: [] for j in legs}
                 grab["on"] = True
                 end = clock() + span
@@ -847,6 +871,10 @@ def levelling(args) -> int:
                 )
                 drift = max(max(s) - min(s) for s in spots.values())
                 if spread < wobble and (drift < 0.004 or not legs_too):
+                    if gravities:
+                        lengths.append(
+                            math.sqrt(sum(c * c for c in mean_vec(gravities)))
+                        )
                     return m, {j: sum(s) / len(s) for j, s in spots.items()}
             return None
 
@@ -857,6 +885,10 @@ def levelling(args) -> int:
                 if got:
                     return got
                 print("  still moving; again.")
+
+        def turned(a, b) -> float:
+            """Degrees between two of the torso's axes as the IMU sees them."""
+            return math.degrees(math.acos(max(-1.0, min(1.0, dot(a, b)))))
 
         def reading(prompt: str) -> float:
             while True:
@@ -880,12 +912,31 @@ def levelling(args) -> int:
             imu_record = {"imu": "kept from the file", "imu_axes": axes}
             print("\nThe IMU's axes are kept as the file has them.")
         else:
+            lengths.clear()
             ex, ey, ez, axes, imu_record = level_imu(capture, reading)
             print(
                 f"  IMU axes set. The phone's own error was {imu_record['phone_error_deg']:.1f} "
                 f"degrees. The torso's up is {off_square(ez):.1f} degrees off the IMU's "
                 f"nearest axis, and its forward {off_square(ex):.1f}."
             )
+            if before.get("imu_axes"):
+                was = before["imu_axes"]
+                imu_record["up_moved_deg"] = round(turned(was[2], ez), 2)
+                print(
+                    f"  Its up has moved {imu_record['up_moved_deg']:.1f} degrees from "
+                    f"the file's, and its forward {turned(was[0], ex):.1f}."
+                )
+            # level_imu's first two captures are the level ones, phone either way round.
+            if len(lengths) >= 2:
+                imu_record["gravity_m_s2"] = round(sum(lengths[:2]) / 2, 3)
+                print(
+                    f"  Gravity reads {imu_record['gravity_m_s2']:.3f} m/s2 long level; "
+                    "diagd says so if that moves."
+                )
+            else:
+                print(
+                    "  No gravity report came: diagd will have no length to hold it to."
+                )
         imu_record["imu_up_off_square_deg"] = round(off_square(ez), 2)
         imu_record["imu_forward_off_square_deg"] = round(off_square(ex), 2)
 
@@ -906,6 +957,8 @@ def levelling(args) -> int:
                 "nose-down tip, accelerometer only"
             )
             out["imu_level"] = imu_record
+            if "gravity_m_s2" in imu_record:
+                out["imu_gravity_m_s2"] = imu_record["gravity_m_s2"]
             st.ROBOT_FILE.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
             print(
                 f"\nwritten {st.ROBOT_FILE}: the IMU's axes only; the legs' zeros kept"
@@ -979,6 +1032,8 @@ def levelling(args) -> int:
             for j, w in before["joints"].items()
         }
         out["imu_axes"] = axes
+        if "gravity_m_s2" in imu_record:
+            out["imu_gravity_m_s2"] = imu_record["gravity_m_s2"]
         out["level"] = {
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             **imu_record,

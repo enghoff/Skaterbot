@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import select
 import signal
@@ -88,6 +89,128 @@ REPORT_IDS = {name: rid for rid, (name, _, _) in REPORTS.items()}
 LENGTHS = {0x01: 10, 0x02: 10, 0x03: 10, 0x04: 10, 0x05: 14, 0x06: 10}
 LENGTHS |= {0x07: 16, 0x08: 12, 0x09: 14, 0x0F: 16, 0x28: 14, 0x29: 12}
 LENGTHS |= {0x2A: 14, 0xFA: 5, 0xFB: 5}
+
+# SH-2's Command Response, and the two commands the controller sends the hub at every
+# start (firmware/diag/src/main.rs, start_imu_reports): Configure ME Calibration, which
+# answers R0 the status, 0 for done, then R1-R5 whether it calibrates each of these by
+# itself; and Configure Periodic DCD Save. On the robot on 2026-11-06 the hub answered
+# both ME Calibrations, the setting and the asking back, and never the DCD Save, so the
+# second ME Calibration answer after a reset is the one read back. And it answers several
+# at once: one control packet held the Initialize answer and both ME Calibration answers,
+# another a Get Feature answer and two more, so every packet is walked record by record.
+COMMAND_RESPONSE = 0xF1
+ME_CALIBRATION = 0x07
+PERIODIC_DCD_SAVE = 0x09
+# The control channel's records that can share a packet, by length.
+CONTROL_LENGTHS = {0xF1: 16, 0xF8: 16, 0xFC: 17}
+CALIBRATED = ("accel", "gyro", "mag", "planar", "on_table")
+
+ROBOT_FILE = Path(__file__).with_name("sysid_robot.json")
+# The accelerometer's zero-g offset is what the robot's up rests on. When the hub's own
+# calibration moved it on 2026-11-05, the gravity report's length stepped from 9.93-9.96
+# to 9.74-9.75 m/s2 and the robot standing balanced read about 3 degrees nose-down from
+# then on, which nothing said until its driving was found slow on 6 November. So the
+# length standing still is held to what it read when the IMU was levelled
+# (sysid_robot.json's imu_gravity_m_s2, which `sysid.py level` writes), and a step
+# past this is said in the log.
+GRAVITY_DRIFT_M_S2 = 0.05
+# Standing still is the gyro under this on every axis, for this long, with gravity
+# within this of the torso's down. Lying on its front the length read 0.3 m/s2 off
+# what it read upright, before that step, so only upright readings are compared.
+STILL_RAD_S = 0.05
+GRAVITY_SPAN_S = 2.0
+UPRIGHT_DEG = 20.0
+
+
+def me_calibration(payload: bytes) -> dict:
+    """A Configure or Get ME Calibration's answer."""
+    status, *on = payload[5:11]
+    return {"ok": status == 0, **{k: bool(v) for k, v in zip(CALIBRATED, on)}}
+
+
+class GravityWatch:
+    """The gravity report's length while the robot stands still and upright, against
+    what it read when the IMU was levelled."""
+
+    def __init__(self, path: Path = ROBOT_FILE):
+        self.path = path
+        self.mtime: float | None = None
+        self.levelled: float | None = None
+        self.axes: list | None = None
+        self.sign = 1
+        self.still = False
+        self.window: list[tuple[float, float]] = []
+        self.reading: float | None = None
+        self.read_at: float | None = None
+        self.off = False
+        self.load()
+
+    def load(self) -> None:
+        """The file's levelled length and axes, read again whenever it changes."""
+        try:
+            mtime = self.path.stat().st_mtime
+        except OSError:
+            self.mtime = self.levelled = self.axes = None
+            return
+        if mtime == self.mtime:
+            return
+        self.mtime = mtime
+        try:
+            robot = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        self.levelled = robot.get("imu_gravity_m_s2")
+        self.axes = robot.get("imu_axes")
+        self.sign = robot.get("imu_gravity_sign", 1)
+
+    def gyro(self, w) -> None:
+        self.still = max(abs(x) for x in w) < STILL_RAD_S
+
+    def upright(self, g, length: float) -> bool:
+        if not self.axes or length < 1.0:
+            return False
+        down = sum(a * x for a, x in zip(self.axes[2], g)) * self.sign / length
+        return down < -math.cos(math.radians(UPRIGHT_DEG))
+
+    def gravity(self, t: float, g) -> str | None:
+        """Takes a gravity report. What to say, if the length standing still has just
+        moved off the levelled one, or come back to it."""
+        length = math.sqrt(sum(x * x for x in g))
+        if not (self.still and self.upright(g, length)):
+            self.window.clear()
+            return None
+        self.window.append((t, length))
+        if t - self.window[0][0] < GRAVITY_SPAN_S:
+            return None
+        self.reading = sum(x for _, x in self.window) / len(self.window)
+        self.read_at = t
+        self.window.clear()
+        self.load()
+        if self.levelled is None:
+            return None
+        off = abs(self.reading - self.levelled) > GRAVITY_DRIFT_M_S2
+        if off == self.off:
+            return None
+        self.off = off
+        if off:
+            return (
+                f"imu: standing still, gravity reads {self.reading:.3f} m/s2 long, and "
+                f"{self.levelled:.3f} when the IMU was levelled: its up may have moved, "
+                "which slows the robot one way and speeds it the other. Level it again "
+                "(sysid.py level --imu)"
+            )
+        return (
+            f"imu: standing still, gravity reads {self.reading:.3f} m/s2 long, back "
+            f"within {GRAVITY_DRIFT_M_S2} of the levelled {self.levelled:.3f}"
+        )
+
+    def summary(self) -> dict:
+        return {
+            "standing_m_s2": None if self.reading is None else round(self.reading, 3),
+            "levelled_m_s2": self.levelled,
+            "off": self.off,
+            "t": self.read_at,
+        }
 
 
 class Refused(Exception):
@@ -500,6 +623,11 @@ class Daemon:
         self.imu_internal_errors: deque = deque(maxlen=32)
         self.imu_features: dict = {}
         self.imu_parse_errors = 0
+        # The hub's calibration settings as it last answered them, and whether the
+        # answer to come is the controller's asking back, which follows its DCD one.
+        self.imu_calibration: dict = {}
+        self.imu_calibration_next_is_readback = False
+        self.gravity = GravityWatch()
         self.led = led or Led(None)
         self.health = Health(self.started)
         self.health_flags = 0
@@ -667,6 +795,10 @@ class Daemon:
                 "control": str(self.owner) if self.owner else None,
             }
             status["imu_diag"] = dict(self.imu_diag)
+            status["imu_cal"] = {
+                **self.imu_calibration,
+                "gravity": self.gravity.summary(),
+            }
             status["health"] = self.health_event()
         return status
 
@@ -742,6 +874,15 @@ class Daemon:
                     values = [v / (1 << q) for v in raw]
                     if rid == 0x05:
                         values[4] = raw[4] / (1 << 12)
+                    said = None
+                    if name == "gyro":
+                        with self.lock:
+                            self.gravity.gyro(values)
+                    elif name == "gravity":
+                        with self.lock:
+                            said = self.gravity.gravity(t, values)
+                    if said:
+                        self.log(said, t)
                     self.broadcast(
                         "imu",
                         {
@@ -753,7 +894,24 @@ class Daemon:
                         },
                     )
                 i += size
-        elif channel == 2 and payload[:1] == b"\xfc" and len(payload) >= 9:
+        elif channel == 2:
+            i = 0
+            while i < len(payload):
+                size = CONTROL_LENGTHS.get(payload[i])
+                if size is None or i + size > len(payload):
+                    break
+                self.imu_control_record(t, payload[i : i + size])
+                i += size
+        elif channel == 1 and payload[:1] == b"\x01":
+            with self.lock:
+                self.imu_features.clear()
+                self.imu_calibration.clear()
+                self.imu_calibration_next_is_readback = False
+            self.log("imu: reset complete", t)
+
+    def imu_control_record(self, t: float, payload: bytes) -> None:
+        """One record from the hub's control channel."""
+        if payload[0] == 0xFC and len(payload) >= 9:
             report = payload[1]
             interval = struct.unpack_from("<I", payload, 5)[0]
             hz = round(1e6 / interval, 3) if interval else 0
@@ -762,21 +920,45 @@ class Daemon:
             self.imu_answer(
                 ("feature", report), report=REPORTS.get(report, (report,))[0], hz=hz
             )
-        elif channel == 2 and payload[:1] == b"\xf8" and len(payload) >= 14:
+        elif payload[0] == 0xF8 and len(payload) >= 14:
             major, minor, part, build, patch = struct.unpack_from("<BBIIH", payload, 2)
             self.imu_answer(
                 ("product",), part=part, version=f"{major}.{minor}.{patch}", build=build
             )
-        elif channel == 1 and payload[:1] == b"\x01":
+        elif payload[0] == COMMAND_RESPONSE and payload[2] == PERIODIC_DCD_SAVE:
+            ok = payload[5] == 0
             with self.lock:
-                self.imu_features.clear()
-            self.log("imu: reset complete", t)
-        elif (
-            channel == 2
-            and len(payload) >= 16
-            and payload[0] == 0xF1
-            and payload[2] == 1
-        ):
+                self.imu_calibration["dcd_save_off"] = ok
+            if not ok:
+                self.log(
+                    f"imu: turning off the saving of its calibration failed, {payload[5]}",
+                    t,
+                )
+        elif payload[0] == COMMAND_RESPONSE and payload[2] == ME_CALIBRATION:
+            answer = me_calibration(payload)
+            with self.lock:
+                readback = self.imu_calibration_next_is_readback
+                self.imu_calibration_next_is_readback = not readback
+                if readback:
+                    self.imu_calibration["readback"] = {"t": t, **answer}
+                else:
+                    self.imu_calibration["configured"] = answer["ok"]
+            if readback:
+                on = [k for k in CALIBRATED if answer[k]]
+                self.log(
+                    "imu: calibrating by itself: "
+                    + (", ".join(on) if on else "nothing")
+                    + ("" if answer["ok"] else f" (answer {payload[5]})")
+                    + (
+                        "; the ACCELEROMETER's is on, so its up can move"
+                        if answer["accel"]
+                        else ""
+                    ),
+                    t,
+                )
+            elif not answer["ok"]:
+                self.log(f"imu: setting its calibration failed, {payload[5]}", t)
+        elif payload[0] == COMMAND_RESPONSE and payload[2] == 1:
             error = dict(
                 zip(
                     ("severity", "sequence", "source", "error", "module", "code"),
@@ -869,6 +1051,8 @@ class Daemon:
                 "internal_errors": list(self.imu_internal_errors),
                 "control_packets": list(self.imu_control),
                 "parse_errors": self.imu_parse_errors,
+                "calibration": dict(self.imu_calibration),
+                "gravity": self.gravity.summary(),
             }
 
     def op_control(self, client: Client, m: dict) -> dict:

@@ -126,6 +126,41 @@ const IMU_DEFAULT_REPORTS: [u8; 4] = [0x01, 0x02, 0x06, 0x08];
 const IMU_REPORT_INTERVAL_US: u32 = 10_000;
 /// Leave the hub's boot/reset sequence undisturbed before I2C setup.
 const IMU_BOOT_QUIET: Duration = Duration::from_millis(300);
+/// SH-2's Command Request, on the control channel, and the two commands sent
+/// with it: the report IDs are the BNO08X datasheet's (1000-3927 v1.17, figure
+/// 1-30, reference/BNO080_085-Datasheet.pdf), and the commands and their
+/// parameters the SH-2 Reference Manual's (1000-3625), which the datasheet
+/// points to and which CEVA's sh2 driver sends the same way (SH2_CMD_ME_CAL 7,
+/// SH2_CMD_DCD_PERIOD_SAVE 9). The answers come back as Command Responses
+/// (0xF1) with every other packet, and diagd reads them.
+const SH2_COMMAND_REQUEST: u8 = 0xF2;
+const SH2_ME_CALIBRATION: u8 = 0x07;
+const SH2_PERIODIC_DCD_SAVE: u8 = 0x09;
+/// What the hub calibrates by itself, as Configure ME Calibration's parameters:
+/// P0 accelerometer, P1 gyroscope, P2 magnetometer, P3 the subcommand (0 is
+/// configure), P4 planar accelerometer, P5 on-table, 1 for on.
+///
+/// The accelerometer's is off. Its zero-g offset is what the robot's up was
+/// levelled against, and the hub's own calibration moved it on 2026-11-05 at
+/// about 16:10: the gravity report's length stepped from 9.93-9.96 to 9.74-9.75
+/// m/s2, and the robot standing balanced read 2.4-3.2 degrees nose-down from
+/// then on, which the policy answered by driving slower forwards and faster in
+/// reverse than it was asked. That calibration wants the device held still in
+/// four to six orientations (datasheet 3.2); a robot on wheels gives it
+/// whatever it happens to do. The magnetometer's is off as well, nothing here
+/// using it: the game rotation vector has none. The gyroscope's stays off, as
+/// the datasheet has it by default, for want of a hand's tremor (3.1.3), and
+/// the on-table correction is on, which puts the zero rate right whenever the
+/// robot stands still.
+const IMU_CALIBRATE: [u8; 9] = [0, 0, 0, 0, 0, 1, 0, 0, 0];
+/// Get ME Calibration: the same command with the subcommand 1, answered with
+/// the five settings the hub is running with.
+const IMU_CALIBRATION_GET: [u8; 9] = [0, 0, 0, 1, 0, 0, 0, 0, 0];
+/// Configure Periodic DCD Save, P0 1 for off. The hub otherwise writes what it
+/// has learned to its flash every so often, where every later power-up reads
+/// it. It still writes it at any reset that is not a power-up (datasheet 3.4),
+/// which with the accelerometer's calibration off no longer changes the up.
+const IMU_DCD_SAVE_OFF: [u8; 9] = [1, 0, 0, 0, 0, 0, 0, 0, 0];
 /// An SHTP length past this is not a BNO085 talking: a bus that reads all
 /// ones, say.
 const IMU_LONGEST: usize = 1024;
@@ -220,6 +255,8 @@ struct Shared {
     imu: Option<u8>,
     /// One sequence per SHTP channel, shared by defaults and Pi requests.
     imu_sequence: [u8; 6],
+    /// SH-2's own sequence for Command Requests, which each answer repeats.
+    imu_command_sequence: u8,
     imu_quiet_until: Option<Instant>,
     ina: Option<u8>,
     vbus_mv: Option<u16>,
@@ -252,6 +289,7 @@ impl Shared {
             addressed,
             imu: None,
             imu_sequence: [0; 6],
+            imu_command_sequence: 0,
             imu_quiet_until: None,
             ina: None,
             vbus_mv: None,
@@ -1333,6 +1371,47 @@ async fn start_imu_reports(i2c: &mut I2c<'_, Async, Master>, address: u8, ctx: &
         }
     }
     ctx.out.log("imu: default reports requested at 100 Hz");
+    // A reset puts the hub's calibration settings back to its defaults with its
+    // reports, so they are set again with them, and then asked back.
+    for (command, parameters) in [
+        (SH2_ME_CALIBRATION, IMU_CALIBRATE),
+        (SH2_PERIODIC_DCD_SAVE, IMU_DCD_SAVE_OFF),
+        (SH2_ME_CALIBRATION, IMU_CALIBRATION_GET),
+    ] {
+        if !command_imu(i2c, address, command, &parameters, ctx).await {
+            ctx.shared.borrow_mut().imu_gone();
+            ctx.out
+                .log("imu: calibration setup failed; looking for it again");
+            return;
+        }
+    }
+    ctx.out.log(
+        "imu: its own accelerometer and magnetometer calibration off, and the \
+         saving of it; asked back",
+    );
+}
+
+/// An SH-2 Command Request: the report, its sequence, the command and nine
+/// parameters, on the control channel.
+async fn command_imu(
+    i2c: &mut I2c<'_, Async, Master>,
+    address: u8,
+    command: u8,
+    parameters: &[u8; 9],
+    ctx: &Ctx<'_>,
+) -> bool {
+    let mut packet = [0u8; 16];
+    packet[0] = 16;
+    packet[2] = 2;
+    packet[4] = SH2_COMMAND_REQUEST;
+    {
+        let mut s = ctx.shared.borrow_mut();
+        packet[5] = s.imu_command_sequence;
+        s.imu_command_sequence = s.imu_command_sequence.wrapping_add(1);
+    }
+    packet[6] = command;
+    packet[7..16].copy_from_slice(parameters);
+    write_imu(i2c, address, &mut packet, ctx).await
 }
 
 /// Reads the IMU's next packet, if it has one, and passes it to the Pi.
