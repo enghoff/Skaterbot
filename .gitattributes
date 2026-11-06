@@ -24,3 +24,6 @@
 # carriage return, so neither can be left to core.autocrlf.
 *.cmd   text eol=crlf
 *.sh    text eol=lf
+
+# Trained policies: binary networks, kept byte for byte.
+policies/**/exported/* -text
