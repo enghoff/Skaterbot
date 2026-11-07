@@ -62,16 +62,23 @@ BTN_TL2, BTN_SELECT = 0x138, 0x13A
 SONY, MICROSOFT = 0x054C, 0x045E
 
 # The trained ranges of the driving policy for the robot, from its run's
-# params/env.yaml (exports/rl/rough-2026-11-05_10-37-59_fresh2_18):
+# params/env.yaml (exports/rl/rough-2026-11-07_11-52-47_d8, D8, which has D6's ranges):
 # command_lin_vel_x, command_yaw_rate and command_leg_height_m. The exported run is
 # the authority: check these against whichever is deployed. A trigger's or a stick's
 # end sends the whole of it, and balance.py scales that to its own limits. That
 # policy was trained inside the diamond between the two tops, which balance.py
 # holds it to after scaling, so ENVELOPE, which would hold it here, is off: here it
 # would halve a slow limit's full turn and full speed together for nothing.
-TOP_SPEED_M_S = 1.8
-TOP_TURN_RAD_S = 15.0
-HEIGHT_RANGE_M = (0.170, 0.207)
+# launcher.py's --fast-speed 1.8 and --fast-turn 15 keep fast mode where D3 had it. The
+# turn is the task's, twice the top speed over the wheels' track, 25.0998, to the
+# thousandth a command is sent to.
+TOP_SPEED_M_S = 2.2
+TOP_TURN_RAD_S = 25.1
+# The top is the crouch D7 and D8 were trained from, not the task's 207 mm: on the robot
+# on 2026-11-07 D7 stood at 0.05-0.13 rad/s rms at 203 mm and swayed at 1.2-1.6 Hz,
+# 0.43-0.45 rad/s and about 5 degrees each way, at 207, as MuJoCo had it sway there.
+# D8's checks stood it at 204 mm and no higher.
+HEIGHT_RANGE_M = (0.165, 0.2035)
 ENVELOPE = False
 # default_leg_height_m in the same file: the crouch trained around.
 DEFAULT_HEIGHT_M = 0.2035
