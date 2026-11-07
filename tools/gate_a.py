@@ -303,12 +303,12 @@ ADDED = {
     # on the ridge and takes the washer's place, squeezed end-on rather than
     # bent across a hole. These are the hub's seat and ridge, and the cap.
     #
-    # The seat depth is the 608's width; the ridge's bore is unmeasured and
-    # drawn in the middle of the window the bearing allows. Both are in
-    # cad/wheeled_parameters.py with their provenance, and both are on the list
-    # of what to measure before the adapter is printed.
+    # The seat depth is the 608's width. The ridge's bore was drawn Ø16, the
+    # middle of the window the bearing allows, and the owner MEASURED it Ø20 on
+    # 7 November 2026, through a ridge 10 mm long as drawn. Both are in
+    # cad/wheeled_parameters.py with their provenance.
     "skateWheelBearingSeatDepth": 7.0,
-    "skateWheelRidgeBore": 16.0,
+    "skateWheelRidgeBore": 20.0,
     "skateWheelRidgeInnerX": 31.95,
     "skateWheelRidgeOuterX": 41.95,
     # The cap: Ø22 to the seat, a 6 mm floor sized for the widest ridge bore the
@@ -323,12 +323,13 @@ ADDED = {
     "wheelCapOuterX": 54.45,
     # The boss under the cap's floor, 7 November 2026, after a cap on the robot
     # was found heat-damaged and its screw loose. It reaches down into the
-    # ridge's bore, which it follows less 0.4 mm of air a side, and stops a
+    # ridge's bore, which it follows less 0.7 mm of air a side -- room for the
+    # fill cad/finish.py leaves at its root as well as gate H's 0.2 -- and stops a
     # millimetre short of the ridge's inboard face, so it bears on nothing and
     # the cap still clamps the ridge exactly as it did. It deepens the floor
     # where the screw bends it. cad/wheeled_parameters.py has the reasoning.
-    "wheelCapBossClearance": 0.4,
-    "wheelCapBossDiameter": 15.2,
+    "wheelCapBossClearance": 0.7,
+    "wheelCapBossDiameter": 18.6,
     "wheelCapBossShort": 1.0,
     "wheelCapBossLength": 9.000000000000004,
     # The adapter's bore since the insert went in from the motor side: the

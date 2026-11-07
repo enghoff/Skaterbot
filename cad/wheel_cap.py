@@ -29,8 +29,8 @@ So the same day the cap grew a boss under its floor, down into the ridge's bore:
 narrower than the bore, so the cap still lands on the ridge as it did, and
 stopping inside the ridge, so it bears on nothing and the clamp is unchanged.
 It deepens the floor where the screw bends it and centres the cap in the hub.
-cad/wheeled_parameters.py has its sizes beside wheelCapBossDiameter; the bore
-they follow is still unmeasured.
+cad/wheeled_parameters.py has its sizes beside wheelCapBossDiameter: Ø18.6 in
+the Ø20 bore the owner measured, 9 deep in a ridge measured 10 long.
 """
 
 from __future__ import annotations

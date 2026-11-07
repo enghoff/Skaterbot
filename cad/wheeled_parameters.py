@@ -41,7 +41,8 @@ from cad.parameters import (
 # standardised. Ø45, Ø16 and a 20 mm crown radius are representative of an
 # 80 mm wheel; all three need confirming with calipers against whichever wheel
 # is actually bought, and so do the two seat depths, which the adapter's spigot
-# and the cap are both drawn against.
+# and the cap are both drawn against. The ridge's bore and length have been,
+# on 7 November 2026: Ø20 and 10 mm (skateWheelRidgeBore below).
 skateWheelDiameter = 80.0
 skateWheelWidth = 24.0
 skateWheelHubDiameter = 45.0
@@ -54,12 +55,14 @@ skateWheelBearingBore = 22.0
 # 7 mm in from either face -- where the 23 mm spigot this adapter used to carry
 # would have stopped dead, with the wheel standing 16 mm off the motor.
 skateWheelBearingSeatDepth = 7.0
-# The ridge's bore, which has NOT been measured. It has to clear the spacer and
-# the inner race, whose shoulder on a 608 is about Ø12, and stop the outer race,
-# whose shoulder is about Ø19; Ø16 is the middle of that window. Nothing on the
-# robot depends on it except how wide a hole the cap's floor has to span, and
-# that floor is sized for the top of the window -- see wheelCapFloor below.
-skateWheelRidgeBore = 16.0
+# The ridge's bore, MEASURED Ø20 by the owner on 7 November 2026, through a
+# ridge measured 10 mm long, as drawn. It was drawn Ø16 until then, the middle
+# of the window a 608 seemed to allow -- clear of the inner race and spacer,
+# about Ø12, and stopping the outer race, whose shoulder is about Ø19 -- and the
+# hub bought is wider than that window: a Ø20 bore still stops a Ø22 outer race,
+# on a ring a millimetre wide. That ring is all the cap lands on, and the bore
+# is what the cap's floor and boss span -- see wheelCapFloor and the boss below.
+skateWheelRidgeBore = 20.0
 
 # The tread is crowned rather than flat: it stands 4 mm proud at the centre
 # line and falls to Ø72 at the sidewalls. A 20 mm radius through those two
@@ -189,7 +192,9 @@ wheelSpigotClearance = 5.5
 # goes into the hub end-on, through the face the bearing used to push on: about
 # 6 MPa on the ridge at 1 kN with the Ø16 bore drawn, 10 at the widest the
 # bearing allows. The only plate left is the cap's own floor, spanning the
-# ridge's bore.
+# ridge's bore. THE BORE MEASURED Ø20 (7 November 2026), which leaves the cap a
+# ring from r10 to r11 to land on: 66 mm2, about 15 MPa at 1 kN, before
+# anything the finish breaks off the cap's outer edge is taken from it.
 wheelCapDiameter = skateWheelBearingBore
 # THE FLOOR IS SIZED FOR THE WIDEST RIDGE BORE THE BEARING ALLOWS. The screw
 # head bears on the washer and the washer on the floor, and the ridge holds the
@@ -198,7 +203,8 @@ wheelCapDiameter = skateWheelBearingBore
 # the load as a ring under the head's Ø8.5, 6 mm keeps the bending stress under
 # 18 MPa across a Ø19 bore and about 14 across the Ø16 drawn -- a plate estimate,
 # and a pessimistic one for a floor this thick across a span this short. The
-# cap prints with its layers parallel to the floor -- rim-down since the boss
+# bore measured Ø20, past that window, and what spans it now is the floor and
+# the boss below together. The cap prints with its layers parallel to the floor -- rim-down since the boss
 # below, floor-down before it -- so its layers lie across that stress rather
 # than along it.
 wheelCapFloor = 6.0
@@ -220,15 +226,24 @@ wheelCapCounterbore = 12.0
 # ridge holds it up only outside its bore, so the floor carries the clamp in
 # shear and bending across the ring between the two; with the boss, everything
 # inside the bore is the floor's 6 mm and the boss's 9 deep, and only the
-# 0.4 mm of air at its edge is left at 6. It also centres the cap in the hub.
+# 0.7 mm of air at its edge is left at 6. It also centres the cap in the hub.
 #
-# Its diameter is the ridge's bore less 0.4 mm of air a side: twice the 0.2 mm
-# gate H holds parts that do not touch to, which leaves room for a print that
-# comes out a little fat. THE BORE IS NOT MEASURED (skateWheelRidgeBore above),
-# so the boss follows it rather than a number of its own -- measure the bore
-# through the ridge before this is printed. A bore narrower than the boss
+# Its diameter is the ridge's bore less 0.7 mm of air a side. It follows the
+# bore rather than a number of its own, because a boss that met the bore's edge
 # would hold the cap off the ridge, which is the one thing this must not do.
-wheelCapBossClearance = 0.4
+#
+# 0.7 AND NOT 0.4, WHICH IS WHAT GATE H ALONE WOULD ASK. cad/finish.py breaks
+# every edge whose faces are flat or a convex cylinder, and the corner where the
+# boss leaves the floor is one, although it is an inside corner: so the printed
+# cap carries a 0.5 mm 45 degree fill there, standing out 0.5 mm from the boss
+# along the face that lands on the ridge. At 0.4 a side that fill reached
+# 0.1 mm past the bore's edge, and the finished cap shared 0.32 mm3 with the hub
+# -- seated on the corner of the bore, not on the ridge. Gate H measures the
+# parts as drawn and could not see it. 0.7 is the fill's 0.5 and gate H's 0.2.
+#
+# It was Ø15.2 for an afternoon, against the Ø16 drawn. The bore measured Ø20,
+# and the owner asked for the boss as close to it as is safe: Ø18.6.
+wheelCapBossClearance = 0.7
 wheelCapBossDiameter = skateWheelRidgeBore - 2 * wheelCapBossClearance
 # It stops a millimetre short of the ridge's inboard face, so it stays inside
 # the ridge: with the millimetre the spigot already stops short of that face,
