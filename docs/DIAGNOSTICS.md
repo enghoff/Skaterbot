@@ -167,6 +167,15 @@ judges the rest from STATUS and IMU_DIAG instead, more coarsely: the IMU or the
 INA226 not found for 3 s, a bus seen in bus-off, and the IMU found for 3 s with
 not one input report since the controller started.
 
+Until the controller first answers, diagd sets the port's speed again every 2 s,
+through 9600 and back, and logs that it did. The Pi's UART is DesignWare's,
+which ignores a change of speed while it is receiving, and the kernel's retry
+gives up without a word; the controller streams from power-on. On 7 November
+2026 the robot came up with the port still at its old speed and both directions
+garbled, the Pi's LED on the link fault's even blink, until diagd was restarted
+by hand. On the robot that morning, with the controller streaming, one change
+back to 1.5 Mbaud in twelve did not take (`tools/test_link_reset.py`).
+
 **On the Pi**, diagd drives `/sys/class/leds/red:status`. Healthy is the
 kernel's heartbeat trigger with `invert=1`, as `robot_poweroff.py
 --start-heartbeat` leaves it at boot, and diagd does not touch the LED while

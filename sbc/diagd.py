@@ -64,6 +64,12 @@ PING_S = 0.05
 # No status for this long and the controller is taken to be gone.
 LINK_TIMEOUT_S = 0.5
 HELLO_S = 1.0
+# With no answer this long after starting, and as often again until one comes, the
+# port's speed is set again. The Pi's UART is DesignWare's, which ignores a change of
+# speed while it is receiving, and the kernel's retry gives up without a word; the
+# controller streams from power-on, so on 7 November 2026 diagd came up with the port
+# still at its old speed, both ways garbled, until it was restarted by hand.
+RESET_PORT_S = 2.0
 CONTROL_SILENCE_S = 0.5
 # A can.request's own timeout: the controller answers in about a millisecond.
 REQUEST_DEFAULT_S, REQUEST_MOST_S = 0.02, 1.0
@@ -491,6 +497,17 @@ class SerialStream:
     def write(self, data: bytes) -> None:
         self.port.write(data, drain=False)
 
+    def reset(self) -> None:
+        """Sets the port's speed again, by way of another: the kernel does nothing
+        for a setting it already holds, and it is the setting that did not take."""
+        baud = self.port.baud
+        self.port.baud = 9600 if baud != 9600 else 115200
+        try:
+            self.port.configure(parity=False)
+        finally:
+            self.port.baud = baud
+        self.port.configure(parity=False)
+
 
 class SocketStream:
     def __init__(self, sock: socket.socket, where: str):
@@ -507,6 +524,9 @@ class SocketStream:
 
     def write(self, data: bytes) -> None:
         self.sock.sendall(data)
+
+    def reset(self) -> None:
+        pass
 
 
 # ---- the clients' end --------------------------------------------------------
@@ -602,6 +622,8 @@ class Daemon:
         self.last_hello = 0.0
         self.started = time.monotonic()
         self.warned_silent = False
+        self.port_resets = 0
+        self.last_reset = self.started
         # (client, id, bus, expect, deadline): can.requests in the order sent.
         self.requests: list[tuple] = []
         # tag: (client, id, deadline)
@@ -618,6 +640,12 @@ class Daemon:
         self.button_shutdown_pending = False
         self.button_shutdown_retry_at = 0.0
         self.fast_until = 0.0
+        # Set to have the health thread look again now rather than at its next tick.
+        # The LED is never changed on a client's thread: on the Pi each write is a
+        # sudo tee, and the speed switch's INDICATE changing it there held up the
+        # policy's motor commands behind it for 140 ms, every switch on 2026-11-07,
+        # which was the jerk the owner felt.
+        self.health_due = threading.Event()
         self.imu_diag: dict = {}
         self.imu_control: deque = deque(maxlen=32)
         self.imu_internal_errors: deque = deque(maxlen=32)
@@ -722,6 +750,10 @@ class Daemon:
                 self.log(
                     "controller: " + ", ".join(f"{k} {info.get(k, '?')}" for k in keys)
                 )
+                if self.port_resets:
+                    self.log(
+                        f"link: up after setting the port again {self.port_resets} times"
+                    )
         elif kind == dl.STOPPED:
             why = dl.STOP_REASONS.get(body[0], f"reason {body[0]}")
             self.log(f"controller: every motor stopped ({why})")
@@ -812,7 +844,8 @@ class Daemon:
 
     def health_loop(self) -> None:
         while self.running:
-            time.sleep(HEALTH_S)
+            self.health_due.wait(HEALTH_S)
+            self.health_due.clear()
             self.check_health(time.monotonic())
 
     def check_health(self, now: float) -> None:
@@ -1127,7 +1160,7 @@ class Daemon:
         with self.lock:
             self.fast_until = time.monotonic() + FAST_HOLD_S if fast else 0.0
         self.mcu(dl.INDICATE, bytes([1 if fast else 0]))
-        self.check_health(time.monotonic())
+        self.health_due.set()
         return {}
 
     def op_power_off(self, client: Client, m: dict) -> dict:
@@ -1288,6 +1321,15 @@ class Daemon:
                         "Is it running firmware/diag? python3 flash_mcu.py diag.elf "
                         "--listen 0 puts it there, with diagd stopped"
                     )
+                if not self.info and now - self.last_reset > RESET_PORT_S:
+                    self.last_reset = now
+                    self.port_resets += 1
+                    self.stream.reset()
+                    if self.port_resets in (1, 10) or self.port_resets % 100 == 0:
+                        self.log(
+                            f"link: nothing makes sense yet; port set again "
+                            f"({self.port_resets} times)"
+                        )
             except OSError as error:
                 self.log(f"link: {error}")
                 self.running = False
