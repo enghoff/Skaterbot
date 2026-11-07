@@ -321,6 +321,16 @@ ADDED = {
     "wheelCapCounterbore": 12.0,
     "wheelCapInnerX": 41.95,
     "wheelCapOuterX": 54.45,
+    # The boss under the cap's floor, 7 November 2026, after a cap on the robot
+    # was found heat-damaged and its screw loose. It reaches down into the
+    # ridge's bore, which it follows less 0.4 mm of air a side, and stops a
+    # millimetre short of the ridge's inboard face, so it bears on nothing and
+    # the cap still clamps the ridge exactly as it did. It deepens the floor
+    # where the screw bends it. cad/wheeled_parameters.py has the reasoning.
+    "wheelCapBossClearance": 0.4,
+    "wheelCapBossDiameter": 15.2,
+    "wheelCapBossShort": 1.0,
+    "wheelCapBossLength": 9.000000000000004,
     # The adapter's bore since the insert went in from the motor side: the
     # screw's clearance on from the step the insert is pressed against to the
     # spigot's end. The step is the point of it -- with the insert bearing on

@@ -425,6 +425,7 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     # all three bodies, and a union that missed cutting one would fill it.
     from cad.wheeled_parameters import (
         wheelCapBore,
+        wheelCapBossDiameter,
         wheelCapCounterbore,
         wheelKeyAccessDiameter,
         wheelSpigotClearance,
@@ -449,13 +450,16 @@ def expectations() -> dict[str, list[tuple[str, float, int]]]:
     # AND THE CAP THAT CLAMPS THE WHEEL, drawn the same day in place of the Ø30
     # penny washer: the screw's way through its floor, and the pocket the washer
     # and the head sit in.
+    # And since 7 November 2026 the boss under the floor, down into the ridge's
+    # bore: one face at its own radius, which the M5's bore runs the length of.
     rows["wheel-cap"] = [
-        ("M5 clearance through the floor", wheelCapBore / 2, 1),
+        ("M5 clearance through the floor and the boss", wheelCapBore / 2, 1),
         (
             "Ø12 pocket the washer and the screw head sit in",
             wheelCapCounterbore / 2,
             1,
         ),
+        ("boss down into the ridge's bore", wheelCapBossDiameter / 2, 1),
     ]
     return rows
 
@@ -678,7 +682,11 @@ def panel_openings() -> dict[str, list[tuple]]:
     # screw passes down, and a bore closed over still leaves one cylindrical
     # face for the count above. The probes are squares inside the circles.
     from cad.wheel_adapter import insertInnerX, spigotOuterX
-    from cad.wheeled_parameters import wheelCapFloor, wheelCapInnerX
+    from cad.wheeled_parameters import (
+        wheelCapBossLength,
+        wheelCapFloor,
+        wheelCapInnerX,
+    )
 
     # The bore is two diameters since the insert went in from the motor side --
     # its Ø6.4 pocket and the screw's Ø5.5 on to the spigot's end -- so the
@@ -691,11 +699,15 @@ def panel_openings() -> dict[str, list[tuple]]:
             "X",
         )
     ] + seatingFace(1, 0.0)
+    # Through the boss as well as the floor since 7 November 2026: a boss
+    # united after the bore was cut would close it over.
+    capBottomX = wheelCapInnerX - wheelCapBossLength
+    capFloorTopX = wheelCapInnerX + wheelCapFloor
     wheelCap = [
         (
-            "the screw's way through the cap's floor",
-            (wheelCapInnerX + wheelCapFloor / 2, 0.0, 0.0),
-            (wheelCapFloor, 3.8, 3.8),
+            "the screw's way through the cap's boss and floor",
+            ((capBottomX + capFloorTopX) / 2, 0.0, 0.0),
+            (capFloorTopX - capBottomX, 3.8, 3.8),
             "X",
         )
     ]

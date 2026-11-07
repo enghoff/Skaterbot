@@ -243,8 +243,8 @@ name = "wheel-cap"
 export = "wheelCapRight"
 prints = 2
 bodies = 1  # one cup
-print_up = "+X"  # the floor on the bed, the pocket open upward
-note = "Slice it once and print two. Ø22 x 12.5 with a 6 mm floor: the floor is what carries the wheel's clamp load, so print it solid rather than as a skin over infill."
+print_up = "-X"  # the rim on the bed, the boss standing up off the floor
+note = "Slice it once and print two. Ø22 x 12.5 with a 6 mm floor, and a Ø15.2 x 9 boss under the floor that goes down into the hub's bore: the floor and boss are what carry the wheel's clamp load, so print them solid rather than as a skin over infill. Rim-down, so the face that lands on the hub's ridge prints as a clean top surface; the pocket's Ø12 roof is bridged. Before printing, measure the bore through the hub's ridge: the boss is 0.8 mm under the Ø16 drawn and has to go into it."
 
 # Measured through cad/torso.py, which is the six-motor pelvis: 125 x 68 x 65,
 # where the walking robot's is 118 x 68 x 106. The lid and the cover bosses are
