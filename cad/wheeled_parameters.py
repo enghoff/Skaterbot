@@ -198,13 +198,45 @@ wheelCapDiameter = skateWheelBearingBore
 # the load as a ring under the head's Ø8.5, 6 mm keeps the bending stress under
 # 18 MPa across a Ø19 bore and about 14 across the Ø16 drawn -- a plate estimate,
 # and a pessimistic one for a floor this thick across a span this short. The
-# cap prints floor-down, so its layers lie across that stress rather than
-# along it.
+# cap prints with its layers parallel to the floor -- rim-down since the boss
+# below, floor-down before it -- so its layers lie across that stress rather
+# than along it.
 wheelCapFloor = 6.0
 # M5 clearance through the floor, the same Ø5.5 the journal screw passes.
 wheelCapBore = 5.5
 # The washer's Ø11 with half a millimetre of air round it.
 wheelCapCounterbore = 12.0
+# THE CAP REACHES DOWN INTO THE RIDGE'S BORE, since 7 November 2026. A cap on
+# the robot was found partly damaged that day, most likely by heat during the
+# bench test, and its M5 had worked loose and let the wheel slip on the
+# adapter. The owner asked for its base to be carried down into the hub, for
+# strength under the screw, narrower than the seat so that the cap still lands
+# on the ridge exactly as it did.
+#
+# THE BOSS BEARS ON NOTHING, and that is the point of both its sizes. The clamp
+# is unchanged: the floor's annulus outside the bore on the ridge's face, the
+# hub's inboard face on the output disc. What the boss adds is depth where the
+# floor works hardest. The washer pushes the floor down inside its Ø11 and the
+# ridge holds it up only outside its bore, so the floor carries the clamp in
+# shear and bending across the ring between the two; with the boss, everything
+# inside the bore is the floor's 6 mm and the boss's 9 deep, and only the
+# 0.4 mm of air at its edge is left at 6. It also centres the cap in the hub.
+#
+# Its diameter is the ridge's bore less 0.4 mm of air a side: twice the 0.2 mm
+# gate H holds parts that do not touch to, which leaves room for a print that
+# comes out a little fat. THE BORE IS NOT MEASURED (skateWheelRidgeBore above),
+# so the boss follows it rather than a number of its own -- measure the bore
+# through the ridge before this is printed. A bore narrower than the boss
+# would hold the cap off the ridge, which is the one thing this must not do.
+wheelCapBossClearance = 0.4
+wheelCapBossDiameter = skateWheelRidgeBore - 2 * wheelCapBossClearance
+# It stops a millimetre short of the ridge's inboard face, so it stays inside
+# the ridge: with the millimetre the spigot already stops short of that face,
+# 2 mm of air to the adapter. The ridge would have to come out 2 mm shorter
+# than its 10 before the boss could reach the spigot and take the clamp off the
+# ridge.
+wheelCapBossShort = 1.0
+wheelCapBossLength = skateWheelRidgeOuterX - skateWheelRidgeInnerX - wheelCapBossShort
 #
 # PROVENANCE: ISO 4762 (DIN 912) socket cap screw, M5 -- head Ø8.5 x 5.0 across a
 # 4 mm hex socket -- which is also what fastdep lists for the screw bought: a
