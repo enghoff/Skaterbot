@@ -363,6 +363,61 @@ ON_THE_FLOOR_DRIVING = {
 IMU_TILT_DEG = {"pitch": 2.0, "roll": 2.0}
 TORSO_COM_X_M = (-0.010, 0.010)
 
+# THE ROBOT'S 11 HZ SHAKE, from D6 on the floor on the morning of 7 November 2026 (session
+# scratchpad tap/). D6 rocked the whole robot in pitch at 10.5-11 Hz, 1.0-1.5 rad/s RMS,
+# the wheels pushing 0.25 Nm RMS each, where D3 stands calm. The loop is the pitch rate
+# the policy reads into the wheels' torque: D6 asks 0.43 Nm a wheel per rad/s there, D3
+# 0.34 and D5 0.31, flat from 5 to 25 Hz, and around the robot's loop that is a gain of
+# about 1.0-1.15 for D6 and 0.75-0.9 for D3. MuJoCo had D6 calm for three reasons:
+#
+#   * THE WHEEL'S INERTIA on its joint. The robot's own leg targets and wheel torques
+#     replayed into MuJoCo move its wheels as the robot's moved at 2.8e-4 to 3.5e-4 kg m2,
+#     where MEASURED's 8.3e-4 (a fit of the wheels spinning in the air, B2) moves them
+#     half as far; training then drew x0.5-2 about 8.3e-4 and never met the robot's.
+#   * EVERY MOTOR'S TORQUE, the commands logged as sent against what each motor reported,
+#     at 11 Hz: a first-order lag of about 15 ms on the wheels and knees and 18 on the
+#     hips, delivering 0.64-0.83 of what is asked; the legs' lag sits after their position
+#     loop, as LEG_RESPONSE's. D6 trained with none on the legs.
+#   * WHAT IS LEFT. With both, MuJoCo's torso still rocks 0.81 of the robot's under the
+#     same push, and 33 degrees early. The IMU is not late (the fore-aft acceleration
+#     follows the wheels' push within 2 ms), and a spring hidden in the hips, the contact's
+#     stiffness and the torso's inertia do not account for it; a softer knee or the
+#     torso's centre of mass 30 mm higher account for part. Unidentified, so it is stood
+#     in for by the wheels' gain: at 1.15 MuJoCo's D6 rocks 1.0-1.5 rad/s RMS as the
+#     robot's did, and D3 stays calm (0.05) at 1.15 and at 1.3.
+#
+# Drawn per episode in D7, the gain to 1.3 so that a policy keeps a margin over the robot.
+SHAKE = {
+    "wheel_armature_kg_m2": 3.0e-4,
+    "wheel_lag_s": (0.010, 0.020),
+    "wheel_gain": (0.8, 1.3),
+    "leg_lag_s": (0.012, 0.020),
+    "leg_gain": (0.95, 1.2),
+}
+
+# THE ROBOT'S SLOW SWAY, from D7 on the floor on the afternoon of 7 November 2026 (session
+# scratchpad wobble/, wall/). D7, trained on SHAKE, swung the robot at 1-1.5 Hz with nothing
+# asked: 0.3-0.58 rad/s RMS standing at 204 mm, about 10 degrees and the wheels 35 rad/s
+# each way, the legs through their whole action each half swing, until a swing put the
+# wheels at their 50 rad/s and it ran into a wall. D3 the night before stood at 207 mm at
+# 0.03. D7 asks 0.7 of D3's wheel torque per rad/s of pitch rate at every frequency from 1
+# to 25 Hz: SHAKE taught it to be gentler, which the 11 Hz loop wanted and the slow
+# balance could not spare. In MuJoCo on launch_check.py's loop at 204 mm it sways 0.50
+# rad/s at 1.1 Hz with the wheels' torque at 0.8 of asked, and 0.16 and 0.25 at 1.6 Hz with
+# the IMU 30 and 40 ms late, where D3 holds 0.04-0.05 under each. Both were plausible on
+# the robot that afternoon: every D7 run was on a boot whose IMU sent gravity at 45 Hz and
+# the gyro 12-20 ms later than a good boot's (the hub short of time with four reports on;
+# sbc/balance.py now turns two of them off for a run, which gave 99 Hz and 400 the same
+# boot), and the wheels' gain is the unidentified stand-in described above.
+#
+# Drawn per episode in D8, so that a policy which sways with weak wheels or a late IMU
+# sways here first, while SHAKE's top keeps the 11 Hz margin. In 2.5 ms physics steps the
+# IMU's delay runs from MEASURED's 12.5 ms to 40.
+SWAY = {
+    "wheel_gain": (0.7, 1.3),
+    "imu_delay_steps": (5, 16),
+}
+
 # --------------------------------------------------------------------------
 # The solver
 #

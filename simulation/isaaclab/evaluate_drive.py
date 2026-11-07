@@ -50,6 +50,16 @@ parser.add_argument(
     action="store_true",
     help="D6's task with the legs' torque late too (WheeledBipedDriveD6LegsEnvCfg)",
 )
+parser.add_argument(
+    "--d7",
+    action="store_true",
+    help="D7's task: D6's with the robot's 11 Hz shake in it (WheeledBipedDriveD7EnvCfg)",
+)
+parser.add_argument(
+    "--d8",
+    action="store_true",
+    help="D8's task: D7's with the robot's slow sway in it (WheeledBipedDriveD8EnvCfg)",
+)
 add_launcher_args(parser)
 args = parser.parse_args()
 
@@ -59,6 +69,8 @@ from wheeled_biped_task.drive_env_cfg import (  # noqa: E402
     TOP_WHEEL_RAD_S,
     WheeledBipedDriveD6EnvCfg,
     WheeledBipedDriveD6LegsEnvCfg,
+    WheeledBipedDriveD7EnvCfg,
+    WheeledBipedDriveD8EnvCfg,
     WheeledBipedDriveEnvCfg,
     WheeledBipedDriveLowEnvCfg,
     WheeledBipedDriveMeasuredEnvCfg,
@@ -82,7 +94,7 @@ ARCS = (
 HEIGHTS = (0.170, 0.180, 0.190, 0.200, 0.207)
 if args.low:
     HEIGHTS = (0.155, 0.160, 0.170, 0.180, 0.190, 0.200, 0.207)
-if args.d6 or args.d6_legs:
+if args.d6 or args.d6_legs or args.d7 or args.d8:
     HEIGHTS = (0.165, 0.170, 0.180, 0.190, 0.200, 0.207)
 
 
@@ -98,7 +110,11 @@ def cells(default_height: float) -> list[tuple[float, float, float]]:
 
 
 def main() -> int:
-    if args.d6_legs:
+    if args.d8:
+        cfg = WheeledBipedDriveD8EnvCfg()
+    elif args.d7:
+        cfg = WheeledBipedDriveD7EnvCfg()
+    elif args.d6_legs:
         cfg = WheeledBipedDriveD6LegsEnvCfg()
     elif args.d6:
         cfg = WheeledBipedDriveD6EnvCfg()
