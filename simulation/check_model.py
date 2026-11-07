@@ -240,6 +240,12 @@ def check_links(links, joints, dimensions, meshes) -> tuple[list[str], dict]:
     )
 
     print(f"\n   this model          {total:7.1f} g   overlaps resolved")
+    if "weighed_whole_g" in budget:
+        scale = budget["weighed_whole_g"]
+        print(
+            f"   on the scale        {scale:7.1f} g   the whole robot as it runs; "
+            f"this model is {total - scale:+.1f} g from it"
+        )
     print(
         f"   as tools/mass.py    {as_exported + fixed:7.1f} g   shells added up, "
         f"which counts {as_exported - printed:.1f} g of overlap twice"
