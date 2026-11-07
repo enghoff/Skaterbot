@@ -320,3 +320,58 @@ class WheeledBipedDriveD6LegsEnvCfg(WheeledBipedDriveD6EnvCfg):
     """
 
     robot = WheeledBipedDriveEnvCfg().robot.replace(actuators=D6_LEG_ACTUATORS)
+
+
+# -- D7: D6's task on the robot as its 11 Hz shake measured it (plant.SHAKE): the wheel's
+# own inertia, and every motor's torque late, the wheels' effect drawn up to 1.3.
+D7_ACTUATORS = dict(D6_ACTUATORS)
+D7_ACTUATORS["wheels"] = D6_ACTUATORS["wheels"].replace(
+    armature=plant.SHAKE["wheel_armature_kg_m2"],
+    torque_lag_s=plant.SHAKE["wheel_lag_s"],
+    torque_gain=plant.SHAKE["wheel_gain"],
+)
+D7_ACTUATORS["legs"] = D6_ACTUATORS["legs"].replace(
+    torque_lag_s=plant.SHAKE["leg_lag_s"],
+    torque_gain=plant.SHAKE["leg_gain"],
+    step_s=plant.PHYSICS_DT,
+    lag_after_pd=True,
+)
+
+
+@configclass
+class WheeledBipedDriveD7EnvCfg(WheeledBipedDriveD6EnvCfg):
+    """D6's task with the robot's 11 Hz shake in it (plant.SHAKE).
+
+    D6 on the robot on 7 November 2026 rocked it at 10.5-11 Hz, its wheels answering the
+    pitch rate 25 per cent harder than D3's do, and MuJoCo and this task both had it calm:
+    the wheel's inertia drawn about 8.3e-4 where the robot's is about 3e-4, the legs'
+    torque made at once where the robot's comes 12-20 ms late, and the torso answering a
+    push 0.81 as strongly as the robot's. The wheel's inertia is the robot's here, the
+    legs' torque is late after their position loop, and the wheels' torque is drawn from
+    0.8 to 1.3 of what is asked through a 10-20 ms lag, so that a policy that rocks the
+    robot rocks it here first.
+    """
+
+    robot = WheeledBipedDriveEnvCfg().robot.replace(actuators=D7_ACTUATORS)
+
+
+D8_ACTUATORS = dict(D7_ACTUATORS)
+D8_ACTUATORS["wheels"] = D7_ACTUATORS["wheels"].replace(
+    torque_gain=plant.SWAY["wheel_gain"],
+)
+
+
+@configclass
+class WheeledBipedDriveD8EnvCfg(WheeledBipedDriveD7EnvCfg):
+    """D7's task with the robot's slow sway in it as well (plant.SWAY).
+
+    D7 on the robot on 7 November 2026 swung it at 1-1.5 Hz until it ran into a wall,
+    where D3 had stood still: it is D3 turned down to 0.7 at every frequency. MuJoCo sways
+    it the same way with the wheels' torque at 0.8 of asked or the IMU 30-40 ms late, and
+    D3 not. Here the wheels' torque is drawn down to 0.7 and the IMU's delay up to 40 ms,
+    so that the balance has to stay firm at 1 Hz while SHAKE's top keeps it gentle at 11.
+    """
+
+    robot = WheeledBipedDriveEnvCfg().robot.replace(actuators=D8_ACTUATORS)
+
+    imu_delay_steps = plant.SWAY["imu_delay_steps"]

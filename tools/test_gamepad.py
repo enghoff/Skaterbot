@@ -229,7 +229,7 @@ class OperatorTests(unittest.TestCase):
         self.assertAlmostEqual(command["turn"], gp.TOP_TURN_RAD_S / 2, places=2)
 
     def test_the_ranges_are_the_deployed_runs(self):
-        run = "rough-2026-11-05_10-37-59_fresh2_18"
+        run = "rough-2026-11-07_11-52-47_d8"
         path = (
             Path(__file__).resolve().parents[1] / "exports/rl" / run / "params/env.yaml"
         )
@@ -246,13 +246,20 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(
             pair("command_lin_vel_x"), (-gp.TOP_SPEED_M_S, gp.TOP_SPEED_M_S)
         )
-        self.assertEqual(
+        # To the thousandth a command is sent to: D6's task has 25.0998.
+        for task, here in zip(
             pair("command_yaw_rate"), (-gp.TOP_TURN_RAD_S, gp.TOP_TURN_RAD_S)
-        )
-        self.assertEqual(pair("command_leg_height_m"), gp.HEIGHT_RANGE_M)
+        ):
+            self.assertAlmostEqual(task, here, places=3)
+        # The floor is the task's; the top is held at the crouch the run was trained
+        # from, inside the task's own top, since D7 swayed standing above it.
+        low, high = pair("command_leg_height_m")
+        self.assertEqual(gp.HEIGHT_RANGE_M[0], low)
+        self.assertLessEqual(gp.HEIGHT_RANGE_M[1], high)
         self.assertNotIn("command_envelope: true", text)
         height = re.search(r"^default_leg_height_m: (.+)$", text, re.M)
         self.assertAlmostEqual(float(height[1]), gp.DEFAULT_HEIGHT_M, places=3)
+        self.assertAlmostEqual(gp.HEIGHT_RANGE_M[1], gp.DEFAULT_HEIGHT_M, places=4)
 
     def test_leg_height_moves_with_the_dpad_and_stays_in_range(self):
         operator = ready()

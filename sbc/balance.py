@@ -91,6 +91,14 @@ clock = sysid.clock
 # every start on 2026-11-05, and cost half a second each time while the report it was
 # about came through, at 92 Hz. Whether it worked is whether the readings come.
 IMU_REPORTS = {"gravity": 100.0, "gyro": 400.0}
+# Asked off for the run, before the two above, and back on at IMU_DEFAULT_HZ at its end,
+# as the controller leaves them: nothing in a run reads them, and the hub makes fewer of
+# the others while it makes them. The rail tests ran with accel off. One boot on
+# 2026-11-04 gave gravity at 31 Hz with game on and 60-65 Hz with it off, and since
+# 2026-11-05 every run has left both on, with gravity at 31-71 Hz on most boots, 97-99 on
+# the best. On 2026-11-07 such a boot gave gravity at 45 Hz and the gyro 12-20 ms later
+# than on a good one, and D7 swung the robot into a wall on it.
+IMU_OFF_IN_RUN = ("accel", "game")
 IMU_ASK_GAP_S = 0.02
 # The gyro has reached what was asked of it, well enough to stop looking. As the
 # controller leaves it, it is at IMU_DEFAULT_HZ.
@@ -100,7 +108,12 @@ IMU_LOOKS = 4
 IMU_DEFAULT_HZ = 100.0
 # The rail saw gravity at 25 to 60 Hz when it asked for 100, and the gyro at 250 to
 # 490. Below these it is not the IMU the policy was shown to stand up with.
-IMU_LEAST_HZ = {"gyro": 100.0, "gravity": 15.0}
+# Gravity's floor raised from 15 to 40 Hz on 2026-11-07: the robot's boots give it at
+# 76-80 Hz, and a bad one at 16-20 (36 seen once), which only a power-cycle clears.
+# policy_loop.Attitude holds the last gravity report, so at 18 Hz the angle the policy
+# reads is up to about 60 ms old: that boot's runs rocked at 2 Hz, and in MuJoCo D7
+# standing at 207 mm sways at 0.40 rad/s rms at 18 Hz against 0.14 at 30.
+IMU_LEAST_HZ = {"gyro": 100.0, "gravity": 40.0}
 
 EASE_S = 3.0
 EASE_KP, EASE_KD = 6.0, 0.3
@@ -273,7 +286,21 @@ class Operator:
     # m/s2. The logs had it through 5 rolling 4 degrees, three or four times what MuJoCo
     # rolls, which no turn there tips: its legs do not flex sideways and the robot's
     # do. So the turn gives way past this, the speed kept; on the spot it is untouched.
-    SIDEWAYS_M_S2 = 4.0
+    # It was 4.0 until D8 fell at that on 2026-11-07, below: the inner knee's load
+    # had gone at 2-2.5 m/s2 measured, twice in that run, so 2.5 now.
+    SIDEWAYS_M_S2 = 2.5
+    # And the speed asked times how fast the body really turns, the gyro about gravity,
+    # which the cap above cannot see. D8 fell over outwards on 2026-11-07 at 21:08 with
+    # the cap above, then 4.0, exactly met, 1.29 m/s and 3.1 rad/s asked. From 0.4 s
+    # into the turn the inner (right) knee carried nothing, the outer all of it, for
+    # 1.2 s: it was turning on its outer wheel, at up to 4.9 rad/s where its wheels
+    # made 4.0, and still at 4 when the turn asked came back to nought. The speed it
+    # had shed in the turn then came back as 1.1 m/s straight ahead while it spun,
+    # about 4 m/s2 sideways, and it rolled over in half a second. The inner knee had
+    # first let go at 2.0-2.5 m/s2 of wheel speed times gyro, in a left turn a second
+    # before as well; MuJoCo's rigid legs hold to 4.6. So while the body spins the
+    # speed asked comes down at the braking rate and does not climb back until it stops.
+    SPINNING_M_S2 = 2.0
     # The height asked from the first step was the D-pad's 155 mm, kept from the run
     # before, at three take-overs on 2026-11-06 at 19:41-19:43: D5 folded its knees
     # 0.85 rad in 0.15 s under a hand still on the torso, its wheels came off the floor
@@ -331,11 +358,15 @@ class Operator:
     def _heard(self, m: dict) -> None:
         self.last = (clock(), m)
 
-    def ask(self, now: float) -> tuple[float, float, float]:
+    def ask(self, now: float, spin: float = 0.0) -> tuple[float, float, float]:
+        """spin: how fast the body is turning about the vertical, rad/s."""
         speed, turn = self.wanted(now)
         if self.speed_cap is not None:
             # Under the cap at the braking rate, being a fall towards nought.
             speed = min(max(speed, -self.speed_cap), self.speed_cap)
+        if abs(spin * speed) > self.SPINNING_M_S2:
+            # Before the ramp, so the speed falls at the braking rate as well.
+            speed = math.copysign(self.SPINNING_M_S2 / abs(spin), speed)
         dt = 0.0 if self.stepped is None else now - self.stepped
         self.stepped = now
         self.speed = self.ramp(
@@ -535,7 +566,7 @@ def looks_ready(rig, robot, powered: bool) -> dict:
     # request can go missing under the traffic of a healthy one, as it did on the
     # robot on 2026-11-04 with 300 packets a second arriving: sysid.py carries on
     # past that too.
-    ask_imu(robot, IMU_REPORTS)
+    ask_imu(robot, {**dict.fromkeys(IMU_OFF_IN_RUN, 0.0), **IMU_REPORTS})
     for _ in range(IMU_LOOKS):
         rates = imu_rates(rig)
         if rates["gyro"] >= IMU_SETTLED_GYRO_HZ and rates["gravity"] > 0:
@@ -913,16 +944,34 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
             cmds = None
             if jumper is not None:
                 op.speed_cap = jumper.speed_cap
-            speed, turn, height = op.ask(now)
+            last = view.step
+            yawing = 0.0 if last is None else abs(float(np.dot(last["w"], last["g"])))
+            speed, turn, height = op.ask(now, yawing)
+            if op.fast != getattr(op, "logged_fast", False):
+                # Into the log as well as the launcher's: a jerk at the switch was
+                # reported on 2026-11-07, and nothing in the run's log marked when.
+                op.logged_fast = op.fast
+                rig.writer.write(
+                    {
+                        "k": "n",
+                        "h": round(now, 6),
+                        "speed mode": "fast" if op.fast else "slow",
+                    }
+                )
             if jumper is not None:
                 jump_presses(jumper, op, rig, view, touch, now)
             busy = jumper is not None and jumper.busy
             if touch is not None and busy:
                 # Its own take-off and landing are not somebody picking it up.
                 touch.light_since = None
+                touch.wheels.reset()
             if touch is not None and not busy:
                 spin = max(abs(rig.latest[j].v) for j in st.WHEELS)
-                if touch.lifted(now, rig.latest, spin, t):
+                last = view.step
+                free = last is not None and touch.wheels.update(
+                    last["fb"], float(last["w"][1]), last["t"]
+                )
+                if touch.lifted(now, rig.latest, spin, t) or free:
                     words = f"it is off the floor, the wheels at {spin:.0f} rad/s"
                     if not rearm:
                         raise st.Abort(words)
@@ -1301,7 +1350,7 @@ def session(args) -> int:
         if moved_motors and rig.motors:
             rig.disable(list(rig.motors))
         time.sleep(0.1)
-        ask_imu(robot, dict.fromkeys(IMU_REPORTS, IMU_DEFAULT_HZ))
+        ask_imu(robot, dict.fromkeys((*IMU_OFF_IN_RUN, *IMU_REPORTS), IMU_DEFAULT_HZ))
         try:
             robot.send("indicate", fast=False)
         except diag_client.RobotError:

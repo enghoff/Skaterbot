@@ -230,6 +230,123 @@ the position loop (`lag_after_pd`): `Biped-Wheeled-Drive-D6-Legs-v0` is D6 with 
 d5_low_calm model_6297, 1 500 iterations each: `d6` on D6, and `d6_legs` on D6 with the
 legs' lag; and `jl_lag` from jm_smooth model_15988 on the lagged jump task.
 
+**D6 and jl_lag, trained (7 November 2026), not yet on the robot.**
+`rough-2026-11-06_17-35-45_d6` and `jump-2026-11-06_19-35-39_jl_lag` are the pair
+launch_check.py now judges by default; in MuJoCo, with the legs' lag at 1.0 and 0.9 of
+what is asked, against D3:
+
+- Standing at 170 mm it pitches at 0.07-0.08 rad/s rms against D3's 0.71-0.78, with no
+  leg's action past 0.89 at any height from 165 mm; at 207 mm, 0.15 against 0.10-0.16.
+- At 170 mm it holds 0.99 m/s at 1.0 asked and 1.43 at 1.8, as D3 does. At 207 mm it is
+  slower: 0.83 and 1.06, against D3's 0.97 and 1.43.
+- It passes launch_check.py's every case at both leg strengths, the hard shove while
+  driving among them, which D3 fails at 1.0; and with jl_lag case 17's jump, at the
+  robot's delays, IMU 16 ms and commands 6: it clears 46-64 mm and is back on D6
+  standing 0.6 s after the press, 1.6 s from 1.5 m/s braking first.
+- jl_lag, on its own lagged task, overshoots a 20 mm jump by 5 mm where jm_smooth
+  overshoots by 11, and pitches 8 degrees at its peak where jm_smooth pitches 12.
+
+`d6_legs` is faster at 207 mm (0.97 and 1.31 m/s) and no steadier, but at the legs' full
+strength the hard shove tips it over, and cases 12 and 14 could not knock it down to see it
+get up again. D6 it is.
+
+**D6 on the robot (7 November 2026, 07:29): it rocked, and came off again.** Placed on
+the floor at the crouch's 203 mm, asked nothing, it drove its wheels back and forth at
+11-12 Hz for as long as it stood: pitch rate 1.0-1.5 rad/s rms, the torso about +/-1
+degree, the wheels about +/-4 degrees, the hips and knees only +/-0.25-0.4. D3 at the same
+height the evening before measured 0.15-0.17 rad/s rms, and its small rocking was at
+11-13 Hz as well; the IMU's rates and the loop's timing were the same in both runs. In
+MuJoCo, placed the same way, D6 rocks at 1.5 Hz and 0.14-0.24 rad/s, and it stays calm
+with the wheels' lag at 20 ms or the IMU's at 24 ms. So the robot has a lightly damped
+mode near 11-12 Hz that the model lacks, whatever it is: the printed legs or the tyres
+flexing, or play in the wheels' drive. D3 sits just inside it. Open loop, from pitch rate
+to wheel action, D6's gain is 0.45-0.48 at 1-12 Hz against D3's 0.34-0.36 (D4 0.35-0.38,
+D5 0.32-0.34, d6_legs 0.39-0.41), and that 30 % is enough. D6 with its wheels' torque
+scaled to three quarters, D3's gain, rocks at 1 Hz in MuJoCo and falls when the IMU is
+silent for 0.3 s while driving, so it was not tried. D3 went back on at 07:46. A policy
+for this robot needs that mode in the model, or a pitch-rate gain no higher than D3's.
+
+**D6's rock in the model, and D7 (7 November 2026).** It is not a mode of the robot's
+own: it is the loop from the pitch rate the policy reads to its wheels' torque, too strong
+for the robot at 11 Hz. Read off that morning's logs (plant.SHAKE has the detail): the
+commands as sent against what each motor reported say every motor makes its torque about
+15 ms late (the hips 18), and the robot's leg targets and wheel torques replayed into
+MuJoCo say the wheel carries about 3e-4 kg m2 on its joint, not the 8.3e-4 every task has
+drawn about. With those MuJoCo's torso still answers a push 0.81 as strongly as the
+robot's, for a reason not found, and the wheels' gain stands in for it at 1.15:
+launch_check.py's defaults are now that loop, and on it D6 rocks 1.0-1.5 rad/s rms as it
+did on the robot while D3 stands at 0.05, and still at a gain of 1.3. Around the robot's
+loop D6 comes to about 1.0-1.15 and D3 to 0.75-0.9, which is why D3 tipped over when the
+link was held up 40-70 ms that morning.
+
+`Biped-Wheeled-Drive-D7-v0` (`WheeledBipedDriveD7EnvCfg`) is D6's task with the wheel's
+inertia at 3e-4, the legs' torque 12-20 ms late at 0.95-1.2 after their position loop,
+and the wheels' 10-20 ms late at 0.8-1.3, so that a policy that rocks the robot rocks
+here first. Two runs from D6's model_7796, 1 500 iterations each, side by side on one
+RTX PRO 4500: `d7` as it is, and `d7_rate` with the action-rate cost at -0.15 for -0.05.
+D6 itself is scored on the task first, to see whether Isaac Lab now rocks it too.
+
+**D7, trained (7 November 2026): `d7_rate` it is, not yet on the robot.** Isaac Lab
+rocks D6 on D7's task as the robot did: 40-78 deg/s rms standing, against 9-12 on its
+own, and 6 per cent of robots down. `rough-2026-11-07_06-31-50_d7` and
+`rough-2026-11-07_06-32-50_d7_rate` (model_9295 each) stand on it at 11-15 deg/s at
+every height with none down. From pitch rate to wheel torque at 11 Hz they ask 0.24 and
+0.23 Nm a wheel per rad/s, against D6's 0.43 and D3's 0.34: about 0.55-0.65 around the
+robot's loop where D3 is 0.75-0.9. In MuJoCo on launch_check.py's new loop:
+
+- Standing, pitch rate rms: d7_rate 0.11 at 165-170 mm (D3 0.36 at 170, hips pinned),
+  0.10 at 185, 0.14 at 207 in a 1.3 Hz sway (D3 0.04); with the wheels' gain at 1.3,
+  0.08 and 0.09 (D3 0.60 and 0.05). d7 sways 0.26 at 207.
+- Driving at 1.0 and 1.8 asked, 0.02-0.03 rad/s against D3's 0.15-0.34; 1.00 and 1.25
+  m/s against D3's 1.00 and 1.50. launch_check.py's full gas in fast mode, 1.42.
+- launch_check.py: d7_rate passes every case but the jump from 1.5 m/s braking first,
+  where it lands, hands back and is taken for lifted; it passes the hard shove and the
+  low let-go that D3 fails. d7 fails case 15, 0.94 m/s in fast mode. The jump policy,
+  jl_lag, is still the old plant's and stays off.
+
+**D7 on the robot (7 November 2026, 14:39-15:27): it swung, and came off again.** The 11 Hz
+rock was gone, but it swung at 1-1.5 Hz at every height: 0.3-0.58 rad/s rms at 204 mm,
+the legs through their whole action each half swing, about 10 degrees and the wheels
+±35 rad/s (1.4 m/s) each way with nothing asked. At 15:26 one swing put the wheels at
+their 50 rad/s and it ran into a wall at about 2 m/s. D3 on the same robot the night
+before stood at 207 mm at 0.03 rad/s. D7 asks 0.7 of D3's wheel torque per rad/s of
+pitch rate at every frequency from 1 to 25 Hz, so it is D3 turned down, which the 11 Hz
+loop wanted and the slow balance could not spare. In MuJoCo at 204 mm D7 sways 0.50
+rad/s at 1.1 Hz with the wheels' torque at 0.8 of asked and 0.25 at 1.6 Hz with the IMU
+40 ms late, where D3 holds 0.04-0.05 under both. Both are plausible on the robot: every
+D7 run was on a boot whose IMU gave gravity at 45 Hz and gyro at 335 (97-99 and 400 on
+good boots), and on such a boot the gyro's yaw lagged the wheels' by 34-44 ms against
+22.5 the night before. The gravity report itself is true: against the gyro's integral
+its gain is 0.95-1.02 at 1-4 Hz with no lag. D3 went back on. The next driving policy
+has to hold D3's slow balance with D7's margin at 11 Hz, so its gate is standing at 204
+mm with the wheels at 0.8 and the IMU at 40 ms.
+
+**D8, trained (7 November 2026): `d8` it is.** `Biped-Wheeled-Drive-D8-v0`
+(`WheeledBipedDriveD8EnvCfg`) is D7's task with plant.SWAY: the wheels' torque drawn from
+0.7 to 1.3 of asked and the IMU 12.5 to 40 ms late. Two fine-tunes of d7_rate's model_9295,
+1 500 iterations each with d7_rate's action-rate cost: `rough-2026-11-07_11-52-47_d8`, and
+`rough-2026-11-07_11-53-48_d8_calm` with the cost on pitching and rolling doubled (-1.2).
+Scored on D8's task in Isaac Lab, standing they rock 12-14 and 11-14 deg/s at every height
+where d7_rate rocks 16-21, and asked 2.2 m/s hold 1.22 and 0.89 m/s against its 1.37. In
+MuJoCo on launch_check.py's loop, pitch rate RMS in rad/s, IMU at 99 Hz and gyro at 400
+unless said:
+
+| | D3 | d7_rate | d8 | d8_calm |
+|---|---|---|---|---|
+| Standing 170 / 185 / 204 mm | 0.41 / 0.15 / 0.04 | 0.10 / 0.09 / 0.03 | 0.07 / 0.08 / 0.09 | 0.09 / 0.08 / 0.05 |
+| Wheels at 0.8 | 0.40 / 0.13 / 0.04 | 0.24 / 0.24 / 0.47 | 0.15 / 0.18 / 0.21 | 0.20 / 0.20 / 0.14 |
+| IMU 40 ms late, gravity 46 Hz | falls / falls / 0.15 | 0.19 / 0.15 / 0.25 | 0.13 / 0.13 / 0.17 | 0.15 / 0.14 / 0.14 |
+| Wheels at 1.3 | 2.05 / 0.09 / 0.11 | 0.07 / 0.07 / 0.03 | 0.06 / 0.07 / 0.07 | 0.07 / 0.07 / 0.04 |
+| Driving at 1.0 and 1.8 asked | 0.7-1.5 | 0.01-0.12 | 0.01-0.03 | 0.01-0.10 |
+| Speed held at 1.8 asked, 170 / 204 mm | 1.48 / 1.56 | 1.22 / 1.35 | 1.25 / 1.17 | 1.26 / 0.94 |
+
+d8 halves d7_rate's sway with weak wheels without D3's shake. Its wheels answer the pitch
+rate as d7_rate's do (0.42 Nm a wheel per rad/s at 1 Hz, 0.22 at 11, D3 0.69 and 0.33), so
+what it learned against the sway is elsewhere, unidentified. launch_check.py passes every
+case on d8, D3's two failures (the hard shove, a slow let-go at 170 mm) among them; d8_calm
+fails case 15 at 0.80 m/s in fast mode. d8 is the one for the robot, its height's top held
+at 203.5 mm as D7's was.
+
 
 From 27 September 2026 the robot drives on stage 10 and jumps on a second
 policy, handing over between them (`TwoPolicies` in

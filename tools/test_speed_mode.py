@@ -271,5 +271,60 @@ class Sideways(unittest.TestCase):
         self.assertLessEqual(top, 1.0 * 2.0 + 1e-9)
 
 
+class Spinning(unittest.TestCase):
+    """The speed asked times the body's measured turn held under SPINNING_M_S2: D8's
+    fall of 2026-11-07, the turn let go at 1.29 m/s with the body still at 4 rad/s."""
+
+    def drive(self, op, forward, turn, spin, seconds, t0=0.0):
+        t = t0
+        speeds = []
+        while t < t0 + seconds:
+            op.last = (t, {"forward": forward, "turn": turn, "live": True, "mode": 1})
+            speed, _, _ = op.ask(t, spin)
+            speeds.append(speed)
+            t += 0.01
+        return speeds
+
+    def at_speed(self):
+        op = operator()
+        heard(op, 0.0, mode=0)
+        heard(op, 0.0, mode=1)
+        self.drive(op, 1.29, 0.0, 0.0, 4.0)
+        return op
+
+    def test_still_spinning_after_the_turn_is_let_go_brakes(self):
+        op = self.at_speed()
+        speeds = self.drive(op, 1.29, 0.0, 4.0, 1.0, t0=4.0)
+        self.assertAlmostEqual(speeds[-1], op.SPINNING_M_S2 / 4.0)
+        # At the braking rate, not a step.
+        steps = [a - b for a, b in zip(speeds, speeds[1:])]
+        self.assertLessEqual(max(steps), op.STOP_RAMP_M_S2 * 0.01 + 1e-9)
+
+    def test_it_does_not_climb_back_while_spinning(self):
+        op = self.at_speed()
+        self.drive(op, 1.29, 0.0, 4.0, 1.0, t0=4.0)
+        speeds = self.drive(op, 1.0, 0.0, 4.0, 1.0, t0=5.0)
+        self.assertLessEqual(max(speeds), op.SPINNING_M_S2 / 4.0 + 1e-9)
+
+    def test_back_up_at_the_gentle_rate_once_it_stops(self):
+        op = self.at_speed()
+        self.drive(op, 1.29, 0.0, 4.0, 1.0, t0=4.0)
+        speeds = self.drive(op, 1.29, 0.0, 0.0, 0.5, t0=5.0)
+        rises = [b - a for a, b in zip(speeds, speeds[1:])]
+        self.assertLessEqual(max(rises), op.SPEED_RAMP_M_S2 * 0.01 + 1e-9)
+        self.assertGreater(speeds[-1], speeds[0])
+
+    def test_backwards_too(self):
+        op = self.at_speed()
+        self.drive(op, -1.29, 0.0, 0.0, 6.0, t0=4.0)
+        speeds = self.drive(op, -1.29, 0.0, 4.0, 1.0, t0=10.0)
+        self.assertAlmostEqual(speeds[-1], -op.SPINNING_M_S2 / 4.0)
+
+    def test_driving_straight_untouched(self):
+        op = self.at_speed()
+        speeds = self.drive(op, 1.29, 0.0, 0.1, 1.0, t0=4.0)
+        self.assertAlmostEqual(speeds[-1], 1.29)
+
+
 if __name__ == "__main__":
     unittest.main()

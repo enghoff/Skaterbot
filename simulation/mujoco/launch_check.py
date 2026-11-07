@@ -79,8 +79,20 @@ WHEEL_VMAX = 70.0
 # MuJoCo stood D3 at 170 mm rocking at 0.28 rad/s and 2.0 Hz where the robot rocked at
 # 0.61 and 1.55 Hz; with 12 ms and 0.85, 0.73 at 1.70 Hz. The reported torque is the
 # motor's own estimate and may be filtered itself, so the lag is fitted, not proven.
-WHEEL_LAG_S = 0.013
-WHEEL_GAIN = 0.85
+#
+# Raised on 7 November 2026 to the robot's 11 Hz shake (simulation/plant.py's SHAKE): the
+# commands logged as sent against what each wheel reported, at 11 Hz, are a 15 ms lag at
+# 0.93; and with that MuJoCo's torso still answers a push 0.81 as strongly as the robot's,
+# for a reason not yet found, which the gain stands in for at 1.15 (0.93 / 0.81). On it
+# D6 rocks as it did on the robot and D3 stands calm, where at 13 ms and 0.85 both stood
+# calm and D6 went on the robot to rock it.
+WHEEL_LAG_S = 0.015
+WHEEL_GAIN = 1.15
+# The wheel's own inertia on its joint, for every run judged whatever its training drew:
+# the robot's leg targets and wheel torques replayed here move the wheels as the robot's
+# moved at 2.8e-4 to 3.5e-4 kg m2, where the 8.3e-4 of plant.MEASURED (the wheels spinning
+# in the air) moves them half as far (plant.SHAKE).
+WHEEL_ARMATURE_KG_M2 = 3.0e-4
 # How the legs' torque follows what the motor's own position-and-damping law asks, from
 # the robot's logs of the same day (plant.LEG_RESPONSE): each hip and knee a first-order
 # lag of 8 to 12 ms after the motor's torque limit, 0 to 2.5 ms late, at 0.9 to 1.05 of
@@ -93,8 +105,11 @@ WHEEL_GAIN = 0.85
 # at gain 0.9, inside the fit, it cruises steadily and passes as before. Whether the
 # robot surges there is not known: its logs of 6 November have no steady stretch at
 # 0.25-0.5 m/s. Until one is driven, judge a policy against D3 at both gains.
-LEG_LAG_S = 0.010
-LEG_GAIN = 1.0
+#
+# Raised on 7 November 2026 with the wheels' (plant.SHAKE): the hips' torque at 11 Hz is a
+# first-order lag of 18 ms at 1.06 of what their law asks, the knees' 14.5 ms at 1.16.
+LEG_LAG_S = 0.018
+LEG_GAIN = 1.1
 # Simulated seconds with no end before a check gives up: one armed for good never ends by
 # itself, and a check that hung said nothing at all.
 LONGEST_S = 120.0
@@ -304,11 +319,11 @@ class Asked(balance.Operator):
     script = None
     rig = None
 
-    def ask(self, now):
+    def ask(self, now, spin=0.0):
         m = self.script(self.rig)
         if m is not None:
             self.last = (now, m)
-        return super().ask(now)
+        return super().ask(now, spin)
 
 
 # What launch.json has from the measuring run: the knees in the air, Nm.
@@ -476,10 +491,16 @@ def steadied_lowering(rig_begin=2.0):
     return hand
 
 
-# The driving policy on the robot, D3 since 2026-11-05 (D5 went on and came off again on
-# 2026-11-06), which the suite judges unless told otherwise. balance_check.py's RUN is the
-# one trained only to 0.5 m/s, on which case 15's fast mode cannot pass.
-DEPLOYED_RUN = ROOT / "exports" / "rl" / "rough-2026-11-05_10-37-59_fresh2_18"
+# The driving policy on the robot, which the suite judges unless told otherwise: D8
+# (WheeledBipedDriveD8EnvCfg) from 2026-11-07 evening, passing every case here. D3 was
+# back on it that afternoon after D7 (d7_rate, 14:39 to 15:27) swung the robot at 1-1.5
+# Hz, about 10 degrees and 1.4 m/s each way, until it ran into a wall; this rig gives D7
+# that swing at 204 mm with the wheels' torque at 0.8 of asked, and D3 none. D3 drove it from
+# 2026-11-05; D5 went on and came off again on 2026-11-06, and D6 on 2026-11-07, which
+# rocked the robot at 11-12 Hz and which this rig, on the loop it now draws, fails as the
+# robot did (TRAINING_HISTORY.md). balance_check.py's RUN is the one trained only to
+# 0.5 m/s, on which case 15's fast mode cannot pass.
+DEPLOYED_RUN = ROOT / "exports" / "rl" / "rough-2026-11-07_11-52-47_d8"
 
 
 def main() -> int:
@@ -494,10 +515,10 @@ def main() -> int:
     )
     ap.add_argument(
         "--jump-delays",
-        default="4,2",
+        default="16,6",
         metavar="IMU,COMMAND",
-        help="ms, for the A button's case: the stand-in was trained to 10 ms at most, "
-        "and a policy trained on the robot's should pass at 16,6 as the rest do",
+        help="ms, for the A button's case: the robot's, as the rest; the September "
+        "stand-in was trained to 10 ms at most and passes only at 4,2",
     )
     ap.add_argument(
         "--wheel-lag-ms",
@@ -513,8 +534,16 @@ def main() -> int:
         help="the legs' torque lag, after their limit, measured; 0 for none",
     )
     ap.add_argument("--leg-gain", type=float, default=LEG_GAIN)
+    ap.add_argument(
+        "--wheel-armature",
+        type=float,
+        default=WHEEL_ARMATURE_KG_M2,
+        help="kg m2 on each wheel's joint; 0 for what the run trained on",
+    )
     args = ap.parse_args()
     cfg, onnx = drive.load_run(args.run)
+    if args.wheel_armature > 0.0:
+        cfg["robot"]["actuators"]["wheels"]["armature"] = args.wheel_armature
     ctl = drive.Controller(drive.build_model(cfg), cfg, onnx)
     ctx = SimpleNamespace(
         ctl=ctl,
@@ -529,7 +558,8 @@ def main() -> int:
     )
     print(
         f"the wheels' torque {args.wheel_gain:g} of asked through {args.wheel_lag_ms:g} ms, "
-        f"the legs' {args.leg_gain:g} through {args.leg_lag_ms:g} ms"
+        f"the legs' {args.leg_gain:g} through {args.leg_lag_ms:g} ms, "
+        f"the wheels' armature {cfg['robot']['actuators']['wheels']['armature']:.1e} kg m2"
     )
     good = True
 
@@ -1126,12 +1156,15 @@ def taken_over_low(ctx) -> bool:
     return good
 
 
-# The stand-in jump policy for case 17: the September candidate, trained on the model
-# before the robot was measured, so the case judges the plumbing and not the jump. With
-# the robot's delays, IMU 16 ms and commands 6, it lands and then tips over within half
-# a second, still on the jump policy; with the delays it was trained to, 10 ms at most,
-# it lands and hands back standing, here as in September (TRAINING_HISTORY.md).
-JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-09-28_06-13-36_jumpsym300"
+# The jump policy for case 17: jl_lag, trained on the measured robot with its legs' and
+# wheels' torque lag and its delays, which with D6 lands and hands back standing at the
+# robot's delays, IMU 16 ms and commands 6, at both leg strengths (2026-11-07). With D3
+# it does too, standing and at 0.5 m/s; but pressed at 1.5 m/s, D3 braking first is taken
+# for lifted before the jump begins, and does not get up again. The
+# September stand-in, jump-2026-09-28_06-13-36_jumpsym300, was trained on the model
+# before the robot was measured: at those delays it lands and then tips over within half
+# a second, and it passes only at the 10 ms at most it was trained to (TRAINING_HISTORY.md).
+JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
 
 
 def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool:

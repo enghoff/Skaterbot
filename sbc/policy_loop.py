@@ -25,6 +25,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -632,6 +633,13 @@ class Hold:
     SLOWED_M_S = 0.08
     SLOWED_RAD_S = 0.2
     SLOWED_S = 1.5
+    # Never before this, as at a take-over, and never while it twists faster than this.
+    # On the robot on 2026-11-07 at 18:02 a take-over twisted it side to side about three
+    # times a second, growing to 13 rad/s until it fell, and the hold, counting from the
+    # first step, learned the twist as creep and turned back against it at its whole 0.5
+    # rad/s, flipping sides with each swing; standing, the turn rate stays under 0.2.
+    LEAST_WAIT_S = 1.0
+    TWISTING_RAD_S = 0.5
     # What it creeps at standing, learned with these time constants' inverses.
     CREEP_SPEED_GAIN = 0.5
     CREEP_TURN_GAIN = 1.0
@@ -664,9 +672,13 @@ class Hold:
         rolling = ground_speed(fb, float(w[1]), self.wheel_radius)
         if not self.slowed:
             self.waited += dt
-            self.slowed = self.waited >= self.SLOWED_S or (
-                abs(rolling) < self.SLOWED_M_S and abs(turning) < self.SLOWED_RAD_S
+            self.slowed = self.waited >= self.LEAST_WAIT_S and (
+                self.waited >= self.SLOWED_S
+                or (abs(rolling) < self.SLOWED_M_S and abs(turning) < self.SLOWED_RAD_S)
             )
+            return 0.0, 0.0
+        if abs(turning) > self.TWISTING_RAD_S:
+            # Not drift: nothing is counted or learned, and nothing asked, until it calms.
             return 0.0, 0.0
         cap = self.MAX_CREEP_M_S
         self.creep_speed -= self.CREEP_SPEED_GAIN * rolling * dt
@@ -688,6 +700,107 @@ class Hold:
             (back_speed if self.moving else 0.0) + self.creep_speed,
             (back_turn if self.turning else 0.0) + self.creep_turn,
         )
+
+
+# A second test of being lifted, beside Touch's knees. Off the floor a wheel turns as its
+# own motor pushes it, against nothing but its own inertia and friction; on the floor the
+# same torque has the robot to move. So each step, for each wheel, the change in its spin
+# against the ground (the joint's, plus the shin's and the torso's pitching, as
+# ground_speed has it) is compared with the change a free wheel would have made on the
+# torque its motor reports. Touch's knees miss a lift once the policy has straightened
+# the legs: hanging at their lower limit the knees hold the shins up the same way the
+# robot's weight pushes, and read 0.13-0.25 Nm from the air's reading at the crouch,
+# never under LIFT_LIGHT_NM. On the robot on 2026-11-07 that left four of seven lifts
+# undetected until stopped, one for 12 s, the policy driving the wheels to their 55 rad/s
+# in the air; this caught six of the seven 0.50-0.72 s after the wheels left the floor,
+# and over about 900 s of standing and driving in the same logs, two hard knocks and a
+# bump at 1 m/s among them, came to 0.24 of FREE_SURE_S at most.
+FREE_WHEEL_JOINTS = (
+    ("hip_pitch_right", "knee_right", "wheel_drive_right"),
+    ("hip_pitch_left", "knee_left", "wheel_drive_left"),
+)
+
+# A free wheel, fitted on the robot's logs of 2026-11-07 over the four lifts of 15:25
+# and 18:02 in which both wheels spun in the air (R2 0.78 to 0.96): 4.3e-4 to 4.8e-4
+# kg m2 on its joint, 0.01 to 0.07 Nm of dry friction, and 0.0005 to 0.0024 Nm per rad/s
+# of drag, the middle of which is taken.
+FREE_WHEEL_KG_M2 = 4.5e-4
+FREE_WHEEL_DRY_NM = 0.03
+FREE_WHEEL_DRAG_NM_PER_RAD_S = 0.0015
+# Over the last FREE_STEPS policy steps, the regression of each wheel's measured change
+# in spin on a free wheel's. In the air it came to 1.0 (the lifts' median); on the floor
+# 0.1 to 0.3, over 900 s of standing, driving to 1.5 m/s and spinning on the spot.
+FREE_STEPS = 10
+FREE_AT = 0.75
+FLOOR_AT = 0.5
+# Below this much a free wheel would have changed speed over the window, rad/s, the
+# window says nothing: standing still, the torques are too small to tell apart.
+FREE_LEAST_RAD_S = 2.0
+# Above this the drag, which is the least certain part, is most of what a free wheel
+# would do, and at the supply's limit, 50 to 55 rad/s, a free wheel holds its speed on
+# its friction: a wheel that does not speed up there says nothing of the floor, though
+# one that turns as a free wheel still says it is free. (MuJoCo's wheels carry 2.7 times
+# this drag, and held at 45 rad/s in the air looked like the floor without it.)
+FREE_FASTEST_RAD_S = 40.0
+# Seconds of either wheel turning free, less FREE_FORGET times the seconds of both on
+# the floor, before it counts. Over the logs of 6 and 7 November bumps, two hard knocks
+# and a 15 Hz shake in a deep crouch came to 0.24 at most; the lifts reached this 0.5 to
+# 0.72 s after leaving the floor.
+FREE_SURE_S = 0.4
+FREE_FORGET = 2.0
+
+
+class FreeWheels:
+    def __init__(self):
+        self.reset()
+
+    def reset(self) -> None:
+        self.spins = [deque(maxlen=FREE_STEPS + 1) for _ in FREE_WHEEL_JOINTS]
+        self.pushes = [deque(maxlen=FREE_STEPS + 1) for _ in FREE_WHEEL_JOINTS]
+        self.speeds = [deque(maxlen=FREE_STEPS + 1) for _ in FREE_WHEEL_JOINTS]
+        self.sure = 0.0
+        self.last: float | None = None
+        self.said: list[int] = [0, 0]
+
+    def _one(self, k: int, fb: dict, pitch_rate: float, dt: float) -> int:
+        """+1 if this wheel has been turning as a free one, -1 as one on the floor."""
+        hip, knee, wheel = FREE_WHEEL_JOINTS[k]
+        v = fb[wheel].v
+        q = fb[wheel].tau
+        if abs(v) > 1.0:
+            q -= FREE_WHEEL_DRY_NM * np.sign(v) + FREE_WHEEL_DRAG_NM_PER_RAD_S * v
+        self.spins[k].append(pitch_rate - fb[hip].v + fb[knee].v + v)
+        self.pushes[k].append(q / FREE_WHEEL_KG_M2 * dt)
+        self.speeds[k].append(abs(v))
+        if len(self.spins[k]) <= FREE_STEPS:
+            return 0
+        moved = np.diff(np.asarray(self.spins[k]))
+        pushed = np.asarray(self.pushes[k])[1:]
+        sq = float(pushed @ pushed)
+        if sq < FREE_LEAST_RAD_S**2:
+            return 0
+        share = float(moved @ pushed) / sq
+        if share >= FREE_AT:
+            return 1
+        if share <= FLOOR_AT and max(self.speeds[k]) <= FREE_FASTEST_RAD_S:
+            return -1
+        return 0
+
+    def update(self, fb: dict, pitch_rate: float, now: float) -> bool:
+        """Whether a wheel has been turning as a free one for long enough. `now` is the
+        step's own time: a step seen again (one that raised) is not counted twice."""
+        if self.last is not None and now <= self.last:
+            return self.sure >= FREE_SURE_S
+        dt = 0.01 if self.last is None else min(max(now - self.last, 0.004), 0.05)
+        self.last = now
+        said = [self._one(k, fb, pitch_rate, dt) for k in range(len(FREE_WHEEL_JOINTS))]
+        self.said = said
+        if max(said) > 0:
+            self.sure += dt
+        elif min(said) < 0:
+            self.sure -= FREE_FORGET * dt
+        self.sure = min(max(self.sure, 0.0), 1.0)
+        return self.sure >= FREE_SURE_S
 
 
 # ---- finding the floor -----------------------------------------------------------
@@ -716,6 +829,7 @@ class Touch:
         self.since: float | None = None
         self.light_since: float | None = None
         self.light_spin = 0.0
+        self.wheels = FreeWheels()
         # What `lower` watched, for touch_numbers.
         self.samples: list[tuple[float, float, float]] = []
 
@@ -728,6 +842,7 @@ class Touch:
         self.air = [float(x) for x in np.mean(self.heard, axis=0)]
         self.heard = []
         self.since = self.light_since = None
+        self.wheels.reset()
         lowest = min(self.air)
         if lowest < AIR_LEAST_NM:
             return (

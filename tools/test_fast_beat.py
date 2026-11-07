@@ -71,18 +71,42 @@ class FastBeat(unittest.TestCase):
 
     def test_the_word_expires(self):
         daemon = diagd.Daemon.__new__(diagd.Daemon)
-        shown = []
         daemon.lock = diagd.threading.RLock()
         daemon.fast_until = 0.0
+        daemon.health_due = diagd.threading.Event()
         daemon.mcu = lambda *a: None
-        daemon.check_health = lambda now: shown.append(now < daemon.fast_until)
+        daemon.check_health = lambda now: self.fail(
+            "changed the LED on the asker's thread"
+        )
         with patch.object(diagd.time, "monotonic", return_value=100.0):
             daemon.op_indicate(None, {"fast": True})
-        self.assertTrue(shown[-1])
+        self.assertTrue(daemon.health_due.is_set())
         self.assertAlmostEqual(daemon.fast_until, 100.0 + diagd.FAST_HOLD_S)
+        daemon.health_due.clear()
         with patch.object(diagd.time, "monotonic", return_value=101.0):
             daemon.op_indicate(None, {"fast": False})
-        self.assertFalse(shown[-1])
+        self.assertTrue(daemon.health_due.is_set())
+        self.assertEqual(daemon.fast_until, 0.0)
+
+    def test_the_health_thread_answers_at_once(self):
+        """INDICATE leaves the LED to the health thread, which looks straight away
+        rather than at its next tick."""
+        daemon = diagd.Daemon.__new__(diagd.Daemon)
+        daemon.running = True
+        daemon.health_due = diagd.threading.Event()
+        looked = diagd.threading.Event()
+        daemon.check_health = lambda now: looked.set()
+        thread = diagd.threading.Thread(target=daemon.health_loop, daemon=True)
+        thread.start()
+        try:
+            looked.wait(1.0)
+            looked.clear()
+            daemon.health_due.set()
+            self.assertTrue(looked.wait(diagd.HEALTH_S / 4))
+        finally:
+            daemon.running = False
+            daemon.health_due.set()
+            thread.join(1.0)
 
 
 if __name__ == "__main__":

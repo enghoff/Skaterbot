@@ -29,6 +29,10 @@ DRIVE_D6_TASK_ID = "Biped-Wheeled-Drive-D6-v0"
 # D6 and the jump with the legs' torque as late as the robot's (plant.LEG_RESPONSE).
 DRIVE_D6_LEGS_TASK_ID = "Biped-Wheeled-Drive-D6-Legs-v0"
 JUMP_LAG_TASK_ID = "Biped-Wheeled-Jump-Lag-v0"
+# D7: D6 with the robot's 11 Hz shake in it (plant.SHAKE, WheeledBipedDriveD7EnvCfg).
+DRIVE_D7_TASK_ID = "Biped-Wheeled-Drive-D7-v0"
+# D8: D7 with the robot's slow sway in it too (plant.SWAY, WheeledBipedDriveD8EnvCfg).
+DRIVE_D8_TASK_ID = "Biped-Wheeled-Drive-D8-v0"
 
 
 def register() -> list[str] | None:
@@ -121,6 +125,28 @@ def register() -> list[str] | None:
             disable_env_checker=True,
             kwargs={
                 "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD6LegsEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_D7_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_D7_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD7EnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
+    if DRIVE_D8_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_D8_TASK_ID,
+            entry_point=f"{__name__}.drive_env:WheeledBipedDriveEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD8EnvCfg",
                 "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
                 "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
             },

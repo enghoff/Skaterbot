@@ -48,6 +48,14 @@
 # docs/PLAN.md section 4: the ceiling is set by actuator torque, not chosen.
 ceiling_g = 2300.0
 
+# THE WHOLE ROBOT ON A SCALE, as it runs -- both packs, the electronics deck,
+# the lid and every lead: 2 086 g, the owner's figure, given on 2026-11-07. It
+# was weighed during bring-up and the record of it had been lost, so this line
+# is the record now. simulation/check_model.py prints it beside the model's own
+# total, which was 2 098 g that day: the total is right to well under one per
+# cent, and how that mass is spread through the torso is still not measured.
+weighed_whole_g = 2086.0
+
 [material]
 name = "SLS PA12"
 density = 930.0
