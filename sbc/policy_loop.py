@@ -872,17 +872,26 @@ class JumpScript:
     brake_lead_s: float = 0.0225
     brake_kp: float = 40.0
     brake_kd: float = 1.5
-    # Was 0.03: the hold takes nothing from the rise but holds up the tuck, and at 0.015 the
-    # robot-like rig cleared 2-3 mm more with the same landings (session scratchpad
-    # envelope_jump/, 8 November 2026).
-    brake_s: float = 0.015
+    # 0.015 was tried on 8 November 2026, the robot-like rig clearing 2-3 mm more: on the
+    # robot at 22:04 it cleared no more (36.5 mm standing and 29 driving, as at 0.03), and
+    # 6 jumps of 19 came within 0.2 rad of straight, one 0.11 past it, against 4 of 43 at
+    # 0.03, none past it by more than 0.01.
+    brake_s: float = 0.03
     # THE FLIGHT: the legs drawn up to `land_m` over `tuck_s`, softly, and held. Held at
     # the take-off height they cleared 10-16 mm at 1.8-2.2 Nm, and drawn up 25 mm, 18-22
     # at 1.6-1.8; drawn up further it did not finish in the flight, and stiffer it was
     # slower. Moving the legs any more than that in the air turns the torso, with nothing
     # to stop it: swinging them under the centre of mass for the landing turned it 14
     # degrees further the same way.
-    land_m: float = 0.170
+    #
+    # Drawn up to 160 mm, 81 degrees of knee, from 170: launch_check.py's rig cleared 25-26
+    # mm rather than 22-23, and passes every case. At 150 the robot-like rig cleared 29-30,
+    # but the landing's hip target, 0.92 rad, is past the 0.85 the driving policy can
+    # command and the 0.9 window, it kept less of its speed, and on the worst rig it fell.
+    # 100 degrees is the knee's stop and 103 where the CAD's shin meets its thigh, so what
+    # holds this back is the policy's hip, not the knee (session scratchpad land160/,
+    # envelope_jump/tuck/, 8 November 2026).
+    land_m: float = 0.160
     tuck_s: float = 0.07
     air_kp: float = 12.0
     air_kd: float = 0.5
