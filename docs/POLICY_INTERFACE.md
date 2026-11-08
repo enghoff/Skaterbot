@@ -222,7 +222,7 @@ the path ends at diagd, where a policy on the Pi, `sbc/balance.py --drive`, can 
 | turn, positive to the left | mrad/s, i16 | index 7, in rad/s |
 | height | 0.1 mm, u16 | index 8, scaled as that index says |
 | live | bit 0 of flags | see below |
-| jump | u8, counts presses | a change while live is a press: the jump, above |
+| jump | u8, counts presses; in diagd's `drive` stream, bit 8 is set over it while the button is held | a change of the count while live is a press: the jump, above; held, the scripted jump waits in its crouch, below |
 | mode | counts select's presses, in diagd's `drive` stream only | an odd change toggles the speed limit; see below |
 
 They come fifty times a second for as long as a controller is connected, and
@@ -272,6 +272,17 @@ after the policy has taken over count, each once. In `sbc/policy_loop.py`,
   operator's speed is held under 0.9 m/s, falling at the usual braking rate, and the
   crouch starts once the wheels have said it is under 1 m/s for half a second, or
   the press is refused after 3 s of trying.
+* **The scripted jump crouches while A is held and jumps when it is let go of**
+  (`balance.py --jump-policy scripted`; `ScriptedJump` and THE BUTTON in
+  `sbc/policy_loop.py`, since 8 November 2026). `gamepad.py` sets bit 8 over the count
+  while A is held. Held, it waits in the crouch however long, driving and steering at
+  the operator's speed under 1.5 m/s, with Trim and Hold on and, 0.5 s into the crouch,
+  the lift detector too; let go, it jumps as soon as it is calm, steady, balanced, turning
+  under 0.3 rad/s and on both wheels, or stands up again if it is not within 2 s. A press
+  and let-go inside one 50 Hz frame comes without the bit and jumps at once. The
+  controller's stream stale or not live while A is held stands it up, and never jumps. A
+  `balance.py` from before counts the change of the whole number modulo 256, so it jumps
+  at each press, as it did, and never at a let-go; the jump policy does the same.
 * **The hand-over carries the outputs across as angles and torques**: the driving
   policy moves a hip 0.4 rad and a knee 0.8 rad per unit, a jump policy 0.6 and 1.2,
   so the last outputs each is shown are the other's converted to the same leg angles
@@ -282,7 +293,8 @@ after the policy has taken over count, each once. In `sbc/policy_loop.py`,
   crouched, not at the run's 1.5 s window. On the robot on 6 November 2026 the jump
   policy landed, stood itself up and tipped over backwards 0.7 s after the trigger while
   still in charge; the driving policy, the one proven on the robot, stands it up instead.
-* **The lift detector is off from the crouch until 0.5 s after the hand-back**, so its
+* **The lift detector is off from the crouch until 0.5 s after the hand-back**, but for a
+  crouch held, so its
   own take-off is not taken for being picked up; Trim and Hold are off while the jump
   policy has the robot, and start afresh after. The tilt guard and every recovery are
   as they are while driving: nothing about a jump cuts the motors.

@@ -204,7 +204,11 @@ SCRIPTED = "scripted"
 # What --jump-level-nm is held to: the scripted jump's level push, Nm of each wheel at a
 # push of pl.JUMP_PUSH_NM (pl.JumpScript's THE LEVEL PUSH). MuJoCo's 0.18 lands its rig
 # level; the robot answers it about half as much (sbc/launcher.py has the jumps). 0.5 in
-# MuJoCo lands it 19 degrees nose-up.
+# MuJoCo lands it 19 degrees nose-up. The range holds the setting, before it is put in
+# proportion to the push: in proportion, it lands much the same at any push (MuJoCo at
+# 0.35: 12-14 degrees nose-up at 1.8 Nm and 15-17 at 2.5), so the setting means the same
+# landing whatever the push, and 0.5 at 2.5 Nm, 0.78 Nm of each wheel, is still well
+# within the 1.5 Nm a wheel has.
 JUMP_LEVEL_RANGE_NM = (0.0, 0.5)
 
 
@@ -272,6 +276,15 @@ class QueuedWriter:
         self.running = False
         self.thread.join(5.0)
         self.inner.close(footer)
+
+
+# The jump button in the controller's "jump": the count of its presses in the low byte,
+# which is all the J5 link's DRIVE carries, and since 8 November 2026 bit 8 set while
+# it is held (gamepad.py's JUMP_HELD; policy_loop.py's THE BUTTON has why). diagd passes
+# the whole number on to its drive stream. A balance.py from before counted the
+# difference modulo 256, which never sees bit 8, so a let-go is never a press to it.
+JUMP_COUNT = 0xFF
+JUMP_HELD = 0x100
 
 
 class Operator:
@@ -365,9 +378,11 @@ class Operator:
         self.presses: int | None = None
         self.max_speed, self.max_turn = self.slow
         # The jump button, counted as select is: presses since taking over, for the
-        # loop to take; and a cap on the speed asked for while a jump is under way.
+        # loop to take; whether it is held now, None if the controller's stream is stale
+        # or not live; and a cap on the speed asked for while a jump is under way.
         self.jumps: int | None = None
         self.jump_presses = 0
+        self.jump_held: bool | None = None
         self.speed_cap: float | None = None
         self.last: tuple[float, dict] | None = None
         self.speed = self.turn = 0.0
@@ -425,8 +440,10 @@ class Operator:
         self.took_over = None
         self.set_fast(False)
         self.presses = None if self.last is None else self.last[1].get("mode")
-        self.jumps = None if self.last is None else self.last[1].get("jump")
+        jumps = None if self.last is None else self.last[1].get("jump")
+        self.jumps = None if jumps is None else int(jumps) & JUMP_COUNT
         self.jump_presses = 0
+        self.jump_held = None
         self.speed_cap = None
 
     def take_jumps(self) -> int:
@@ -455,6 +472,7 @@ class Operator:
             pass
 
     def wanted(self, now: float) -> tuple[float, float]:
+        self.jump_held = None
         if self.last is None:
             return 0.0, 0.0
         heard, m = self.last
@@ -467,12 +485,14 @@ class Operator:
             self.presses = int(presses)
         jumps = m.get("jump")
         if jumps is not None:
+            count = int(jumps) & JUMP_COUNT
             if self.jumps is not None:
-                self.jump_presses += (int(jumps) - self.jumps) % 256
-            self.jumps = int(jumps)
+                self.jump_presses += (count - self.jumps) % (JUMP_COUNT + 1)
+            self.jumps = count
         self.tell(now)
         if now - heard > self.FRESH_S or not m.get("live"):
             return 0.0, 0.0
+        self.jump_held = jumps is not None and bool(int(jumps) & JUMP_HELD)
         # The controller sends the policy's whole range; this is that share of the limit.
         speed = float(m["forward"]) * self.max_speed / self.top_speed
         turn = float(m["turn"]) * self.max_turn / self.top_turn
@@ -1161,24 +1181,28 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
 
 
 def jump_presses(jumper, op, rig, view: View, touch, now: float) -> None:
-    """Each press of the jump button answered, a jump or why not, and whatever the jump
-    has done since, into the log: a note is what keeps the readings around it."""
+    """Each press of the jump button answered, a jump or why not; the button as it is
+    now, held, let go of or not known, and whether both wheels are on the floor, told
+    to the jump; and whatever the jump has done since, into the log: a note is what keeps
+    the readings around it."""
     notes = []
+    fb = rig.latest
+    loaded = None
+    if touch is not None and touch.air is not None:
+        loaded = min(touch.pulls(fb)) >= pl.JUMP_KNEE_LOADED_NM
+    held = op.jump_held
     for _ in range(op.take_jumps()):
         step = view.step
-        fb = rig.latest
         g = step["g"] if step else None
         speed = (
             pl.ground_speed(fb, float(step["w"][1]), jumper.meta["wheel_radius"])
             if step
             else 0.0
         )
-        loaded = None
-        if touch is not None and touch.air is not None:
-            loaded = min(touch.pulls(fb)) >= pl.JUMP_KNEE_LOADED_NM
-        why = jumper.press(g, speed, loaded)
+        why = jumper.press(g, speed, loaded, held=bool(held))
         if why:
             notes.append(f"refused: {why}")
+    jumper.button(held, loaded)
     notes += jumper.events
     jumper.events.clear()
     for words in notes:
@@ -1614,7 +1638,8 @@ def main(argv=None) -> int:
         type=float,
         default=None,
         help="the scripted jump's level push, Nm of each wheel driven forward through the "
-        f"push at a push of {pl.JUMP_PUSH_NM:g}: more lands it less nose-down, held to "
+        f"push at a push of {pl.JUMP_PUSH_NM:g} and in proportion to the push: more "
+        "lands it less nose-down, held to "
         f"{JUMP_LEVEL_RANGE_NM[0]:g}-{JUMP_LEVEL_RANGE_NM[1]:g} (default MuJoCo's "
         f"{pl.JumpScript.level_nm:g})",
     )

@@ -289,7 +289,7 @@ function renderPad() {
   reading($("pad-readings"),"Forward",fmt(command?.forward,2),"m/s");
   reading($("pad-readings"),"Turn",fmt(command?.turn,2),"rad/s");
   reading($("pad-readings"),"Leg height",fmt(command&&command.height*1000,1),"mm");
-  reading($("pad-readings"),"Jumps asked",command?command.jump:"—");
+  reading($("pad-readings"),"Jumps asked",command?command.jump&255:"—");
   reading($("pad-readings"),"Buttons held",pad?.held?.length?pad.held.join(", "):"—");
   $("pad-reach").textContent=!pad?.name?"":!pad.diagd?"diagd is not running, so none of this is going anywhere.":pad.taken?"Going to the policy on the controller.":"This reaches diagd, and from there any program on the Pi running a policy, as balance.py with --drive and launcher.py do. The controller's firmware runs no policy yet.";
   const form=$("pad-limits");

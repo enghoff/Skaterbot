@@ -103,6 +103,11 @@ RESCAN_S = 1.0
 MODE_WATCH_S = 1.0
 # Each pulse and the gap after it, and its strength out of the controller's 100.
 PULSE_S, PULSE_GAP_S, PULSE_STRENGTH = 0.15, 0.15, 60
+# Set in "jump", over the count of presses, while the jump button is held: the owner's
+# crouch on pressing it and jump on letting go, 8 November 2026 (balance.py's JUMP_HELD).
+# Only the count reaches the J5 link, and a balance.py from before, counting the change
+# modulo 256, never sees it.
+JUMP_HELD = 0x100
 
 
 @dataclass(frozen=True)
@@ -275,7 +280,7 @@ class Operator:
             "turn": round(turn, 3) + 0.0,
             "height": round(self.height, 4),
             "live": True,
-            "jump": self.jump,
+            "jump": self.jump | (JUMP_HELD if self.layout.jump in self.held else 0),
             "mode": self.mode,
         }
 

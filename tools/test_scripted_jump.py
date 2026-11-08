@@ -33,7 +33,7 @@ import balance  # noqa: E402
 import launcher  # noqa: E402
 import policy_loop as pl  # noqa: E402
 import sysid_tests as st  # noqa: E402
-from test_jump import DRIVING, Answers  # noqa: E402
+from test_jump import DRIVING, Answers, pair  # noqa: E402
 
 UP = np.array([0.0, 0.0, -1.0])
 STILL = np.zeros(3)
@@ -243,9 +243,22 @@ class Sequence(unittest.TestCase):
             step(two, legs(SCRIPT.crouch_m, wheel_v=4.0 * (-1) ** k))
         self.assertEqual(two.phase, "hold")
         for _ in range(int(0.3 / pl.PERIOD_S)):
-            step(two, legs(SCRIPT.crouch_m, wheel_v=25.0))
+            step(two, legs(SCRIPT.crouch_m, wheel_v=12.5))
         self.assertEqual(two.phase, "push")
-        self.assertIn("rolling +1.00 m/s", two.events[-1])
+        self.assertIn("rolling +0.50 m/s", two.events[-1])
+
+    def test_the_hold_waits_to_be_under_the_top_speed(self):
+        """Pressed slow, it may run up in the crouch: steady past the top, it does not push
+        until it is under it again."""
+        two, _ = jumper()
+        two.press(UP, 0.0, True)
+        fast = pl.JUMP_RUN_TOP_M_S * 1.5 / 0.04
+        for _ in range(int(1.0 / pl.PERIOD_S)):
+            step(two, legs(SCRIPT.crouch_m, wheel_v=fast))
+        self.assertEqual(two.phase, "hold")
+        for _ in range(int(0.3 / pl.PERIOD_S)):
+            step(two, legs(SCRIPT.crouch_m, wheel_v=12.5))
+        self.assertEqual(two.phase, "push")
 
     def test_never_steady_and_it_stands_up_again(self):
         two, _ = jumper()
@@ -305,28 +318,277 @@ class Refusals(unittest.TestCase):
 
     def test_driving_it_crouches_at_once(self):
         two, _ = jumper()
-        self.assertIsNone(two.press(UP, 1.2, True))
+        self.assertIsNone(two.press(UP, pl.JUMP_RUN_TOP_M_S - 0.1, True))
         self.assertEqual(two.state, "crouch")
         self.assertIsNone(two.speed_cap)
         self.assertFalse(two.assist)
 
     def test_faster_than_it_jumps_it_brakes_to_under_the_top_first(self):
         two, answers = jumper()
-        top = pl.JUMP_RUN_TOP_M_S
+        top, cap = pl.JUMP_RUN_TOP_M_S, pl.JUMP_RUN_CAP_M_S
+        # Asked for the cap, the driving policy rolls a little faster (1.05 m/s asked 1.0
+        # on the robot), and still under the top.
+        self.assertLessEqual(cap, top * 0.8)
         self.assertIsNone(two.press(UP, top + 0.3, True))
         self.assertEqual(two.state, "braking")
-        self.assertEqual(two.speed_cap, top)
+        self.assertEqual(two.speed_cap, cap)
         self.assertTrue(two.assist)
         # On 40 mm wheels, then slowing to under the top, and not to a stop.
         fast = (top + 0.3) / 0.04
-        step(two, legs(0.2035, 0.0, wheel_v=fast), speed=top)
+        step(two, legs(0.2035, 0.0, wheel_v=fast), speed=cap)
         self.assertEqual(two.state, "braking")
-        slower = (top - 0.1) / 0.04
+        slower = (cap + 0.05) / 0.04
         for _ in range(int(pl.JUMP_SLOWED_S / pl.PERIOD_S) + 1):
-            step(two, legs(0.2035, 0.0, wheel_v=slower), speed=top)
+            step(two, legs(0.2035, 0.0, wheel_v=slower), speed=cap)
         self.assertEqual(two.state, "crouch")
         self.assertFalse(two.assist)
         self.assertIsNone(two.speed_cap)
+        # Braked, the operator's full pull is held to the cap until the push.
+        while two.phase in ("crouch", "hold"):
+            step(two, legs(SCRIPT.crouch_m, wheel_v=slower), speed=top + 0.6)
+            if two.phase in ("crouch", "hold"):
+                self.assertEqual(float(answers.seen[-1][6]), np.float32(cap))
+            self.assertLess(two.t, 3.0, two.events)
+        self.assertEqual(two.phase, "push", two.events)
+
+    def test_at_the_top_it_crouches_at_once_and_runs_no_faster(self):
+        two, answers = jumper()
+        top = pl.JUMP_RUN_TOP_M_S
+        self.assertIsNone(two.press(UP, top - 0.01, True))
+        self.assertEqual(two.state, "crouch")
+        step(two, legs(SCRIPT.crouch_m, wheel_v=(top - 0.01) / 0.04), speed=top + 0.6)
+        self.assertEqual(float(answers.seen[-1][6]), np.float32(top))
+        step(two, legs(SCRIPT.crouch_m, wheel_v=-top / 0.04), speed=-top - 0.6)
+        self.assertEqual(float(answers.seen[-1][6]), np.float32(-top))
+
+
+def heard(two, fb, held, loaded=True, w=STILL, speed=0.0, turn=0.0) -> dict:
+    """One step as balance.py makes it: the button told, then the step."""
+    two.button(held, loaded)
+    obs = two.observe(fb, w, UP, speed, turn, 0.2035)
+    return two.decide(obs)
+
+
+def seconds(s: float) -> int:
+    return round(s / pl.PERIOD_S)
+
+
+class Button(unittest.TestCase):
+    """THE BUTTON: pressed with A held it crouches and waits, however long; let go, it
+    jumps as a press without the bit does; the controller lost while it waits, it stands
+    up and never jumps."""
+
+    def held_in_the_crouch(self, s: float = 5.0):
+        two, answers = jumper()
+        self.assertIsNone(two.press(UP, 0.0, True, held=True))
+        self.assertTrue(two.waiting)
+        for _ in range(seconds(s)):
+            heard(two, legs(SCRIPT.crouch_m), True)
+        self.assertEqual((two.state, two.phase), ("crouch", "hold"), two.events)
+        return two, answers
+
+    def test_held_it_waits_however_long_and_jumps_once_let_go(self):
+        two, _ = self.held_in_the_crouch(30.0)
+        self.assertTrue(two.waiting)
+        self.assertFalse(
+            any(e.startswith(("jump:", "handed back")) for e in two.events)
+        )
+        heard(two, legs(SCRIPT.crouch_m), False)
+        # Ready all along, it goes at once.
+        self.assertEqual(two.phase, "push", two.events)
+        self.assertIn("let go after 30.0", " | ".join(two.events))
+
+    def test_let_go_it_gives_up_as_long_after_the_let_go_as_a_press_without(self):
+        two, _ = self.held_in_the_crouch(4.0)
+        n = 0
+        while two.state != "drive":
+            heard(two, legs(SCRIPT.crouch_m, wheel_v=5.0 * (-1) ** n), n == 0)
+            n += 1
+        self.assertIn("never steady", two.events[-1])
+        self.assertAlmostEqual(n * pl.PERIOD_S, SCRIPT.hold_most_s, delta=0.05)
+        self.assertFalse(any(e.startswith("jump:") for e in two.events))
+
+    def test_let_go_on_the_way_down_it_jumps_once_crouched(self):
+        two, _ = jumper()
+        two.press(UP, 0.0, True, held=True)
+        for _ in range(3):
+            heard(two, legs(0.2035, 0.0), True)
+        heard(two, legs(0.2035, 0.0), False)
+        self.assertFalse(two.waiting)
+        self.assertIn("on the way down", two.events[-1])
+        n = 0
+        while two.state == "crouch":
+            heard(two, legs(SCRIPT.crouch_m), False)
+            n += 1
+        self.assertEqual(two.phase, "push", two.events)
+        self.assertLess(n * pl.PERIOD_S, 0.3)
+
+    def test_a_press_without_the_bit_jumps_as_every_press_did(self):
+        """A tap between two of the controller's frames, or a controller from before."""
+        two, _ = jumper()
+        two.press(UP, 0.0, True, held=False)
+        self.assertFalse(two.waiting)
+        n = 0
+        while two.state == "crouch":
+            heard(two, legs(SCRIPT.crouch_m), False)
+            n += 1
+        self.assertEqual(two.phase, "push")
+        self.assertLess(n * pl.PERIOD_S, 0.3)
+        self.assertNotIn("held", " | ".join(two.events))
+
+    def test_the_controller_lost_while_held_and_it_stands_up(self):
+        for after in (0.05, 3.0):
+            two, answers = jumper()
+            two.press(UP, 0.0, True, held=True)
+            for _ in range(seconds(after)):
+                heard(two, legs(SCRIPT.crouch_m), True)
+            heard(two, legs(SCRIPT.crouch_m), None)
+            self.assertEqual(two.state, "drive")
+            self.assertFalse(two.waiting)
+            self.assertIn("controller went quiet", two.events[-1])
+            self.assertTrue(two.events[-1].startswith("handed back"))
+            for _ in range(seconds(2.0)):
+                heard(two, legs(SCRIPT.crouch_m), False)
+            self.assertFalse(any(e.startswith("jump:") for e in two.events))
+            # Standing up again from the crouch, at the rise's rate.
+            self.assertGreater(float(answers.seen[-1][8]), SCRIPT.crouch_m + 0.03)
+
+    def test_the_controller_lost_while_held_braking_and_it_drives_on(self):
+        two, _ = jumper()
+        two.press(UP, pl.JUMP_RUN_TOP_M_S + 0.3, True, held=True)
+        self.assertEqual(two.state, "braking")
+        heard(two, legs(0.2035, 0.0, wheel_v=45.0), None, speed=1.5)
+        self.assertEqual(two.state, "drive")
+        self.assertIsNone(two.speed_cap)
+        self.assertIn("controller went quiet", two.events[-1])
+
+    def test_held_braking_and_never_slow_enough_it_waits_no_more(self):
+        two, _ = jumper()
+        fast = pl.JUMP_RUN_TOP_M_S + 0.3
+        two.press(UP, fast, True, held=True)
+        while two.state == "braking":
+            heard(two, legs(0.2035, 0.0, wheel_v=fast / 0.04), True, speed=fast)
+        self.assertIn("refused: still at", two.events[-1])
+        self.assertFalse(two.waiting)
+        self.assertIsNone(two.speed_cap)
+        heard(two, legs(0.2035, 0.0), None)
+        self.assertEqual(two.since_back, math.inf)
+
+    def test_lost_after_the_let_go_it_jumps_as_before(self):
+        two, _ = jumper()
+        two.press(UP, 0.0, True, held=True)
+        heard(two, legs(0.2035, 0.0), False)
+        while two.state == "crouch":
+            heard(two, legs(SCRIPT.crouch_m), None)
+        self.assertEqual(two.phase, "push")
+
+    def test_steered_while_held_and_straight_on_once_let_go(self):
+        two, answers = jumper()
+        two.press(UP, 0.4, True, held=True)
+        rolling = 0.4 / 0.04
+        for _ in range(seconds(1.0)):
+            heard(
+                two, legs(SCRIPT.crouch_m, wheel_v=rolling), True, speed=0.4, turn=1.0
+            )
+            self.assertEqual(float(answers.seen[-1][6]), np.float32(0.4))
+            self.assertEqual(float(answers.seen[-1][7]), 1.0)
+        # Let go, a little unsteady, so that it holds on and asks the driving policy.
+        fb = legs(SCRIPT.crouch_m, wheel_v=rolling + 5.0)
+        heard(two, fb, False, speed=0.4, turn=1.0)
+        self.assertEqual(two.phase, "hold")
+        self.assertEqual(float(answers.seen[-1][7]), 0.0)
+
+    def test_let_go_it_waits_for_the_turn_to_die_away_and_both_wheels_down(self):
+        turning = np.array([0.0, 0.0, 1.0])
+        for w, loaded in ((turning, True), (STILL, False)):
+            two, _ = self.held_in_the_crouch(1.0)
+            for k in range(seconds(1.0)):
+                heard(two, legs(SCRIPT.crouch_m), k == 0, loaded=loaded, w=w)
+            self.assertEqual(two.phase, "hold", (w, loaded))
+            for _ in range(seconds(0.1)):
+                heard(two, legs(SCRIPT.crouch_m), False)
+            self.assertEqual(two.phase, "push", (w, loaded))
+
+    def test_held_in_the_crouch_a_lift_is_looked_for(self):
+        """As driving once it has been held there JUMP_SETTLE_S; not on the way down, and
+        not once let go of, as a press without the bit."""
+        two, _ = jumper()
+        two.press(UP, 0.0, True, held=True)
+        busy = []
+        while two.phase != "push":
+            held = len(busy) < seconds(2.0)
+            heard(two, legs(SCRIPT.crouch_m if busy else 0.2035, 0.0), held)
+            busy.append((two.phase, two.pt, two.waiting, two.busy))
+            self.assertLess(len(busy), 500)
+        for phase, pt, waiting, b in busy[:-1]:
+            looks = waiting and phase == "hold" and pt >= pl.JUMP_SETTLE_S
+            self.assertEqual(b, not looks, (phase, pt, waiting))
+        self.assertTrue(any(not b for *_, b in busy))
+        self.assertTrue(two.busy)
+
+    def test_held_trim_hold_and_the_speed_cap_act_as_driving(self):
+        two, _ = self.held_in_the_crouch(1.0)
+        self.assertTrue(two.assist)
+        self.assertEqual(two.speed_cap, pl.JUMP_RUN_CAP_M_S)
+        heard(two, legs(SCRIPT.crouch_m, wheel_v=5.0), False)
+        self.assertEqual(two.state, "crouch")
+        self.assertFalse(two.assist)
+        self.assertIsNone(two.speed_cap)
+
+    def test_a_jump_policy_jumps_at_the_press_held_or_not(self):
+        two, _, _ = pair()
+        self.assertIsNone(two.press(UP, 0.0, True, held=True))
+        two.button(True, True)
+        self.assertEqual(two.state, "crouch")
+        two.button(None, True)
+        self.assertEqual(two.state, "crouch")
+
+    def through_balance(self, messages):
+        """balance.py's Operator and jump_presses, one step per (time, jump, live), and
+        the jump stepped after each, as powered does: what was logged."""
+        two, _ = jumper()
+        args = SimpleNamespace(height=None, max_speed=1.0, max_turn=2.0, drive=False)
+        op = balance.Operator(None, D8 | {"default_height": 0.2035}, args)
+        notes = []
+        rig = SimpleNamespace(
+            latest=legs(SCRIPT.crouch_m), writer=SimpleNamespace(write=notes.append)
+        )
+        view = balance.View()
+        view.step = {"g": UP, "w": STILL}
+        op.last = (0.0, {"forward": 0.0, "turn": 0.0, "live": True, "jump": 0})
+        op.reset()
+        for now, jump, live in messages:
+            if jump is not None:
+                m = {"forward": 0.0, "turn": 0.0, "live": live, "jump": jump}
+                op.last = (now, m)
+            op.ask(now)
+            balance.jump_presses(two, op, rig, view, None, now)
+            step(two, legs(SCRIPT.crouch_m))
+        return two, [n["jump"] for n in notes]
+
+    def test_balance_tells_it_held_and_let_go(self):
+        held = 1 | balance.JUMP_HELD
+        steps = [(k * 0.01, held, True) for k in range(300)]
+        steps += [(3.0 + k * 0.01, 1, True) for k in range(5)]
+        two, said = self.through_balance(steps)
+        self.assertEqual(two.phase, "push", said)
+        self.assertTrue(any(w.startswith("let go after 3.00") for w in said), said)
+
+    def test_balance_stands_it_up_when_the_controller_goes_quiet_held(self):
+        held = 1 | balance.JUMP_HELD
+        steps = [(k * 0.01, held, True) for k in range(100)]
+        # Nothing more heard: stale 0.2 s on.
+        steps += [(1.0 + k * 0.01, None, True) for k in range(100)]
+        two, said = self.through_balance(steps)
+        self.assertEqual(two.state, "drive")
+        self.assertIn("controller went quiet", said[-1])
+        self.assertFalse(any(w.startswith("jump:") for w in said))
+        # And Linux taking it away, held: not live.
+        two, said = self.through_balance(
+            [(0.0, held, True), (0.01, held, True), (0.02, held, False)]
+        )
+        self.assertEqual(two.state, "drive")
+        self.assertIn("controller went quiet", said[-1])
 
 
 class LevelPush(unittest.TestCase):
@@ -377,6 +639,26 @@ class LevelPush(unittest.TestCase):
         self.assertAlmostEqual(levels[lo], SCRIPT.level_nm * lo / pl.JUMP_PUSH_NM, 6)
         self.assertAlmostEqual(levels[hi], SCRIPT.level_nm * hi / pl.JUMP_PUSH_NM, 6)
 
+    def test_the_same_driving_and_within_a_wheel(self):
+        """Driving it is what it is standing (raising it with the speed was left out); and
+        the most the setting allows, at the hardest push, is well inside what a wheel has
+        (1.5 Nm on the robot to 37.5 rad/s)."""
+        top = pl.JUMP_RUN_TOP_M_S
+        for speed in (-top + 0.05, 0.0, top - 0.05):
+            two, _ = jumper(pl.JUMP_PUSH_RANGE_NM[1])
+            self.assertIsNone(two.press(UP, speed, True))
+            fb = legs(SCRIPT.crouch_m, wheel_v=speed / 0.04)
+            while two.phase != "push":
+                step(two, fb, speed=speed)
+                self.assertLess(two.t, 3.0, two.events)
+            want = SCRIPT.level_nm * pl.JUMP_PUSH_RANGE_NM[1] / pl.JUMP_PUSH_NM
+            self.assertAlmostEqual(two.level, want, places=6)
+            self.assertIn(f"rolling {speed:+.2f} m/s", two.events[-1])
+        most = (
+            balance.JUMP_LEVEL_RANGE_NM[1] * pl.JUMP_PUSH_RANGE_NM[1] / pl.JUMP_PUSH_NM
+        )
+        self.assertLess(most, st.PEAK_NM / 2)
+
     def test_only_in_the_push(self):
         """The same jump with no level push sends the wheels the same in the brake and
         the flight, and differs by the level push in the push."""
@@ -414,6 +696,27 @@ class LevelPush(unittest.TestCase):
 
 
 class Brake(unittest.TestCase):
+    def test_a_harder_push_brakes_sooner(self):
+        """The brake's lead is in proportion to the push: with the knees at the same place
+        and speed, the softest push goes on and the hardest brakes."""
+        lo, hi = pl.JUMP_PUSH_RANGE_NM
+        lead_lo = SCRIPT.brake_lead_s * lo / pl.JUMP_PUSH_NM
+        lead_hi = SCRIPT.brake_lead_s * hi / pl.JUMP_PUSH_NM
+        self.assertGreater(lead_hi, lead_lo)
+        phases = {}
+        for push in (lo, hi):
+            two, _ = jumper(push)
+            to_push(two)
+            brake = pl.leg_for(two._along(SCRIPT.takeoff_m), SCRIPT.takeoff_m)[1]
+            knee_v = -20.0
+            fb = dict(legs(SCRIPT.crouch_m))
+            knee = brake - knee_v * (lead_lo + lead_hi) / 2.0
+            for j in ("knee_right", "knee_left"):
+                fb[j] = st.Fb(at=0.0, p=knee, v=knee_v, tau=0.0)
+            step(two, fb)
+            phases[push] = two.phase
+        self.assertEqual(phases, {lo: "push", hi: "brake"})
+
     def test_the_hips_held_whatever_the_knees_do(self):
         """Following the knees as they overshot swung the legs, and the torso, in the
         air: the hips are held where the take-off height puts them."""
@@ -439,11 +742,11 @@ class Driving(unittest.TestCase):
 
     def test_the_speed_asked_through_the_jump(self):
         two, answers = jumper()
-        self.assertIsNone(two.press(UP, 1.0, True))
-        rolling = 1.0 / 0.04
+        self.assertIsNone(two.press(UP, 0.5, True))
+        rolling = 0.5 / 0.04
         while two.phase in ("crouch", "hold"):
-            step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=1.0)
-            self.assertEqual(float(answers.seen[-1][6]), np.float32(1.0))
+            step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=0.5)
+            self.assertEqual(float(answers.seen[-1][6]), np.float32(0.5))
             self.assertEqual(float(answers.seen[-1][7]), 0.0)
             self.assertLess(len(answers.seen), 300, two.events)
         self.assertEqual(two.phase, "push")
@@ -451,29 +754,29 @@ class Driving(unittest.TestCase):
         # at until it lands, and the operator's from then on.
         brake = pl.leg_for(two._along(SCRIPT.takeoff_m), SCRIPT.takeoff_m)[1]
         down = 2.0 * pl.LEG_LINK_M * math.cos(brake / 2.0)
-        step(two, legs(down, two._along(down), knee_v=-20.0), speed=0.4)
+        step(two, legs(down, two._along(down), knee_v=-20.0), speed=0.2)
         while two.state == "jump":
             fb = legs(SCRIPT.land_m, two._along(SCRIPT.land_m), knee_nm=-1.0)
-            step(two, fb, speed=0.4)
+            step(two, fb, speed=0.2)
             if two.state == "jump":
-                self.assertEqual(float(answers.seen[-1][6]), np.float32(1.0))
-        step(two, legs(SCRIPT.land_m), speed=0.4)
-        self.assertEqual(float(answers.seen[-1][6]), np.float32(0.4))
+                self.assertEqual(float(answers.seen[-1][6]), np.float32(0.5))
+        step(two, legs(SCRIPT.land_m), speed=0.2)
+        self.assertEqual(float(answers.seen[-1][6]), np.float32(0.2))
 
     def test_the_wheels_hold_their_speed_over_the_floor(self):
         """In the air each wheel holds the speed it pushed at: one slower is driven up,
         one faster held back, so that it lands rolling at it."""
         sent = {}
-        for wheel_v in (20.0, 25.0, 30.0):
+        for wheel_v in (7.5, 12.5, 17.5):
             two, _ = jumper()
-            two.press(UP, 1.0, True)
-            rolling = 1.0 / 0.04
+            two.press(UP, 0.5, True)
+            rolling = 0.5 / 0.04
             while two.phase != "push":
-                step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=1.0)
+                step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=0.5)
             brake = pl.leg_for(two._along(SCRIPT.takeoff_m), SCRIPT.takeoff_m)[1]
             down = 2.0 * pl.LEG_LINK_M * math.cos(brake / 2.0)
             fb = legs(down, two._along(down), knee_v=-20.0, wheel_v=rolling)
-            step(two, fb, speed=1.0)
+            step(two, fb, speed=0.5)
             while two.phase == "brake":
                 fb = legs(
                     SCRIPT.takeoff_m, two._along(SCRIPT.takeoff_m), wheel_v=rolling
@@ -486,9 +789,9 @@ class Driving(unittest.TestCase):
             self.assertEqual(two.phase, "flight")
             self.assertEqual(cmds["wheel_drive_right"].t, cmds["wheel_drive_left"].t)
             sent[wheel_v] = cmds["wheel_drive_right"].t
-        self.assertGreater(sent[20.0], 0.05)
-        self.assertAlmostEqual(sent[25.0], 0.0, places=6)
-        self.assertLess(sent[30.0], -0.05)
+        self.assertGreater(sent[7.5], 0.05)
+        self.assertAlmostEqual(sent[12.5], 0.0, places=6)
+        self.assertLess(sent[17.5], -0.05)
 
     def test_the_lean_goes_on_through_the_jump(self):
         """balance.py's lean, on the speed it is going, is the driving policy's all the
@@ -496,15 +799,15 @@ class Driving(unittest.TestCase):
         net = Answers(D8)
         bal = balance.LeanedBalancer(net, lean_per_m_s=1.67, gyro_mean_of=1)
         two = pl.ScriptedJump(bal)
-        two.press(UP, 1.2, True)
-        rolling = 1.2 / 0.04
+        two.press(UP, 0.5, True)
+        rolling = 0.5 / 0.04
         leans = []
         while two.state != "drive" and len(leans) < 200:
-            step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=1.2)
+            step(two, legs(SCRIPT.crouch_m, wheel_v=rolling), speed=0.5)
             leans.append(bal.lean_deg)
         self.assertGreater(len(leans), 10)
         for lean in leans:
-            self.assertAlmostEqual(lean, 1.67 * 1.2, places=6)
+            self.assertAlmostEqual(lean, 1.67 * 0.5, places=6)
 
 
 class Touchdown(unittest.TestCase):

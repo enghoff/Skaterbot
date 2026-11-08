@@ -266,21 +266,24 @@ def balance_command(args) -> list[str]:
     jump = HERE / "policy_jump.npz"
     chosen = getattr(args, "jump", "scripted")
     if chosen == "scripted":
-        # At balance.py's cap, 1.8 Nm, from 1.6: on the robot at 1.6 and the level push
-        # below, 26 jumps at 11:28-11:42 on 8 November 2026 landed -10 to +10 degrees,
-        # median level, and none fell. In MuJoCo, the level push at 0.35, 1.8 cleared 20-21
-        # mm standing and 12 at 1 m/s, against 18-19 and 10-11, and rose 9-10 mm against
-        # 6-7, the knees within 0.31 rad of straight against 0.47, standing every time
-        # (jump_grace/push/). Untried on the robot when set.
-        command += ["--jump-policy", "scripted", "--jump-push", "1.8"]
+        # At balance.py's cap, 2.5 Nm, from 1.8. At 1.8 and the level push below, on the
+        # robot on 8 November 2026, 34 jumps, one of which fell, driving at 1.05 m/s
+        # (policy_loop.py's JUMP_RUN_TOP_M_S has it). In MuJoCo, the level push at 0.35,
+        # 2.5 cleared 26-29 mm standing and 20-26 driving, against 20-21 and 12-16 at 1.8,
+        # the knees no nearer than 0.49 rad to straight, standing every time; on that rig
+        # with the robot's floor friction and its half answer to the level push, 21-23
+        # standing and 19-22 driving (jump_height/). Untried on the robot when set.
+        command += ["--jump-policy", "scripted", "--jump-push", "2.5"]
         # The level push, each wheel driven forward through the push, at twice MuJoCo's
         # 0.18 Nm: the robot answers it about half as much. Its scripted jumps on 8
         # November 2026, the IMU's pitch at the hand back: with none (08:57, 13 jumps)
         # 8-32 degrees nose-down, median 16, where MuJoCo lands 17-18; at 0.13-0.23 Nm
         # (10:56, 10 jumps) -2 to +23, median 10, where MuJoCo lands 1-2. The jumps that
         # fell, 3 and 2, were those landing steepest, 17-37 degrees. At 0.35 MuJoCo lands
-        # 9-11 degrees nose-up and stands; the robot, by its half, about 4 nose-down.
-        # Untried on the robot when set; balance.py's --jump-level-nm.
+        # 9-11 degrees nose-up and stands; the robot, by its half, about 4 nose-down. At
+        # 11:28-11:42, pushing 1.6 Nm, 26 jumps landed -10 to +10, median level, and none
+        # fell. balance.py's --jump-level-nm: Nm at a push of 1.6 Nm, and in proportion to
+        # the push, so 0.55 Nm at 2.5.
         command += ["--jump-level-nm", "0.35"]
     elif chosen == "policy" and jump.exists():
         command += ["--jump-policy", str(jump)]
