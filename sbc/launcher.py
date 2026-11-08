@@ -283,7 +283,10 @@ def balance_command(args) -> list[str]:
         # 9-11 degrees nose-up and stands; the robot, by its half, about 4 nose-down. At
         # 11:28-11:42, pushing 1.6 Nm, 26 jumps landed -10 to +10, median level, and none
         # fell. balance.py's --jump-level-nm: Nm at a push of 1.6 Nm, and in proportion to
-        # the push, so 0.55 Nm at 2.5.
+        # the push, so 0.55 Nm at 2.5. The centre of mass's share of it and the speed's
+        # are in proportion to it too, so at twice MuJoCo's they are twice MuJoCo's
+        # (policy_loop.py's THE LEVEL PUSH): 0.55 Nm standing at 2.5, 0.74 pushing at
+        # 0.8 m/s, and the most the setting's 0.5 allows, 1.05 at 0.8 m/s.
         command += ["--jump-level-nm", "0.35"]
     elif chosen == "policy" and jump.exists():
         command += ["--jump-policy", str(jump)]
