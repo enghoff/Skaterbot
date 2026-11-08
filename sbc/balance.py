@@ -196,6 +196,12 @@ DRY_TIP_DEG = 12.0
 DRY_SPIN_RAD_S = 3.0
 DRY_WAIT_S = 45.0
 
+# What --jump-policy is given, in place of a jump policy's pack, for the jump with no
+# network: sbc/policy_loop.py's ScriptedJump, pushing --jump-push. The owner tried jd8, the
+# latest jump policy, on the robot on 8 November 2026 and found it unsteady and its height
+# unconvincing, and agreed to a scripted jump first, from standstill.
+SCRIPTED = "scripted"
+
 
 class QueuedWriter:
     """sysid_tests' LogWriter on a thread of its own: a slow SD card, or the
@@ -462,6 +468,114 @@ class Operator:
         if self.envelope and share > 1.0:
             speed, turn = speed / share, turn / share
         return speed, turn
+
+
+# THE LEAN. The driving policy told that it leans back, by --lean-per-m-s degrees for
+# each m/s it is sent, so that it leans forward to straighten up and goes faster; going
+# backwards, the other way. Its speed follows what it reads as level: on the robot's 3
+# degrees nose-down on 2026-11-05, D3 drove 25 per cent slow (drive_env_cfg.py's
+# WheeledBipedDriveD6EnvCfg). D9 (rough-2026-11-07_17-10-09_d9), trained for 1.6 m/s,
+# holds 1.24 asked for it on launch_check.py's rig, as D8 holds 1.11-1.17 asked anything
+# from 1.4 to 2.2, using 0.1 Nm of the 1 Nm and more its wheels could make there and 31
+# rad/s of their 55: the limit is the policy's own, and the same without the motor's
+# curve. Training taught it: there an IMU tilt of up to 2 degrees and sensor offsets it
+# could not see moved each robot's speed by 0.15-0.25 m/s, and the fastest ran their
+# wheels into Isaac's 48.2 rad/s, so the policy keeps the rest slow.
+#
+# On launch_check.py's rig on 8 November 2026, fast mode's full pull at the launcher's
+# 1.8 m/s (session scratchpad d9why/): D8 held 1.17 m/s with no lean, 1.32 at 1.11 per
+# m/s (2 degrees at 1.8) and 1.41 at 1.67 (3 degrees; 3.25 with Trim's 0.15 on top),
+# passing every case at 1.67, the jump from 1.5 m/s on jd8 included; it stopped from
+# there in 1.43 s over 1.31 m, the wheels at 37 rad/s at most. D9 at 1.25 (2 degrees at
+# its 1.6) held 1.43, but on jd8 its jump hands back to a fall, lean or none. With the
+# wheels' torque at 0.8 of asked, the IMU 40 ms late and the pack at 23.4 V, D8 at 1.67
+# held 1.52 and stopped with its wheels at 41 rad/s; at 0.7 of asked as well, the
+# loop took it for lifted at 0.4 m/s every time, where without the lean it stood.
+# 3 degrees is past the 2 D8 was trained on. Only the policy's input is turned: the
+# tilt cut-off, the fall, the lift and the IMU's own checks read gravity as it is, and
+# a jump policy is fed it as it is. NOT YET TRIED ON THE ROBOT.
+
+
+def leaned(g: np.ndarray, nose_up_deg: float) -> np.ndarray:
+    """Gravity's direction as a torso pitched `nose_up_deg` further nose-up reads it,
+    its roll left as it is."""
+    if not nose_up_deg:
+        return g
+    a = math.radians(nose_up_deg)
+    c, s = math.cos(a), math.sin(a)
+    x, y, z = (float(v) for v in g)
+    return np.array([x * c + z * s, y, z * c - x * s])
+
+
+# THE GYRO'S MEAN. The driving policy is fed the gyro as the mean of its last three
+# readings, one a step, weighted 1-2-1, rather than the last alone. On 2026-11-08 at
+# 07:03 D8 chattered for 3.5 s, driving and then standing, until it was lifted: the
+# torso's roll rate at 46 Hz 0.48 rad/s rms against 0.025 standing, its yaw rate twice
+# that, its pitch rate 0.3 at 43 Hz, both wheels' actions flapping 0.37 against 0.015,
+# the hips and knees commanded against each other. The same run's log has 16 shorter
+# spells, 11 of them within a second of a jump's hand-back, and the day before's two,
+# on stopping, in pitch alone. D8's wheels answer the gyro more the nearer it comes to
+# the 50 Hz a 100 Hz loop can show, its own last actions fed back turning each step
+# against the one before: 1.3 of a wheel's 1 Nm per rad/s of pitch rate at 46 Hz,
+# against 0.56 at 10. The robot's body answered its wheels' torque at 43-46 Hz ten to
+# fifty times as strongly as MuJoCo's rigid one, in pitch and in a roll-and-yaw twist,
+# presumably the printed legs flexing, which closes that loop on the robot and nowhere
+# in MuJoCo. Put into launch_check.py's rig as modes the wheels' torque drives, 2 rad/s
+# per Nm at 44 Hz in pitch and 13 at 46 Hz in the twist, with steps as uneven as the
+# robot's, D8 chatters as the robot did, driving and then standing, and clearing its
+# last actions, which is what a lift does to it, does not stop it (session scratchpad
+# chatter/, 8 November 2026). The mean of three passes 0.29 of 40-50 Hz on the robot's
+# steps, 6 to 16 ms apart (0.02 were they even), and holds the gyro back 10 ms at the
+# 1-3 Hz the robot balances at: D8 trained with the IMU 12.5-40 ms late, and on the
+# robot it is 16. On the rig it stopped every chattering mode tried, and stood modes
+# four times as strong; standing, driving, stopping and a shove were as before. The
+# mean of two passes 0.44, and stood modes only two to three times as strong. Only the
+# policy's input is averaged, and only the driving policy's: the checks, Hold, Trim
+# and a jump policy read the gyro as it is. NOT YET TRIED ON THE ROBOT.
+GYRO_MEAN_OF = 3
+# Readings further apart than this are not averaged across: back from a jump, or after
+# a step very late, the mean starts again.
+GYRO_MEAN_GAP_S = 0.05
+
+
+class LeanedBalancer(pl.Balancer):
+    """The driving policy, fed gravity turned nose-up by `lean_per_m_s` degrees for each
+    m/s of the speed it is sent, after the Operator's caps and ramps and the stepper's
+    governor, Trim and Hold: nothing standing, and coming and going with the speed.
+    THE LEAN, above, has why. `lean_deg` is the last step's. And fed the gyro as the
+    mean of its last `gyro_mean_of` readings: THE GYRO'S MEAN, above."""
+
+    def __init__(
+        self,
+        net: pl.Net,
+        wheel_limit: float | None = None,
+        lean_per_m_s=0.0,
+        gyro_mean_of=GYRO_MEAN_OF,
+    ):
+        super().__init__(net, wheel_limit)
+        self.lean_per_m_s = float(lean_per_m_s)
+        self.lean_deg = 0.0
+        # (when, the gyro in the torso's frame), newest last.
+        self.gyros: deque = deque(maxlen=max(1, int(gyro_mean_of)))
+
+    def reset(self) -> None:
+        super().reset()
+        self.gyros.clear()
+
+    def gyro_mean(self, w) -> np.ndarray:
+        """The binomial mean of the last readings: 1, 1-1, 1-2-1."""
+        now = clock()
+        if self.gyros and now - self.gyros[-1][0] > GYRO_MEAN_GAP_S:
+            self.gyros.clear()
+        self.gyros.append((now, np.asarray(w, dtype=float)))
+        n = len(self.gyros)
+        weights = [math.comb(n - 1, k) / 2 ** (n - 1) for k in range(n)]
+        return sum(k * x for k, (_, x) in zip(weights, self.gyros, strict=True))
+
+    def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
+        self.lean_deg = self.lean_per_m_s * speed
+        g = leaned(np.asarray(g, dtype=float), self.lean_deg)
+        return super().observe(fb, self.gyro_mean(w), g, speed, turn, height)
 
 
 def real_time(args) -> str:
@@ -1205,14 +1319,24 @@ def session(args) -> int:
     loop = None
     try:
         regs = get_ready(rig, robot, is_powered)
-        bal = pl.Balancer(net, wheel_limit=args.wheel_limit)
+        bal = LeanedBalancer(
+            net,
+            wheel_limit=args.wheel_limit,
+            lean_per_m_s=args.lean_per_m_s,
+            gyro_mean_of=args.gyro_mean_of,
+        )
         if args.jump_policy and is_powered:
-            bal = pl.TwoPolicies(
-                bal,
-                pl.JumpBalancer(pl.Net(args.jump_policy), wheel_limit=args.wheel_limit),
-                args.jump_height,
-                volts=lambda: (robot.status or {}).get("vbus"),
-            )
+            if str(args.jump_policy) == SCRIPTED:
+                bal = pl.ScriptedJump(bal, args.jump_push)
+            else:
+                bal = pl.TwoPolicies(
+                    bal,
+                    pl.JumpBalancer(
+                        pl.Net(args.jump_policy), wheel_limit=args.wheel_limit
+                    ),
+                    args.jump_height,
+                    volts=lambda: (robot.status or {}).get("vbus"),
+                )
         imu = pl.Imu(robot_file["imu_axes"], robot_file["imu_gravity_sign"])
         # With the motors off a tilt harms nothing, and is what is asked for.
         wheel_vmax = min(float(regs[j].get("VMAX", 55.0)) for j in st.WHEELS)
@@ -1257,9 +1381,7 @@ def session(args) -> int:
             "imu_axes": robot_file["imu_axes"],
             "imu_gravity_sign": robot_file["imu_gravity_sign"],
             "policy": bal.meta,
-            "jump_policy": bal.jumping.meta
-            if isinstance(bal, pl.TwoPolicies)
-            else None,
+            "jump_policy": bal.jump_meta if isinstance(bal, pl.TwoPolicies) else None,
             "label": args.label,
         }
         rig.writer = QueuedWriter(path, header)
@@ -1283,6 +1405,11 @@ def session(args) -> int:
             f"{args.mode}: {bal.meta['run']}, policy {bal.meta['digest']}, battery "
             f"{diag_client.wait_for_status(robot).get('vbus')} V, cut-off at {args.tilt:g} "
             f"degrees{'' if is_powered else '; the motors stay off'}"
+            + (
+                f"; the policy told it leans {args.lean_per_m_s:g} degrees per m/s"
+                if args.lean_per_m_s
+                else ""
+            )
         )
         if is_powered and not args.yes:
             words = {
@@ -1448,14 +1575,23 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--jump-policy",
         type=Path,
-        help="a jump policy's pack: the controller's A button then jumps (with --drive)",
+        help="a jump policy's pack, or 'scripted' for the jump with no network: the "
+        "controller's A button then jumps (with --drive)",
     )
     ap.add_argument(
         "--jump-height",
         type=float,
         default=0.03,
-        help="m of wheel clearance a jump is asked for, held to what the policy was "
+        help="m of wheel clearance a jump policy is asked for, held to what it was "
         "trained on; set here and never from the controller (default 0.03)",
+    )
+    ap.add_argument(
+        "--jump-push",
+        type=float,
+        default=pl.JUMP_PUSH_NM,
+        help="the scripted jump's push, Nm of each knee's 3: how high it goes, held to "
+        f"{pl.JUMP_PUSH_RANGE_NM[0]:g}-{pl.JUMP_PUSH_RANGE_NM[1]:g}; set here and never "
+        f"from the controller (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument("--robot-file", type=Path, help="in place of sysid_robot.json")
     ap.add_argument(
@@ -1483,6 +1619,22 @@ def main(argv=None) -> int:
         "--fast-turn",
         type=float,
         help="rad/s at a stick's end once select is pressed (default: the policy's top)",
+    )
+    ap.add_argument(
+        "--lean-per-m-s",
+        type=float,
+        default=0.0,
+        help="degrees nose-up the driving policy is told it leans for each m/s it is "
+        "sent, nose-down backwards, so that it goes faster: 1.25 is 2 degrees at 1.6 "
+        "m/s. Its input only; the safety checks read the IMU as it is (default 0)",
+    )
+    ap.add_argument(
+        "--gyro-mean-of",
+        type=int,
+        default=GYRO_MEAN_OF,
+        help="the driving policy is fed the mean of this many of the gyro's last readings, "
+        "weighted 1-2-1, against a 40-50 Hz chatter: 1 feeds it the last alone. Its input "
+        f"only (default {GYRO_MEAN_OF})",
     )
     ap.add_argument(
         "--no-trim",

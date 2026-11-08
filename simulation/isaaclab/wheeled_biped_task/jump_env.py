@@ -10,14 +10,16 @@ import math
 
 import torch
 
-from .env_cfg import LEG_DAMPING_NM_S_RAD, LEG_STIFFNESS_NM_RAD
-from .jump_env_cfg import WheeledBipedJumpEnvCfg, steps_terrain
+from .env_cfg import LEG_DAMPING_NM_S_RAD, LEG_STIFFNESS_NM_RAD, plant
+from .jump_env_cfg import WheeledBipedJumpEnvCfg, roll_mode, steps_terrain
 from .rough_env import WheeledBipedRoughEnv
 
 # Scales for the new observations, so each sits near the range of the rest.
 _CLEARANCE_SCALE = 10.0  # 0.02-0.07 m -> 0.2-0.7
 _TIMER_CLIP_S = 2.0
 _BATTERY_SCALE = 5.0  # 19.2-25.2 V -> -1 to 0.25
+# The gyro's scale in the policy's observation, env.py's _sensor_reading.
+_GYRO_SCALE = 0.25
 
 
 class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
@@ -77,6 +79,18 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._lift_t = torch.full((n, 2), -1.0, device=dev)
         self._skew_charged = torch.zeros(n, dtype=torch.bool, device=dev)
 
+        # The knees' target difference, right minus left in the joints' frame, as the
+        # policy commanded it this step and the step before; and the robot's roll answer
+        # to it in what the IMU reads (cfg.roll_mode_gain), if the task draws one.
+        self._knees = [plant.LEG_JOINTS.index(j) for j in ("knee_right", "knee_left")]
+        self._knee_diff = torch.zeros(n, device=dev)
+        self._knee_diff_last = torch.zeros(n, device=dev)
+        self._roll = None
+        if tuple(cfg.roll_mode_gain) != (0.0, 0.0):
+            self._roll = roll_mode.Robots(
+                n, cfg.sim.dt, max(cfg.roll_mode_delay_steps), dev
+            )
+
         self._one_off_terms |= {
             "jump_clearance",
             "jump_missed",
@@ -129,6 +143,11 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._gains = actions[:, 6:8].clone().clamp(-1.0, 1.0)
         super()._pre_physics_step(actions[:, :6])
         self._schedule_jumps()
+        # As commanded, whether or not the command arrives: the roll mode was fitted to
+        # the targets the robot's loop sent.
+        self._knee_diff_last = self._knee_diff
+        right, left = self._knees
+        self._knee_diff = self._leg_targets[:, right] - self._leg_targets[:, left]
 
     def _apply_action(self):
         gains = torch.where(self._command_late(), self._held_gains, self._gains)
@@ -138,6 +157,11 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._legs.stiffness[:] = kp.unsqueeze(1)
         self._legs.damping[:] = kd.unsqueeze(1)
         super()._apply_action()
+        # Before each physics step, so the mode stands at the step's end when the policy
+        # next looks, on what was commanded its delay before the step began: the same
+        # timing as simulation/mujoco/jump_roll_check.py's.
+        if self._roll is not None:
+            self._roll.step(self._knee_diff)
 
     def _schedule_jumps(self):
         dt = self.step_dt
@@ -222,6 +246,18 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
 
     def _get_observations(self) -> dict:
         obs = super()._get_observations()
+        if self._roll is not None:
+            # The robot's roll mode on top of the IMU's reading, as it is now and not as
+            # late as the reading: its fitted delay is from the command sent to the gyro
+            # logged. The rate on the gyro's x, and the angle turning gravity about x;
+            # the reading is the chip's, within cfg.imu_tilt_deg of the torso's.
+            policy = obs["policy"]
+            policy[:, 0] += _GYRO_SCALE * self._roll.rate
+            gy, gz = roll_mode.turn_gravity(
+                policy[:, 4], policy[:, 5], self._roll.angle, torch
+            )
+            policy[:, 4] = gy
+            policy[:, 5] = gz
         active = self._jump_active.float()
         jump = torch.stack(
             (
@@ -447,6 +483,15 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
             terms["jump_com_rise"] = c.rew_jump_com_rise * scored.float() * com
             recovered = closing
         self._jump_active &= ~(recovered | missed)
+
+        # The robot's roll mode, as fast as it is rolling, and the knees' target
+        # difference changing step to step, which is what drives it: only where the task
+        # weighs them, so no other task's log grows a term.
+        if c.rew_roll_mode_rate != 0.0 and self._roll is not None:
+            terms["roll_mode_rate"] = c.rew_roll_mode_rate * self._roll.rate.square()
+        if c.rew_knee_difference_rate != 0.0:
+            change = self._knee_diff - self._knee_diff_last
+            terms["knee_difference_rate"] = c.rew_knee_difference_rate * change.square()
         return terms
 
     # -- commands and endings
@@ -528,3 +573,27 @@ class WheeledBipedJumpEnv(WheeledBipedRoughEnv):
         self._next_jump_in[env_ids] = torch.empty(
             len(env_ids), device=self.device
         ).uniform_(lo, hi)
+        # The knees as the episode starts them, long held, and a fresh roll mode.
+        right, left = self._knees
+        held = self._leg_targets[env_ids, right] - self._leg_targets[env_ids, left]
+        self._knee_diff[env_ids] = held
+        self._knee_diff_last[env_ids] = held
+        if self._roll is not None:
+            self._roll.reset(env_ids, *self._draw_roll_mode(len(env_ids)), held)
+
+    def _draw_roll_mode(self, n: int) -> tuple[torch.Tensor, ...]:
+        """n robots' roll modes, each parameter drawn evenly over its range: the gain,
+        the natural frequency, the damping, and the delay in physics steps."""
+        c, dev = self.cfg, self.device
+
+        def even(span):
+            return torch.empty(n, device=dev).uniform_(*span)
+
+        lo, hi = c.roll_mode_delay_steps
+        delay = torch.randint(lo, hi + 1, (n,), device=dev)
+        return (
+            even(c.roll_mode_gain),
+            even(c.roll_mode_hz),
+            even(c.roll_mode_zeta),
+            delay,
+        )

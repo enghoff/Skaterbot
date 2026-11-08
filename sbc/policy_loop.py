@@ -438,6 +438,12 @@ class TwoPolicies:
     that is sooner. No landing is detected:
     POLICY_INTERFACE.md has why none is needed. What happens goes into `events`."""
 
+    # A press faster than this brakes first, held under `cap_m_s`, until it has been
+    # slower for `braked_s`.
+    top_speed_m_s = JUMP_TOP_SPEED_M_S
+    cap_m_s = JUMP_SPEED_CAP_M_S
+    braked_s = JUMP_BRAKED_S
+
     def __init__(
         self,
         driving: Balancer,
@@ -508,7 +514,12 @@ class TwoPolicies:
 
     @property
     def speed_cap(self) -> float | None:
-        return None if self.state == "drive" else JUMP_SPEED_CAP_M_S
+        return None if self.state == "drive" else self.cap_m_s
+
+    @property
+    def jump_meta(self) -> dict:
+        """What jumps, for the run's log."""
+        return self.jumping.meta
 
     def press(self, g, speed: float, loaded: bool | None) -> str | None:
         """A press of the jump button. None if it is taken up, or why not."""
@@ -520,7 +531,7 @@ class TwoPolicies:
         if loaded is False:
             return "a wheel is not on the floor"
         self.t = 0.0
-        if abs(speed) > JUMP_TOP_SPEED_M_S:
+        if abs(speed) > self.top_speed_m_s:
             self.state = "braking"
             self.slow_for = 0.0
             self.events.append(f"pressed at {speed:+.2f} m/s: braking first")
@@ -548,22 +559,26 @@ class TwoPolicies:
         self.since_back = 0.0
         self.events.append("handed back to the driving policy")
 
+    def _braking(self, fb: dict, w) -> None:
+        """On to the crouch once it has been slow enough for long enough, or given up."""
+        rolling = ground_speed(fb, float(w[1]), self.meta["wheel_radius"])
+        self.slow_for = (
+            self.slow_for + PERIOD_S if abs(rolling) < self.top_speed_m_s else 0.0
+        )
+        if self.slow_for >= self.braked_s:
+            self._crouch()
+        elif self.t > JUMP_BRAKE_GIVE_UP_S:
+            self.state, self.t = "drive", 0.0
+            self.events.append(
+                f"refused: still at {rolling:+.2f} m/s after "
+                f"{JUMP_BRAKE_GIVE_UP_S:g} s of braking"
+            )
+
     def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
         self.t += PERIOD_S
         self.since_back += PERIOD_S
         if self.state == "braking":
-            rolling = ground_speed(fb, float(w[1]), self.meta["wheel_radius"])
-            self.slow_for = (
-                self.slow_for + PERIOD_S if abs(rolling) < JUMP_TOP_SPEED_M_S else 0.0
-            )
-            if self.slow_for >= JUMP_BRAKED_S:
-                self._crouch()
-            elif self.t > JUMP_BRAKE_GIVE_UP_S:
-                self.state, self.t = "drive", 0.0
-                self.events.append(
-                    f"refused: still at {rolling:+.2f} m/s after "
-                    f"{JUMP_BRAKE_GIVE_UP_S:g} s of braking"
-                )
+            self._braking(fb, w)
         if self.state == "crouch":
             low = float(np.mean(leg_heights(fb)))
             if low <= self.bottom + self.tolerance or self.t >= self.crouch_s:
@@ -587,6 +602,511 @@ class TwoPolicies:
 
     def decide(self, obs: np.ndarray) -> dict[str, st.Cmd]:
         return self.active.decide(obs)
+
+
+# ---- the scripted jump -------------------------------------------------------------
+#
+# A jump with no network, in place of the jump policy behind the A button. Every jump
+# policy so far tucked rather than jumped, and its knees answered the robot's roll
+# (simulation/roll_mode.py); the owner tried jd8 on the robot on 8 November 2026 and found
+# it unsteady and its height unconvincing, and agreed to a scripted jump first, from
+# standstill. Both legs are always sent the same command, so the roll mode is never
+# driven. In order:
+#
+#   crouch  the driving policy, asked for the lowest ride height it was trained on;
+#   hold    still the driving policy, until the robot is calm, still and balanced;
+#   push    the knees push with the push's torque, the hips keeping each axle under the
+#           centre of mass, until on their speed they would pass the take-off height;
+#   brake   the legs stopped there, which pulls the wheels off the floor;
+#   flight  the legs drawn up a little and held, until the knees feel the floor;
+#
+# and then it is the driving policy's again, as it lands. What each is, and what MuJoCo
+# showed, is in JumpScript. The push is the one setting for how high (JUMP_PUSH_NM).
+
+# The robot's masses and where each sits, in the legs' plane: the torso's forward and up
+# of the hips' axis in its own frame; a thigh's and a shin's along it from the joint above;
+# a wheel's at its axle. From simulation/urdf/wheeled_biped.urdf, the CAD's, whose 2 098 g
+# came within 12 g of the whole robot as it runs on a scale (tools/mass_budget.toml); the
+# centre of mass from these is MuJoCo's to 0.02 mm over the legs' travel.
+TORSO_KG = 1.044633
+TORSO_COM_M = (0.000146, 0.0685 - 0.027481)
+THIGH_KG = 0.221560
+THIGH_COM_M = 0.095588
+SHIN_KG = 0.213560
+SHIN_COM_M = 0.095235
+WHEEL_KG = 0.093634
+ROBOT_KG = TORSO_KG + 2.0 * (THIGH_KG + SHIN_KG + WHEEL_KG)
+
+
+def axle_at(hip: float, knee: float) -> tuple[float, float]:
+    """A leg's axle, forward of its hip and up from it in the torso's frame, m."""
+    shin = hip - knee
+    return (
+        LEG_LINK_M * (math.sin(hip) + math.sin(shin)),
+        -LEG_LINK_M * (math.cos(hip) + math.cos(shin)),
+    )
+
+
+def leg_for(forward: float, down: float) -> tuple[float, float]:
+    """The hip and knee that put the axle `forward` of the hip and `down` below it, the
+    knee folded back as it always is."""
+    reach = math.hypot(forward, down)
+    bend = reach * reach / (2.0 * LEG_LINK_M * LEG_LINK_M) - 1.0
+    knee = math.acos(min(max(bend, -1.0), 1.0))
+    return math.atan2(forward, down) + knee / 2.0, knee
+
+
+def leg_jacobian(hip: float, knee: float) -> np.ndarray:
+    """How the axle moves, forward and up, for each of the hip and the knee."""
+    shin = hip - knee
+    link = LEG_LINK_M
+    return np.array(
+        [
+            [link * (math.cos(hip) + math.cos(shin)), -link * math.cos(shin)],
+            [link * (math.sin(hip) + math.sin(shin)), -link * math.sin(shin)],
+        ]
+    )
+
+
+def mass_centre(hip: float, knee: float) -> tuple[float, float]:
+    """The whole robot's centre of mass, both legs at these angles, forward of the hips'
+    axis and up from it in the torso's frame, m."""
+    shin = hip - knee
+    kx, kz = LEG_LINK_M * math.sin(hip), -LEG_LINK_M * math.cos(hip)
+    ax, az = axle_at(hip, knee)
+    x = TORSO_KG * TORSO_COM_M[0] + 2.0 * (
+        THIGH_KG * THIGH_COM_M * math.sin(hip)
+        + SHIN_KG * (kx + SHIN_COM_M * math.sin(shin))
+        + WHEEL_KG * ax
+    )
+    z = TORSO_KG * TORSO_COM_M[1] + 2.0 * (
+        -THIGH_KG * THIGH_COM_M * math.cos(hip)
+        + SHIN_KG * (kz - SHIN_COM_M * math.cos(shin))
+        + WHEEL_KG * az
+    )
+    return x / ROBOT_KG, z / ROBOT_KG
+
+
+def off_balance(hip: float, knee: float, up) -> float:
+    """How far the centre of mass is ahead of the axles, across `up`, the world's up in
+    the torso's frame: nought when it is straight above them, m."""
+    cx, cz = mass_centre(hip, knee)
+    ax, az = axle_at(hip, knee)
+    return (cx - ax) * up[1] - (cz - az) * up[0]
+
+
+def under_mass(down: float, up) -> float:
+    """How far forward of the hip the axle has to be, `down` below it, for the centre of
+    mass to be straight above it along `up`. The centre of mass moves with the legs, so it
+    is found by Newton's method."""
+
+    def off(forward: float) -> float:
+        return off_balance(*leg_for(forward, down), up)
+
+    forward = 0.0
+    for _ in range(4):
+        f = off(forward)
+        forward -= f / ((off(forward + 1e-4) - f) / 1e-4)
+    return forward
+
+
+@dataclasses.dataclass(frozen=True)
+class JumpScript:
+    """What the scripted jump does, phase by phase. MuJoCo's figures are on
+    launch_check.py's rig with the roll mode at its fit (simulation/mujoco/
+    jump_roll_check.py), D8 driving, 8 November 2026 (session scratchpad scripted_jump/)."""
+
+    # THE CROUCH is the driving policy's own, asked for the lowest of its trained heights,
+    # brought down at this rate, until the legs are within the tolerance or the time is
+    # up. The driving policy cannot balance with its legs taken from it: given the legs
+    # in a scripted crouch, 155 or 165 mm, it rocked at 5-6 Hz, growing, and tipped past
+    # 15 degrees within a second. Nor does a scripted dip from there to 150-155 mm pay:
+    # with nothing balancing it the torso drifted, and it fell 4 times in 16, the knees
+    # pushed within 0.02 rad of straight.
+    crouch_m: float = 0.165
+    crouch_rate_m_s: float = 0.25
+    crouch_tolerance_m: float = 0.005
+    crouch_s: float = 1.5
+    # THE HOLD. The push sends the torso turning with whatever turn it starts with, and with
+    # the centre of mass off its axles it adds one: 7 mm off under a 60 N push spun it at 2
+    # rad/s. So it waits, for at least `hold_s`, until the torso turns slower than
+    # `calm_rad_s`, the wheels roll slower than `still_m_s` and the centre of mass is within
+    # `over_m` of above the axles (by the legs' angles and the IMU), all for `ready_s`; and
+    # gives the jump up after `hold_most_s`. Standing in the crouch the driving policy sways
+    # the axles 7 mm either side of balance over a second or so: 0.7-1.0 s of waiting.
+    hold_s: float = 0.15
+    calm_rad_s: float = 0.3
+    still_m_s: float = 0.05
+    over_m: float = 0.005
+    ready_s: float = 0.1
+    hold_most_s: float = 2.0
+    # THE PUSH. The knees push with the push's torque and no stiffness; the hips, at
+    # `hip_kp` and `hip_kd`, keep each axle on the path that holds the centre of mass above
+    # it along the IMU's up as the push began, for wherever the knees are as measured: under
+    # load the knees lag their command by 0.3 rad and more, and a hip that kept to the
+    # command put the axle 20 mm behind the centre of mass, and spun the torso nose-down at
+    # 10 rad/s. Following a planned extension instead, at a speed asked, the knees' torque
+    # lag (18 ms) had them catch up at 35 rad/s, overshoot to within 0.08 rad of straight
+    # and ring in the air, and the height came out of order with the speed asked.
+    hip_kp: float = 40.0
+    hip_kd: float = 1.0
+    push_most_s: float = 0.3
+    # THE BRAKE: the push ends as soon as the knees, `brake_lead_s` ahead on their own
+    # speed, would pass the take-off height, and the legs are held there, stiffly, for
+    # `brake_s`. Stopping the legs pulls the wheels up as the body goes on. The brake
+    # reaches the knees 18 ms late and they overshoot it all the same: at 1.6 Nm to within
+    # 0.33 rad of straight, at 1.8 0.45; taking off at 200 mm, or braking 10 ms later,
+    # bought 1-3 mm and brought them within 0.06.
+    takeoff_m: float = 0.195
+    brake_lead_s: float = 0.02
+    brake_kp: float = 40.0
+    brake_kd: float = 1.5
+    brake_s: float = 0.03
+    # THE FLIGHT: the legs drawn up to `land_m` over `tuck_s`, softly, and held. Held at
+    # the take-off height they cleared 10-16 mm at 1.8-2.2 Nm, and drawn up 25 mm, 18-22
+    # at 1.6-1.8; drawn up further it did not finish in the flight, and stiffer it was
+    # slower. Moving the legs any more than that in the air turns the torso, with nothing
+    # to stop it: swinging them under the centre of mass for the landing turned it 14
+    # degrees further the same way.
+    land_m: float = 0.170
+    tuck_s: float = 0.07
+    air_kp: float = 12.0
+    air_kd: float = 0.5
+    # Commands reach the motors about 6 ms after they are sent and are held for 10.
+    lead_s: float = 0.025
+    # THE WHEELS hold their spin against the world through the push and the flight, by
+    # `spin_kd`, and as the legs are asked to fold, each rotor is turned with its shin.
+    # Left free, as a shin swings its wheel's rotor has to be turned with it, and the floor
+    # did that, pushing the robot forward under its centre of mass: the torso left the
+    # floor turning nose-down at 0.8-1.8 rad/s with the wheels free, and at -1.1 to +0.7
+    # with their spin held.
+    spin_kd: float = 0.02
+    # TOUCHDOWN, the knees as the loop sees them: their torque below -`touch_nm`, the
+    # weight arriving, or folding past where they were asked, by `touch_rad`, or by
+    # `touch_past_rad` and `touch_rad_s` faster than asked. Looked for only from `earliest`
+    # of the flight the legs' speed at the brake predicts, the body leaving at `leaves` of
+    # it, since in the first part of a flight the knees still ring from the brake; and
+    # taken as landed at `latest` of it and `latest_s` more, felt or not. Landing on legs
+    # near straight, the knees hardly fold, but their torque jumped by 1 Nm. From 1.0 to
+    # 1.8 Nm, on that rig and the worse one below, it was felt between 5 ms before the
+    # wheels touched and 20 ms after.
+    touch_nm: float = 0.3
+    touch_rad: float = 0.08
+    touch_past_rad: float = -0.02
+    touch_rad_s: float = 2.0
+    leaves: float = 0.9
+    earliest: float = 0.6
+    latest: float = 1.5
+    latest_s: float = 0.15
+    # Landed, it is the driving policy's at once; it was given the robot 0.1 s later in
+    # MuJoCo and the robot fell on from 11 degrees to 27 meanwhile. The height it is asked
+    # for then rises from where it landed to the operator's at this rate.
+    rise_m_s: float = 0.1
+
+
+# THE PUSH, Nm of each knee's 3, the one setting for how high. Three seeds each, on
+# launch_check.py's rig with the roll mode at its fit, MuJoCo, 8 November 2026: at 1.4 the
+# wheels cleared 13-15 mm and the body rose 3-4 above where it stood, at 1.6 18-21 and
+# 8-9, at 1.8 18-22 and 7-8, at 2.0 22-28 and 11-14, every run landing and standing,
+# tilting up to 23 degrees, and 30 at 2.0; jd8 cleared 38 and rose 15, tilting 13. With
+# the roll mode at twice its fit, the same. With the wheels' torque at 0.8 of asked, the
+# IMU 40 ms late, the pack at 23.4 V and the legs' gain 0.9, three tries in five never
+# came still in the crouch and stood up again, and the rest jumped and stood from 1.2 to
+# 1.8; at 2.0 one fell. So it is held to 1.8 at most, whatever is asked.
+JUMP_PUSH_NM = 1.6
+JUMP_PUSH_RANGE_NM = (1.0, 1.8)
+# A press faster than this brakes to a stop first, and the crouch waits until it has been
+# slower for JUMP_STILL_S; the hold then waits for it to be still. At 0.1 m/s for 0.3 s,
+# on that rig, where the driving policy stands swaying at 0.5 m/s, every press was
+# refused after 3 s of braking.
+JUMP_STILL_M_S = 0.5
+JUMP_STILL_S = 0.2
+
+
+class ScriptedJump(TwoPolicies):
+    """The driving policy, and a jump that is a script rather than a network, behind one
+    balancer's face. The press, its refusals, the braking first and the speed cap are
+    TwoPolicies', with a stop for the brake; it is handed back as it lands, or as soon as
+    anything stops the jump going ahead, and nothing here cuts a motor. Both legs are always
+    sent the same command. What happens goes into `events`, as TwoPolicies' does."""
+
+    top_speed_m_s = JUMP_STILL_M_S
+    cap_m_s = 0.0
+    braked_s = JUMP_STILL_S
+
+    def __init__(
+        self,
+        driving: Balancer,
+        push: float = JUMP_PUSH_NM,
+        script: JumpScript | None = None,
+    ):
+        self.driving = driving
+        lo, hi = JUMP_PUSH_RANGE_NM
+        self.push = min(max(float(push), lo), hi)
+        self.script = script or JumpScript()
+        self.events: list[str] = []
+        self.reset()
+
+    # -- a balancer's face: the driving policy's, which has the robot but for the legs and
+    # wheels the script sends while it jumps
+
+    @property
+    def jump_meta(self) -> dict:
+        return {"scripted": True, "push_nm": self.push} | dataclasses.asdict(
+            self.script
+        )
+
+    @property
+    def assist(self) -> bool:
+        return self.state in ("drive", "braking")
+
+    @property
+    def actions(self) -> np.ndarray:
+        return self.driving.actions
+
+    @property
+    def last_wheels(self) -> tuple[float, float]:
+        return self.driving.last_wheels
+
+    @property
+    def obs(self) -> np.ndarray:
+        return self.driving.obs
+
+    def reset(self) -> None:
+        self.driving.reset()
+        self.active = self.driving
+        self.state, self.phase = "drive", ""
+        self.t = self.pt = 0.0
+        self.since_back = math.inf
+        self.slow_for = 0.0
+        self.legs: dict[str, st.Cmd] = {}
+        self.wheels: tuple[float, float] = (0.0, 0.0)
+        self.height = self.back_from = self.asked = 0.0
+
+    def _crouch(self) -> None:
+        self.state, self.t = "crouch", 0.0
+        self.phase, self.pt = "crouch", 0.0
+        self.start = None
+        self.legs = {}
+        self.events.append(
+            f"crouching to {self.script.crouch_m * 1000:.0f} mm on the driving policy"
+        )
+
+    def _hand_back(self, why: str = "") -> None:
+        d = self.driving
+        if self.legs:
+            # It is told it asked for what the script last did, as a hand-over between two
+            # policies tells the incoming one.
+            asked = np.array([self.legs[j].p for j in st.LEGS], dtype=np.float32)
+            d.actions[:4] = np.clip((asked - d.crouch) / d.leg_scale, -1.0, 1.0)
+            d.actions[4:6] = np.clip(np.array(self.wheels) / d.wheel_scale, -1.0, 1.0)
+            d.last_wheels = self.wheels
+        self.state, self.phase, self.t = "drive", "", 0.0
+        self.since_back = 0.0
+        self.back_from = self.height
+        self.legs = {}
+        self.events.append("handed back to the driving policy" + why)
+
+    def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
+        self.t += PERIOD_S
+        self.since_back += PERIOD_S
+        self.asked = height
+        if self.state == "braking":
+            turn = 0.0
+            self._braking(fb, w)
+        if self.state in ("crouch", "jump"):
+            self._script(fb, np.asarray(w, dtype=float), np.asarray(g, dtype=float))
+        lo, hi = self.driving.meta["height_range"]
+        if self.state in ("crouch", "jump"):
+            speed = turn = 0.0
+            height = min(max(self.height, lo), hi)
+        elif self.since_back < (hi - lo) / self.script.rise_m_s:
+            rose = self.back_from + self.script.rise_m_s * self.since_back
+            height = min(height, max(rose, lo))
+        return self.driving.observe(fb, w, g, speed, turn, height)
+
+    def decide(self, obs: np.ndarray) -> dict[str, st.Cmd]:
+        d = self.driving
+        if not self.legs:
+            return d.decide(obs)
+        cmds = dict(self.legs)
+        for k, j in enumerate(st.WHEELS):
+            cmds[j] = st.Cmd(t=float(self.wheels[k]))
+        return cmds
+
+    # -- the script
+
+    def _script(self, fb: dict, w: np.ndarray, g: np.ndarray) -> None:
+        s = self.script
+        self.pt += PERIOD_S
+        hip = (fb["hip_pitch_right"].p + fb["hip_pitch_left"].p) / 2.0
+        knee = (fb["knee_right"].p + fb["knee_left"].p) / 2.0
+        knee_v = (fb["knee_right"].v + fb["knee_left"].v) / 2.0
+        knee_nm = (fb["knee_right"].tau + fb["knee_left"].tau) / 2.0
+        up = np.array([-g[0], -g[2]]) / max(math.hypot(g[0], g[2]), 1e-6)
+        if self.phase in ("crouch", "hold") and math.degrees(tilt(g)) > JUMP_TILT_DEG:
+            self._hand_back(f": tilted {math.degrees(tilt(g)):.0f} degrees crouching")
+            return
+        if self.phase == "crouch":
+            if self.start is None:
+                self.start = self.asked
+            self.height = max(s.crouch_m, self.start - s.crouch_rate_m_s * self.pt)
+            low = float(np.mean(leg_heights(fb)))
+            if low <= s.crouch_m + s.crouch_tolerance_m or self.pt >= s.crouch_s:
+                self.phase, self.pt = "hold", 0.0
+                self.ready_for = 0.0
+                self.ups: deque = deque(maxlen=5)
+            return
+        if self.phase == "hold":
+            self.ups.append(up)
+            rolling = ground_speed(fb, float(w[1]), self.driving.meta["wheel_radius"])
+            over = off_balance(hip, knee, up)
+            ready = (
+                abs(w[1]) < s.calm_rad_s
+                and abs(rolling) < s.still_m_s
+                and abs(over) < s.over_m
+            )
+            self.ready_for = self.ready_for + PERIOD_S if ready else 0.0
+            if self.pt >= s.hold_s and self.ready_for >= s.ready_s:
+                self._plan(fb, w, hip, knee)
+            elif self.pt >= s.hold_most_s:
+                self._hand_back(
+                    f": never still in the crouch, turning {w[1]:+.1f} rad/s, rolling "
+                    f"{rolling:+.2f} m/s, {over * 1000:+.0f} mm off balance"
+                )
+                return
+            else:
+                return
+        if self.phase == "push":
+            ahead = knee + knee_v * s.brake_lead_s
+            if ahead > self.brake_knee and self.pt < s.push_most_s:
+                self._push(hip, knee)
+                self._wheels(fb, w)
+                return
+            # The body leaves at about the legs' rate of extending now.
+            rising = max(-knee_v * LEG_LINK_M * math.sin(knee / 2.0), 0.0)
+            self.flight_s = 2.0 * s.leaves * rising / GRAVITY_M_S2
+            self.events.append(
+                f"braking at {-axle_at(hip, knee)[1] * 1000:.0f} mm, rising "
+                f"{rising:.2f} m/s"
+            )
+            self.phase, self.pt = "brake", 0.0
+        if self.phase == "brake":
+            self._legs(
+                s.takeoff_m, 0.0, s.brake_kp, s.brake_kd, knee_now=(knee, knee_v)
+            )
+            self._wheels(fb, w)
+            if self.pt >= s.brake_s:
+                self.phase, self.pt = "flight", 0.0
+            return
+        # The flight.
+        k = st.min_jerk((self.pt + s.lead_s) / s.tuck_s)
+        rate = (s.land_m - s.takeoff_m) * min_jerk_rate((self.pt + s.lead_s) / s.tuck_s)
+        h = s.takeoff_m + (s.land_m - s.takeoff_m) * k
+        self._legs(h, rate / s.tuck_s, s.air_kp, s.air_kd)
+        self._wheels(fb, w)
+        asked = self.legs["knee_right"]
+        fold = knee_v - asked.v
+        past = knee - asked.p
+        pressed = (
+            knee_nm < -s.touch_nm
+            or (past > s.touch_rad and fold > 0.0)
+            or (past > s.touch_past_rad and fold > s.touch_rad_s)
+        )
+        if self.pt >= s.earliest * self.flight_s and pressed:
+            self._hand_back(
+                f": landed {self.pt:.2f} s into the flight, the knees at "
+                f"{knee_nm:+.2f} Nm, {past:+.2f} rad past and folding {fold:+.1f} rad/s"
+            )
+        elif self.pt >= s.latest * self.flight_s + s.latest_s:
+            self._hand_back(f": no landing felt in {self.pt:.2f} s, taken as landed")
+
+    def _plan(self, fb: dict, w: np.ndarray, hip: float, knee: float) -> None:
+        """The push's path: for each height, the axle's place forward of the hip that keeps
+        the centre of mass straight above it along the IMU's up now."""
+        s = self.script
+        up = np.mean(np.asarray(self.ups), axis=0)
+        self.aim = up / float(np.linalg.norm(up))
+        h0 = -axle_at(hip, knee)[1]
+        self.heights = np.linspace(min(h0, s.land_m) - 0.005, s.takeoff_m + 0.005, 16)
+        self.forwards = np.array([under_mass(h, self.aim) for h in self.heights])
+        self.brake_knee = leg_for(self._along(s.takeoff_m), s.takeoff_m)[1]
+        self.spin0 = self._spins(fb, w)
+        self.knee_rate = self.knee_accel = 0.0
+        self.flight_s = 0.0
+        self.phase, self.pt = "push", 0.0
+        self.state, self.t = "jump", 0.0
+        self.events.append(
+            f"jump: legs at {h0 * 1000:.0f} mm, pushing {self.push:.1f} Nm to "
+            f"{s.takeoff_m * 1000:.0f} mm"
+        )
+
+    def _along(self, h: float) -> float:
+        return float(np.interp(h, self.heights, self.forwards))
+
+    def _push(self, hip: float, knee: float) -> None:
+        """The knees' torque, and the hips keeping the axles on the path for the knees as
+        they are, with their share of the same force."""
+        s = self.script
+        self._legs(
+            -axle_at(hip, knee)[1], 0.0, s.hip_kp, s.hip_kd, knee_now=(knee, 0.0)
+        )
+        hip_c = self.legs["hip_pitch_right"]
+        jac = leg_jacobian(hip_c.p, knee)
+        ux, uz = self.aim
+        force = self.push / max(jac[0, 1] * ux + jac[1, 1] * uz, 1e-3)
+        hip_nm = -(jac[0, 0] * ux + jac[1, 0] * uz) * force
+        hip_nm = min(max(hip_nm, -st.PEAK_NM), st.PEAK_NM)
+        hips = dataclasses.replace(hip_c, t=float(hip_nm))
+        knees = st.Cmd(p=knee, t=-self.push)
+        self.legs = {j: hips if "hip" in j else knees for j in st.LEGS}
+
+    def _legs(self, h, h_rate, kp, kd, knee_now=None) -> None:
+        """Both legs to height h on the path, rising at h_rate. With `knee_now`, the knees'
+        angle and rate as measured, the hips keep the axles on the path for that knee
+        rather than for the one asked, and move with it."""
+        dt = 1e-3
+        hip, knee = leg_for(self._along(h), h)
+        hip2, knee2 = leg_for(self._along(h + h_rate * dt), h + h_rate * dt)
+        hip_v, knee_v = (hip2 - hip) / dt, (knee2 - knee) / dt
+        if knee_now is not None:
+            angle, rate = knee_now
+            down = 2.0 * LEG_LINK_M * math.cos(angle / 2.0)
+            down *= math.cos(math.atan2(self._along(down), down))
+            hip = math.atan2(self._along(down), down) + angle / 2.0
+            hip_v = rate / 2.0
+        self.height = h
+        self.knee_accel = (knee_v - self.knee_rate) / PERIOD_S
+        self.knee_rate = knee_v
+        self.legs = {
+            j: st.Cmd(p=hip, v=hip_v, kp=kp, kd=kd)
+            if "hip" in j
+            else st.Cmd(p=knee, v=knee_v, kp=kp, kd=kd)
+            for j in st.LEGS
+        }
+
+    def _wheels(self, fb: dict, w: np.ndarray) -> None:
+        """Each wheel's spin against the world held, and as the legs are asked to fold or
+        straighten, each wheel's rotor turned with its shin by its motor."""
+        s = self.script
+        ff = -FREE_WHEEL_KG_M2 * self.knee_accel / 2.0
+        spins = self._spins(fb, w)
+        self.wheels = tuple(
+            ff - s.spin_kd * (spin - spin0) for spin, spin0 in zip(spins, self.spin0)
+        )
+
+    def _spins(self, fb: dict, w: np.ndarray) -> tuple[float, float]:
+        """Each wheel's spin against the world, as ground_speed has it."""
+        return tuple(
+            float(w[1]) - fb[hip].v + fb[knee].v + fb[wheel].v
+            for hip, knee, wheel in FREE_WHEEL_JOINTS
+        )
+
+
+def min_jerk_rate(s: float) -> float:
+    """st.min_jerk's slope at s."""
+    s = min(max(s, 0.0), 1.0)
+    return 30.0 * s * s * (1.0 - s) * (1.0 - s)
 
 
 def ground_speed(fb: dict, pitch_rate: float, wheel_radius: float) -> float:

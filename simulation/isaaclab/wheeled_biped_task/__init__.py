@@ -33,6 +33,11 @@ JUMP_LAG_TASK_ID = "Biped-Wheeled-Jump-Lag-v0"
 DRIVE_D7_TASK_ID = "Biped-Wheeled-Drive-D7-v0"
 # D8: D7 with the robot's slow sway in it too (plant.SWAY, WheeledBipedDriveD8EnvCfg).
 DRIVE_D8_TASK_ID = "Biped-Wheeled-Drive-D8-v0"
+# D9: D8 asked for its top speed, often, on the battery as run (WheeledBipedDriveD9EnvCfg).
+DRIVE_D9_TASK_ID = "Biped-Wheeled-Drive-D9-v0"
+# The jump on D8's plant with the robot's roll answer to its knees (roll_mode.py,
+# WheeledBipedJumpD8EnvCfg).
+JUMP_D8_TASK_ID = "Biped-Wheeled-Jump-D8-v0"
 
 
 def register() -> list[str] | None:
@@ -151,6 +156,17 @@ def register() -> list[str] | None:
                 "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
             },
         )
+    if DRIVE_D9_TASK_ID not in gym.registry:
+        gym.register(
+            id=DRIVE_D9_TASK_ID,
+            entry_point=f"{__name__}.drive_fast_env:WheeledBipedDriveFastEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.drive_env_cfg:WheeledBipedDriveD9EnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedRoughPPORunnerCfg",
+                "rsl_rl_fresh_cfg_entry_point": f"{__name__}.agent:WheeledBipedDriveFreshPPORunnerCfg",
+            },
+        )
     if JUMP_LAG_TASK_ID not in gym.registry:
         gym.register(
             id=JUMP_LAG_TASK_ID,
@@ -168,6 +184,16 @@ def register() -> list[str] | None:
             disable_env_checker=True,
             kwargs={
                 "env_cfg_entry_point": f"{__name__}.jump_measured_env_cfg:WheeledBipedJumpMeasuredEnvCfg",
+                "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
+            },
+        )
+    if JUMP_D8_TASK_ID not in gym.registry:
+        gym.register(
+            id=JUMP_D8_TASK_ID,
+            entry_point=f"{__name__}.jump_env:WheeledBipedJumpEnv",
+            disable_env_checker=True,
+            kwargs={
+                "env_cfg_entry_point": f"{__name__}.jump_measured_env_cfg:WheeledBipedJumpD8EnvCfg",
                 "rsl_rl_cfg_entry_point": f"{__name__}.agent:WheeledBipedJumpPPORunnerCfg",
             },
         )

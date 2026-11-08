@@ -31,7 +31,8 @@ steady it, or both. It fails if any of these goes wrong:
     air, its legs go to the crouch at once, and lowered it stands; on the floor it just
     starts; and lying slumped, it tries.
 14. Fallen over and lying limp, a tap wakes it, whatever its legs are doing.
-15. Select on the controller takes it from the slow limit to the fast one, and back.
+15. Select on the controller takes it from the slow limit to the fast one, and back,
+    and in fast mode a full pull holds --fast-mark.
 16. Driving, nothing short of lying down cuts its motors: a motor's fault is cleared,
     the IMU or a step late, the controller's deadman, a wheel too fast, a winding too
     hot and a hard shove are driven through, and an IMU gone for good lets it down.
@@ -348,8 +349,12 @@ def run(
     rig_class=None,
     jump_net=None,
     jump_height=0.12,
+    jump_push=None,
+    jump_script=None,
 ):
-    """balance.powered, on a hand's script. What it ended with, and the rig."""
+    """balance.powered, on a hand's script. What it ended with, and the rig. `jump_net`
+    is a jump policy's network, or "scripted" for sbc/policy_loop.py's ScriptedJump,
+    pushing at `jump_push` Nm."""
     rig = (rig_class or HandRig)(
         ctx.ctl, ctx.robot_file, cmd_s=cmd_ms / 1000, report_s=0.0015, imu_s=imu_ms / 1000,
         gyro_hz=400.0, gravity_hz=30.0, seed=seed, hand=hand, **getattr(ctx, "lags", {}),
@@ -369,8 +374,13 @@ def run(
 
     rig.hand = watched
     balance.clock = lambda: rig.t
-    bal = pl.Balancer(ctx.net)
-    if jump_net is not None:
+    bal = balance.LeanedBalancer(
+        ctx.net, lean_per_m_s=getattr(ctx, "lean_per_m_s", 0.0)
+    )
+    if isinstance(jump_net, str):
+        push = pl.JUMP_PUSH_NM if jump_push is None else jump_push
+        bal = pl.ScriptedJump(bal, push, script=jump_script)
+    elif jump_net is not None:
         bal = pl.TwoPolicies(bal, pl.JumpBalancer(jump_net), jump_height, volts=24.8)
     stepper = pl.Stepper(
         bal, pl.Imu(ctx.robot_file["imu_axes"], ctx.robot_file["imu_gravity_sign"]), rig,
@@ -381,7 +391,7 @@ def run(
     )  # fmt: skip
     args = SimpleNamespace(
         mode=mode, seconds=seconds, touch_wait=wait, height=None, max_speed=0.5, max_turn=1.5,
-        drive=False, rearm=rearm, tilt=30.0,
+        fast_speed=getattr(ctx, "fast_speed", None), drive=False, rearm=rearm, tilt=30.0,
         woken=threading.Event() if woken else None,
     )  # fmt: skip
     rig.args = args
@@ -502,6 +512,14 @@ def steadied_lowering(rig_begin=2.0):
 # 0.5 m/s, on which case 15's fast mode cannot pass.
 DEPLOYED_RUN = ROOT / "exports" / "rl" / "rough-2026-11-07_11-52-47_d8"
 
+# What case 15's full pull in fast mode has to hold, m/s, over two seconds once it has had
+# six to get there. 1.0 is what every driving policy since D3 has been held to: D8 holds
+# 1.11 here at its top of 2.2, and d8_calm failed at 0.80. D9, trained for the top speed
+# this motor allows (WheeledBipedDriveD9EnvCfg), is to be held to 1.35 at its top of 1.6:
+# on this rig on 7 November 2026 D8 cruised at 1.11-1.17 whatever was asked from 1.4 to
+# 2.2, D3 at 1.54, and the motor stops being able to brake at about 1.5.
+FAST_MARK_M_S = 1.0
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -511,7 +529,13 @@ def main() -> int:
         "--jump-run",
         type=Path,
         default=JUMP_RUN,
-        help="a jump run packed by sbc/pack_policy.py, for the A button's case",
+        help="a jump run packed by sbc/pack_policy.py, for the A button's case, or "
+        "'scripted' for the scripted jump",
+    )
+    ap.add_argument(
+        "--jump-push",
+        type=float,
+        help=f"the scripted jump's push, Nm, as balance.py's (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument(
         "--jump-delays",
@@ -535,6 +559,25 @@ def main() -> int:
     )
     ap.add_argument("--leg-gain", type=float, default=LEG_GAIN)
     ap.add_argument(
+        "--fast-speed",
+        type=float,
+        help="m/s at a full pull in fast mode, as balance.py's --fast-speed: the robot's "
+        "launcher passes 1.8, which balance.py holds to the policy's top (default: the top)",
+    )
+    ap.add_argument(
+        "--lean-per-m-s",
+        type=float,
+        default=0.0,
+        help="balance.py's --lean-per-m-s: degrees nose-up the driving policy is told it "
+        "leans, per m/s it is sent",
+    )
+    ap.add_argument(
+        "--fast-mark",
+        type=float,
+        default=FAST_MARK_M_S,
+        help="m/s case 15's full pull in fast mode has to hold: 1.35 for D9",
+    )
+    ap.add_argument(
         "--wheel-armature",
         type=float,
         default=WHEEL_ARMATURE_KG_M2,
@@ -549,6 +592,9 @@ def main() -> int:
         ctl=ctl,
         net=pl.Net(args.run / "exported" / "policy.npz"),
         robot_file=json.loads(bc.ROBOT_FILE.read_text()),
+        fast_speed=args.fast_speed,
+        fast_mark=args.fast_mark,
+        lean_per_m_s=args.lean_per_m_s,
         lags=dict(
             wheel_lag_s=args.wheel_lag_ms / 1000,
             wheel_gain=args.wheel_gain,
@@ -975,11 +1021,13 @@ def main() -> int:
     slow = (seen[8.0] - seen[6.0]) / 2.0
     fast = (seen[16.0] - seen[14.0]) / 2.0
     again = (seen[24.0] - seen[22.0]) / 2.0
-    fine = why == "stood" and 0.4 < slow < 0.6 and fast > 1.0 and 0.4 < again < 0.6
+    mark = ctx.fast_mark
+    fine = why == "stood" and 0.4 < slow < 0.6 and fast > mark and 0.4 < again < 0.6
     good &= fine
     print(
         f"   {'ok' if fine else 'FAILED'}: {why}; full gas held {slow:.2f} m/s slow, "
-        f"{fast:.2f} fast, {again:.2f} slow again; tilted to {rig.peak_tilt:.1f} degrees",
+        f"{fast:.2f} fast (to beat {mark:g}), {again:.2f} slow again; tilted to "
+        f"{rig.peak_tilt:.1f} degrees, wheels to {rig.peak_spin:.1f} rad/s",
         flush=True,
     )
 
@@ -1109,7 +1157,7 @@ def main() -> int:
     )
 
     imu_ms, cmd_ms = (float(x) for x in args.jump_delays.split(","))
-    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms)
+    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push)
 
     good &= taken_over_low(ctx)
 
@@ -1167,16 +1215,32 @@ def taken_over_low(ctx) -> bool:
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
 
 
-def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool:
+def jumps(
+    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None
+) -> bool:
+    """Case 17, on a jump policy's run, or with `jump_run` "scripted" on
+    sbc/policy_loop.py's ScriptedJump pushing `push` Nm."""
+    scripted = str(jump_run) == balance.SCRIPTED
+    what = (
+        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm"
+        if scripted
+        else "the jump policy"
+    )
     print(
-        f"17. the A button jumps, on the jump policy, and hands back "
+        f"17. the A button jumps, on {what}, and hands back "
         f"(IMU {imu_ms:g} ms, commands {cmd_ms:g} ms)"
     )
-    pack = jump_run / "exported" / "policy.npz"
-    if not pack.exists():
-        print(f"   FAILED: no {pack}: uv run sbc/pack_policy.py {jump_run}", flush=True)
-        return False
-    jump_net = pl.Net(pack)
+    if scripted:
+        jump_net = balance.SCRIPTED
+    else:
+        pack = jump_run / "exported" / "policy.npz"
+        if not pack.exists():
+            print(
+                f"   FAILED: no {pack}: uv run sbc/pack_policy.py {jump_run}",
+                flush=True,
+            )
+            return False
+        jump_net = pl.Net(pack)
     good = True
 
     def pressing(at, forward, fast=False, again=None):
@@ -1217,7 +1281,7 @@ def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool
         script, seen = pressing(**k)
         why, rig = run(
             "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
-            jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms,
+            jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
         )  # fmt: skip
         n = rig.writer
         said = [w for _, w in n.jumps]

@@ -252,10 +252,22 @@ def balance_command(args) -> list[str]:
     # stop in sbc/policy_loop.py would cut short.
     command += ["--max-speed", "1.0", "--max-turn", "2.0"]
     command += ["--fast-speed", "1.8", "--fast-turn", "15.0"]
-    # A jump policy put beside the driving one is used: the A button jumps, as high as
-    # balance.py's --jump-height, 30 mm unless that is changed here.
+    # The driving policy told it leans 1.67 degrees nose-up per m/s it is sent, 3 at
+    # fast mode's 1.8: on launch_check.py's rig D8 then holds 1.41 m/s rather than
+    # 1.17 and passes every case (balance.py's THE LEAN). Untried on the robot when set
+    # on 8 November 2026; 0 takes it out.
+    command += ["--lean-per-m-s", "1.67"]
+    # The A button jumps: the scripted jump, pushing balance.py's --jump-push, 1.6 Nm of
+    # each knee's 3 unless that is changed here, held to 1.8 at most. In MuJoCo on 8
+    # November 2026 it cleared 18-21 mm there and landed and stood every time; untried on
+    # the robot when set. With args.jump "policy", a jump policy put beside the driving one
+    # is used instead, as high as balance.py's --jump-height, 30 mm unless changed here;
+    # "none" is no jump.
     jump = HERE / "policy_jump.npz"
-    if jump.exists():
+    chosen = getattr(args, "jump", "scripted")
+    if chosen == "scripted":
+        command += ["--jump-policy", "scripted", "--jump-push", "1.6"]
+    elif chosen == "policy" and jump.exists():
         command += ["--jump-policy", str(jump)]
     if args.rt:
         command.append("--rt")
@@ -266,6 +278,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--robot", default=diag_client.DEFAULT_ROBOT)
     ap.add_argument("--rt", action="store_true", help="the loop at real-time priority")
+    ap.add_argument(
+        "--jump",
+        choices=("scripted", "policy", "none"),
+        default="scripted",
+        help="what the A button does: the scripted jump, the jump policy in "
+        "policy_jump.npz if there is one, or nothing (default scripted)",
+    )
     ap.add_argument("--log", type=Path, default=HERE / "launcher.log")
     ap.add_argument(
         "--phase-file",

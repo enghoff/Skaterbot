@@ -51,6 +51,10 @@ from isaaclab.utils.configclass import configclass
 from .env_cfg import plant
 from .rough_env_cfg import WHEELED_TERRAINS_CFG, WheeledBipedRoughEnvCfg
 
+# isort: split
+# simulation/roll_mode.py, beside plant.py: importing .env_cfg puts it on the path.
+import roll_mode
+
 # Flat ground, in the rough task's tile grid so the same environment code runs
 # on it; the curriculum is off because every tile is the same. Square rather
 # than the rough task's 10 rows: at 1.9 m/s a robot crosses a 40 m field in
@@ -539,3 +543,25 @@ class WheeledBipedJumpEnvCfg(WheeledBipedRoughEnvCfg):
     # caught. And it bought nothing: the policy it started from already stood
     # up to 1.5 m/s shoves standing, and fell at 2.0 as the trained ones did.
     push_x_m_s = None
+
+    # -- THE ROBOT'S ROLL ANSWER TO ITS KNEES, in what the IMU reads
+    # (simulation/roll_mode.py). On the robot a fast change in the knees' target
+    # difference rolls the torso some 10 rad/s per rad at 25 Hz, forty times what a
+    # rigid model does, and every jump policy closed that loop through its gyro into
+    # chatter and fell (7 November 2026). Drawn per robot per episode from these
+    # ranges: the gain, rad/s of roll rate per rad of right-minus-left knee target at
+    # the mode's natural frequency; that frequency; its damping; and its delay from the
+    # policy's command, in 2.5 ms physics steps. The mode moves at the physics rate;
+    # its rate is added to the gyro's x and its angle turns gravity about the torso's
+    # x, in the policy's observation and nowhere else. A gain of 0 is off, as here.
+    roll_mode_gain = (0.0, 0.0)
+    roll_mode_hz = (roll_mode.FITTED["hz"],) * 2
+    roll_mode_zeta = (roll_mode.FITTED["zeta"],) * 2
+    roll_mode_delay_steps = roll_mode.delay_steps(
+        (roll_mode.FITTED["delay_s"],) * 2, plant.PHYSICS_DT
+    )
+    # Charges on the mode's rate, per (rad/s) squared, and on the step-to-step change
+    # of the knees' target difference, per rad squared a step. Off here; the task that
+    # draws the mode says why its weights are what they are.
+    rew_roll_mode_rate = 0.0
+    rew_knee_difference_rate = 0.0
