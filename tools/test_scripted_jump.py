@@ -234,7 +234,22 @@ class Sequence(unittest.TestCase):
         self.assertEqual(two.phase, "hold")
         for _ in range(int(0.3 / pl.PERIOD_S)):
             step(two, legs(SCRIPT.crouch_m))
+            if two.phase == "push":
+                break
         self.assertEqual(two.phase, "push")
+
+    def test_the_push_is_over_by_the_time_limit_even_with_the_knees_not_there(self):
+        """The late brakes of 8 November 2026 took the knees past straight, for no height."""
+        two, _ = jumper()
+        to_push(two)
+        self.assertEqual(two.phase, "push")
+        n = 0
+        while two.phase == "push":
+            step(two, legs(SCRIPT.crouch_m))
+            n += 1
+            self.assertLess(n, 20)
+        self.assertEqual(two.phase, "brake")
+        self.assertLessEqual(n, round(SCRIPT.push_most_s / pl.PERIOD_S) + 1)
 
     def test_the_hold_waits_for_steady_not_still(self):
         """Rolling steadily it pushes; its speed changing, it does not."""
@@ -245,6 +260,8 @@ class Sequence(unittest.TestCase):
         self.assertEqual(two.phase, "hold")
         for _ in range(int(0.3 / pl.PERIOD_S)):
             step(two, legs(SCRIPT.crouch_m, wheel_v=12.5))
+            if two.phase == "push":
+                break
         self.assertEqual(two.phase, "push")
         self.assertIn("rolling +0.50 m/s", two.events[-1])
 
@@ -259,6 +276,8 @@ class Sequence(unittest.TestCase):
         self.assertEqual(two.phase, "hold")
         for _ in range(int(0.3 / pl.PERIOD_S)):
             step(two, legs(SCRIPT.crouch_m, wheel_v=12.5))
+            if two.phase == "push":
+                break
         self.assertEqual(two.phase, "push")
 
     def test_never_steady_and_it_stands_up_again(self):
@@ -378,6 +397,8 @@ class Refusals(unittest.TestCase):
         self.assertEqual(two.phase, "hold", two.events)
         for _ in range(seconds(0.3)):
             step(two, legs(SCRIPT.crouch_m, wheel_v=(top - 0.05) / 0.04), speed=speed)
+            if two.phase == "push":
+                break
         self.assertEqual(two.phase, "push", two.events)
 
     def test_asked_slower_than_the_cap_it_pushes_under_a_lower_top(self):
@@ -395,6 +416,8 @@ class Refusals(unittest.TestCase):
         self.assertEqual(two.phase, "hold", two.events)
         for _ in range(seconds(0.3)):
             step(two, legs(SCRIPT.crouch_m, wheel_v=(limit - 0.05) / 0.04), speed=asked)
+            if two.phase == "push":
+                break
         self.assertEqual(two.phase, "push", two.events)
         # Asked nothing, the top is JUMP_RUN_LOW_TOP_M_S.
         still, _ = jumper()
@@ -594,6 +617,8 @@ class Button(unittest.TestCase):
             self.assertEqual(two.phase, "hold", (w, loaded))
             for _ in range(seconds(0.1)):
                 heard(two, legs(SCRIPT.crouch_m), False)
+                if two.phase == "push":
+                    break
             self.assertEqual(two.phase, "push", (w, loaded))
 
     def test_held_in_the_crouch_a_lift_is_looked_for(self):
