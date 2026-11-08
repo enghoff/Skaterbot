@@ -464,6 +464,60 @@ class Operator:
         return speed, turn
 
 
+# THE LEAN. The driving policy told that it leans back, by --lean-per-m-s degrees for
+# each m/s it is sent, so that it leans forward to straighten up and goes faster; going
+# backwards, the other way. Its speed follows what it reads as level: on the robot's 3
+# degrees nose-down on 2026-11-05, D3 drove 25 per cent slow (drive_env_cfg.py's
+# WheeledBipedDriveD6EnvCfg). D9 (rough-2026-11-07_17-10-09_d9), trained for 1.6 m/s,
+# holds 1.24 asked for it on launch_check.py's rig, as D8 holds 1.11-1.17 asked anything
+# from 1.4 to 2.2, using 0.1 Nm of the 1 Nm and more its wheels could make there and 31
+# rad/s of their 55: the limit is the policy's own, and the same without the motor's
+# curve. Training taught it: there an IMU tilt of up to 2 degrees and sensor offsets it
+# could not see moved each robot's speed by 0.15-0.25 m/s, and the fastest ran their
+# wheels into Isaac's 48.2 rad/s, so the policy keeps the rest slow.
+#
+# On launch_check.py's rig on 8 November 2026, fast mode's full pull at the launcher's
+# 1.8 m/s (session scratchpad d9why/): D8 held 1.17 m/s with no lean, 1.32 at 1.11 per
+# m/s (2 degrees at 1.8) and 1.41 at 1.67 (3 degrees; 3.25 with Trim's 0.15 on top),
+# passing every case at 1.67, the jump from 1.5 m/s on jd8 included; it stopped from
+# there in 1.43 s over 1.31 m, the wheels at 37 rad/s at most. D9 at 1.25 (2 degrees at
+# its 1.6) held 1.43, but on jd8 its jump hands back to a fall, lean or none. With the
+# wheels' torque at 0.8 of asked, the IMU 40 ms late and the pack at 23.4 V, D8 at 1.67
+# held 1.52 and stopped with its wheels at 41 rad/s; at 0.7 of asked as well, the
+# loop took it for lifted at 0.4 m/s every time, where without the lean it stood.
+# 3 degrees is past the 2 D8 was trained on. Only the policy's input is turned: the
+# tilt cut-off, the fall, the lift and the IMU's own checks read gravity as it is, and
+# a jump policy is fed it as it is. NOT YET TRIED ON THE ROBOT.
+
+
+def leaned(g: np.ndarray, nose_up_deg: float) -> np.ndarray:
+    """Gravity's direction as a torso pitched `nose_up_deg` further nose-up reads it,
+    its roll left as it is."""
+    if not nose_up_deg:
+        return g
+    a = math.radians(nose_up_deg)
+    c, s = math.cos(a), math.sin(a)
+    x, y, z = (float(v) for v in g)
+    return np.array([x * c + z * s, y, z * c - x * s])
+
+
+class LeanedBalancer(pl.Balancer):
+    """The driving policy, fed gravity turned nose-up by `lean_per_m_s` degrees for each
+    m/s of the speed it is sent, after the Operator's caps and ramps and the stepper's
+    governor, Trim and Hold: nothing standing, and coming and going with the speed.
+    THE LEAN, above, has why. `lean_deg` is the last step's."""
+
+    def __init__(self, net: pl.Net, wheel_limit: float | None = None, lean_per_m_s=0.0):
+        super().__init__(net, wheel_limit)
+        self.lean_per_m_s = float(lean_per_m_s)
+        self.lean_deg = 0.0
+
+    def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
+        self.lean_deg = self.lean_per_m_s * speed
+        g = leaned(np.asarray(g, dtype=float), self.lean_deg)
+        return super().observe(fb, w, g, speed, turn, height)
+
+
 def real_time(args) -> str:
     """This thread ahead of everything else on the Pi, if allowed."""
     if not args.rt:
@@ -1205,7 +1259,9 @@ def session(args) -> int:
     loop = None
     try:
         regs = get_ready(rig, robot, is_powered)
-        bal = pl.Balancer(net, wheel_limit=args.wheel_limit)
+        bal = LeanedBalancer(
+            net, wheel_limit=args.wheel_limit, lean_per_m_s=args.lean_per_m_s
+        )
         if args.jump_policy and is_powered:
             bal = pl.TwoPolicies(
                 bal,
@@ -1283,6 +1339,11 @@ def session(args) -> int:
             f"{args.mode}: {bal.meta['run']}, policy {bal.meta['digest']}, battery "
             f"{diag_client.wait_for_status(robot).get('vbus')} V, cut-off at {args.tilt:g} "
             f"degrees{'' if is_powered else '; the motors stay off'}"
+            + (
+                f"; the policy told it leans {args.lean_per_m_s:g} degrees per m/s"
+                if args.lean_per_m_s
+                else ""
+            )
         )
         if is_powered and not args.yes:
             words = {
@@ -1483,6 +1544,14 @@ def main(argv=None) -> int:
         "--fast-turn",
         type=float,
         help="rad/s at a stick's end once select is pressed (default: the policy's top)",
+    )
+    ap.add_argument(
+        "--lean-per-m-s",
+        type=float,
+        default=0.0,
+        help="degrees nose-up the driving policy is told it leans for each m/s it is "
+        "sent, nose-down backwards, so that it goes faster: 1.25 is 2 degrees at 1.6 "
+        "m/s. Its input only; the safety checks read the IMU as it is (default 0)",
     )
     ap.add_argument(
         "--no-trim",

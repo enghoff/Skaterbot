@@ -252,6 +252,11 @@ def balance_command(args) -> list[str]:
     # stop in sbc/policy_loop.py would cut short.
     command += ["--max-speed", "1.0", "--max-turn", "2.0"]
     command += ["--fast-speed", "1.8", "--fast-turn", "15.0"]
+    # The driving policy told it leans 1.67 degrees nose-up per m/s it is sent, 3 at
+    # fast mode's 1.8: on launch_check.py's rig D8 then holds 1.41 m/s rather than
+    # 1.17 and passes every case (balance.py's THE LEAN). Untried on the robot when set
+    # on 8 November 2026; 0 takes it out.
+    command += ["--lean-per-m-s", "1.67"]
     # A jump policy put beside the driving one is used: the A button jumps, as high as
     # balance.py's --jump-height, 30 mm unless that is changed here.
     jump = HERE / "policy_jump.npz"
