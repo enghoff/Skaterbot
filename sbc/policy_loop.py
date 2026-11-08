@@ -521,8 +521,12 @@ class TwoPolicies:
         """What jumps, for the run's log."""
         return self.jumping.meta
 
-    def press(self, g, speed: float, loaded: bool | None) -> str | None:
-        """A press of the jump button. None if it is taken up, or why not."""
+    def press(
+        self, g, speed: float, loaded: bool | None, held: bool = False
+    ) -> str | None:
+        """A press of the jump button. None if it is taken up, or why not. `held`, the
+        button still down as the press is heard, a jump policy takes no notice of: it
+        jumps at the press."""
         if self.state != "drive":
             doing = "braking for" if self.state == "braking" else "in"
             return f"already {doing} a jump"
@@ -539,6 +543,10 @@ class TwoPolicies:
         self.events.append(f"pressed at {speed:+.2f} m/s")
         self._crouch()
         return None
+
+    def button(self, held: bool | None, loaded: bool | None = None) -> None:
+        """The jump button each step, as ScriptedJump's: a jump policy has nothing to wait
+        for."""
 
     def _crouch(self) -> None:
         d, j = self.driving, self.jumping
@@ -750,8 +758,17 @@ class JumpScript:
     # the end of a sway, where it is still. Pushing as soon as it was down, the legs still
     # settling, it left the floor turning nose-down at 23-36 mNm s, which no estimate of
     # the robot's angular momentum from the gyro and the joints, 16 ms apart, foretold.
+    # Held in the crouch the operator may steer, and letting go straightens the turn asked
+    # (THE BUTTON, below), so it also waits for the torso to turn about the vertical slower
+    # than `calm_yaw_rad_s` and for both knees to carry weight, as a press is refused
+    # without (JUMP_KNEE_LOADED_NM): turning at 0.5 rad/s and 0.5 m/s MuJoCo's inner knee
+    # goes light. Standing, the turn rate stays under 0.2 rad/s (Hold). Let go still
+    # steering at 0.75 rad/s and 0.4 m/s, on launch_check.py's rig, it jumped about 0.1 s
+    # later than let go going straight, and stood, on the worst rig as well (8 November
+    # 2026, case 17).
     hold_s: float = 0.1
     calm_rad_s: float = 0.5
+    calm_yaw_rad_s: float = 0.3
     steady_m_s: float = 0.15
     over_m: float = 0.02
     ready_s: float = 0.05
@@ -868,6 +885,20 @@ JUMP_PUSH_RANGE_NM = (1.0, 1.8)
 # floor and refuses the press; at 0.3 rad/s and 1 m/s it jumps, and straight on.
 JUMP_RUN_TOP_M_S = 1.5
 JUMP_SLOWED_S = 0.2
+# THE BUTTON. The owner's, 8 November 2026: pressing A crouches, and letting it go jumps.
+# gamepad.py sets bit 8 over the count of presses while A is held (balance.py's
+# JUMP_HELD), and a press heard with it set waits in the hold, however long, on the
+# driving policy at the operator's speed and turn, under JUMP_RUN_TOP_M_S, Trim and Hold
+# acting as they do driving, until A is let go of; then it goes on as a press without it
+# does, hold_most_s from then to be ready, and straight on. A press and a let-go between
+# two of the controller's 50 Hz frames comes without the bit, and jumps at once, as every
+# press did before. The controller's stream gone stale or not live while it waits is not
+# a let-go: it stands up again, so a controller switched off or out of range never jumps
+# the robot. Held in the hold past JUMP_SETTLE_S, the lift detector is on again, as it
+# is for any crouch the D-pad asks for. On launch_check.py's rig (case 17, 8 November
+# 2026) held 2-3 s, standing or driving and steering, it had landed and was handed back
+# 0.19-0.22 s after the let-go and stood, on the worst rig as well; let go still
+# steering, 0.30-0.36 s; picked up held, it was taken for lifted.
 
 
 class ScriptedJump(TwoPolicies):
@@ -875,8 +906,9 @@ class ScriptedJump(TwoPolicies):
     balancer's face. The press, its refusals, and braking first under the speed cap are
     TwoPolicies', braking only past JUMP_RUN_TOP_M_S and only to under it; it is handed
     back as it lands, or as soon as anything stops the jump going ahead, and nothing here
-    cuts a motor. Both legs are always sent the same command. What happens goes into
-    `events`, as TwoPolicies' does."""
+    cuts a motor. Both legs are always sent the same command. A press with the button
+    held waits for it to be let go of, `button` telling it each step (THE BUTTON, above).
+    What happens goes into `events`, as TwoPolicies' does."""
 
     top_speed_m_s = JUMP_RUN_TOP_M_S
     cap_m_s = JUMP_RUN_TOP_M_S
@@ -906,12 +938,22 @@ class ScriptedJump(TwoPolicies):
 
     @property
     def assist(self) -> bool:
-        return self.state in ("drive", "braking")
+        """Trim and Hold: driving, braking, and held in the crouch."""
+        return self.state in ("drive", "braking") or self.waiting
 
     @property
     def speed_cap(self) -> float | None:
-        """Under the top while braking to it; jumping, whatever the operator asks."""
-        return self.cap_m_s if self.state == "braking" else None
+        """Under the top while braking to it or held in the crouch; jumping, whatever the
+        operator asks."""
+        return self.cap_m_s if self.state == "braking" or self.waiting else None
+
+    @property
+    def busy(self) -> bool:
+        """TwoPolicies', but for a crouch held in the hold past JUMP_SETTLE_S, which a
+        lift is told from as it is driving."""
+        if self.waiting and self.phase == "hold" and self.pt >= JUMP_SETTLE_S:
+            return False
+        return super().busy
 
     @property
     def actions(self) -> np.ndarray:
@@ -936,6 +978,59 @@ class ScriptedJump(TwoPolicies):
         self.wheels: tuple[float, float] = (0.0, 0.0)
         self.height = self.back_from = self.asked = 0.0
         self.speed_jump = 0.0
+        # Pressed with the button held, and not yet let go of; how long it has been
+        # held; and whether both wheels carry weight, None if balance.py cannot tell.
+        self.waiting = False
+        self.held_s = 0.0
+        self.loaded: bool | None = None
+
+    def press(
+        self, g, speed: float, loaded: bool | None, held: bool = False
+    ) -> str | None:
+        """TwoPolicies', and with the button held, waiting in the crouch for it to be let
+        go of."""
+        why = super().press(g, speed, loaded)
+        if why is None and held:
+            self.waiting, self.held_s = True, 0.0
+            self.events.append("held: crouching until it is let go of")
+        return why
+
+    def button(self, held: bool | None, loaded: bool | None = None) -> None:
+        """The jump button as balance.py hears it, each step before `observe`: True held,
+        False let go of, None not known, the controller's stream stale or not live; and
+        whether both wheels carry weight. Waiting, let go of it goes on to jump; not
+        known, it stands up again."""
+        self.loaded = loaded
+        if not self.waiting:
+            return
+        if held:
+            self.held_s += PERIOD_S
+            return
+        self.waiting = False
+        where = (
+            "braking"
+            if self.state == "braking"
+            else "on the way down"
+            if self.phase == "crouch"
+            else "in the crouch"
+        )
+        if held is None:
+            why = (
+                f": the controller went quiet with A held {self.held_s:.2f} s, {where}"
+            )
+            if self.state == "braking":
+                self.state, self.t = "drive", 0.0
+                self.events.append("stopped braking" + why)
+            else:
+                self._hand_back(why)
+            return
+        self.events.append(f"let go after {self.held_s:.2f} s, {where}")
+
+    def _braking(self, fb: dict, w) -> None:
+        super()._braking(fb, w)
+        if self.state == "drive":
+            # Given up braking: nothing more to wait for.
+            self.waiting = False
 
     def _crouch(self) -> None:
         self.state, self.t = "crouch", 0.0
@@ -959,6 +1054,7 @@ class ScriptedJump(TwoPolicies):
         self.since_back = 0.0
         self.back_from = self.height
         self.legs = {}
+        self.waiting = False
         self.events.append("handed back to the driving policy" + why)
 
     def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
@@ -973,10 +1069,11 @@ class ScriptedJump(TwoPolicies):
         lo, hi = self.driving.meta["height_range"]
         if self.state in ("crouch", "jump"):
             # Driving, it goes on at the operator's speed until the push, and is told the
-            # speed it pushed at until it lands; straight on, whatever turn is asked.
+            # speed it pushed at until it lands; straight on, whatever turn is asked, but
+            # for the turn asked while the button is held.
             if self.phase in ("crouch", "hold"):
                 self.speed_jump = speed
-            speed, turn = self.speed_jump, 0.0
+            speed, turn = self.speed_jump, turn if self.waiting else 0.0
             height = min(max(self.height, lo), hi)
         elif self.since_back < (hi - lo) / self.script.rise_m_s:
             rose = self.back_from + self.script.rise_m_s * self.since_back
@@ -1012,7 +1109,7 @@ class ScriptedJump(TwoPolicies):
             low = float(np.mean(leg_heights(fb)))
             if low <= s.crouch_m + s.crouch_tolerance_m or self.pt >= s.crouch_s:
                 self.phase, self.pt = "hold", 0.0
-                self.ready_for = 0.0
+                self.ready_for = self.free_s = 0.0
                 self.ups: deque = deque(maxlen=5)
                 self.rolls: deque = deque(maxlen=round(s.ready_s / PERIOD_S) + 1)
             return
@@ -1021,18 +1118,27 @@ class ScriptedJump(TwoPolicies):
             rolling = ground_speed(fb, float(w[1]), self.driving.meta["wheel_radius"])
             self.rolls.append(rolling)
             over = off_balance(hip, knee, up)
+            yaw = float(np.dot(w, g)) / max(float(np.linalg.norm(g)), 1e-6)
             ready = (
                 abs(w[1]) < s.calm_rad_s
+                and abs(yaw) < s.calm_yaw_rad_s
+                and self.loaded is not False
                 and max(self.rolls) - min(self.rolls) < s.steady_m_s
                 and abs(over) < s.over_m
             )
             self.ready_for = self.ready_for + PERIOD_S if ready else 0.0
+            # Held, it waits however long; let go of, hold_most_s from then at most.
+            if self.waiting:
+                return
+            self.free_s += PERIOD_S
             if self.pt >= s.hold_s and self.ready_for >= s.ready_s:
                 self._plan(fb, w, hip, knee, rolling)
-            elif self.pt >= s.hold_most_s:
+            elif self.free_s >= s.hold_most_s:
+                light = "" if self.loaded is not False else ", a wheel light"
                 self._hand_back(
-                    f": never steady in the crouch, turning {w[1]:+.1f} rad/s, rolling "
-                    f"{rolling:+.2f} m/s, {over * 1000:+.0f} mm off balance"
+                    f": never steady in the crouch, turning {w[1]:+.1f} rad/s and "
+                    f"{yaw:+.1f} about the vertical, rolling {rolling:+.2f} m/s, "
+                    f"{over * 1000:+.0f} mm off balance{light}"
                 )
                 return
             else:

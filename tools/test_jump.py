@@ -324,6 +324,55 @@ class Presses(unittest.TestCase):
         self.assertEqual(op.take_jumps(), 3)
         self.assertEqual(op.take_jumps(), 0)
 
+    def test_held_is_bit_8_and_not_a_press(self):
+        """gamepad.py sets bit 8 over the count while A is held: pressed, held and let go
+        of is one press, held while it is, and let go of once not."""
+        op = self.operator()
+        op.last = (0.0, {"forward": 0.0, "turn": 0.0, "live": True, "jump": 3})
+        op.reset()
+        self.assertIsNone(op.jump_held)
+        seen = []
+        for k, jump in enumerate([3, 4 | balance.JUMP_HELD, 4 | balance.JUMP_HELD, 4]):
+            self.heard(op, k * 0.02, jump)
+            seen.append((op.take_jumps(), op.jump_held))
+        self.assertEqual(seen, [(0, False), (1, True), (0, True), (0, False)])
+
+    def test_held_through_the_wrap(self):
+        op = self.operator()
+        op.last = (0.0, {"forward": 0.0, "turn": 0.0, "live": True, "jump": 255})
+        op.reset()
+        self.heard(op, 0.0, 0 | balance.JUMP_HELD)
+        self.assertEqual((op.take_jumps(), op.jump_held), (1, True))
+
+    def test_held_from_before_taking_over_is_no_press(self):
+        op = self.operator()
+        op.last = (0.0, {"forward": 0.0, "turn": 0.0, "live": True, "jump": 0x107})
+        op.reset()
+        self.heard(op, 0.0, 0x107)
+        self.heard(op, 0.02, 7)
+        self.assertEqual(op.take_jumps(), 0)
+
+    def test_held_is_not_known_stale_or_not_live(self):
+        """The controller gone quiet, or Linux having taken it away, is not a let-go."""
+        op = self.operator()
+        op.reset()
+        self.heard(op, 0.0, 1 | balance.JUMP_HELD)
+        self.assertTrue(op.jump_held)
+        op.ask(op.FRESH_S + 0.01)
+        self.assertIsNone(op.jump_held)
+        m = {"forward": 0.0, "turn": 0.0, "live": False, "jump": 1 | balance.JUMP_HELD}
+        op.last = (1.0, m)
+        op.ask(1.0)
+        self.assertIsNone(op.jump_held)
+
+    def test_a_controller_from_before_is_never_held(self):
+        op = self.operator()
+        op.reset()
+        for k, jump in enumerate([0, 1, 1, 2]):
+            self.heard(op, k * 0.02, jump)
+            self.assertIs(op.jump_held, False)
+        self.assertEqual(op.take_jumps(), 2)
+
     def test_the_speed_cap_brakes_at_the_braking_rate(self):
         op = self.operator()
         op.reset()

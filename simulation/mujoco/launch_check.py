@@ -1258,18 +1258,54 @@ def jumps(
             return False
         jump_net = pl.Net(pack)
     good = True
+    top_turn = max(map(abs, ctx.net.meta["turn_range"]))
 
-    def pressing(at, forward, fast=False, again=None):
+    def pressing(
+        at,
+        forward,
+        fast=False,
+        again=None,
+        held=None,
+        steer=None,
+        quiet=None,
+        lift=None,
+    ):
+        """A press `at` seconds after touching, and then: `held`, A held that long, with
+        gamepad.py's bit set over the count as it sends it, or None for a controller from
+        before, which never sets it; `steer`, (from, to, share of a full turn) after the
+        press; `quiet`, the controller silent from that long after it; `lift`, picked up
+        that long after it, and put down again."""
         seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None, "after": None}
+        seen |= {"heading": None, "turned": 0.0, "lifted": None}
 
         def script(rig):
             if rig.first_touch is None:
                 return None
             t = rig.t - rig.first_touch
+            if quiet is not None and t >= at + quiet:
+                return None
             presses = (t >= at) + (again is not None and t >= at + again)
             if t >= at and seen["press"] is None:
                 seen["press"] = rig.t
                 seen["going"] = rig.forward_speed()
+            if t >= at:
+                w, _, _, z = rig.d.qpos[3:7]
+                heading = float(2 * np.arctan2(z, w))
+                seen["heading"] = seen["heading"] or heading
+                turned = math.remainder(heading - seen["heading"], 2 * math.pi)
+                seen["turned"] = max(seen["turned"], abs(math.degrees(turned)))
+            if lift is not None and t >= at + lift and seen["lifted"] is None:
+                # As case 11 picks it up, and put down again 3 s later.
+                seen["lifted"] = lowers(begin=rig.t + 3.0)
+                rig.carry = rig.steady = 1.0
+                rig.upright = UP.copy()
+                rig.target = rig.d.xpos[rig.ctl.base] + np.array([0.0, 0.0, 0.13])
+            jump = int(presses)
+            if held is not None and at <= t < at + held:
+                jump |= balance.JUMP_HELD
+            turning = 0.0
+            if steer is not None and at + steer[0] <= t < at + steer[1]:
+                turning = steer[2] * top_turn
             back = next(
                 (h for h, w in rig.writer.jumps if w.startswith("handed back")), None
             )
@@ -1284,14 +1320,20 @@ def jumps(
                 seen["tilt"] = max(seen["tilt"], rig.tilt_deg())
             return {
                 "forward": forward,
-                "turn": 0.0,
+                "turn": turning,
                 "live": True,
                 "height": None,
                 "mode": int(fast and t >= 1.0),
-                "jump": int(presses),
+                "jump": jump,
             }
 
-        return script, seen
+        first = lowers()
+
+        def hand(rig):
+            # Put down, and with `lift` picked up and put down again.
+            (seen["lifted"] or first)(rig)
+
+        return script, seen, hand
 
     # The scripted jump jumps driving, at a full pull in fast mode; a jump policy brakes.
     top = max(map(abs, ctx.net.meta["speed_range"]))
@@ -1300,47 +1342,99 @@ def jumps(
         if scripted
         else ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5))
     )
-    cases = (
+    cases = [
         ("standing", dict(at=5.0, forward=0.0)),
         ("at 0.5 m/s", dict(at=6.0, forward=1.8)),
         (fast[0], fast[1] | dict(fast=True)),
         ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
-    )
+    ]
+    # THE BUTTON (sbc/policy_loop.py): pressed, it crouches and waits while A is held, and
+    # let go of, it jumps. The cases above are a controller from before, which never
+    # sends the held bit; a jump policy takes no notice of it.
+    if scripted:
+        cases += [
+            ("A held 2 s standing, then let go", dict(at=5.0, forward=0.0, held=2.0)),
+            (
+                "A held 3 s at 0.5 m/s, steering for 1.5 s, then let go",
+                dict(at=6.0, forward=1.8, held=3.0, steer=(0.5, 2.0, 0.5)),
+            ),
+            ("a quick tap, A held 0.1 s", dict(at=5.0, forward=0.0, held=0.1)),
+            (
+                "A let go on the way down, at a full pull in fast mode",
+                fast[1] | dict(fast=True, held=0.04),
+            ),
+            (
+                "the controller silent 1 s into holding A",
+                dict(at=5.0, forward=0.0, held=3.0, quiet=1.0),
+            ),
+            (
+                "A let go still steering, at 0.5 m/s",
+                dict(at=6.0, forward=1.8, held=2.0, steer=(0.5, 4.0, 0.5)),
+            ),
+            (
+                "picked up 2 s into holding A, and put down",
+                dict(at=5.0, forward=0.0, held=8.0, lift=2.0),
+            ),
+        ]
     for name, k in cases:
-        script, seen = pressing(**k)
+        script, seen, hand = pressing(**k)
         why, rig = run(
-            "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
+            "launch", hand, ctx, seconds=14.0, rearm=True, script=script,
             jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
             jump_script=balance.jump_script(level) if scripted else None,
         )  # fmt: skip
         n = rig.writer
         said = [w for _, w in n.jumps]
         back = next((h for h, w in n.jumps if w.startswith("handed back")), None)
+        jumped = next((h for h, w in n.jumps if w.startswith("jump:")), None)
         took = None if back is None or seen["press"] is None else back - seen["press"]
+        held = k.get("held")
+        # Silent or picked up it must not jump, and let go still turning it need not:
+        # standing up again is as good. Picked up, taking over again starts it afresh,
+        # with no hand-back.
+        lifting = k.get("lift") is not None
+        turning = k.get("steer") is not None and k["steer"][1] > (held or 0.0)
+        must_jump = None if turning else k.get("quiet") is None and not lifting
         fine = (
             why == "stood"
             and n.fell is None
-            and "lifted" not in n.phases
-            and any(w.startswith("jump:") for w in said)
-            and back is not None
+            and ("lifted" in n.phases) == lifting
+            and (back is not None or lifting)
         )
+        if must_jump is not None:
+            fine &= (jumped is not None) == must_jump
         if k.get("again") is not None:
             fine &= any(w.startswith("refused: already") for w in said)
+        if held is not None and jumped is not None:
+            # Never before A is let go of.
+            fine &= jumped >= seen["press"] + held - 0.02
+        if held is not None and held < 0.05:
+            fine &= any("let go" in w and "on the way down" in w for w in said)
+        if k.get("quiet") is not None:
+            fine &= any("controller went quiet" in w for w in said)
+        if lifting:
+            fine &= n.phases.count("policy") == 2
+        if k.get("steer") is not None:
+            fine &= seen["turned"] > 10.0
         going = ""
-        if scripted and k["forward"]:
+        if scripted and k["forward"] and jumped is not None:
             # Pressed driving, it jumps without braking and lands going on at the speed.
             after = seen["after"]
             fine &= not any("braking first" in w for w in said)
-            fine &= after is not None and after >= LANDED_SHARE * seen["going"]
+            if not turning:
+                # Turning as it lands, its speed straight on is less.
+                fine &= after is not None and after >= LANDED_SHARE * seen["going"]
             going = f"going {seen['going']:.2f} m/s, then {after or 0.0:.2f}; "
-        elif k.get("fast"):
+        elif k.get("fast") and not scripted:
             fine &= any("braking first" in w for w in said)
+        if k.get("steer") is not None:
+            going += f"turned {seen['turned']:.0f} deg; "
         good &= fine
         print(
             f"   {'ok' if fine else 'FAILED'}: {name}: {why}; {going}legs down to "
             f"{seen['low'] * 1000:.0f} mm, wheels cleared {seen['clear'] * 1000:.0f} mm, "
             f"tilted to {seen['tilt']:.1f} deg; back {took and round(took, 2)} s after the "
-            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:440],
+            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:600],
             flush=True,
         )
     return good

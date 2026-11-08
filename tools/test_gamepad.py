@@ -188,6 +188,62 @@ class OperatorTests(unittest.TestCase):
         operator.event(gp.EV_KEY, gp.BTN_SOUTH, 2, 0.1)
         self.assertEqual(operator.jump, 1)
 
+    def jumps(self, events, start: int = 0) -> list[int]:
+        """What "jump" says after each of these A events, None a frame with none, from
+        `start` presses."""
+        operator = ready()
+        operator.jump = start
+        sent = []
+        for value in events:
+            if value is not None:
+                operator.event(gp.EV_KEY, gp.BTN_SOUTH, value, 0.0)
+            sent.append(operator.command(0.0)["jump"])
+        return sent
+
+    def test_the_jump_button_held_sets_bit_8_over_the_count(self):
+        held = gp.JUMP_HELD
+        self.assertEqual(
+            self.jumps([1, 2, None, 0, 1, 0]),
+            [1 | held, 1 | held, 1 | held, 1, 2 | held, 2],
+        )
+
+    def test_a_tap_inside_a_frame_is_a_press_without_the_bit(self):
+        operator = ready()
+        operator.event(gp.EV_KEY, gp.BTN_SOUTH, 1, 0.0)
+        operator.event(gp.EV_KEY, gp.BTN_SOUTH, 0, 0.0)
+        self.assertEqual(operator.command(0.0)["jump"], 1)
+
+    def test_only_the_jump_button_sets_it(self):
+        operator = ready()
+        for code in range(0x130, 0x140):
+            if code != gp.BTN_SOUTH:
+                operator.event(gp.EV_KEY, code, 1, 0.0)
+        self.assertEqual(operator.command(0.0)["jump"], 0)
+
+    def test_a_balance_from_before_counts_one_jump_a_press_and_none_a_let_go(self):
+        """balance.py's Operator until 8 November 2026 (196e59a) counted the jump as
+        this, which a robot not yet updated still runs: the change modulo 256."""
+
+        def old_balance(values) -> int:
+            presses, jumps = 0, None
+            for jump in values:
+                if jumps is not None:
+                    presses += (int(jump) - jumps) % 256
+                jumps = int(jump)
+            return presses
+
+        press, hold, let_go = 1, 2, 0
+        once = [press, hold, hold, None, let_go, None]
+        # From the frame before the first press.
+        self.assertEqual(old_balance([0, *self.jumps(once)]), 1)
+        self.assertEqual(old_balance([0, *self.jumps(once * 3)]), 3)
+        # Through the count's wrap past 255.
+        sent = self.jumps(once * 2, start=254)
+        self.assertIn(0 | gp.JUMP_HELD, sent)
+        self.assertEqual(old_balance([254, *sent]), 2)
+        # Taking over while it is held, and then let go of: nothing.
+        self.assertEqual(old_balance(self.jumps(once)[1:]), 0)
+
     def test_no_button_changes_what_is_asked(self):
         operator = ready()
         operator.event(gp.EV_ABS, GAS, 255, 0.0)
@@ -725,6 +781,23 @@ class PathToThePolicy(unittest.TestCase):
         self.assertTrue(until(lambda: controller.drive is not None))
         self.assertEqual(controller.drive["forward"], 0.0)
         self.assertEqual(controller.drive["turn"], 0.0)
+
+    def test_the_held_bit_reaches_the_stream_and_only_the_count_the_link(self):
+        """diagd passes "jump" on whole to whatever runs the policy, and J5's DRIVE
+        carries a byte of it."""
+        daemon, controller, where = self.daemon(takes_drive=True)
+        self.assertTrue(until(lambda: daemon.info.get("drive") == "1"))
+        heard = []
+        listener = diag_client.Robot(where, name="listener", streams=("drive",))
+        self.addCleanup(listener.close)
+        listener.on("drive", heard.append)
+        client = diag_client.Robot(where, name="c", streams=())
+        self.addCleanup(client.close)
+        jump = 7 | gp.JUMP_HELD
+        client.request("drive", forward=0.0, turn=0.0, height=0.2, live=True, jump=jump)
+        self.assertTrue(until(lambda: heard and controller.drive is not None))
+        self.assertEqual(heard[-1]["jump"], jump)
+        self.assertEqual(controller.drive["jump"], 7)
 
     def policy(self, where):
         """What runs the policy, as balance.py does it: select's presses since it
