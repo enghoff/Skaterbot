@@ -507,21 +507,75 @@ def leaned(g: np.ndarray, nose_up_deg: float) -> np.ndarray:
     return np.array([x * c + z * s, y, z * c - x * s])
 
 
+# THE GYRO'S MEAN. The driving policy is fed the gyro as the mean of its last three
+# readings, one a step, weighted 1-2-1, rather than the last alone. On 2026-11-08 at
+# 07:03 D8 chattered for 3.5 s, driving and then standing, until it was lifted: the
+# torso's roll rate at 46 Hz 0.48 rad/s rms against 0.025 standing, its yaw rate twice
+# that, its pitch rate 0.3 at 43 Hz, both wheels' actions flapping 0.37 against 0.015,
+# the hips and knees commanded against each other. The same run's log has 16 shorter
+# spells, 11 of them within a second of a jump's hand-back, and the day before's two,
+# on stopping, in pitch alone. D8's wheels answer the gyro more the nearer it comes to
+# the 50 Hz a 100 Hz loop can show, its own last actions fed back turning each step
+# against the one before: 1.3 of a wheel's 1 Nm per rad/s of pitch rate at 46 Hz,
+# against 0.56 at 10. The robot's body answered its wheels' torque at 43-46 Hz ten to
+# fifty times as strongly as MuJoCo's rigid one, in pitch and in a roll-and-yaw twist,
+# presumably the printed legs flexing, which closes that loop on the robot and nowhere
+# in MuJoCo. Put into launch_check.py's rig as modes the wheels' torque drives, 2 rad/s
+# per Nm at 44 Hz in pitch and 13 at 46 Hz in the twist, with steps as uneven as the
+# robot's, D8 chatters as the robot did, driving and then standing, and clearing its
+# last actions, which is what a lift does to it, does not stop it (session scratchpad
+# chatter/, 8 November 2026). The mean of three passes 0.29 of 40-50 Hz on the robot's
+# steps, 6 to 16 ms apart (0.02 were they even), and holds the gyro back 10 ms at the
+# 1-3 Hz the robot balances at: D8 trained with the IMU 12.5-40 ms late, and on the
+# robot it is 16. On the rig it stopped every chattering mode tried, and stood modes
+# four times as strong; standing, driving, stopping and a shove were as before. The
+# mean of two passes 0.44, and stood modes only two to three times as strong. Only the
+# policy's input is averaged, and only the driving policy's: the checks, Hold, Trim
+# and a jump policy read the gyro as it is. NOT YET TRIED ON THE ROBOT.
+GYRO_MEAN_OF = 3
+# Readings further apart than this are not averaged across: back from a jump, or after
+# a step very late, the mean starts again.
+GYRO_MEAN_GAP_S = 0.05
+
+
 class LeanedBalancer(pl.Balancer):
     """The driving policy, fed gravity turned nose-up by `lean_per_m_s` degrees for each
     m/s of the speed it is sent, after the Operator's caps and ramps and the stepper's
     governor, Trim and Hold: nothing standing, and coming and going with the speed.
-    THE LEAN, above, has why. `lean_deg` is the last step's."""
+    THE LEAN, above, has why. `lean_deg` is the last step's. And fed the gyro as the
+    mean of its last `gyro_mean_of` readings: THE GYRO'S MEAN, above."""
 
-    def __init__(self, net: pl.Net, wheel_limit: float | None = None, lean_per_m_s=0.0):
+    def __init__(
+        self,
+        net: pl.Net,
+        wheel_limit: float | None = None,
+        lean_per_m_s=0.0,
+        gyro_mean_of=GYRO_MEAN_OF,
+    ):
         super().__init__(net, wheel_limit)
         self.lean_per_m_s = float(lean_per_m_s)
         self.lean_deg = 0.0
+        # (when, the gyro in the torso's frame), newest last.
+        self.gyros: deque = deque(maxlen=max(1, int(gyro_mean_of)))
+
+    def reset(self) -> None:
+        super().reset()
+        self.gyros.clear()
+
+    def gyro_mean(self, w) -> np.ndarray:
+        """The binomial mean of the last readings: 1, 1-1, 1-2-1."""
+        now = clock()
+        if self.gyros and now - self.gyros[-1][0] > GYRO_MEAN_GAP_S:
+            self.gyros.clear()
+        self.gyros.append((now, np.asarray(w, dtype=float)))
+        n = len(self.gyros)
+        weights = [math.comb(n - 1, k) / 2 ** (n - 1) for k in range(n)]
+        return sum(k * x for k, (_, x) in zip(weights, self.gyros, strict=True))
 
     def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
         self.lean_deg = self.lean_per_m_s * speed
         g = leaned(np.asarray(g, dtype=float), self.lean_deg)
-        return super().observe(fb, w, g, speed, turn, height)
+        return super().observe(fb, self.gyro_mean(w), g, speed, turn, height)
 
 
 def real_time(args) -> str:
@@ -1266,7 +1320,10 @@ def session(args) -> int:
     try:
         regs = get_ready(rig, robot, is_powered)
         bal = LeanedBalancer(
-            net, wheel_limit=args.wheel_limit, lean_per_m_s=args.lean_per_m_s
+            net,
+            wheel_limit=args.wheel_limit,
+            lean_per_m_s=args.lean_per_m_s,
+            gyro_mean_of=args.gyro_mean_of,
         )
         if args.jump_policy and is_powered:
             if str(args.jump_policy) == SCRIPTED:
@@ -1570,6 +1627,14 @@ def main(argv=None) -> int:
         help="degrees nose-up the driving policy is told it leans for each m/s it is "
         "sent, nose-down backwards, so that it goes faster: 1.25 is 2 degrees at 1.6 "
         "m/s. Its input only; the safety checks read the IMU as it is (default 0)",
+    )
+    ap.add_argument(
+        "--gyro-mean-of",
+        type=int,
+        default=GYRO_MEAN_OF,
+        help="the driving policy is fed the mean of this many of the gyro's last readings, "
+        "weighted 1-2-1, against a 40-50 Hz chatter: 1 feeds it the last alone. Its input "
+        f"only (default {GYRO_MEAN_OF})",
     )
     ap.add_argument(
         "--no-trim",

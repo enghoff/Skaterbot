@@ -132,6 +132,88 @@ class NotTheJump(unittest.TestCase):
         np.testing.assert_array_equal(obs[3:6], g.astype(np.float32))
 
 
+class TheGyroMean(unittest.TestCase):
+    """balance.py's THE GYRO'S MEAN: the driving policy is fed the gyro as the 1-2-1 mean
+    of its last three readings, started again across a gap."""
+
+    def setUp(self):
+        self.t = 0.0
+        self.real_clock = balance.clock
+        balance.clock = lambda: self.t
+
+    def tearDown(self):
+        balance.clock = self.real_clock
+
+    def fed(self, bal, ws, step=0.009) -> list[np.ndarray]:
+        out = []
+        for w in ws:
+            out.append(
+                bal.observe(legs_at(0.25, 0.5), w, UP, 0.0, 0.0, 0.2035)[0:3].copy()
+            )
+            self.t += step
+        return out
+
+    def raw(self, ws) -> list[np.ndarray]:
+        return self.fed(balance.LeanedBalancer(Answers(DRIVING), gyro_mean_of=1), ws)
+
+    READINGS = [
+        np.array([1.0, -2.0, 0.5]),
+        np.array([3.0, 0.0, -1.0]),
+        np.array([-1.0, 4.0, 2.0]),
+    ]
+
+    def test_one_is_the_reading_as_it_is(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING), gyro_mean_of=1)
+        got = self.fed(bal, self.READINGS)
+        np.testing.assert_allclose(got[2], self.raw(self.READINGS)[2])
+
+    def test_three_weighs_them_one_two_one(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        got = self.fed(bal, self.READINGS)
+        a, b, c = self.READINGS
+        mean = (a + 2 * b + c) / 4
+        np.testing.assert_allclose(got[2], self.raw([mean])[0], rtol=1e-6)
+        # Two readings in, the mean of the two.
+        np.testing.assert_allclose(got[1], self.raw([(a + b) / 2])[0], rtol=1e-6)
+
+    def test_it_takes_out_a_chatter_at_the_loop_s_top(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        flapping = [np.array([0.0, (-1.0) ** k, 0.0]) for k in range(6)]
+        got = self.fed(bal, flapping)
+        self.assertLess(abs(got[-1][1]), 1e-6)
+
+    def test_a_gap_starts_it_again(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        self.fed(bal, self.READINGS[:2])
+        self.t += balance.GYRO_MEAN_GAP_S
+        got = self.fed(bal, self.READINGS[2:])
+        np.testing.assert_allclose(got[0], self.raw(self.READINGS[2:])[0])
+
+    def test_a_reset_starts_it_again(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        self.fed(bal, self.READINGS[:2])
+        bal.reset()
+        got = self.fed(bal, self.READINGS[2:])
+        np.testing.assert_allclose(got[0], self.raw(self.READINGS[2:])[0])
+
+    def test_the_jump_policy_is_fed_the_gyro_as_it_is(self):
+        """Whatever the driving policy was fed before, the jump policy sees the same."""
+
+        def jumped(before):
+            driving = balance.LeanedBalancer(Answers(DRIVING))
+            two = pl.TwoPolicies(driving, pl.JumpBalancer(Answers(JUMPING)), 0.03)
+            self.fed(two, before)
+            self.assertIsNone(two.press(UP, 0.5, True))
+            self.assertIs(two.active, two.jumping)
+            return two.observe(
+                legs_at(0.25, 0.5), self.READINGS[2], UP, 0.0, 0.0, 0.2035
+            )
+
+        np.testing.assert_array_equal(
+            jumped(self.READINGS[:2]), jumped([np.zeros(3), np.zeros(3)])
+        )
+
+
 class FakeRig:
     """Every motor in the crouch and answering, and an IMU reading `gravity`."""
 
