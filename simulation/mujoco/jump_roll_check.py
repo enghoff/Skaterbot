@@ -43,9 +43,10 @@ targets moving 0.28, 0.31 and 0.40 rad a step, and on seed 3 it falls; without i
 clearing 31-35 mm. That the gate passes a jump without the loop and fails it with is
 the case for the gate.
 
-`scripted` in place of a run is sbc/policy_loop.py's ScriptedJump, pushing --push Nm and
-asked for no height, so held to no clearance; and --wheel-gain, --leg-gain and --volts
-make the rig a worse one. The worst it has been held to is the wheels' torque at 0.8 of
+`scripted` in place of a run is sbc/policy_loop.py's ScriptedJump, pushing --push Nm, its
+wheels' level push --level-nm as balance.py's --jump-level-nm (the robot's launcher passes
+0.35), and asked for no height, so held to no clearance; and --wheel-gain, --leg-gain
+and --volts make the rig a worse one. The worst it has been held to is the wheels' torque at 0.8 of
 asked, the legs' at 0.9, the pack at 23.4 V and --imu-ms 40.
 """
 
@@ -214,6 +215,7 @@ def one(job: dict) -> dict:
         "launch", hand, ctx, seconds=press_at + 4.0, rearm=True, script=script,
         jump_net=jump, imu_ms=job["imu_ms"], cmd_ms=job["cmd_ms"], rig_class=rig_class,
         seed=job["seed"], jump_height=height, jump_push=job["push"],
+        jump_script=lc.balance.jump_script(job["level"]) if scripted else None,
     )  # fmt: skip
     n = rig.writer
     said = [w for _, w in n.jumps]
@@ -268,6 +270,14 @@ def main() -> int:
         default=lc.pl.JUMP_PUSH_NM,
         help="the scripted jump's push, Nm, as balance.py's --jump-push",
     )
+    ap.add_argument(
+        "--level-nm",
+        type=float,
+        help="the scripted jump's level push, Nm of each wheel, as balance.py's "
+        f"--jump-level-nm (default pl.JumpScript's {lc.pl.JumpScript.level_nm:g}; the "
+        "robot's launcher passes 0.35)",
+    )
+    ap.add_argument("--workers", type=int, default=4, help="runs at once")
     ap.add_argument("--wheel-gain", type=float, default=lc.WHEEL_GAIN)
     ap.add_argument("--leg-gain", type=float, default=lc.LEG_GAIN)
     ap.add_argument(
@@ -311,7 +321,8 @@ def main() -> int:
     gain, hz, zeta, delay_ms = args.roll
     roll = None if args.no_roll else (gain, hz, zeta, delay_ms / 1000)
     asked = (
-        f"the scripted jump pushing {args.push:g} Nm"
+        f"the scripted jump pushing {args.push:g} Nm, the wheels "
+        f"{lc.balance.jump_script(args.level_nm).level_nm:g}"
         if scripted
         else f"{pack.parent.parent.name if args.jump.is_dir() else pack}, "
         f"{args.height * 1000:g} mm asked"
@@ -335,6 +346,7 @@ def main() -> int:
             run=str(args.run),
             jump=lc.balance.SCRIPTED if scripted else str(pack),
             push=args.push,
+            level=args.level_nm,
             wheel_gain=args.wheel_gain,
             leg_gain=args.leg_gain,
             volts=args.volts,
@@ -347,7 +359,7 @@ def main() -> int:
         )
         for s in args.seeds.split(",")
     ]
-    with ProcessPoolExecutor(max_workers=len(jobs)) as pool:
+    with ProcessPoolExecutor(max_workers=min(len(jobs), args.workers)) as pool:
         results = list(pool.map(one, jobs))
     good = True
     for r in results:

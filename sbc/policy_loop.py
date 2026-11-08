@@ -765,7 +765,11 @@ class JumpScript:
     # goes light. Standing, the turn rate stays under 0.2 rad/s (Hold). Let go still
     # steering at 0.75 rad/s and 0.4 m/s, on launch_check.py's rig, it jumped about 0.1 s
     # later than let go going straight, and stood, on the worst rig as well (8 November
-    # 2026, case 17).
+    # 2026, case 17). And it waits to be going over the floor slower than ScriptedJump's
+    # top speed (JUMP_RUN_TOP_M_S), which a press is held to only as it is pressed: on the
+    # worst rig at 2.5 Nm, pressed at 0.5 m/s asked while swaying back at 0.32, it ran up to
+    # 0.93 in the crouch, pushed at that, and fell forward on landing (launch_check.py case
+    # 17 on the worst rig, 8 November 2026).
     hold_s: float = 0.1
     calm_rad_s: float = 0.5
     calm_yaw_rad_s: float = 0.3
@@ -800,6 +804,15 @@ class JumpScript:
     # The same at a push of 1.0 Nm landed it 4-5 degrees nose-up, and at 1.8 2-4 nose-down;
     # in proportion to the push, 2-4 and 0.5-2 nose-down, and at 1.0 Nm and 1.5 m/s the
     # worst tilt through the jump went from 12 degrees to 8.
+    #
+    # Raising it with the speed, for the robot's driving jumps landing more nose-down
+    # (JUMP_RUN_TOP_M_S), was tried on 8 November 2026 and left out. By 0.6 of itself per
+    # m/s rolling, MuJoCo with the robot's floor friction and its half answer to the level
+    # push landed 6-8 degrees nose-up driving, and stood at up to 1.2 m/s given a further 17
+    # degrees nose-down; but MuJoCo itself answers it twice as much, landed driving jumps
+    # 21-25 nose-up, the driving policy braking to a stop and on backwards to catch them,
+    # and at 0.3 per m/s, pressed at 0.41 m/s, it was going 0.07 m/s half a second after
+    # landing, against launch_check.py case 17's 0.33 (session scratchpad jump_height/).
     level_nm: float = 0.18
     level_nm_per_m: float = 6.0
     # THE BRAKE: the push ends as soon as the knees, `brake_lead_s` ahead on their own
@@ -812,8 +825,17 @@ class JumpScript:
     # legs back and forth as they left the floor, and the torso 13-15 degrees with them in
     # 50 ms; held, 6-7. Softer, at 20 Nm/rad, or damped at 2.5, it swung 10-12 and cleared
     # 3 mm less.
+    #
+    # The lead is at JUMP_PUSH_NM and in proportion to the push, since a harder push has
+    # the knees faster at the brake and further to stop. The brake can only fall on a
+    # loop's step, 10 ms apart, so a lead either moves it a whole step or not at all. Held
+    # at 0.02 s, the knees came within 0.12 rad of straight at 2.2 Nm and 1 m/s, and at 2.5
+    # Nm and 0.5 m/s reached it; at 0.035 s, which this is at 2.5, they stayed 0.49 rad or
+    # more from it, standing, at 0.5 m/s and braked from 1-1.4 m/s, and with the push 4 per
+    # cent either side of 2.5, so that the brake fell on either side of a step (session
+    # scratchpad jump_height/).
     takeoff_m: float = 0.195
-    brake_lead_s: float = 0.02
+    brake_lead_s: float = 0.0225
     brake_kp: float = 40.0
     brake_kd: float = 1.5
     brake_s: float = 0.03
@@ -867,9 +889,20 @@ class JumpScript:
 # the roll mode at twice its fit, the same. With the wheels' torque at 0.8 of asked, the
 # IMU 40 ms late, the pack at 23.4 V and the legs' gain 0.9, three tries in five never
 # came still in the crouch and stood up again, and the rest jumped and stood from 1.2 to
-# 1.8; at 2.0 one fell. So it is held to 1.8 at most, whatever is asked.
+# 1.8; at 2.0 one fell. So it was held to 1.8 at most.
+#
+# With the brake's lead in proportion to the push (THE BRAKE), and the level push at the
+# robot's 0.35 Nm, on the same rig: at 1.8 the wheels cleared 20-21 mm standing, 14-16 at
+# 0.5 m/s and 12 at 1 m/s, the knees within 0.24 rad of straight; at 2.5 26-29 standing,
+# 23-24 at 0.5 m/s and 20-26 braked from 1-1.4 m/s to JUMP_RUN_CAP_M_S, the knees no
+# nearer than 0.49, the push 4 per cent either side of it so that the brake fell on either
+# side of a loop's step; at 2.8 it cleared 32-34 standing but no more driving, the knees
+# then at 2.8 of their 3 Nm. With the level push answered half as much and the wheels'
+# floor friction as measured, as on the robot (JUMP_RUN_TOP_M_S), 2.5 cleared 21-23 mm
+# standing, 20-22 at 0.5 m/s and 19-21 braked. So it is held to 2.5 at most, whatever is
+# asked (session scratchpad jump_height/, 8 November 2026).
 JUMP_PUSH_NM = 1.6
-JUMP_PUSH_RANGE_NM = (1.0, 1.8)
+JUMP_PUSH_RANGE_NM = (1.0, 2.5)
 # It jumps driving as it does standing: the crouch and the hold on the driving policy at
 # the speed the operator asks, the wheels holding their speed over the floor through the
 # push and the flight, and the robot handed back landing at it. It used to brake to a stop
@@ -879,16 +912,43 @@ JUMP_PUSH_RANGE_NM = (1.0, 1.8)
 # held, it took off 0.41-0.46 s after the press and was going 1.36 m/s a second after
 # landing; at 1.5, 1.0 and 0.5 asked likewise, every one of 8 standing, with the
 # roll mode at twice its fit and on the worst rig (1.50 held there) as well, and with the
-# trigger let go at the press or in the crouch. A press faster than this brakes to under
-# it first, for JUMP_SLOWED_S, since it was tried no faster. Turning, even at 0.5 rad/s
-# and 0.5 m/s, MuJoCo's inner knee goes light, balance.py takes a wheel for off the
-# floor and refuses the press; at 0.3 rad/s and 1 m/s it jumps, and straight on.
-JUMP_RUN_TOP_M_S = 1.5
-JUMP_SLOWED_S = 0.2
+# trigger let go at the press or in the crouch. Turning, even at 0.5 rad/s and 0.5 m/s,
+# MuJoCo's inner knee goes light, balance.py takes a wheel for off the floor and refuses
+# the press; at 0.3 rad/s and 1 m/s it jumps, and straight on.
+#
+# On the robot on 8 November 2026, pushing 1.8 Nm at a level push of 0.35, jumps driving
+# at 0.7 m/s and more landed about 4 degrees more nose-down than standing ones, which
+# landed -10 to +10, median level; one of 34, rolling 1.05 m/s, landed about 10 nose-down,
+# the driving policy drove both wheels to their ceiling, 51-52 rad/s, within 0.1 s and
+# held them there while the robot tipped on to 30 degrees, and it fell forward. Rolling,
+# the wheels have that much less to catch a nose-down landing with. MuJoCo lands driving
+# jumps no more nose-down; given the wheels' friction on the floor as measured
+# (docs/SYSID.md: 0.04 Nm and 0.004 Nm s/rad, where it has 0.03 and 0.002) and the level
+# push answered half as much, as the robot answers it, it does, by 4-5 degrees at 1 m/s,
+# and at 1.37 m/s it fell as the robot did, the wheels held at 52 rad/s while it tipped
+# on. On that rig at 2.5 Nm it landed 0-3 degrees nose-up at 0-1 m/s; 10 degrees more
+# nose-down, as the robot's worst landed, it stood at 0-1 m/s, its wheels at their
+# ceiling from 0.7 m/s up and at 47-49 rad/s at 0.5; 14 degrees more, it stood at 0.5
+# m/s and fell at 0.7 and at 1.0. So it jumps at up to 0.6 m/s, and a press faster than
+# that is braked first, to JUMP_RUN_CAP_M_S, under which the driving policy rolls (it
+# rolled 1.05 m/s asked 1.0 on the robot), before the crouch (session scratchpad
+# jump_height/).
+JUMP_RUN_TOP_M_S = 0.6
+JUMP_RUN_CAP_M_S = 0.45
+# How long under the top, and steady, before the crouch, braked. The driving policy takes
+# a second or more to settle at the cap, and whether it is still slowing or already running
+# up again as it pushes turns the landing: on that rig, pressed at a full pull in fast
+# mode, 1.38 m/s, and braked to 1.0, it landed 0-6 degrees nose-down 0.2 s under the top,
+# the wheels at up to their ceiling, and 12 nose-up after 0.8 s, still slowing; braked to
+# 0.45 on the worst rig, with the robot's floor friction, 9-10 nose-down after 0.5 s,
+# running up again. Waited for until steady as well, it landed 7-10 nose-up, and given 10 degrees more
+# nose-down, as the robot's worst landed, 3 nose-down to 1 nose-up, the wheels at 31-35
+# rad/s; the worst rig never came steady in 3 s, and refused the press.
+JUMP_SLOWED_S = 0.5
 # THE BUTTON. The owner's, 8 November 2026: pressing A crouches, and letting it go jumps.
 # gamepad.py sets bit 8 over the count of presses while A is held (balance.py's
 # JUMP_HELD), and a press heard with it set waits in the hold, however long, on the
-# driving policy at the operator's speed and turn, under JUMP_RUN_TOP_M_S, Trim and Hold
+# driving policy at the operator's speed and turn, under JUMP_RUN_CAP_M_S, Trim and Hold
 # acting as they do driving, until A is let go of; then it goes on as a press without it
 # does, hold_most_s from then to be ready, and straight on. A press and a let-go between
 # two of the controller's 50 Hz frames comes without the bit, and jumps at once, as every
@@ -904,14 +964,14 @@ JUMP_SLOWED_S = 0.2
 class ScriptedJump(TwoPolicies):
     """The driving policy, and a jump that is a script rather than a network, behind one
     balancer's face. The press, its refusals, and braking first under the speed cap are
-    TwoPolicies', braking only past JUMP_RUN_TOP_M_S and only to under it; it is handed
-    back as it lands, or as soon as anything stops the jump going ahead, and nothing here
-    cuts a motor. Both legs are always sent the same command. A press with the button
+    TwoPolicies', braking only past JUMP_RUN_TOP_M_S and only to JUMP_RUN_CAP_M_S; it is
+    handed back as it lands, or as soon as anything stops the jump going ahead, and nothing
+    here cuts a motor. Both legs are always sent the same command. A press with the button
     held waits for it to be let go of, `button` telling it each step (THE BUTTON, above).
     What happens goes into `events`, as TwoPolicies' does."""
 
     top_speed_m_s = JUMP_RUN_TOP_M_S
-    cap_m_s = JUMP_RUN_TOP_M_S
+    cap_m_s = JUMP_RUN_CAP_M_S
     braked_s = JUMP_SLOWED_S
 
     def __init__(
@@ -943,8 +1003,8 @@ class ScriptedJump(TwoPolicies):
 
     @property
     def speed_cap(self) -> float | None:
-        """Under the top while braking to it or held in the crouch; jumping, whatever the
-        operator asks."""
+        """Under the cap while braking to under the top, or held in the crouch;
+        jumping, whatever the operator asks."""
         return self.cap_m_s if self.state == "braking" or self.waiting else None
 
     @property
@@ -978,6 +1038,9 @@ class ScriptedJump(TwoPolicies):
         self.wheels: tuple[float, float] = (0.0, 0.0)
         self.height = self.back_from = self.asked = 0.0
         self.speed_jump = 0.0
+        self.run_most = self.top_speed_m_s
+        self.braked: deque = deque(maxlen=round(self.braked_s / PERIOD_S))
+
         # Pressed with the button held, and not yet let go of; how long it has been
         # held; and whether both wheels carry weight, None if balance.py cannot tell.
         self.waiting = False
@@ -1027,12 +1090,38 @@ class ScriptedJump(TwoPolicies):
         self.events.append(f"let go after {self.held_s:.2f} s, {where}")
 
     def _braking(self, fb: dict, w) -> None:
-        super()._braking(fb, w)
-        if self.state == "drive":
+        """On to the crouch once under the top and steady there, over the floor, for
+        `braked_s`, or given up. Steady as the hold has it (JumpScript's steady_m_s): still
+        slowing, or running up again past the cap, it pushed and landed 10 degrees either
+        way of where it lands driving steadily."""
+        rolling = ground_speed(fb, float(w[1]), self.meta["wheel_radius"])
+        if self.t <= 1.5 * PERIOD_S:
+            self.braked.clear()
+        self.braked.append(rolling)
+        steady = (
+            len(self.braked) == self.braked.maxlen
+            and max(map(abs, self.braked)) < self.top_speed_m_s
+            and max(self.braked) - min(self.braked) < self.script.steady_m_s
+        )
+        if steady:
+            self._crouch()
+        elif self.t > JUMP_BRAKE_GIVE_UP_S:
+            self.state, self.t = "drive", 0.0
             # Given up braking: nothing more to wait for.
             self.waiting = False
+            self.events.append(
+                f"refused: still at {rolling:+.2f} m/s after "
+                f"{JUMP_BRAKE_GIVE_UP_S:g} s of braking"
+            )
 
     def _crouch(self) -> None:
+        # Braked to under the top, it is held to the cap until the push, and otherwise to
+        # the top: let off the cap at the crouch, the driving policy ran up again for the
+        # operator's full pull, and in MuJoCo, with the robot's floor friction and its half
+        # answer to the level push, it pushed at 0.75 m/s, still running up, landed 11
+        # degrees nose-down and fell, three times in three (session scratchpad
+        # jump_height/).
+        self.run_most = self.cap_m_s if self.state == "braking" else self.top_speed_m_s
         self.state, self.t = "crouch", 0.0
         self.phase, self.pt = "crouch", 0.0
         self.start = None
@@ -1068,11 +1157,11 @@ class ScriptedJump(TwoPolicies):
             self._script(fb, np.asarray(w, dtype=float), np.asarray(g, dtype=float))
         lo, hi = self.driving.meta["height_range"]
         if self.state in ("crouch", "jump"):
-            # Driving, it goes on at the operator's speed until the push, and is told the
-            # speed it pushed at until it lands; straight on, whatever turn is asked, but
-            # for the turn asked while the button is held.
+            # Driving, it goes on at the operator's speed until the push, no faster than
+            # it may jump at, and is told the speed it pushed at until it lands; straight
+            # on, whatever turn is asked, but for the turn asked while the button is held.
             if self.phase in ("crouch", "hold"):
-                self.speed_jump = speed
+                self.speed_jump = min(max(speed, -self.run_most), self.run_most)
             speed, turn = self.speed_jump, turn if self.waiting else 0.0
             height = min(max(self.height, lo), hi)
         elif self.since_back < (hi - lo) / self.script.rise_m_s:
@@ -1125,6 +1214,7 @@ class ScriptedJump(TwoPolicies):
                 and self.loaded is not False
                 and max(self.rolls) - min(self.rolls) < s.steady_m_s
                 and abs(over) < s.over_m
+                and abs(rolling) < self.top_speed_m_s
             )
             self.ready_for = self.ready_for + PERIOD_S if ready else 0.0
             # Held, it waits however long; let go of, hold_most_s from then at most.
@@ -1144,7 +1234,7 @@ class ScriptedJump(TwoPolicies):
             else:
                 return
         if self.phase == "push":
-            ahead = knee + knee_v * s.brake_lead_s
+            ahead = knee + knee_v * self.brake_lead
             if ahead > self.brake_knee and self.pt < s.push_most_s:
                 self._push(hip, knee)
                 self._wheels(fb, w)
@@ -1197,6 +1287,7 @@ class ScriptedJump(TwoPolicies):
         h0 = -axle_at(hip, knee)[1]
         over = off_balance(hip, knee, self.aim)
         self.level = (s.level_nm + s.level_nm_per_m * over) * self.push / JUMP_PUSH_NM
+        self.brake_lead = s.brake_lead_s * self.push / JUMP_PUSH_NM
         self.heights = np.linspace(min(h0, s.land_m) - 0.005, s.takeoff_m + 0.005, 16)
         self.forwards = np.array([under_mass(h, self.aim) for h in self.heights])
         self.brake_knee = leg_for(self._along(s.takeoff_m), s.takeoff_m)[1]

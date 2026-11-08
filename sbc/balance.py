@@ -204,7 +204,11 @@ SCRIPTED = "scripted"
 # What --jump-level-nm is held to: the scripted jump's level push, Nm of each wheel at a
 # push of pl.JUMP_PUSH_NM (pl.JumpScript's THE LEVEL PUSH). MuJoCo's 0.18 lands its rig
 # level; the robot answers it about half as much (sbc/launcher.py has the jumps). 0.5 in
-# MuJoCo lands it 19 degrees nose-up.
+# MuJoCo lands it 19 degrees nose-up. The range holds the setting, before it is put in
+# proportion to the push: in proportion, it lands much the same at any push (MuJoCo at
+# 0.35: 12-14 degrees nose-up at 1.8 Nm and 15-17 at 2.5), so the setting means the same
+# landing whatever the push, and 0.5 at 2.5 Nm, 0.78 Nm of each wheel, is still well
+# within the 1.5 Nm a wheel has.
 JUMP_LEVEL_RANGE_NM = (0.0, 0.5)
 
 
@@ -1634,7 +1638,8 @@ def main(argv=None) -> int:
         type=float,
         default=None,
         help="the scripted jump's level push, Nm of each wheel driven forward through the "
-        f"push at a push of {pl.JUMP_PUSH_NM:g}: more lands it less nose-down, held to "
+        f"push at a push of {pl.JUMP_PUSH_NM:g} and in proportion to the push: more "
+        "lands it less nose-down, held to "
         f"{JUMP_LEVEL_RANGE_NM[0]:g}-{JUMP_LEVEL_RANGE_NM[1]:g} (default MuJoCo's "
         f"{pl.JumpScript.level_nm:g})",
     )

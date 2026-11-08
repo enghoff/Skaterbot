@@ -1222,11 +1222,15 @@ def taken_over_low(ctx) -> bool:
 # a second, and it passes only at the 10 ms at most it was trained to (TRAINING_HISTORY.md).
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
 # Pressed driving, the scripted jump is going on at this share of the speed it was pressed
-# at, this long after it is handed back: on this rig on 8 November 2026, pressed at 0.41
-# and 1.40 m/s, it was going 0.90 and 0.99 of it (session scratchpad jump_grace/); braking
-# to a stop first, as it did before, it would be going none of it.
+# at (or, pressed faster than pl.JUMP_RUN_TOP_M_S, of the speed it had been braked to as
+# it pushed), this long after it is handed back: on this rig on 8 November 2026, pressed
+# at 0.41 and 1.40 m/s, it was going 0.90 and 0.99 of it (session scratchpad
+# jump_grace/); braking to a stop first, as it did before, it would be going none of it.
+# Pushing 2.5 Nm rather than 1.6 it lands harder and keeps less: pressed at 0.41 m/s, 0.85
+# of it, and let go of A on the way down, 0.71, standing every time (jump_merge/, 8
+# November 2026). Braking to a stop would still be none.
 LANDED_S = 0.5
-LANDED_SHARE = 0.8
+LANDED_SHARE = 0.65
 
 
 def jumps(
@@ -1288,6 +1292,10 @@ def jumps(
             if t >= at and seen["press"] is None:
                 seen["press"] = rig.t
                 seen["going"] = rig.forward_speed()
+            if "pushed" not in seen and any(
+                w.startswith("jump:") for _, w in rig.writer.jumps
+            ):
+                seen["pushed"] = rig.forward_speed()
             if t >= at:
                 w, _, _, z = rig.d.qpos[3:7]
                 heading = float(2 * np.arctan2(z, w))
@@ -1335,10 +1343,14 @@ def jumps(
 
         return script, seen, hand
 
-    # The scripted jump jumps driving, at a full pull in fast mode; a jump policy brakes.
+    # The scripted jump jumps driving, up to pl.JUMP_RUN_TOP_M_S, and at a full pull in
+    # fast mode brakes to pl.JUMP_RUN_CAP_M_S first; a jump policy brakes.
     top = max(map(abs, ctx.net.meta["speed_range"]))
     fast = (
-        ("at a full pull in fast mode, jumping at speed", dict(at=8.0, forward=top))
+        (
+            "at a full pull in fast mode, braking to the cap first",
+            dict(at=8.0, forward=top),
+        )
         if scripted
         else ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5))
     )
@@ -1348,10 +1360,13 @@ def jumps(
         (fast[0], fast[1] | dict(fast=True)),
         ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
     ]
-    # THE BUTTON (sbc/policy_loop.py): pressed, it crouches and waits while A is held, and
-    # let go of, it jumps. The cases above are a controller from before, which never
-    # sends the held bit; a jump policy takes no notice of it.
     if scripted:
+        # 1 m/s asked in fast mode, where on the robot a jump fell.
+        at_1 = 1.0 * top / (getattr(ctx, "fast_speed", None) or top)
+        cases.insert(2, ("at 1 m/s", dict(at=8.0, forward=at_1, fast=True)))
+        # THE BUTTON (sbc/policy_loop.py): pressed, it crouches and waits while A is
+        # held, and let go of, it jumps. The cases above are a controller from before,
+        # which never sends the held bit; a jump policy takes no notice of it.
         cases += [
             ("A held 2 s standing, then let go", dict(at=5.0, forward=0.0, held=2.0)),
             (
@@ -1360,7 +1375,11 @@ def jumps(
             ),
             ("a quick tap, A held 0.1 s", dict(at=5.0, forward=0.0, held=0.1)),
             (
-                "A let go on the way down, at a full pull in fast mode",
+                "A let go on the way down, at 0.5 m/s",
+                dict(at=6.0, forward=1.8, held=0.04),
+            ),
+            (
+                "A let go while braking, at a full pull in fast mode",
                 fast[1] | dict(fast=True, held=0.04),
             ),
             (
@@ -1409,7 +1428,12 @@ def jumps(
             # Never before A is let go of.
             fine &= jumped >= seen["press"] + held - 0.02
         if held is not None and held < 0.05:
-            fine &= any("let go" in w and "on the way down" in w for w in said)
+            # Let go before the crouch is reached: on the way down, or, pressed past the top,
+            # still braking to it.
+            fine &= any(
+                "let go" in w and ("on the way down" in w or "braking" in w)
+                for w in said
+            )
         if k.get("quiet") is not None:
             fine &= any("controller went quiet" in w for w in said)
         if lifting:
@@ -1418,13 +1442,20 @@ def jumps(
             fine &= seen["turned"] > 10.0
         going = ""
         if scripted and k["forward"] and jumped is not None:
-            # Pressed driving, it jumps without braking and lands going on at the speed.
+            # Pressed driving, it jumps, braking first only past the top, and lands going
+            # on at the speed it jumped at: pressed, or braked, as it pushed.
             after = seen["after"]
-            fine &= not any("braking first" in w for w in said)
+            over = seen["going"] > pl.JUMP_RUN_TOP_M_S
+            fine &= over == any("braking first" in w for w in said)
+            jumped_at = seen.get("pushed", math.inf) if over else seen["going"]
             if not turning:
                 # Turning as it lands, its speed straight on is less.
-                fine &= after is not None and after >= LANDED_SHARE * seen["going"]
-            going = f"going {seen['going']:.2f} m/s, then {after or 0.0:.2f}; "
+                fine &= after is not None and after >= LANDED_SHARE * jumped_at
+            going = (
+                f"going {seen['going']:.2f} m/s"
+                + (f", {seen.get('pushed', math.nan):.2f} as it pushed" if over else "")
+                + f", then {after or 0.0:.2f}; "
+            )
         elif k.get("fast") and not scripted:
             fine &= any("braking first" in w for w in said)
         if k.get("steer") is not None:
