@@ -1221,9 +1221,10 @@ def taken_over_low(ctx) -> bool:
 # before the robot was measured: at those delays it lands and then tips over within half
 # a second, and it passes only at the 10 ms at most it was trained to (TRAINING_HISTORY.md).
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
-# Pressed driving, the scripted jump is going on at this share of the speed it was pressed
-# at (or, pressed faster than pl.JUMP_RUN_TOP_M_S, of the speed it had been braked to as
-# it pushed), this long after it is handed back: on this rig on 8 November 2026, pressed
+# Pressed driving, the scripted jump is going on at this share of the speed it pushed at,
+# this long after it is handed back (it was the speed pressed at, but for a press it braked
+# for, until the crouch slowed every press to pl.JUMP_RUN_CAP_M_S, 8 November 2026,
+# session scratchpad jump_speed/): on this rig on 8 November 2026, pressed
 # at 0.41 and 1.40 m/s, it was going 0.90 and 0.99 of it (session scratchpad
 # jump_grace/); braking to a stop first, as it did before, it would be going none of it.
 # Pushing 2.5 Nm rather than 1.6 it lands harder and keeps less: pressed at 0.41 m/s, 0.85
@@ -1344,7 +1345,8 @@ def jumps(
         return script, seen, hand
 
     # The scripted jump jumps driving, up to pl.JUMP_RUN_TOP_M_S, and at a full pull in
-    # fast mode brakes to pl.JUMP_RUN_CAP_M_S first; a jump policy brakes.
+    # fast mode, past pl.JUMP_RUN_BRAKE_M_S, brakes to pl.JUMP_RUN_CAP_M_S first; a jump
+    # policy brakes.
     top = max(map(abs, ctx.net.meta["speed_range"]))
     fast = (
         (
@@ -1442,12 +1444,12 @@ def jumps(
             fine &= seen["turned"] > 10.0
         going = ""
         if scripted and k["forward"] and jumped is not None:
-            # Pressed driving, it jumps, braking first only past the top, and lands going
-            # on at the speed it jumped at: pressed, or braked, as it pushed.
+            # Pressed driving, it jumps, braking first only past the speed it brakes past,
+            # and lands going on at the speed it pushed at.
             after = seen["after"]
-            over = seen["going"] > pl.JUMP_RUN_TOP_M_S
+            over = seen["going"] > pl.JUMP_RUN_BRAKE_M_S
             fine &= over == any("braking first" in w for w in said)
-            jumped_at = seen.get("pushed", math.inf) if over else seen["going"]
+            jumped_at = seen.get("pushed", math.inf)
             if not turning:
                 # Turning as it lands, its speed straight on is less.
                 fine &= after is not None and after >= LANDED_SHARE * jumped_at
