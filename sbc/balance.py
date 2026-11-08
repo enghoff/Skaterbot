@@ -201,6 +201,20 @@ DRY_WAIT_S = 45.0
 # latest jump policy, on the robot on 8 November 2026 and found it unsteady and its height
 # unconvincing, and agreed to a scripted jump first, from standstill.
 SCRIPTED = "scripted"
+# What --jump-level-nm is held to: the scripted jump's level push, Nm of each wheel at a
+# push of pl.JUMP_PUSH_NM (pl.JumpScript's THE LEVEL PUSH). MuJoCo's 0.18 lands its rig
+# level; the robot answers it about half as much (sbc/launcher.py has the jumps). 0.5 in
+# MuJoCo lands it 19 degrees nose-up.
+JUMP_LEVEL_RANGE_NM = (0.0, 0.5)
+
+
+def jump_script(level_nm: float | None = None) -> pl.JumpScript:
+    """The scripted jump's settings: pl.JumpScript's, but for the level push if one is
+    given, held to JUMP_LEVEL_RANGE_NM."""
+    if level_nm is None:
+        return pl.JumpScript()
+    lo, hi = JUMP_LEVEL_RANGE_NM
+    return pl.JumpScript(level_nm=min(max(float(level_nm), lo), hi))
 
 
 class QueuedWriter:
@@ -1327,7 +1341,9 @@ def session(args) -> int:
         )
         if args.jump_policy and is_powered:
             if str(args.jump_policy) == SCRIPTED:
-                bal = pl.ScriptedJump(bal, args.jump_push)
+                bal = pl.ScriptedJump(
+                    bal, args.jump_push, script=jump_script(args.jump_level_nm)
+                )
             else:
                 bal = pl.TwoPolicies(
                     bal,
@@ -1592,6 +1608,15 @@ def main(argv=None) -> int:
         help="the scripted jump's push, Nm of each knee's 3: how high it goes, held to "
         f"{pl.JUMP_PUSH_RANGE_NM[0]:g}-{pl.JUMP_PUSH_RANGE_NM[1]:g}; set here and never "
         f"from the controller (default {pl.JUMP_PUSH_NM:g})",
+    )
+    ap.add_argument(
+        "--jump-level-nm",
+        type=float,
+        default=None,
+        help="the scripted jump's level push, Nm of each wheel driven forward through the "
+        f"push at a push of {pl.JUMP_PUSH_NM:g}: more lands it less nose-down, held to "
+        f"{JUMP_LEVEL_RANGE_NM[0]:g}-{JUMP_LEVEL_RANGE_NM[1]:g} (default MuJoCo's "
+        f"{pl.JumpScript.level_nm:g})",
     )
     ap.add_argument("--robot-file", type=Path, help="in place of sysid_robot.json")
     ap.add_argument(

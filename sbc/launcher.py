@@ -266,7 +266,22 @@ def balance_command(args) -> list[str]:
     jump = HERE / "policy_jump.npz"
     chosen = getattr(args, "jump", "scripted")
     if chosen == "scripted":
-        command += ["--jump-policy", "scripted", "--jump-push", "1.6"]
+        # At balance.py's cap, 1.8 Nm, from 1.6: on the robot at 1.6 and the level push
+        # below, 26 jumps at 11:28-11:42 on 8 November 2026 landed -10 to +10 degrees,
+        # median level, and none fell. In MuJoCo, the level push at 0.35, 1.8 cleared 20-21
+        # mm standing and 12 at 1 m/s, against 18-19 and 10-11, and rose 9-10 mm against
+        # 6-7, the knees within 0.31 rad of straight against 0.47, standing every time
+        # (jump_grace/push/). Untried on the robot when set.
+        command += ["--jump-policy", "scripted", "--jump-push", "1.8"]
+        # The level push, each wheel driven forward through the push, at twice MuJoCo's
+        # 0.18 Nm: the robot answers it about half as much. Its scripted jumps on 8
+        # November 2026, the IMU's pitch at the hand back: with none (08:57, 13 jumps)
+        # 8-32 degrees nose-down, median 16, where MuJoCo lands 17-18; at 0.13-0.23 Nm
+        # (10:56, 10 jumps) -2 to +23, median 10, where MuJoCo lands 1-2. The jumps that
+        # fell, 3 and 2, were those landing steepest, 17-37 degrees. At 0.35 MuJoCo lands
+        # 9-11 degrees nose-up and stands; the robot, by its half, about 4 nose-down.
+        # Untried on the robot when set; balance.py's --jump-level-nm.
+        command += ["--jump-level-nm", "0.35"]
     elif chosen == "policy" and jump.exists():
         command += ["--jump-policy", str(jump)]
     if args.rt:

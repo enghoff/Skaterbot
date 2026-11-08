@@ -538,6 +538,12 @@ def main() -> int:
         help=f"the scripted jump's push, Nm, as balance.py's (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument(
+        "--jump-level-nm",
+        type=float,
+        help="the scripted jump's level push, Nm of each wheel, as balance.py's "
+        f"(default pl.JumpScript's {pl.JumpScript.level_nm:g})",
+    )
+    ap.add_argument(
         "--jump-delays",
         default="16,6",
         metavar="IMU,COMMAND",
@@ -1157,7 +1163,9 @@ def main() -> int:
     )
 
     imu_ms, cmd_ms = (float(x) for x in args.jump_delays.split(","))
-    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push)
+    good &= jumps(
+        ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push, args.jump_level_nm
+    )
 
     good &= taken_over_low(ctx)
 
@@ -1213,16 +1221,24 @@ def taken_over_low(ctx) -> bool:
 # before the robot was measured: at those delays it lands and then tips over within half
 # a second, and it passes only at the 10 ms at most it was trained to (TRAINING_HISTORY.md).
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
+# Pressed driving, the scripted jump is going on at this share of the speed it was pressed
+# at, this long after it is handed back: on this rig on 8 November 2026, pressed at 0.41
+# and 1.40 m/s, it was going 0.90 and 0.99 of it (session scratchpad jump_grace/); braking
+# to a stop first, as it did before, it would be going none of it.
+LANDED_S = 0.5
+LANDED_SHARE = 0.8
 
 
 def jumps(
-    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None
+    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None, level=None
 ) -> bool:
     """Case 17, on a jump policy's run, or with `jump_run` "scripted" on
-    sbc/policy_loop.py's ScriptedJump pushing `push` Nm."""
+    sbc/policy_loop.py's ScriptedJump pushing `push` Nm, its level push `level` Nm if
+    given (balance.py's --jump-level-nm)."""
     scripted = str(jump_run) == balance.SCRIPTED
     what = (
-        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm"
+        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm, "
+        f"the wheels {balance.jump_script(level).level_nm:g}"
         if scripted
         else "the jump policy"
     )
@@ -1244,7 +1260,7 @@ def jumps(
     good = True
 
     def pressing(at, forward, fast=False, again=None):
-        seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None}
+        seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None, "after": None}
 
         def script(rig):
             if rig.first_touch is None:
@@ -1253,6 +1269,12 @@ def jumps(
             presses = (t >= at) + (again is not None and t >= at + again)
             if t >= at and seen["press"] is None:
                 seen["press"] = rig.t
+                seen["going"] = rig.forward_speed()
+            back = next(
+                (h for h, w in rig.writer.jumps if w.startswith("handed back")), None
+            )
+            if seen["after"] is None and back is not None and rig.t >= back + LANDED_S:
+                seen["after"] = rig.forward_speed()
             if t >= at - 0.1:
                 clear = float(np.min(rig.ctl.clearance_now(rig.d)))
                 seen["clear"] = max(seen["clear"], clear)
@@ -1271,10 +1293,17 @@ def jumps(
 
         return script, seen
 
+    # The scripted jump jumps driving, at a full pull in fast mode; a jump policy brakes.
+    top = max(map(abs, ctx.net.meta["speed_range"]))
+    fast = (
+        ("at a full pull in fast mode, jumping at speed", dict(at=8.0, forward=top))
+        if scripted
+        else ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5))
+    )
     cases = (
         ("standing", dict(at=5.0, forward=0.0)),
         ("at 0.5 m/s", dict(at=6.0, forward=1.8)),
-        ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5, fast=True)),
+        (fast[0], fast[1] | dict(fast=True)),
         ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
     )
     for name, k in cases:
@@ -1282,6 +1311,7 @@ def jumps(
         why, rig = run(
             "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
             jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
+            jump_script=balance.jump_script(level) if scripted else None,
         )  # fmt: skip
         n = rig.writer
         said = [w for _, w in n.jumps]
@@ -1296,14 +1326,21 @@ def jumps(
         )
         if k.get("again") is not None:
             fine &= any(w.startswith("refused: already") for w in said)
-        if k.get("fast"):
+        going = ""
+        if scripted and k["forward"]:
+            # Pressed driving, it jumps without braking and lands going on at the speed.
+            after = seen["after"]
+            fine &= not any("braking first" in w for w in said)
+            fine &= after is not None and after >= LANDED_SHARE * seen["going"]
+            going = f"going {seen['going']:.2f} m/s, then {after or 0.0:.2f}; "
+        elif k.get("fast"):
             fine &= any("braking first" in w for w in said)
         good &= fine
         print(
-            f"   {'ok' if fine else 'FAILED'}: {name}: {why}; legs down to "
+            f"   {'ok' if fine else 'FAILED'}: {name}: {why}; {going}legs down to "
             f"{seen['low'] * 1000:.0f} mm, wheels cleared {seen['clear'] * 1000:.0f} mm, "
             f"tilted to {seen['tilt']:.1f} deg; back {took and round(took, 2)} s after the "
-            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:400],
+            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:440],
             flush=True,
         )
     return good
