@@ -118,6 +118,30 @@ class Doubted(unittest.TestCase):
         self.assertLess(math.degrees(pl.tilt(g)), 5.0)
         self.assertIn("more than the gyro saw", self.att.why)
 
+    def test_after_starting_over_a_long_report_is_not_believed(self):
+        # At 20:13 on 8 November 2026 they came back 11 to 12 m/s2 long, and 10 degrees
+        # out, for the last 0.8 s, inside the length that is otherwise believed.
+        self.att.read(0.01, [0, 0, 0], RESTART)
+        self.att.read(
+            0.02, [0, 0, 0], [1.15 * x for x in chip(pitched(math.radians(14)))]
+        )
+        self.assertIn("long", self.att.why)
+        _, g = self.att.read(0.03, [0, 0, 0], chip(pitched(math.radians(5))))
+        self.assertEqual(self.att.doubted_for, 0.0)
+        self.assertFalse(self.att.restarted)
+        self.assertAlmostEqual(math.degrees(pl.nose_down(g)), 5.0, 3)
+
+    def test_without_starting_over_a_long_report_is_believed(self):
+        _, g = self.att.read(
+            0.01, [0, 0, 0], [1.15 * x for x in chip(pitched(math.radians(5)))]
+        )
+        self.assertEqual(self.att.doubted_for, 0.0)
+        self.assertAlmostEqual(math.degrees(pl.nose_down(g)), 5.0, 3)
+
+    def test_the_gyro_carries_it_for_longer_than_the_chip_took(self):
+        # The chip was back 2.9 s after starting over, on 8 November 2026.
+        self.assertGreater(pl.GYRO_CARRY_S, 2.9)
+
     def test_believed_again_once_it_agrees(self):
         self.att.read(0.01, [0, 0, 0], RESTART)
         self.att.read(0.02, [0, 0, 0], chip(pitched(math.radians(5))))
@@ -133,6 +157,32 @@ class Doubted(unittest.TestCase):
     def test_a_long_gap_is_not_turned_through(self):
         _, g = self.att.read(5.0, gyro_chip([0, 3.0, 0]), RESTART)
         self.assertLessEqual(self.att.doubted_for, pl.CARRY_STEP_MAX_S + 1e-9)
+
+
+class AWheelOnTheFloor(unittest.TestCase):
+    """FreeWheels: a wheel turning free counts towards a lift, unless the other is
+    plainly on the floor."""
+
+    def fed(self, said, steps):
+        fw = pl.FreeWheels()
+        verdict = iter(said * steps)
+        fw._one = lambda k, fb, rate, dt: next(verdict)
+        fired = False
+        for k in range(steps):
+            fired = fw.update({}, 0.0, k * 0.01)
+        return fw, fired
+
+    def test_one_free_with_the_other_on_the_floor_is_no_lift(self):
+        # The inside wheel in a hard turn at speed, 20:12 on 8 November 2026.
+        fw, fired = self.fed([1, -1], 100)
+        self.assertFalse(fired)
+        self.assertEqual(fw.sure, 0.0)
+
+    def test_both_free_is_a_lift(self):
+        self.assertTrue(self.fed([1, 1], 60)[1])
+
+    def test_one_free_with_the_other_saying_nothing_is_a_lift(self):
+        self.assertTrue(self.fed([1, 0], 60)[1])
 
 
 if __name__ == "__main__":

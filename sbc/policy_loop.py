@@ -159,11 +159,20 @@ GRAVITY_M_S2 = 9.80665
 # replayed over every run of 5 and 6 November, set down by hand or driven, they reached
 # 9.0 and 10.6 for half a second at a time; starting over, 4.9, 6.3 and 15.9.
 GRAVITY_LENGTH_TOLERANCE = 0.20
+# Once it has started over the reports are not believed until nearly the right length:
+# on 8 November 2026 at 20:13 they came back at 13.8 m/s2, shrank to 11.0 over 2.3 s with
+# their direction 10 degrees out, and only then snapped to 9.75 and the truth, so inside
+# the tolerance above and still wrong for the last 0.8 s of it.
+GRAVITY_RESTART_TOLERANCE = 0.10
 # Judged as each new report comes in, against the last one believed turned on by the gyro
 # since: a jump turns the torso at 10 rad/s, and the chip's gravity comes 30 to 60 times
 # a second and later than its gyro, so a closer mark doubted good reports in MuJoCo.
 GRAVITY_JUMP_RAD = math.radians(25.0)
-GYRO_CARRY_S = 1.5
+# Was 1.5 s, which let down a robot standing happily on the gyro at 20:13 on 8 November
+# 2026, the chip back 2.9 s after a knock in a hard turn. Against the chip's own reports
+# over that run's driving the gyro's gravity is 4 degrees out at the median whether
+# carried for 3 s or 8, so most of that is the chip's error and little is drift.
+GYRO_CARRY_S = 4.0
 # A longer gap between two readings is not turned through: nothing was seen of it.
 CARRY_STEP_MAX_S = 0.05
 
@@ -181,6 +190,7 @@ class Attitude:
         self.believed: np.ndarray | None = None
         self.doubted_for = 0.0
         self.why = ""
+        self.restarted = False
 
     def read(self, now: float, gyro, gravity) -> tuple[np.ndarray, np.ndarray]:
         w = self.imu.axes @ np.asarray(gyro, dtype=float)
@@ -216,7 +226,10 @@ class Attitude:
             # (0, 0, +9.8) exactly: which way is down as the chip has it starting over,
             # and on this robot upside down.
             why = "reads straight along the chip's own axis, as it does starting over"
-        elif abs(length - GRAVITY_M_S2) > GRAVITY_LENGTH_TOLERANCE * GRAVITY_M_S2:
+            self.restarted = True
+        elif abs(length - GRAVITY_M_S2) > GRAVITY_M_S2 * (
+            GRAVITY_RESTART_TOLERANCE if self.restarted else GRAVITY_LENGTH_TOLERANCE
+        ):
             why = f"reads {length:.1f} m/s2 long"
         elif self.g is not None:
             off = math.acos(min(max(float(unit @ self.g), -1.0), 1.0))
@@ -227,6 +240,7 @@ class Attitude:
             self.believed = unit
             self.doubted_for = 0.0
             self.why = ""
+            self.restarted = False
             return w, unit
         self.doubted_for += dt
         self.why = why
@@ -242,6 +256,7 @@ class Attitude:
         self.last_raw = None
         self.doubted_for = 0.0
         self.why = ""
+        self.restarted = False
 
 
 def nose_down(g: np.ndarray) -> float:
@@ -1604,10 +1619,16 @@ FREE_LEAST_RAD_S = 2.0
 # one that turns as a free wheel still says it is free. (MuJoCo's wheels carry 2.7 times
 # this drag, and held at 45 rad/s in the air looked like the floor without it.)
 FREE_FASTEST_RAD_S = 40.0
-# Seconds of either wheel turning free, less FREE_FORGET times the seconds of both on
-# the floor, before it counts. Over the logs of 6 and 7 November bumps, two hard knocks
-# and a 15 Hz shake in a deep crouch came to 0.24 at most; the lifts reached this 0.5 to
-# 0.72 s after leaving the floor.
+# Seconds of a wheel turning free with neither on the floor, less FREE_FORGET times the
+# seconds of one on the floor, before it counts. Over the logs of 6 and 7 November bumps,
+# two hard knocks and a 15 Hz shake in a deep crouch came to 0.24 at most; the lifts
+# reached this 0.5 to 0.72 s after leaving the floor. A wheel on the floor outvotes the
+# other's looking free: in a hard turn at 1.3 m/s at 20:12 on 8 November 2026 the inside
+# wheel turned as a free one for 0.4 s, grip lost or off the floor, with the outside one
+# plainly on it, and taken for a lift the wheels were braked and it fell. Replayed so,
+# that run came to 0.12 at most, and the runs of 7 and 8 November were caught at the same
+# moments, to 0.04 s, but for two in the chattering run of 08:57 on the 8th which the old
+# rule's own stop cuts short, so which the replay cannot follow.
 FREE_SURE_S = 0.4
 FREE_FORGET = 2.0
 
@@ -1657,10 +1678,10 @@ class FreeWheels:
         self.last = now
         said = [self._one(k, fb, pitch_rate, dt) for k in range(len(FREE_WHEEL_JOINTS))]
         self.said = said
-        if max(said) > 0:
-            self.sure += dt
-        elif min(said) < 0:
+        if min(said) < 0:
             self.sure -= FREE_FORGET * dt
+        elif max(said) > 0:
+            self.sure += dt
         self.sure = min(max(self.sure, 0.0), 1.0)
         return self.sure >= FREE_SURE_S
 
