@@ -349,8 +349,12 @@ def run(
     rig_class=None,
     jump_net=None,
     jump_height=0.12,
+    jump_push=None,
+    jump_script=None,
 ):
-    """balance.powered, on a hand's script. What it ended with, and the rig."""
+    """balance.powered, on a hand's script. What it ended with, and the rig. `jump_net`
+    is a jump policy's network, or "scripted" for sbc/policy_loop.py's ScriptedJump,
+    pushing at `jump_push` Nm."""
     rig = (rig_class or HandRig)(
         ctx.ctl, ctx.robot_file, cmd_s=cmd_ms / 1000, report_s=0.0015, imu_s=imu_ms / 1000,
         gyro_hz=400.0, gravity_hz=30.0, seed=seed, hand=hand, **getattr(ctx, "lags", {}),
@@ -373,7 +377,10 @@ def run(
     bal = balance.LeanedBalancer(
         ctx.net, lean_per_m_s=getattr(ctx, "lean_per_m_s", 0.0)
     )
-    if jump_net is not None:
+    if isinstance(jump_net, str):
+        push = pl.JUMP_PUSH_NM if jump_push is None else jump_push
+        bal = pl.ScriptedJump(bal, push, script=jump_script)
+    elif jump_net is not None:
         bal = pl.TwoPolicies(bal, pl.JumpBalancer(jump_net), jump_height, volts=24.8)
     stepper = pl.Stepper(
         bal, pl.Imu(ctx.robot_file["imu_axes"], ctx.robot_file["imu_gravity_sign"]), rig,
@@ -522,7 +529,13 @@ def main() -> int:
         "--jump-run",
         type=Path,
         default=JUMP_RUN,
-        help="a jump run packed by sbc/pack_policy.py, for the A button's case",
+        help="a jump run packed by sbc/pack_policy.py, for the A button's case, or "
+        "'scripted' for the scripted jump",
+    )
+    ap.add_argument(
+        "--jump-push",
+        type=float,
+        help=f"the scripted jump's push, Nm, as balance.py's (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument(
         "--jump-delays",
@@ -1144,7 +1157,7 @@ def main() -> int:
     )
 
     imu_ms, cmd_ms = (float(x) for x in args.jump_delays.split(","))
-    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms)
+    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push)
 
     good &= taken_over_low(ctx)
 
@@ -1202,16 +1215,32 @@ def taken_over_low(ctx) -> bool:
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
 
 
-def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool:
+def jumps(
+    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None
+) -> bool:
+    """Case 17, on a jump policy's run, or with `jump_run` "scripted" on
+    sbc/policy_loop.py's ScriptedJump pushing `push` Nm."""
+    scripted = str(jump_run) == balance.SCRIPTED
+    what = (
+        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm"
+        if scripted
+        else "the jump policy"
+    )
     print(
-        f"17. the A button jumps, on the jump policy, and hands back "
+        f"17. the A button jumps, on {what}, and hands back "
         f"(IMU {imu_ms:g} ms, commands {cmd_ms:g} ms)"
     )
-    pack = jump_run / "exported" / "policy.npz"
-    if not pack.exists():
-        print(f"   FAILED: no {pack}: uv run sbc/pack_policy.py {jump_run}", flush=True)
-        return False
-    jump_net = pl.Net(pack)
+    if scripted:
+        jump_net = balance.SCRIPTED
+    else:
+        pack = jump_run / "exported" / "policy.npz"
+        if not pack.exists():
+            print(
+                f"   FAILED: no {pack}: uv run sbc/pack_policy.py {jump_run}",
+                flush=True,
+            )
+            return False
+        jump_net = pl.Net(pack)
     good = True
 
     def pressing(at, forward, fast=False, again=None):
@@ -1252,7 +1281,7 @@ def jumps(ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0) -> bool
         script, seen = pressing(**k)
         why, rig = run(
             "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
-            jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms,
+            jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
         )  # fmt: skip
         n = rig.writer
         said = [w for _, w in n.jumps]

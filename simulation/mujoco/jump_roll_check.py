@@ -22,12 +22,15 @@ side. A jump passes when, for every seed:
 
   * it stands: the run ends standing, never fell nor was taken for lifted, jumped, and
     was handed back to the driving policy (launch_check.py case 17's test);
-  * it is upright again by 1.5 s after the press, under 15 degrees from then to the end
-    of the run. The jump itself pitches the torso: jl_lag on this rig without the loop
-    reaches 31-36 degrees 0.45-0.7 s after the press and is back under 2 by 1.5 s;
-    the robot's jumps tipped over backwards about 0.7 s after the trigger;
+  * it is upright again by 1.5 s after the press, or 0.9 s after the hand back if that
+    is later, under 15 degrees from then to the end of the run. The jump itself pitches
+    the torso: jl_lag on this rig without the loop reaches 31-36 degrees 0.45-0.7 s after
+    the press and is back under 2 by 1.5 s; the robot's jumps tipped over backwards about
+    0.7 s after the trigger. A jump policy hands back 0.6 s after the press, so for one
+    the two are the same; the scripted jump waits in its crouch until the robot is still
+    and balanced, 0.7-1.0 s, and lands 1.0-1.4 s after the press;
   * the torso's roll rate as the IMU sees it, the body's own and the mode's, is under
-    1.5 rad/s rms over the 1.5 s from the press;
+    1.5 rad/s rms over the 1.5 s from the press, or to 0.9 s after the hand back;
   * the knees' targets move under 0.2 rad a step on average while the jump policy has
     them, from the crouch to the hand back (on the robot, 0.27-0.46);
   * the lower wheel clears at least 80 % of the height asked at the top of the jump.
@@ -38,6 +41,11 @@ targets moving 0.28, 0.31 and 0.40 rad a step, and on seed 3 it falls; without i
 (--no-roll) it passes every seed, rolling 0.50-0.82 with its knees at 0.15-0.17 and
 clearing 31-35 mm. That the gate passes a jump without the loop and fails it with is
 the case for the gate.
+
+`scripted` in place of a run is sbc/policy_loop.py's ScriptedJump, pushing --push Nm and
+asked for no height, so held to no clearance; and --wheel-gain, --leg-gain and --volts
+make the rig a worse one. The worst it has been held to is the wheels' torque at 0.8 of
+asked, the legs' at 0.9, the pack at 23.4 V and --imu-ms 40.
 """
 
 from __future__ import annotations
@@ -63,6 +71,8 @@ import roll_mode  # noqa: E402
 KNEES = ("knee_right", "knee_left")
 # The gate's marks (above).
 UPRIGHT_BY_S = 1.5
+# Or this long after the hand back, if that is later.
+BACK_S = 0.9
 UPRIGHT_DEG = 15.0
 ROLL_WINDOW_S = 1.5
 ROLL_RMS_RAD_S = 1.5
@@ -158,15 +168,17 @@ def one(job: dict) -> dict:
     cfg, onnx = lc.drive.load_run(Path(job["run"]))
     cfg["robot"]["actuators"]["wheels"]["armature"] = lc.WHEEL_ARMATURE_KG_M2
     ctl = lc.drive.Controller(lc.drive.build_model(cfg), cfg, onnx)
+    # The motors' speed goes with their supply (drive.py's set_conditions).
+    ctl.vmax = ctl.vmax_rated * job["volts"] / lc.pl.RATED_VOLTS
     ctx = SimpleNamespace(
         ctl=ctl,
         net=lc.pl.Net(Path(job["run"]) / "exported" / "policy.npz"),
         robot_file=json.loads(lc.bc.ROBOT_FILE.read_text()),
         lags=dict(
             wheel_lag_s=lc.WHEEL_LAG_S,
-            wheel_gain=lc.WHEEL_GAIN,
+            wheel_gain=job["wheel_gain"],
             leg_lag_s=lc.LEG_LAG_S,
-            leg_gain=lc.LEG_GAIN,
+            leg_gain=job["leg_gain"],
         ),
     )
     rig_class = type("RolledRig", (Rig,), {"roll": job["roll"]})
@@ -179,7 +191,7 @@ def one(job: dict) -> dict:
         if t >= press_at:
             if rig.press is None:
                 rig.press = rig.t
-            if rig.t <= rig.press + ROLL_WINDOW_S:
+            if rig.t <= rig.press + 2 * ROLL_WINDOW_S:
                 clear = float(np.min(rig.ctl.clearance_now(rig.d)))
                 rig.clear = max(rig.clear, clear)
         return {"forward": 0.0, "turn": 0.0, "live": True, "height": None, "mode": 0,
@@ -195,10 +207,12 @@ def one(job: dict) -> dict:
                 raise lc.Finished
         lower(rig)
 
+    scripted = job["jump"] == lc.balance.SCRIPTED
+    jump = lc.balance.SCRIPTED if scripted else lc.pl.Net(Path(job["jump"]))
     why, rig = lc.run(
         "launch", hand, ctx, seconds=press_at + 4.0, rearm=True, script=script,
-        jump_net=lc.pl.Net(Path(job["jump"])), imu_ms=job["imu_ms"],
-        cmd_ms=job["cmd_ms"], rig_class=rig_class, seed=job["seed"], jump_height=height,
+        jump_net=jump, imu_ms=job["imu_ms"], cmd_ms=job["cmd_ms"], rig_class=rig_class,
+        seed=job["seed"], jump_height=height, jump_push=job["push"],
     )  # fmt: skip
     n = rig.writer
     said = [w for _, w in n.jumps]
@@ -219,9 +233,11 @@ def one(job: dict) -> dict:
                    knee_step=math.inf, clear=0.0, steps=0)  # fmt: skip
         return out
     # A run cut short by a fall ends lying where it fell.
-    after = log[log[:, 0] >= p + UPRIGHT_BY_S]
+    settled = p + UPRIGHT_BY_S if back is None else max(p + UPRIGHT_BY_S, back + BACK_S)
+    after = log[log[:, 0] >= settled]
     out["tilt_after"] = float((after if len(after) else log[-1:])[:, 1].max())
-    window = log[log[:, 0] <= p + ROLL_WINDOW_S]
+    out["settled_s"] = settled - p
+    window = log[log[:, 0] <= max(p + ROLL_WINDOW_S, settled)]
     out["peak_tilt"] = float(window[:, 1].max())
     out["roll_rms"] = float(np.sqrt(np.mean(window[:, 2] ** 2)))
     # The jump policy's knee targets, each knee's step to step, from the crouch to the
@@ -242,7 +258,22 @@ def main() -> int:
     ap.add_argument(
         "jump",
         type=Path,
-        help="the jump run packed by sbc/pack_policy.py, or its exported/policy.npz",
+        help="the jump run packed by sbc/pack_policy.py, or its exported/policy.npz, or "
+        "'scripted' for the scripted jump",
+    )
+    ap.add_argument(
+        "--push",
+        type=float,
+        default=lc.pl.JUMP_PUSH_NM,
+        help="the scripted jump's push, Nm, as balance.py's --jump-push",
+    )
+    ap.add_argument("--wheel-gain", type=float, default=lc.WHEEL_GAIN)
+    ap.add_argument("--leg-gain", type=float, default=lc.LEG_GAIN)
+    ap.add_argument(
+        "--volts",
+        type=float,
+        default=lc.pl.RATED_VOLTS,
+        help="the pack, V, which the motors' speed goes with",
     )
     ap.add_argument(
         "--run",
@@ -271,19 +302,25 @@ def main() -> int:
     ap.add_argument("--no-roll", action="store_true", help="without the roll mode")
     args = ap.parse_args()
 
+    scripted = str(args.jump) == lc.balance.SCRIPTED
     pack = args.jump / "exported" / "policy.npz" if args.jump.is_dir() else args.jump
-    if not pack.exists():
+    if not scripted and not pack.exists():
         print(f"FAILED: no {pack}: uv run sbc/pack_policy.py {args.jump}")
         return 1
     gain, hz, zeta, delay_ms = args.roll
     roll = None if args.no_roll else (gain, hz, zeta, delay_ms / 1000)
+    asked = (
+        f"the scripted jump pushing {args.push:g} Nm"
+        if scripted
+        else f"{pack.parent.parent.name if args.jump.is_dir() else pack}, "
+        f"{args.height * 1000:g} mm asked"
+    )
     print(
-        f"{pack.parent.parent.name if args.jump.is_dir() else pack}, handed to by "
-        f"{args.run.name}, {args.height * 1000:g} mm asked standing; the wheels' torque "
-        f"{lc.WHEEL_GAIN:g} of asked through {lc.WHEEL_LAG_S * 1000:g} ms, the legs' "
-        f"{lc.LEG_GAIN:g} through {lc.LEG_LAG_S * 1000:g} ms, the wheels' armature "
-        f"{lc.WHEEL_ARMATURE_KG_M2:.1e} kg m2, IMU {args.imu_ms:g} ms, commands "
-        f"{args.cmd_ms:g} ms; "
+        f"{asked}, handed to by {args.run.name}, standing; the wheels' torque "
+        f"{args.wheel_gain:g} of asked through {lc.WHEEL_LAG_S * 1000:g} ms, the legs' "
+        f"{args.leg_gain:g} through {lc.LEG_LAG_S * 1000:g} ms, the wheels' armature "
+        f"{lc.WHEEL_ARMATURE_KG_M2:.1e} kg m2, the pack at {args.volts:g} V, IMU "
+        f"{args.imu_ms:g} ms, commands {args.cmd_ms:g} ms; "
         + (
             "no roll mode"
             if roll is None
@@ -295,7 +332,11 @@ def main() -> int:
     jobs = [
         dict(
             run=str(args.run),
-            jump=str(pack),
+            jump=lc.balance.SCRIPTED if scripted else str(pack),
+            push=args.push,
+            wheel_gain=args.wheel_gain,
+            leg_gain=args.leg_gain,
+            volts=args.volts,
             roll=roll,
             seed=int(s),
             press_at=args.press_at,
@@ -314,7 +355,8 @@ def main() -> int:
             "upright": r["tilt_after"] < UPRIGHT_DEG,
             "roll": r["roll_rms"] < ROLL_RMS_RAD_S,
             "knees": r["knee_step"] < KNEE_STEP_RAD,
-            "clear": r["clear"] >= CLEAR_SHARE * args.height,
+            # The scripted jump is asked for no height: the push sets it.
+            "clear": scripted or r["clear"] >= CLEAR_SHARE * args.height,
         }
         fine = all(marks.values())
         good &= fine
@@ -322,7 +364,8 @@ def main() -> int:
         print(
             f"   seed {r['seed']}: {'ok' if fine else 'FAILED (' + ', '.join(missed) + ')'}: "
             f"{'stood' if r['stood'] else (r['fell'] or r['why'])}; tilted to "
-            f"{r['peak_tilt']:.1f} deg, {r['tilt_after']:.1f} after {UPRIGHT_BY_S:g} s; "
+            f"{r['peak_tilt']:.1f} deg, {r['tilt_after']:.1f} after "
+            f"{r.get('settled_s', UPRIGHT_BY_S):.2f} s; "
             f"roll {r['roll_rms']:.2f} rad/s rms; knee targets {r['knee_step']:.3f} rad "
             f"a step over {r.get('steps', 0)} steps; cleared "
             f"{r['clear'] * 1000:.0f} mm; {' / '.join(r['said'])}"[:420],

@@ -196,6 +196,12 @@ DRY_TIP_DEG = 12.0
 DRY_SPIN_RAD_S = 3.0
 DRY_WAIT_S = 45.0
 
+# What --jump-policy is given, in place of a jump policy's pack, for the jump with no
+# network: sbc/policy_loop.py's ScriptedJump, pushing --jump-push. The owner tried jd8, the
+# latest jump policy, on the robot on 8 November 2026 and found it unsteady and its height
+# unconvincing, and agreed to a scripted jump first, from standstill.
+SCRIPTED = "scripted"
+
 
 class QueuedWriter:
     """sysid_tests' LogWriter on a thread of its own: a slow SD card, or the
@@ -1263,12 +1269,17 @@ def session(args) -> int:
             net, wheel_limit=args.wheel_limit, lean_per_m_s=args.lean_per_m_s
         )
         if args.jump_policy and is_powered:
-            bal = pl.TwoPolicies(
-                bal,
-                pl.JumpBalancer(pl.Net(args.jump_policy), wheel_limit=args.wheel_limit),
-                args.jump_height,
-                volts=lambda: (robot.status or {}).get("vbus"),
-            )
+            if str(args.jump_policy) == SCRIPTED:
+                bal = pl.ScriptedJump(bal, args.jump_push)
+            else:
+                bal = pl.TwoPolicies(
+                    bal,
+                    pl.JumpBalancer(
+                        pl.Net(args.jump_policy), wheel_limit=args.wheel_limit
+                    ),
+                    args.jump_height,
+                    volts=lambda: (robot.status or {}).get("vbus"),
+                )
         imu = pl.Imu(robot_file["imu_axes"], robot_file["imu_gravity_sign"])
         # With the motors off a tilt harms nothing, and is what is asked for.
         wheel_vmax = min(float(regs[j].get("VMAX", 55.0)) for j in st.WHEELS)
@@ -1313,9 +1324,7 @@ def session(args) -> int:
             "imu_axes": robot_file["imu_axes"],
             "imu_gravity_sign": robot_file["imu_gravity_sign"],
             "policy": bal.meta,
-            "jump_policy": bal.jumping.meta
-            if isinstance(bal, pl.TwoPolicies)
-            else None,
+            "jump_policy": bal.jump_meta if isinstance(bal, pl.TwoPolicies) else None,
             "label": args.label,
         }
         rig.writer = QueuedWriter(path, header)
@@ -1509,14 +1518,23 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--jump-policy",
         type=Path,
-        help="a jump policy's pack: the controller's A button then jumps (with --drive)",
+        help="a jump policy's pack, or 'scripted' for the jump with no network: the "
+        "controller's A button then jumps (with --drive)",
     )
     ap.add_argument(
         "--jump-height",
         type=float,
         default=0.03,
-        help="m of wheel clearance a jump is asked for, held to what the policy was "
+        help="m of wheel clearance a jump policy is asked for, held to what it was "
         "trained on; set here and never from the controller (default 0.03)",
+    )
+    ap.add_argument(
+        "--jump-push",
+        type=float,
+        default=pl.JUMP_PUSH_NM,
+        help="the scripted jump's push, Nm of each knee's 3: how high it goes, held to "
+        f"{pl.JUMP_PUSH_RANGE_NM[0]:g}-{pl.JUMP_PUSH_RANGE_NM[1]:g}; set here and never "
+        f"from the controller (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument("--robot-file", type=Path, help="in place of sysid_robot.json")
     ap.add_argument(
