@@ -538,6 +538,12 @@ def main() -> int:
         help=f"the scripted jump's push, Nm, as balance.py's (default {pl.JUMP_PUSH_NM:g})",
     )
     ap.add_argument(
+        "--jump-level-nm",
+        type=float,
+        help="the scripted jump's level push, Nm of each wheel, as balance.py's "
+        f"(default pl.JumpScript's {pl.JumpScript.level_nm:g})",
+    )
+    ap.add_argument(
         "--jump-delays",
         default="16,6",
         metavar="IMU,COMMAND",
@@ -1157,7 +1163,9 @@ def main() -> int:
     )
 
     imu_ms, cmd_ms = (float(x) for x in args.jump_delays.split(","))
-    good &= jumps(ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push)
+    good &= jumps(
+        ctx, args.jump_run, imu_ms, cmd_ms, args.jump_push, args.jump_level_nm
+    )
 
     good &= taken_over_low(ctx)
 
@@ -1222,13 +1230,15 @@ LANDED_SHARE = 0.8
 
 
 def jumps(
-    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None
+    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None, level=None
 ) -> bool:
     """Case 17, on a jump policy's run, or with `jump_run` "scripted" on
-    sbc/policy_loop.py's ScriptedJump pushing `push` Nm."""
+    sbc/policy_loop.py's ScriptedJump pushing `push` Nm, its level push `level` Nm if
+    given (balance.py's --jump-level-nm)."""
     scripted = str(jump_run) == balance.SCRIPTED
     what = (
-        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm"
+        f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm, "
+        f"the wheels {balance.jump_script(level).level_nm:g}"
         if scripted
         else "the jump policy"
     )
@@ -1301,6 +1311,7 @@ def jumps(
         why, rig = run(
             "launch", lowers(), ctx, seconds=14.0, rearm=True, script=script,
             jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
+            jump_script=balance.jump_script(level) if scripted else None,
         )  # fmt: skip
         n = rig.writer
         said = [w for _, w in n.jumps]

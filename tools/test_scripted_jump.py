@@ -637,6 +637,24 @@ class Settings(unittest.TestCase):
         self.assertTrue(lo <= push <= hi)
         self.assertEqual(command[command.index("--lean-per-m-s") + 1], "1.67")
 
+    def test_the_launcher_sets_the_level_push_inside_its_range(self):
+        args = SimpleNamespace(phase_file=Path("/dev/shm/x"), rt=False, jump="scripted")
+        command = launcher.balance_command(args)
+        level = float(command[command.index("--jump-level-nm") + 1])
+        lo, hi = balance.JUMP_LEVEL_RANGE_NM
+        self.assertTrue(lo <= level <= hi)
+        self.assertEqual(balance.jump_script(level).level_nm, level)
+
+    def test_the_level_push_is_mujoco_s_unless_set_and_held_to_its_range(self):
+        self.assertEqual(balance.jump_script(), pl.JumpScript())
+        self.assertEqual(balance.jump_script(None).level_nm, pl.JumpScript.level_nm)
+        lo, hi = balance.JUMP_LEVEL_RANGE_NM
+        self.assertEqual(balance.jump_script(9.0).level_nm, hi)
+        self.assertEqual(balance.jump_script(-1.0).level_nm, lo)
+        # Nothing else of the script moves with it.
+        moved = dataclasses.replace(balance.jump_script(0.35), level_nm=SCRIPT.level_nm)
+        self.assertEqual(moved, SCRIPT)
+
     def test_or_no_jump_at_all(self):
         args = SimpleNamespace(phase_file=Path("/dev/shm/x"), rt=False, jump="none")
         self.assertNotIn("--jump-policy", launcher.balance_command(args))
