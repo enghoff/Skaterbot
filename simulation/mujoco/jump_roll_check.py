@@ -27,8 +27,9 @@ side. A jump passes when, for every seed:
     the torso: jl_lag on this rig without the loop reaches 31-36 degrees 0.45-0.7 s after
     the press and is back under 2 by 1.5 s; the robot's jumps tipped over backwards about
     0.7 s after the trigger. A jump policy hands back 0.6 s after the press, so for one
-    the two are the same; the scripted jump waits in its crouch until the robot is still
-    and balanced, 0.7-1.0 s, and lands 1.0-1.4 s after the press;
+    the two are the same; the scripted jump waits in its crouch until the robot is calm,
+    steady and balanced, and lands 0.6-0.8 s after the press (it waited 0.7-1.0 s and
+    landed 1.0-1.4 s after until 8 November 2026);
   * the torso's roll rate as the IMU sees it, the body's own and the mode's, is under
     1.5 rad/s rms over the 1.5 s from the press, or to 0.9 s after the hand back;
   * the knees' targets move under 0.2 rad a step on average while the jump policy has

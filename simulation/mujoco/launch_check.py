@@ -1213,6 +1213,12 @@ def taken_over_low(ctx) -> bool:
 # before the robot was measured: at those delays it lands and then tips over within half
 # a second, and it passes only at the 10 ms at most it was trained to (TRAINING_HISTORY.md).
 JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
+# Pressed driving, the scripted jump is going on at this share of the speed it was pressed
+# at, this long after it is handed back: on this rig on 8 November 2026, pressed at 0.41
+# and 1.40 m/s, it was going 0.90 and 0.99 of it (session scratchpad jump_grace/); braking
+# to a stop first, as it did before, it would be going none of it.
+LANDED_S = 0.5
+LANDED_SHARE = 0.8
 
 
 def jumps(
@@ -1244,7 +1250,7 @@ def jumps(
     good = True
 
     def pressing(at, forward, fast=False, again=None):
-        seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None}
+        seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None, "after": None}
 
         def script(rig):
             if rig.first_touch is None:
@@ -1253,6 +1259,12 @@ def jumps(
             presses = (t >= at) + (again is not None and t >= at + again)
             if t >= at and seen["press"] is None:
                 seen["press"] = rig.t
+                seen["going"] = rig.forward_speed()
+            back = next(
+                (h for h, w in rig.writer.jumps if w.startswith("handed back")), None
+            )
+            if seen["after"] is None and back is not None and rig.t >= back + LANDED_S:
+                seen["after"] = rig.forward_speed()
             if t >= at - 0.1:
                 clear = float(np.min(rig.ctl.clearance_now(rig.d)))
                 seen["clear"] = max(seen["clear"], clear)
@@ -1271,10 +1283,17 @@ def jumps(
 
         return script, seen
 
+    # The scripted jump jumps driving, at a full pull in fast mode; a jump policy brakes.
+    top = max(map(abs, ctx.net.meta["speed_range"]))
+    fast = (
+        ("at a full pull in fast mode, jumping at speed", dict(at=8.0, forward=top))
+        if scripted
+        else ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5))
+    )
     cases = (
         ("standing", dict(at=5.0, forward=0.0)),
         ("at 0.5 m/s", dict(at=6.0, forward=1.8)),
-        ("at 1.5 m/s, braking first", dict(at=8.0, forward=1.5, fast=True)),
+        (fast[0], fast[1] | dict(fast=True)),
         ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
     )
     for name, k in cases:
@@ -1296,14 +1315,21 @@ def jumps(
         )
         if k.get("again") is not None:
             fine &= any(w.startswith("refused: already") for w in said)
-        if k.get("fast"):
+        going = ""
+        if scripted and k["forward"]:
+            # Pressed driving, it jumps without braking and lands going on at the speed.
+            after = seen["after"]
+            fine &= not any("braking first" in w for w in said)
+            fine &= after is not None and after >= LANDED_SHARE * seen["going"]
+            going = f"going {seen['going']:.2f} m/s, then {after or 0.0:.2f}; "
+        elif k.get("fast"):
             fine &= any("braking first" in w for w in said)
         good &= fine
         print(
-            f"   {'ok' if fine else 'FAILED'}: {name}: {why}; legs down to "
+            f"   {'ok' if fine else 'FAILED'}: {name}: {why}; {going}legs down to "
             f"{seen['low'] * 1000:.0f} mm, wheels cleared {seen['clear'] * 1000:.0f} mm, "
             f"tilted to {seen['tilt']:.1f} deg; back {took and round(took, 2)} s after the "
-            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:400],
+            f"press; went through {' '.join(n.phases)}; {' / '.join(said)}"[:440],
             flush=True,
         )
     return good
