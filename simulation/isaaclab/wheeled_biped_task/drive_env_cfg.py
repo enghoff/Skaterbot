@@ -375,3 +375,86 @@ class WheeledBipedDriveD8EnvCfg(WheeledBipedDriveD7EnvCfg):
     robot = WheeledBipedDriveEnvCfg().robot.replace(actuators=D8_ACTUATORS)
 
     imu_delay_steps = plant.SWAY["imu_delay_steps"]
+
+
+# -- D9: D8's robot, asked for the speed it can hold, and asked for it often.
+#
+# The top of the speed asked. The motor makes 1.5 Nm to 37.5 rad/s, 1.5 m/s on the 40 mm
+# wheel, and nothing at 55 (plant.MOTOR_CURVE); a balancing robot has to speed its wheels
+# up past the body to stop, and D3 braking from 1.54 m/s in MuJoCo spun them to 50 rad/s
+# with 0.44 Nm left there (7 November 2026, session scratchpad topspeed/). So about 1.5
+# m/s is as fast as this motor drives and still stops. D8's 2.2 was the no-load speed,
+# where the motor makes nothing at all.
+D9_TOP_SPEED_M_S = 1.6
+# The battery as the robot's packs have really been run: 23.35 to 25.21 V over the 19
+# runs logged on 5-7 November 2026 (vbus in each run's log), 0.94 to 1.02 of the 24.8 V
+# the curve was measured on. The floor is 22.3 V, 3.72 V a cell, where a LiPo's flat
+# stretch ends: 1 V under the lowest any run reached, for a pack further down than any
+# yet and for its sag under load (the most one run fell was 0.56 V, 24.80 to 24.24, on
+# 6 November at 22:48). From D4 to D8 it was 0.8, 19.8 V, under the 21.6 V below which
+# sbc/balance.py will not start a run: there the motor stops at 1.76 m/s and makes 0.73
+# Nm at 1.5 where at 0.9 it makes 1.2. balance.py would still start one at 21.6-22.3 V,
+# 0.87-0.9, which this has not trained on.
+D9_BATTERY = (0.9, 1.02)
+
+
+@configclass
+class WheeledBipedDriveD9EnvCfg(WheeledBipedDriveD8EnvCfg):
+    """D8's task asking for the top speed this motor allows, and asking for it often.
+
+    The robot is D8's, SHAKE and SWAY and all; only the commands and the battery change.
+    Its sampler is drive_fast_env.py's, which takes these settings.
+
+    D8 cruises at about 1.15 m/s in MuJoCo on launch_check.py's loop whatever it is asked
+    from 1.4 to 2.2, using 0.09 Nm of the 1.15 its wheels could make there, and did 1.14
+    on the robot asked 1.8; with the motor's curve taken away it still does 1.11. It is
+    the policy that stops, not the motor. D3 holds 1.54. Training's own score asked
+    2.0-2.2 m/s fell at every stage after D3's 1.56: D4 1.42, D5 1.19-1.28, d7_rate 1.37,
+    D8 1.22. What taught it to hold back is likely, not proven, to be two things it
+    cannot see, and one it was asked:
+
+      * THE BATTERY, drawn from D4 on down to 0.8 of the pack, where the wheels stop at
+        1.76 m/s and a robot cruising at 1.5 has nothing left to stop with. A policy that
+        cannot read the voltage keeps the margin the flattest pack needs. It is drawn now
+        as the packs have been run (D9_BATTERY), and is still not something it reads:
+        an input would break resuming from D8.
+      * HOW SELDOM FAST WAS ASKED. D8's commands are half everyday and half spread over
+        the diamond to 2.2 m/s and 25 rad/s, so 2 % of them ask forward above 1.5 m/s,
+        and 0.3 % above 1.3 with the turn under 0.5 rad/s; most of its fast commands
+        come with a hard turn, a quarter of all commands past 2.5 m/s2 sideways, which
+        the robot's launcher no longer passes (its legs flex and the inner wheel lifts at
+        about 2). Here a quarter of the moving commands, a fifth of all, are straight
+        and fast: 1.3 to 1.6 m/s, three in four forward, and the turn within 0.5 rad/s,
+        0.8 m/s2 sideways at the top. Together with the rest, 21 % of commands ask above
+        1.3 m/s and 20 % do so straight (D8 6.7 % and 0.6 %).
+      * SPEEDS IT COULD NOT REACH. Asked 2.2 the motor gives nothing, so from 1.6 on the
+        answer was the same whatever was asked. The top is 1.6 (D9_TOP_SPEED_M_S); the
+        diamond's turn stays at 25.1 rad/s.
+
+    The tracking reward is left as it is. Asked 1.5 m/s and holding 1.15, its kernel
+    (0.05 + (0.2 x 1.5)^2 = 0.14 wide in m2/s2) pays 0.83 a second of its 2.0 and the
+    cost in proportion charges 1.05: 2.2 a second lost against holding 1.5, close to half
+    of the 5.0 a second of driving can earn at most. That pays for the speed if reaching
+    it is safe; what it did not pay for was a fall, which with the battery at 0.8 a fast
+    robot risked.
+
+    The policy reads the speed asked as it is, in m/s, so its range is the policy's
+    speed_range in sbc/pack_policy.py's export and the top of sbc/gamepad.py's
+    TOP_SPEED_M_S, and both become 1.6. sbc/policy_loop.py's Trim can still ask up to
+    0.15 m/s past it, 1.75, to make up the policy's own shortfall.
+    """
+
+    command_lin_vel_x = (-D9_TOP_SPEED_M_S, D9_TOP_SPEED_M_S)
+    battery_speed_scale = D9_BATTERY
+
+    # The share of moving commands straight and fast, drawn by drive_fast_env.py: a speed
+    # evenly within the band, forward this often and otherwise back, which a full brake
+    # asks in fast mode, and a turn evenly within its range.
+    command_fast_fraction = 0.25
+    command_fast_speed_m_s = (1.3, D9_TOP_SPEED_M_S)
+    command_fast_forward_share = 0.75
+    command_fast_yaw_rate = (-0.5, 0.5)
+
+    # As D8 was trained: pod_d8.sh passed env.rew_action_rate=-0.15 on its command line,
+    # as d7_rate's did, and D8's params/env.yaml has it. Here so the command line need not.
+    rew_action_rate = -0.15

@@ -60,6 +60,12 @@ parser.add_argument(
     action="store_true",
     help="D8's task: D7's with the robot's slow sway in it (WheeledBipedDriveD8EnvCfg)",
 )
+parser.add_argument(
+    "--d9",
+    action="store_true",
+    help="D9's task: D8's asked for its top speed, often (WheeledBipedDriveD9EnvCfg); "
+    "score it at --motor 55 and at its battery's floor, --motor 49.5",
+)
 add_launcher_args(parser)
 args = parser.parse_args()
 
@@ -71,6 +77,7 @@ from wheeled_biped_task.drive_env_cfg import (  # noqa: E402
     WheeledBipedDriveD6LegsEnvCfg,
     WheeledBipedDriveD7EnvCfg,
     WheeledBipedDriveD8EnvCfg,
+    WheeledBipedDriveD9EnvCfg,
     WheeledBipedDriveEnvCfg,
     WheeledBipedDriveLowEnvCfg,
     WheeledBipedDriveMeasuredEnvCfg,
@@ -94,8 +101,12 @@ ARCS = (
 HEIGHTS = (0.170, 0.180, 0.190, 0.200, 0.207)
 if args.low:
     HEIGHTS = (0.155, 0.160, 0.170, 0.180, 0.190, 0.200, 0.207)
-if args.d6 or args.d6_legs or args.d7 or args.d8:
+if args.d6 or args.d6_legs or args.d7 or args.d8 or args.d9:
     HEIGHTS = (0.165, 0.170, 0.180, 0.190, 0.200, 0.207)
+if args.d9:
+    # The band D9 is asked for most, 1.3 to 1.6 m/s, and its top; 2.0 and 2.2, past the
+    # top, kept so it can be set beside the runs before it, which were scored there.
+    SPEEDS = (0.25, 0.5, 1.0, 1.3, 1.5, 1.6, 2.0, 2.2)
 
 
 def cells(default_height: float) -> list[tuple[float, float, float]]:
@@ -110,7 +121,9 @@ def cells(default_height: float) -> list[tuple[float, float, float]]:
 
 
 def main() -> int:
-    if args.d8:
+    if args.d9:
+        cfg = WheeledBipedDriveD9EnvCfg()
+    elif args.d8:
         cfg = WheeledBipedDriveD8EnvCfg()
     elif args.d7:
         cfg = WheeledBipedDriveD7EnvCfg()
@@ -141,8 +154,9 @@ def main() -> int:
     with launch_simulation(cfg, args):
         # Only once Kit is up: see wheeled_biped_task/env_cfg.py.
         from wheeled_biped_task.drive_env import WheeledBipedDriveEnv
+        from wheeled_biped_task.drive_fast_env import WheeledBipedDriveFastEnv
 
-        env = WheeledBipedDriveEnv(cfg)
+        env = (WheeledBipedDriveFastEnv if args.d9 else WheeledBipedDriveEnv)(cfg)
         policy = torch.jit.load(args.policy, map_location=env.device).eval()
         dev = env.device
 
