@@ -571,13 +571,103 @@ GYRO_MEAN_OF = 3
 # a step very late, the mean starts again.
 GYRO_MEAN_GAP_S = 0.05
 
+# THE JOINTS' NULL. The driving policy is fed the hips' and knees' speeds with what
+# flaps from one step to the next taken out. On 2026-11-08 at 17:25, with the gyro's
+# mean in, D8 chattered again: twice for 2 s, 1-2 s after a jump's hand-back while
+# turning on the spot, all six actions changing sign almost every step, the wheels'
+# 0.23-0.31 Nm a step against 0.02, and shorter spells after most hand-backs. The gyro
+# as fed hardly showed it, but the robot was shaking at the loop's top: the hips'
+# angles moving 3 mrad and the gyro's own reports 0.35 rad/s in yaw at 50 Hz, which the
+# gyro's mean, a reading a step, takes out exactly. What carried it is the joints'
+# speeds: through the network, 95 % of the legs' step-to-step change and 45 % of the
+# wheels', the rest the wheels' own last actions, the gyro and the wheels' speeds 6 %
+# at most. Fitted from that log, a knee's target alternating comes back in its speed at
+# the next step at 55-65 rad/s per rad and in its hip's at 30-38, where MuJoCo's rigid
+# legs answer about 8; closed through the network, that loop sits at 0.95-0.98 of what
+# grows by itself, and at 0.63-0.68 without the joints' speeds.
+#
+# Replayed through D8 from five places in that log, with the loop closed by that
+# answer, it chattered after two of the three jumps as the robot did, and at 1.5 times
+# the answer everywhere; with the joints' speeds nulled it was quiet in all five at the
+# answer, in four at 1.5 times, and at twice the wheels' speeds took over. On
+# launch_check.py's rig with each knee's target driving its own speed and its hip's as
+# read (48 Hz, damping 0.2, 13 ms), D8 chattered after the hand-backs as the robot did
+# at 100-110 rad/s per rad, three runs in six going on to fall; nulled, it was quiet at
+# 100-240 and fell at 360 (session scratchpad jitter2/, 8 November 2026).
+#
+# Why a null and not a mean. The 1-2-1 mean, as the gyro's, quieted it as well, at 360
+# on the rig too, but held the joints' speeds back a step, 10 ms, where D8 trained with
+# them 0-2.5 ms late:
+# with the wheels' torque at 0.8 of asked, the legs' at 0.9, the pack at 23.4 V and the
+# IMU 40 ms late, the crouch for a jump tilted past 17 degrees and was handed back
+# unjumped, as it was with the mean of two; without either, 14. The null, 3/4 of the
+# reading, 1/2 of the last and -1/4 of the one before, passes a steady speed and a
+# steady change in it exactly, so nothing is late below about 10 Hz (8 % more at 10 Hz,
+# 12 % at 25), and takes out a reading changing sign every step whatever the steps'
+# lengths; there the crouch tilted to 14 and jumped. It passes 0.6 of 40 Hz on 10 ms
+# steps, where the mean passes 0.1, so it does nothing for a mode off the loop's top:
+# the gyro keeps its mean. Rejected as well: the wheels' speeds averaged too, which in
+# the replay held three times the answer but on the rig left the crouch unsteady
+# enough that the jump waited for it to stop; and the mean of its own last actions,
+# which made the loop worse, they damp it. Only the driving policy's input: the checks,
+# Touch, Hold, Trim, the jump's script and a jump policy read the joints as they are.
+# NOT YET TRIED ON THE ROBOT.
+JOINT_NULL = True
+
+
+class StepMean:
+    """The binomial mean of the last `n` readings, one a step: 1, 1-1, 1-2-1. Readings
+    further apart than GYRO_MEAN_GAP_S are not averaged across: the mean starts again."""
+
+    def __init__(self, n: int):
+        # (when, the reading), newest last.
+        self.past: deque = deque(maxlen=max(1, int(n)))
+
+    def reset(self) -> None:
+        self.past.clear()
+
+    def __call__(self, now: float, x) -> np.ndarray:
+        if self.past and now - self.past[-1][0] > GYRO_MEAN_GAP_S:
+            self.past.clear()
+        self.past.append((now, np.array(x, dtype=float)))
+        n = len(self.past)
+        weights = [math.comb(n - 1, k) / 2 ** (n - 1) for k in range(n)]
+        return sum(k * x for k, (_, x) in zip(weights, self.past, strict=True))
+
+
+class StepNull:
+    """Each reading less what flaps from one step to the next, holding nothing back:
+    (3 x[k] + 2 x[k-1] - x[k-2]) / 4, which passes a constant and a ramp exactly and
+    takes out a reading changing sign every step. THE JOINTS' NULL, above. Off, or with
+    fewer than three readings since a gap of GYRO_MEAN_GAP_S, the reading as it is."""
+
+    WEIGHTS = (-0.25, 0.5, 0.75)  # oldest first
+
+    def __init__(self, on: bool = True):
+        self.on = bool(on)
+        # (when, the reading), newest last.
+        self.past: deque = deque(maxlen=len(self.WEIGHTS))
+
+    def reset(self) -> None:
+        self.past.clear()
+
+    def __call__(self, now: float, x) -> np.ndarray:
+        if self.past and now - self.past[-1][0] > GYRO_MEAN_GAP_S:
+            self.past.clear()
+        self.past.append((now, np.array(x, dtype=float)))
+        if not self.on or len(self.past) < len(self.WEIGHTS):
+            return self.past[-1][1].copy()
+        return sum(k * x for k, (_, x) in zip(self.WEIGHTS, self.past, strict=True))
+
 
 class LeanedBalancer(pl.Balancer):
     """The driving policy, fed gravity turned nose-up by `lean_per_m_s` degrees for each
     m/s of the speed it is sent, after the Operator's caps and ramps and the stepper's
     governor, Trim and Hold: nothing standing, and coming and going with the speed.
     THE LEAN, above, has why. `lean_deg` is the last step's. And fed the gyro as the
-    mean of its last `gyro_mean_of` readings: THE GYRO'S MEAN, above."""
+    mean of its last `gyro_mean_of` readings, THE GYRO'S MEAN, and with `joint_null` the
+    hips' and knees' speeds with their step-to-step flapping taken out, THE JOINTS'
+    NULL, both above."""
 
     def __init__(
         self,
@@ -585,31 +675,26 @@ class LeanedBalancer(pl.Balancer):
         wheel_limit: float | None = None,
         lean_per_m_s=0.0,
         gyro_mean_of=GYRO_MEAN_OF,
+        joint_null=JOINT_NULL,
     ):
         super().__init__(net, wheel_limit)
         self.lean_per_m_s = float(lean_per_m_s)
         self.lean_deg = 0.0
-        # (when, the gyro in the torso's frame), newest last.
-        self.gyros: deque = deque(maxlen=max(1, int(gyro_mean_of)))
+        self.gyros = StepMean(gyro_mean_of)
+        self.joints = StepNull(joint_null)
 
     def reset(self) -> None:
         super().reset()
-        self.gyros.clear()
-
-    def gyro_mean(self, w) -> np.ndarray:
-        """The binomial mean of the last readings: 1, 1-1, 1-2-1."""
-        now = clock()
-        if self.gyros and now - self.gyros[-1][0] > GYRO_MEAN_GAP_S:
-            self.gyros.clear()
-        self.gyros.append((now, np.asarray(w, dtype=float)))
-        n = len(self.gyros)
-        weights = [math.comb(n - 1, k) / 2 ** (n - 1) for k in range(n)]
-        return sum(k * x for k, (_, x) in zip(weights, self.gyros, strict=True))
+        self.gyros.reset()
+        self.joints.reset()
 
     def observe(self, fb: dict, w, g, speed: float, turn: float, height: float):
         self.lean_deg = self.lean_per_m_s * speed
         g = leaned(np.asarray(g, dtype=float), self.lean_deg)
-        return super().observe(fb, self.gyro_mean(w), g, speed, turn, height)
+        now = clock()
+        o = super().observe(fb, self.gyros(now, w), g, speed, turn, height)
+        o[13:17] = self.joints(now, o[13:17])
+        return o
 
 
 def real_time(args) -> str:
@@ -1362,6 +1447,7 @@ def session(args) -> int:
             wheel_limit=args.wheel_limit,
             lean_per_m_s=args.lean_per_m_s,
             gyro_mean_of=args.gyro_mean_of,
+            joint_null=not args.no_joint_null,
         )
         if args.jump_policy and is_powered:
             if str(args.jump_policy) == SCRIPTED:
@@ -1685,6 +1771,13 @@ def main(argv=None) -> int:
         help="the driving policy is fed the mean of this many of the gyro's last readings, "
         "weighted 1-2-1, against a 40-50 Hz chatter: 1 feeds it the last alone. Its input "
         f"only (default {GYRO_MEAN_OF})",
+    )
+    ap.add_argument(
+        "--no-joint-null",
+        action="store_true",
+        help="feed the driving policy the hips' and knees' speeds as they are read, "
+        "rather than with their step-to-step flapping taken out against a 50 Hz "
+        "chatter (THE JOINTS' NULL). Its input only",
     )
     ap.add_argument(
         "--no-trim",

@@ -214,6 +214,133 @@ class TheGyroMean(unittest.TestCase):
         )
 
 
+def moving(legs, wheels=(0.0, 0.0)) -> dict:
+    """The crouch, the hips and knees turning at `legs` rad/s, the wheels at `wheels`."""
+    fb = legs_at(0.25, 0.5)
+    for j, v in zip(st.LEGS + st.WHEELS, list(legs) + list(wheels), strict=True):
+        fb[j] = st.Fb(at=0.0, p=fb[j].p, v=float(v), tau=0.0)
+    return fb
+
+
+class TheJointsNull(unittest.TestCase):
+    """balance.py's THE JOINTS' NULL: the driving policy is fed the hips' and knees'
+    speeds as 3/4 of the reading, 1/2 of the last and -1/4 of the one before, the
+    wheels' as they are."""
+
+    READINGS = [
+        np.array([1.0, -2.0, 0.5, 3.0]),
+        np.array([3.0, 0.0, -1.0, 1.0]),
+        np.array([-1.0, 4.0, 2.0, -2.0]),
+    ]
+
+    def setUp(self):
+        self.t = 0.0
+        self.real_clock = balance.clock
+        balance.clock = lambda: self.t
+
+    def tearDown(self):
+        balance.clock = self.real_clock
+
+    def fed(self, bal, legs, wheels=None, steps=(0.009,)) -> list[np.ndarray]:
+        out = []
+        for k, v in enumerate(legs):
+            w = (0.0, 0.0) if wheels is None else wheels[k]
+            obs = bal.observe(moving(v, w), STILL, UP, 0.0, 0.0, 0.2035)
+            out.append(obs.copy())
+            self.t += steps[k % len(steps)]
+        return out
+
+    def test_off_is_the_reading_as_it_is(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING), joint_null=False)
+        got = self.fed(bal, self.READINGS)
+        for o, v in zip(got, self.READINGS, strict=True):
+            np.testing.assert_allclose(o[13:17], v * pl.JOINT_VEL_SCALE, rtol=1e-6)
+
+    def test_three_weighs_them_three_two_less_one(self):
+        got = self.fed(balance.LeanedBalancer(Answers(DRIVING)), self.READINGS)
+        a, b, c = self.READINGS
+        scale = pl.JOINT_VEL_SCALE
+        # Fewer than three in, the reading as it is.
+        np.testing.assert_allclose(got[0][13:17], a * scale, rtol=1e-6)
+        np.testing.assert_allclose(got[1][13:17], b * scale, rtol=1e-6)
+        np.testing.assert_allclose(
+            got[2][13:17], (3 * c + 2 * b - a) / 4 * scale, rtol=1e-6, atol=1e-9
+        )
+
+    def test_it_takes_out_a_chatter_at_the_loop_s_top(self):
+        """The robot's at 17:25 on 8 November 2026, its steps 8 and 12 ms in turn."""
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        flapping = [np.full(4, 2.0 * (-1.0) ** k) + 0.5 for k in range(8)]
+        got = self.fed(bal, flapping, steps=(0.008, 0.012))
+        for o in got[2:]:
+            np.testing.assert_allclose(o[13:17], 0.5 * pl.JOINT_VEL_SCALE, rtol=1e-6)
+
+    def test_a_steady_change_is_not_held_back(self):
+        """Where the mean of three would be a step behind, a speed changing steadily is
+        fed as it is: the crouch for a jump, on a slow IMU, needed it so."""
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        rising = [np.array([1.0, -2.0, 0.5, 3.0]) * k for k in range(6)]
+        got = self.fed(bal, rising)
+        for o, v in zip(got, rising, strict=True):
+            np.testing.assert_allclose(
+                o[13:17], v * pl.JOINT_VEL_SCALE, rtol=1e-6, atol=1e-9
+            )
+
+    def test_the_wheels_are_as_they_are(self):
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        wheels = [(5.0, -3.0), (-7.0, 2.0), (11.0, 0.5)]
+        got = self.fed(bal, self.READINGS, wheels)
+        for o, w in zip(got, wheels, strict=True):
+            np.testing.assert_allclose(
+                o[17:19], np.array(w) * pl.JOINT_VEL_SCALE, rtol=1e-6
+            )
+
+    def test_a_gap_and_a_reset_start_it_again(self):
+        c = self.READINGS[2] * pl.JOINT_VEL_SCALE
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        self.fed(bal, self.READINGS[:2])
+        self.t += balance.GYRO_MEAN_GAP_S
+        np.testing.assert_allclose(self.fed(bal, self.READINGS[2:])[0][13:17], c)
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        self.fed(bal, self.READINGS[:2])
+        bal.reset()
+        np.testing.assert_allclose(self.fed(bal, self.READINGS[2:])[0][13:17], c)
+
+    def test_what_it_was_handed_is_left_as_it_was(self):
+        """The stepper hands the same readings on to Touch, Hold, Trim and the jump."""
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        self.fed(bal, self.READINGS[:2])
+        fb = moving(self.READINGS[2])
+        bal.observe(fb, STILL, UP, 0.0, 0.0, 0.2035)
+        for j, v in zip(st.LEGS, self.READINGS[2], strict=True):
+            self.assertEqual(fb[j].v, v)
+
+    def test_the_jump_policy_is_fed_them_as_they_are(self):
+        def jumped(before):
+            driving = balance.LeanedBalancer(Answers(DRIVING))
+            two = pl.TwoPolicies(driving, pl.JumpBalancer(Answers(JUMPING)), 0.03)
+            self.fed(two, before)
+            self.assertIsNone(two.press(UP, 0.5, True))
+            self.assertIs(two.active, two.jumping)
+            fb = moving(self.READINGS[2])
+            return two.observe(fb, STILL, UP, 0.0, 0.0, 0.2035)
+
+        np.testing.assert_array_equal(
+            jumped(self.READINGS[:2]), jumped([np.zeros(4), np.zeros(4)])
+        )
+
+    def test_the_driving_policy_hears_them_through_a_scripted_jump(self):
+        """The script reads the joints as they are and the driving policy goes on being
+        fed them nulled all through, so it is handed back a null already running."""
+        bal = balance.LeanedBalancer(Answers(DRIVING))
+        two = pl.ScriptedJump(bal)
+        got = self.fed(two, self.READINGS)
+        a, b, c = self.READINGS
+        np.testing.assert_allclose(
+            got[2][13:17], (3 * c + 2 * b - a) / 4 * pl.JOINT_VEL_SCALE, rtol=1e-6
+        )
+
+
 class FakeRig:
     """Every motor in the crouch and answering, and an IMU reading `gravity`."""
 
