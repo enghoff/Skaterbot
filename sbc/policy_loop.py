@@ -802,7 +802,12 @@ class JumpScript:
     # and ring in the air, and the height came out of order with the speed asked.
     hip_kp: float = 40.0
     hip_kd: float = 1.0
-    push_most_s: float = 0.3
+    # The push is stopped by the knees' height, but never after this: the brake falls on the
+    # first step at or past it, about 50 ms in. Over 86 jumps on the robot on 8 November
+    # 2026 the push ended 40 to 71 ms in, and the later the further the knees went: at 40-46
+    # ms 0.50 rad short of straight and none past it of 30, at 54 ms or more all 4 past it,
+    # one by 0.81 rad, for no more height, 35 mm either way (session scratchpad run_last/).
+    push_most_s: float = 0.045
     # THE LEVEL PUSH: through the push both wheels drive forward with `level_nm`, and
     # `level_nm_per_m` more for each metre the centre of mass starts ahead of the axles,
     # both at JUMP_PUSH_NM and in proportion to the push. Without it the robot left the
