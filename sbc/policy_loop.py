@@ -872,7 +872,10 @@ class JumpScript:
     brake_lead_s: float = 0.0225
     brake_kp: float = 40.0
     brake_kd: float = 1.5
-    brake_s: float = 0.03
+    # Was 0.03: the hold takes nothing from the rise but holds up the tuck, and at 0.015 the
+    # robot-like rig cleared 2-3 mm more with the same landings (session scratchpad
+    # envelope_jump/, 8 November 2026).
+    brake_s: float = 0.015
     # THE FLIGHT: the legs drawn up to `land_m` over `tuck_s`, softly, and held. Held at
     # the take-off height they cleared 10-16 mm at 1.8-2.2 Nm, and drawn up 25 mm, 18-22
     # at 1.6-1.8; drawn up further it did not finish in the flight, and stiffer it was

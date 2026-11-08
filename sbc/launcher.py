@@ -247,13 +247,14 @@ def balance_command(args) -> list[str]:
     command += ["--seconds", "0", "--touch-wait", "0"]
     command += ["--button", "--phase-file", str(args.phase_file)]
     # Slow, which every run starts in; select on the controller toggles to fast, which
-    # is 1.8 m/s and 15 rad/s: D3's whole trained range, where the robot has been
-    # driven, and inside D5's 2.2 m/s and 25 rad/s, whose top the wheels' 50 rad/s
-    # stop in sbc/policy_loop.py would cut short.
+    # is 2.0 m/s and 15 rad/s, inside D5's 2.2 m/s and 25 rad/s, whose top the wheels'
+    # 50 rad/s stop in sbc/policy_loop.py would cut short. Was 1.8, where on 8 November
+    # 2026 the wheels had most of their torque left at 1.4 m/s; on launch_check.py's rig
+    # 2.0 holds 1.49 m/s, the wheels to 40 rad/s (44 on a weak rig; the ceiling is 51).
     command += ["--max-speed", "1.0", "--max-turn", "2.0"]
-    command += ["--fast-speed", "1.8", "--fast-turn", "15.0"]
+    command += ["--fast-speed", "2.0", "--fast-turn", "15.0"]
     # The driving policy told it leans 1.67 degrees nose-up per m/s it is sent, 3 at
-    # fast mode's 1.8: on launch_check.py's rig D8 then holds 1.41 m/s rather than
+    # 1.8 m/s: on launch_check.py's rig D8 then holds 1.41 m/s rather than
     # 1.17 and passes every case (balance.py's THE LEAN). Untried on the robot when set
     # on 8 November 2026; 0 takes it out.
     command += ["--lean-per-m-s", "1.67"]
