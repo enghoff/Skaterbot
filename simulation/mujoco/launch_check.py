@@ -1151,7 +1151,7 @@ def main() -> int:
 
     why, rig = run(
         "launch", lowers(), ctx, seconds=12.0, rearm=True,
-        script=trouble(6.0, restart(0.5, 3.0)),
+        script=trouble(6.0, restart(0.5, pl.GYRO_CARRY_S + 1.5)),
     )  # fmt: skip
     n = rig.writer
     fine = n.lost is not None and "letdown" in n.phases and n.fell is None
