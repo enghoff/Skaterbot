@@ -33,6 +33,12 @@ steady it, or both. It fails if any of these goes wrong:
 14. Fallen over and lying limp, a tap wakes it, whatever its legs are doing.
 15. Select on the controller takes it from the slow limit to the fast one, and back,
     and in fast mode a full pull holds --fast-mark.
+15b. And backwards a full pull keeps clear of the wheels' top speed, which at 2.2 m/s
+    it ran into and fell.
+15c. With a wheel that drags and no turn asked, it is steered straight from the gyro.
+15d. And a touch of the stick does not lose what straight driving has learned.
+15e. And what one run learned is there from the next one's first straight, while one
+     that has gone stale is learned away without a fall.
 16. Driving, nothing short of lying down cuts its motors: a motor's fault is cleared,
     the IMU or a step late, the controller's deadman, a wheel too fast, a winding too
     hot and a hard shove are driven through, and an IMU gone for good lets it down.
@@ -351,6 +357,7 @@ def run(
     jump_height=0.12,
     jump_push=None,
     jump_script=None,
+    kept=None,
 ):
     """balance.powered, on a hand's script. What it ended with, and the rig. `jump_net`
     is a jump policy's network, or "scripted" for sbc/policy_loop.py's ScriptedJump,
@@ -389,9 +396,12 @@ def run(
         hold=pl.Hold(bal.meta["wheel_radius"]),
         trim=pl.Trim(bal.meta["wheel_radius"]), writer=rig.writer,
     )  # fmt: skip
+    if kept is not None:
+        stepper.trim.recall(kept, kept["policy"])
     args = SimpleNamespace(
         mode=mode, seconds=seconds, touch_wait=wait, height=None, max_speed=0.5, max_turn=1.5,
-        fast_speed=getattr(ctx, "fast_speed", None), drive=False, rearm=rearm, tilt=30.0,
+        fast_speed=getattr(ctx, "fast_speed", None),
+        fast_reverse=getattr(ctx, "fast_reverse", None), drive=False, rearm=rearm, tilt=30.0,
         woken=threading.Event() if woken else None,
     )  # fmt: skip
     rig.args = args
@@ -413,6 +423,7 @@ def run(
     except st.Abort as abort:
         why = f"cut: {abort}"
     rig.touch = touch
+    rig.trim = stepper.trim
     return why, rig
 
 
@@ -520,6 +531,23 @@ DEPLOYED_RUN = ROOT / "exports" / "rl" / "rough-2026-11-07_11-52-47_d8"
 # 2.2, D3 at 1.54, and the motor stops being able to brake at about 1.5.
 FAST_MARK_M_S = 1.0
 
+# Case 15b: what a full pull backwards has to keep the wheels under. On the robot on 9
+# November 2026 asked 2.15 m/s backwards it reached 1.9, the wheels at 48 rad/s, and went
+# over; on this rig asked 2.2 it ran away, and asked 1.5 it held 1.40, the wheels to 37.
+REVERSE_SPIN_RAD_S = 45.0
+# Case 15c: the drag on the left wheel, Nm per rad/s, under which D8 on this rig with
+# Trim taken out veers left 5 degrees/s at 1.57 m/s, as the robot did on 9 November 2026:
+# 51 degrees over 12 s of a full pull, 24 with Trim waiting for the speed, 15 without.
+LEFT_DRAG_NM_S = 0.001
+# Case 15d: half that drag, a touch of the stick every 3 s, and the heading gained between
+# them. On this rig on 9 November 2026, 4.1 degrees each while a touch faded what Trim had
+# learned, as on the robot that morning, and 0.8 with it kept by speed.
+TOUCHED_GAP_DEG = 2.5
+# Case 15e: the heading over a first full pull of 12 s with half that drag and what an
+# earlier run learned carried over. On this rig on 9 November 2026, 0.7 degrees, and 7.2
+# learning from nothing.
+KEPT_STRAIGHT_DEG = 3.0
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -565,6 +593,11 @@ def main() -> int:
     )
     ap.add_argument("--leg-gain", type=float, default=LEG_GAIN)
     ap.add_argument(
+        "--fast-reverse",
+        type=float,
+        help="m/s at a full pull backwards in fast mode, as balance.py's --fast-reverse",
+    )
+    ap.add_argument(
         "--fast-speed",
         type=float,
         help="m/s at a full pull in fast mode, as balance.py's --fast-speed: the robot's "
@@ -599,6 +632,7 @@ def main() -> int:
         net=pl.Net(args.run / "exported" / "policy.npz"),
         robot_file=json.loads(bc.ROBOT_FILE.read_text()),
         fast_speed=args.fast_speed,
+        fast_reverse=args.fast_reverse,
         fast_mark=args.fast_mark,
         lean_per_m_s=args.lean_per_m_s,
         lags=dict(
@@ -1034,6 +1068,189 @@ def main() -> int:
         f"   {'ok' if fine else 'FAILED'}: {why}; full gas held {slow:.2f} m/s slow, "
         f"{fast:.2f} fast (to beat {mark:g}), {again:.2f} slow again; tilted to "
         f"{rig.peak_tilt:.1f} degrees, wheels to {rig.peak_spin:.1f} rad/s",
+        flush=True,
+    )
+
+    print("15b. a full pull backwards in fast mode keeps clear of the wheels' top")
+    seen = {}
+
+    def backwards(rig):
+        if rig.first_touch is None:
+            return None
+        t = rig.t - rig.first_touch
+        for at in (16.0, 18.0):
+            if t >= at and at not in seen:
+                seen[at] = pose(rig)[0]
+        return {
+            "forward": -top_speed if 3.0 <= t < 18.0 else 0.0,
+            "turn": 0.0,
+            "live": True,
+            "height": None,
+            "mode": 0 if t < 2.0 else 1,
+        }
+
+    why, rig = run("launch", lowers(), ctx, seconds=21.0, script=backwards)
+    back = (seen[16.0] - seen[18.0]) / 2.0 if len(seen) == 2 else float("nan")
+    fine = why == "stood" and back > 1.0 and rig.peak_spin < REVERSE_SPIN_RAD_S
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; held {back:.2f} m/s backwards, wheels to "
+        f"{rig.peak_spin:.1f} rad/s (to stay under {REVERSE_SPIN_RAD_S:g}), tilted to "
+        f"{rig.peak_tilt:.1f} degrees",
+        flush=True,
+    )
+
+    print("15c. a wheel that drags is steered against, with no turn asked")
+    swung = {}
+
+    class Dragged(HandRig):
+        drag = LEFT_DRAG_NM_S
+
+        def _physics(self, dt):
+            left = self.v[5]
+            self.d.qfrc_applied[left] = -self.drag * self.d.qvel[left]
+            super()._physics(dt)
+
+    def dragged(rig):
+        if rig.first_touch is None:
+            return None
+        t = rig.t - rig.first_touch
+        for at in (3.0, 12.0, 15.0):
+            if t >= at and at not in swung:
+                swung[at] = pose(rig)[2]
+        return {
+            "forward": top_speed if 3.0 <= t < 15.0 else 0.0,
+            "turn": 0.0,
+            "live": True,
+            "height": None,
+            "mode": 0 if t < 2.0 else 1,
+        }
+
+    why, rig = run(
+        "launch", lowers(), ctx, seconds=18.0, script=dragged, rig_class=Dragged
+    )
+    whole = np.degrees(swung[15.0] - swung[3.0]) if len(swung) == 3 else float("nan")
+    late = (
+        np.degrees(swung[15.0] - swung[12.0]) / 3.0 if len(swung) == 3 else float("nan")
+    )
+    fine = why == "stood" and abs(whole) < 18.0 and abs(late) < 1.5
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; the heading went {whole:+.1f} degrees over 12 s "
+        f"of a full pull, at {late:+.2f} degrees/s by the end",
+        flush=True,
+    )
+
+    print("15d. and a touch of the stick does not lose what it has learned")
+    at_gap = {}
+    touches = [7.0 + 3.0 * k for k in range(6)]
+
+    class HalfDragged(Dragged):
+        drag = LEFT_DRAG_NM_S / 2.0
+
+    def touched(rig):
+        if rig.first_touch is None:
+            return None
+        t = rig.t - rig.first_touch
+        turn = 0.0
+        for k, at in enumerate(touches):
+            for edge, when in ((0, at + 0.4), (1, at + 3.0)):
+                if t >= when and (k, edge) not in at_gap:
+                    at_gap[k, edge] = pose(rig)[2]
+            if at <= t < at + 0.3:
+                turn = 6.0 if k % 2 else -6.0
+        return {
+            "forward": top_speed if 3.0 <= t < 25.0 else 0.0,
+            "turn": turn,
+            "live": True,
+            "height": None,
+            "mode": 0 if t < 2.0 else 1,
+        }
+
+    why, rig = run(
+        "launch", lowers(), ctx, seconds=28.0, script=touched, rig_class=HalfDragged
+    )
+    gaps = [
+        float(np.degrees(at_gap[k, 1] - at_gap[k, 0]))
+        for k in range(len(touches))
+        if (k, 1) in at_gap
+    ]
+    late = float(np.mean(gaps[2:])) if len(gaps) > 2 else float("nan")
+    fine = why == "stood" and abs(late) < TOUCHED_GAP_DEG
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; the heading in each 2.6 s between touches "
+        f"{' '.join(f'{g:+.1f}' for g in gaps)} degrees, the later ones {late:+.2f} (to stay "
+        f"under {TOUCHED_GAP_DEG:g})",
+        flush=True,
+    )
+
+    print("15e. and what one run learned is there from the next one's first straight")
+
+    def first_straight(kept=None):
+        """How a run's first full pull goes: why it ended, the heading after 4 s of it and
+        after 12, degrees/s by the end, and what the run's Trim learned."""
+        marks = {}
+
+        def script(rig):
+            if rig.first_touch is None:
+                return None
+            t = rig.t - rig.first_touch
+            for at in (3.0, 7.0, 12.0, 15.0):
+                if t >= at and at not in marks:
+                    marks[at] = pose(rig)[2]
+            return {
+                "forward": top_speed if 3.0 <= t < 15.0 else 0.0,
+                "turn": 0.0,
+                "live": True,
+                "height": None,
+                "mode": 0 if t < 2.0 else 1,
+            }
+
+        why, rig = run(
+            "launch", lowers(), ctx, seconds=18.0, script=script,
+            rig_class=HalfDragged, kept=kept,
+        )  # fmt: skip
+        if len(marks) < 4:
+            return why, float("nan"), float("nan"), float("nan"), rig.trim
+        return (
+            why,
+            float(np.degrees(marks[7.0] - marks[3.0])),
+            float(np.degrees(marks[15.0] - marks[3.0])),
+            float(np.degrees(marks[15.0] - marks[12.0])) / 3.0,
+            rig.trim,
+        )
+
+    why, fresh_4s, fresh_12s, _, trim = first_straight()
+    kept = trim.kept("this rig")
+    fine = why == "stood"
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; learning from nothing the heading went "
+        f"{fresh_4s:+.1f} degrees in the first 4 s and {fresh_12s:+.1f} in 12",
+        flush=True,
+    )
+    why, again_4s, again_12s, rate, _ = first_straight(kept)
+    fine = why == "stood" and abs(again_12s) < KEPT_STRAIGHT_DEG and abs(rate) < 1.5
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; carried over, {again_4s:+.1f} in the first 4 s "
+        f"and {again_12s:+.1f} in 12 (to stay under {KEPT_STRAIGHT_DEG:g}), {rate:+.2f} "
+        f"degrees/s by the end",
+        flush=True,
+    )
+    cap = pl.Trim.MAX_STRAIGHT_RAD_S
+    stale = {
+        **kept,
+        "straight": [cap * float(s != 0.0) for s in pl.Trim.STRAIGHT_AT_M_S],
+    }
+    why, stale_4s, stale_12s, rate, _ = first_straight(stale)
+    fine = why == "stood" and abs(rate) < 1.5
+    good &= fine
+    print(
+        f"   {'ok' if fine else 'FAILED'}: {why}; carried over all wrong, at the cap and the "
+        f"other way, {stale_4s:+.1f} in the first 4 s and {stale_12s:+.1f} in 12, "
+        f"{rate:+.2f} degrees/s by the end (to stay under 1.5)",
         flush=True,
     )
 

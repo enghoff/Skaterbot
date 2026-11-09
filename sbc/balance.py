@@ -371,6 +371,9 @@ class Operator:
             within(fast_speed, self.top_speed),
             within(fast_turn, self.top_turn),
         )
+        # A full pull backwards, if that is to be less than forwards: launcher.py has why.
+        reverse = getattr(args, "fast_reverse", None)
+        self.reverse = None if reverse is None else within(reverse, self.top_speed)
         self.sideways = getattr(args, "max_sideways", None) or self.SIDEWAYS_M_S2
         self.robot = robot
         self.fast = False
@@ -494,9 +497,12 @@ class Operator:
             return 0.0, 0.0
         self.jump_held = jumps is not None and bool(int(jumps) & JUMP_HELD)
         # The controller sends the policy's whole range; this is that share of the limit.
-        speed = float(m["forward"]) * self.max_speed / self.top_speed
+        limit = self.max_speed
+        if float(m["forward"]) < 0.0 and self.reverse is not None:
+            limit = min(limit, self.reverse)
+        speed = float(m["forward"]) * limit / self.top_speed
         turn = float(m["turn"]) * self.max_turn / self.top_turn
-        speed = min(max(speed, -self.max_speed), self.max_speed)
+        speed = min(max(speed, -limit), limit)
         turn = min(max(turn, -self.max_turn), self.max_turn)
         share = abs(speed) / self.top_speed + abs(turn) / self.top_turn
         if self.envelope and share > 1.0:
@@ -1424,6 +1430,32 @@ def legs_problem(rig, tilt_deg: float, imu) -> str | None:
 # ---- the program -----------------------------------------------------------------
 
 
+def recall_straight(trim, path: Path, policy: str) -> str:
+    """What an earlier run learned of going straight (policy_loop.py's Trim), read before
+    the run. Whatever is wrong with the file, the run goes on and learns from nothing."""
+    try:
+        kept = json.loads(path.read_text())
+    except FileNotFoundError:
+        return "nothing kept yet"
+    except (OSError, ValueError) as why:
+        return f"not used, could not read it: {why}"
+    return trim.recall(kept, policy)
+
+
+def keep_straight(trim, path: Path, policy: str) -> str:
+    """Only with the motors off, since a write to the SD card has no place near a step.
+    Through a second file and a rename, so that going wrong leaves the last one whole."""
+    if not trim.learned:
+        return "nothing new to keep"
+    new = path.with_name(path.name + ".new")
+    try:
+        new.write_text(json.dumps(trim.kept(policy)))
+        new.replace(path)
+    except OSError as why:
+        return f"could not keep it: {why}"
+    return f"kept in {path}"
+
+
 def session(args) -> int:
     net = pl.Net(args.policy)
     robot_file = st.load_robot(args.robot_file) if args.robot_file else st.load_robot()
@@ -1437,6 +1469,7 @@ def session(args) -> int:
     reason = "not run"
     results = None
     stepper = None
+    trim = None
     moved_motors = False
     go, stop, done = threading.Event(), threading.Event(), threading.Event()
     loop = None
@@ -1511,6 +1544,12 @@ def session(args) -> int:
             "label": args.label,
         }
         rig.writer = QueuedWriter(path, header)
+        if args.drive and not args.no_trim:
+            trim = pl.Trim(bal.meta["wheel_radius"])
+            if args.straight_file:
+                said = recall_straight(trim, args.straight_file, bal.meta["digest"])
+                print(f"what going straight needs: {said}")
+                rig.writer.write({"k": "n", "h": round(clock(), 6), "straight": said})
         stepper = pl.Stepper(
             bal,
             imu,
@@ -1521,11 +1560,7 @@ def session(args) -> int:
             nap=lambda: time.sleep(0.0002),
             hold=hold,
             writer=rig.writer,
-            trim=(
-                pl.Trim(bal.meta["wheel_radius"])
-                if args.drive and not args.no_trim
-                else None
-            ),
+            trim=trim,
         )
         print(
             f"{args.mode}: {bal.meta['run']}, policy {bal.meta['digest']}, battery "
@@ -1602,6 +1637,9 @@ def session(args) -> int:
             loop.join(2.0)
         if moved_motors and rig.motors:
             rig.disable(list(rig.motors))
+        if trim is not None and args.straight_file:
+            said = keep_straight(trim, args.straight_file, bal.meta["digest"])
+            print(f"what going straight needs: {said}")
         time.sleep(0.1)
         ask_imu(robot, dict.fromkeys((*IMU_OFF_IN_RUN, *IMU_REPORTS), IMU_DEFAULT_HZ))
         try:
@@ -1621,7 +1659,8 @@ def session(args) -> int:
     if stepper is not None:
         print(stepper.timing())
     if rig.writer is not None:
-        rig.writer.close({"ended": reason, "counts": rig.counts})
+        straight = None if trim is None else trim.straight.tolist()
+        rig.writer.close({"ended": reason, "counts": rig.counts, "straight": straight})
         print(f"{rig.writer.lines} lines in {rig.writer.inner.path}")
         if args.mode == "lower" and touch is not None:
             report_lowering(touch, args, rig.writer.inner.path.name)
@@ -1757,6 +1796,11 @@ def main(argv=None) -> int:
         help="rad/s at a stick's end once select is pressed (default: the policy's top)",
     )
     ap.add_argument(
+        "--fast-reverse",
+        type=float,
+        help="m/s at a full pull backwards, if less than forwards (default: the same)",
+    )
+    ap.add_argument(
         "--lean-per-m-s",
         type=float,
         default=0.0,
@@ -1783,6 +1827,13 @@ def main(argv=None) -> int:
         "--no-trim",
         action="store_true",
         help="do not nudge what the policy is asked towards what it then does",
+    )
+    ap.add_argument(
+        "--straight-file",
+        type=Path,
+        help="carry what going straight needs from one run to the next in this file, "
+        "read before the run and written once the motors are off; without it each run "
+        "learns it afresh",
     )
     ap.add_argument(
         "--drive", action="store_true", help="speed and turn from the game controller"

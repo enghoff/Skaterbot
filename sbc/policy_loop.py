@@ -1927,12 +1927,45 @@ class Trim:
     that it cannot feed the rocking. A change of command swings the robot, so nothing is
     learned until the command has been steady for a moment, and what was learned fades
     while it changes, being for the last command. With nothing asked, Hold has it.
+
+    The turn waits for the turn alone, since a change of speed pitches the robot and does
+    not yaw it. It used to wait for the speed as well, and slept through every ramp: on
+    2026-11-09, no turn asked, D8 veered left 3-6 degrees/s above 1.2 m/s (the right wheel
+    1.5 per cent the faster, the gyro and the wheels agreeing), through the 3.7 s the
+    speed asked takes to reach 2.2 m/s, and only on the plateau did what was learned come
+    to -0.07 rad/s and bring that to 0-2 degrees/s, in about 1.5 s. Learned from the
+    gyro's rate, the turn is TURN_GAIN times the heading swung: it stops a pull with the
+    heading a few degrees off, and does not bring it back.
+
+    And what going straight needs is kept, by how fast it was rolling when learned. On
+    2026-11-09 at 07:54, the turn learning through the ramps, the robot ran straight to
+    0-2 degrees/s once it had -0.07 to -0.10 rad/s; but each touch of the stick faded that
+    to -0.012, it took 1.5 s to come back, and the heading went 4-6 degrees left meanwhile,
+    for the operator to touch the stick again. The pull is nothing under 1 m/s and rises
+    quickly above it, so one figure will not do for every speed. Kept at STRAIGHT_AT_M_S,
+    and between them in proportion, it is there from the step the stick comes back, and
+    through a stop and a jump. At 10:19 that morning it held: with the stick centred at
+    about 1.5 m/s the heading moved -1.0, +0.5 and -1.0 degrees a stretch, where it had
+    moved about 3. But the run's first two fast straights, still learning, moved 3 each,
+    so kept() and recall() carry it to the next run. What is carried is only where the
+    learning starts from, and it goes on learning at the same rate, so a pull that has
+    changed is learned away as a new one would be.
     """
 
     SPEED_GAIN = 0.5
     TURN_GAIN = 1.0
     MAX_SPEED_M_S = 0.15
     MAX_TURN_RAD_S = 0.6
+    # With no turn asked: over twice the 0.07-0.10 rad/s that veer takes, and little
+    # enough that a gyro reading wrong cannot swing the robot hard.
+    MAX_STRAIGHT_RAD_S = 0.2
+    # Where it is kept. Nothing at a standstill, where Hold has it, and nothing learned
+    # rolling slower than STRAIGHT_FROM_M_S.
+    STRAIGHT_AT_M_S = (-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.25, 1.5, 1.75, 2.0)
+    STRAIGHT_FROM_M_S = 0.3
+    # Turning faster than this with no turn asked is a shove or a landing, not a pull,
+    # which on the robot is under 0.2 rad/s, and must not be remembered as one.
+    STRAIGHT_UNDER_RAD_S = 0.5
     # A change of this much in a step is the command changing: under the ramps' 0.006 m/s
     # and 0.03 rad/s, and over a thumb's tremble.
     CHANGING_M_S = 0.002
@@ -1942,12 +1975,80 @@ class Trim:
 
     def __init__(self, wheel_radius: float):
         self.wheel_radius = wheel_radius
+        self.at = np.array(self.STRAIGHT_AT_M_S)
+        self.straight = np.zeros(len(self.at))
+        self.known = np.zeros(len(self.at), dtype=bool)
+        self.learned = False
         self.reset()
 
     def reset(self) -> None:
+        """All but what going straight needs, which is the robot's and not the moment's."""
         self.speed = self.turn = 0.0
         self.last_speed = self.last_turn = 0.0
-        self.settled = 0.0
+        self.settled = self.turn_settled = 0.0
+
+    def kept(self, policy: str) -> dict:
+        """What the next run of this policy needs, in a form json can carry."""
+        return {
+            "policy": policy,
+            "at": list(self.STRAIGHT_AT_M_S),
+            "straight": self.straight.tolist(),
+            "known": self.known.tolist(),
+        }
+
+    def recall(self, kept, policy: str) -> str:
+        """Takes up what kept() gave, and says what came of it. Anything else is left
+        alone and the run learns from nothing, since something gone wrong with what was
+        kept must neither stop a run nor steer it. Another policy's is no use either, the
+        pull being partly that policy's answer to a command."""
+        try:
+            at = np.array(kept["at"], dtype=float)
+            straight = np.array(kept["straight"], dtype=float)
+            known = np.array(kept["known"], dtype=bool)
+            was = kept["policy"]
+        except (KeyError, IndexError, TypeError, ValueError) as why:
+            return f"not used, not what was kept: {why!r}"
+        if was != policy:
+            return f"not used, learned on policy {was}"
+        if straight.shape != self.at.shape or known.shape != self.at.shape:
+            return "not used, not what was kept"
+        if at.shape != self.at.shape or not np.array_equal(at, self.at):
+            return "not used, kept at other speeds"
+        # Written so that a NaN fails it too.
+        if not np.all(np.abs(straight) <= self.MAX_STRAIGHT_RAD_S):
+            return "not used, more than going straight may ask"
+        self.straight[:] = straight
+        self.straight[self.at == 0.0] = 0.0
+        self.known[:] = known
+        return f"recalled {np.round(self.straight, 3).tolist()} rad/s"
+
+    def learn_straight(self, rolling: float, turning: float, dt: float) -> None:
+        """Shared between the two speeds either side, in proportion."""
+        if (
+            abs(rolling) < self.STRAIGHT_FROM_M_S
+            or abs(turning) > self.STRAIGHT_UNDER_RAD_S
+        ):
+            return
+        self.learned = True
+        at = min(max(rolling, self.at[0]), self.at[-1])
+        i = max(1, int(np.searchsorted(self.at, at)))
+        share = (at - self.at[i - 1]) / (self.at[i] - self.at[i - 1])
+        # Over the sum of the squares, so what is applied here moves at TURN_GAIN wherever
+        # the speed lies between the two, and not half that midway.
+        step = -self.TURN_GAIN * turning * dt / (share**2 + (1.0 - share) ** 2)
+        self.straight[i - 1] += step * (1.0 - share)
+        self.straight[i] += step * share
+        self.straight[self.at == 0.0] = 0.0
+        # Those further out, not reached yet, carry the furthest reached: otherwise each
+        # would start from nothing on the first run up to speed, and on launch_check.py's
+        # rig the heading went 21 degrees to the 15 of a single figure carried along.
+        here = float(np.interp(at, self.at, self.straight))
+        beyond = self.at * np.sign(at) > at * np.sign(at)
+        self.straight[beyond & ~self.known] = here
+        self.known[i - 1] |= share < 1.0
+        self.known[i] |= share > 0.0
+        cap = self.MAX_STRAIGHT_RAD_S
+        np.clip(self.straight, -cap, cap, out=self.straight)
 
     def command(
         self, speed: float, turn: float, fb: dict, w, g, dt: float
@@ -1955,28 +2056,33 @@ class Trim:
         if not (speed or turn):
             self.reset()
             return speed, turn
-        changing = (
-            abs(speed - self.last_speed) > self.CHANGING_M_S
-            or abs(turn - self.last_turn) > self.CHANGING_RAD_S
-        )
+        speed_changing = abs(speed - self.last_speed) > self.CHANGING_M_S
+        turn_changing = abs(turn - self.last_turn) > self.CHANGING_RAD_S
         self.last_speed, self.last_turn = speed, turn
-        if changing:
+        fade = math.exp(-dt / self.FADE_S)
+        rolling = ground_speed(fb, float(w[1]), self.wheel_radius)
+        if speed_changing or turn_changing:
             self.settled = 0.0
-            fade = math.exp(-dt / self.FADE_S)
             self.speed *= fade
-            self.turn *= fade
         else:
             self.settled += dt
             if self.settled >= self.SETTLE_S:
-                rolling = ground_speed(fb, float(w[1]), self.wheel_radius)
-                turning = -float(np.dot(w, g))
                 self.speed += self.SPEED_GAIN * (speed - rolling) * dt
-                self.turn += self.TURN_GAIN * (turn - turning) * dt
                 cap = self.MAX_SPEED_M_S
                 self.speed = min(max(self.speed, -cap), cap)
-                cap = self.MAX_TURN_RAD_S
-                self.turn = min(max(self.turn, -cap), cap)
-        return speed + self.speed, turn + self.turn
+        self.turn_settled = 0.0 if turn_changing else self.turn_settled + dt
+        learning = self.turn_settled >= self.SETTLE_S
+        turning = -float(np.dot(w, g))
+        if turn_changing or not turn:
+            self.turn *= fade
+        elif learning:
+            self.turn += self.TURN_GAIN * (turn - turning) * dt
+        cap = self.MAX_TURN_RAD_S if turn else self.MAX_STRAIGHT_RAD_S
+        self.turn = min(max(self.turn, -cap), cap)
+        if learning and not turn:
+            self.learn_straight(rolling, turning, dt)
+        straight = float(np.interp(rolling, self.at, self.straight))
+        return speed + self.speed, turn + self.turn + straight
 
 
 # ---- one step --------------------------------------------------------------------

@@ -247,12 +247,25 @@ def balance_command(args) -> list[str]:
     command += ["--seconds", "0", "--touch-wait", "0"]
     command += ["--button", "--phase-file", str(args.phase_file)]
     # Slow, which every run starts in; select on the controller toggles to fast, which
-    # is 2.0 m/s and 15 rad/s, inside D5's 2.2 m/s and 25 rad/s, whose top the wheels'
-    # 50 rad/s stop in sbc/policy_loop.py would cut short. Was 1.8, where on 8 November
-    # 2026 the wheels had most of their torque left at 1.4 m/s; on launch_check.py's rig
-    # 2.0 holds 1.49 m/s, the wheels to 40 rad/s (44 on a weak rig; the ceiling is 51).
+    # is 2.2 m/s and 15 rad/s, D5's top speed and inside its 25 rad/s, whose top the
+    # wheels' 50 rad/s stop in sbc/policy_loop.py would cut short. Was 1.8, where on 8
+    # November 2026 the wheels had most of their torque left at 1.4 m/s; then 2.0, which
+    # on launch_check.py's rig holds 1.49 m/s, the wheels to 40 rad/s (44 on a weak rig;
+    # the ceiling is 51), and on the robot held about 1.45. At 2.2 that rig holds 1.57,
+    # the wheels to 41.6, and jumping from a full pull passes as before (9 November
+    # 2026). Untried on the robot when set.
     command += ["--max-speed", "1.0", "--max-turn", "2.0"]
-    command += ["--fast-speed", "2.0", "--fast-turn", "15.0"]
+    command += ["--fast-speed", "2.2", "--fast-turn", "15.0"]
+    # Backwards it does nearly what it is asked, where forwards 2.2 settles at 1.5 m/s:
+    # on 9 November 2026 asked 2.15 m/s backwards it reached 1.9, the wheels at 48 rad/s
+    # with nothing left to catch a lean, and it went over backwards. Asked 1.5 on that
+    # run's way up it did 1.4, the wheels at 35. Untried on the robot when set.
+    command += ["--fast-reverse", "1.5"]
+    # What going straight needs, carried to the next run, or each would start from nothing:
+    # on 9 November 2026 at 10:19 the first two fast straights veered 3 degrees each while
+    # it learned, and the later ones under 1. Beside sysid_robot.json, being this robot's
+    # too. Untried on the robot when set.
+    command += ["--straight-file", str(HERE / "straight_trim.json")]
     # The driving policy told it leans 1.67 degrees nose-up per m/s it is sent, 3 at
     # 1.8 m/s: on launch_check.py's rig D8 then holds 1.41 m/s rather than
     # 1.17 and passes every case (balance.py's THE LEAN). Untried on the robot when set
