@@ -1163,6 +1163,17 @@ class Daemon:
         self.health_due.set()
         return {}
 
+    def op_motors_flash(self, client: Client, m: dict) -> dict:
+        """Plays a fault's pattern on the motors' LEDs with no fault there, to see it do
+        no harm (docs/DIAGNOSTICS.md, "The motors' LEDs"). The controller refuses if the
+        Pi has used a motor in the last 3 s, and logs what it did."""
+        self.need_control(client)
+        fault, motors, seconds = int(m["fault"]), int(m["motors"]), int(m["seconds"])
+        if not (0 <= fault <= 3 and 0 <= motors <= 0x3F and 0 <= seconds <= 60):
+            raise Refused("fault 0 to 3, motors 0 to 63, seconds 0 to 60")
+        self.mcu(dl.MOTOR_FLASH, bytes([fault, motors, seconds]))
+        return {}
+
     def op_power_off(self, client: Client, m: dict) -> dict:
         self.need_control(client)
         return self.shutdown(f"power-off asked by {client}")
@@ -1375,6 +1386,7 @@ OPS = {
     "imu.diagnostics": Daemon.op_imu_diagnostics,
     "control": Daemon.op_control,
     "indicate": Daemon.op_indicate,
+    "motors.flash": Daemon.op_motors_flash,
     "stop": Daemon.op_stop,
     "drive": Daemon.op_drive,
     "power.off": Daemon.op_power_off,

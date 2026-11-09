@@ -213,6 +213,45 @@ with health clear, the Pi's LED back on its heartbeat and the IMU sending about
 300 packets a second. Neither the link's blink nor the other-hardware pattern
 has been watched yet.
 
+## The motors' LEDs
+
+While nothing is using the motors, a fault's pattern shows on the LEDs of all six
+as well as on the two boards, so that it can be seen without taking the lid off.
+
+A DAMIAO motor's LED cannot be set. It is green while the motor is enabled, red
+while it is disabled and flashing red in a fault of the motor's own, and no
+command or register reaches it otherwise. So the controller shows a pattern by
+enabling and disabling the motors: green where its own LED is lit, red where it is
+dark. A motor it enables is told no gains and no torque, every 50 ms, inside the
+200 ms of its TIMEOUT register, so it turns as it does switched off. Those bytes
+mean no torque only in MIT mode, so each showing begins by asking every motor its
+mode, and a motor that does not say MIT, or does not answer, is left alone.
+`firmware/diag/src/motor_flash.rs` is the rule, with these held to:
+
+- A motor the Pi is using is left alone. Anything the Pi sends a motor, and its
+  stop, ends the flash there and then, with every motor disabled ahead of the
+  Pi's frame, and nothing shows again until the Pi has left them alone for 3 s.
+- A fault that begins while the Pi is using the motors is not shown at all until
+  it has cleared and come back, and the run carries on as it always did.
+- It stops for good once shutdown is asked for.
+
+It cannot show anything on a bus that has failed or from a controller that has
+stopped, and a motor in a fault of its own stays flashing red.
+
+`python3 motor_flash_test.py imu` on the Pi plays a pattern with no fault there and
+reports what the motors did. It needs the robot disarmed, and `--motors 5` keeps it
+to one.
+
+Tried on the robot on 9 November 2026, with no fault there, every pattern on all
+six: each motor switched as the pattern says, moved under 0.001 rad, reported under
+0.02 Nm and ended switched off, with nothing dropped on any bus. A frame from the
+Pi mid-pattern put all six out at once, and the pattern did not come back. The
+robot's owner watched the LEDs the same day, reported them working, and pushed the
+legs by hand during it to feel for torque: that moved the knees about 0.2 rad, with
+under 0.08 Nm reported, and tripped the test's stop. Not yet tried: a real fault, and a first flash straight
+after a drive, when a motor may still hold the drive's last command for the moment
+between its enable and the no-torque command behind it.
+
 ## The controller's link, J5
 
 USART1 to UART4 at **1 500 000 baud**, 8N1. 115 200 carries about 570 CAN frames
@@ -250,6 +289,7 @@ The controller sends:
 | 0x83 | STOPPED | why u8: 0 the Pi asked, 1 the Pi fell silent, 2 the power button, 3 starting |
 | 0x90 | CAN_RECV | time u32 µs, bus u8, flags u8, id u32, then the data |
 | 0xA0 | IMU_PACKET | time u32 µs, then one SHTP packet as the IMU sent it |
+| 0x13 | MOTOR_FLASH | fault u8 (0 ends a test, else as HEALTH), motors u8 (bit n is motor n + 1), seconds u8 (60 at most): a fault's pattern on the motors' LEDs with no fault there ([the motors' LEDs](#the-motors-leds)); refused, in the log, if the Pi has used a motor in the last 3 s; an image that predates it counts it as malformed |
 | 0xA1 | I2C_RESULT | tag u8, status u8 (0 done, 1 refused, 2 timed out, 3 failed), then what was read |
 | 0xA3 | HEALTH | version u8 (1), fault u8 (0 none, 1 link, 2 IMU, 3 hardware), conditions u16; on every change and once a second ([the heartbeat LEDs](#the-heartbeat-leds)) |
 | 0xE0 | LOG | time u32 µs, then a line of text |

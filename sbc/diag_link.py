@@ -25,6 +25,9 @@ HELLO, PING, STOP, SHUTDOWN = 0x01, 0x02, 0x03, 0x04
 CAN_SEND, DRIVE, IMU_WRITE, I2C = 0x10, 0x11, 0x20, 0x21
 # One byte, bit 0 the fast speed mode, which the controller's LED shows for 2 s.
 INDICATE = 0x12
+# Fault (1 link, 2 IMU, 3 other hardware, 0 to end it), motors (bit n is motor n + 1) and
+# seconds, a byte each: the fault's pattern on the motors' LEDs, with no fault there.
+MOTOR_FLASH = 0x13
 # The controller's messages to the Pi.
 INFO, STATUS, STOPPED = 0x81, 0x82, 0x83
 CAN_RECV, IMU_PACKET, I2C_RESULT, LOG = 0x90, 0xA0, 0xA1, 0xE0
