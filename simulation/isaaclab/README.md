@@ -217,6 +217,79 @@ The project itself is at `/workspace/biped`, copied up from a checkout rather
 than cloned, so that uncommitted work can be trained on. Copy it up again after
 changing anything.
 
+### Rebuilding the volume from nothing
+
+The volume can be deleted and made again. Nothing on it is the only copy of
+anything the next training run needs, provided `exports/rl/` on the development
+machine is intact, and bringing a new one up costs about twenty minutes of pod
+time. Written on 2026-11-09 from what the scripts do; the fresh-volume install
+last ran in September 2026 and the whole sequence below has not been rehearsed.
+
+What is on it, and where each thing comes from again:
+
+| On the volume | Comes back from |
+|---|---|
+| `snapshots/isaac-venv.tar.zst`, the Python environment | `setup_pod.sh`, which reinstalls and re-snapshots, about fifteen minutes |
+| `IsaacLab/` | `setup_pod.sh`, a clone of the pinned tag. It carries no patches: every run's `git/IsaacLab.diff` records a clean tree at `ffff603` |
+| `biped/`, the project | this checkout, copied up |
+| `biped/simulation/isaacsim/usd/`, the rigged robot | `import_urdf.py`, run on the pod |
+| `runs/logs/rsl_rl/<task>/<run>/` | `exports/rl/`, which held 80 runs on 2026-11-09, all but one with its final checkpoint, D8 and D9 among them |
+
+What does not come back: each run's intermediate checkpoints (the checkout
+keeps only the last), `runs/benchmarks.tsv` (its results are the table under
+Performance), the train logs in `/workspace/logs`, and any run that was never
+copied down. Whether there is such a run can only be seen from a pod, so look
+before deleting.
+
+**Before deleting**, on one last pod over the old volume:
+
+```
+ls /workspace/runs/logs/rsl_rl/*/                 # against exports/rl/ here; copy down what is missing
+cat /workspace/runs/benchmarks.tsv                # copy down if the table is behind it
+source /opt/isaac-venv/bin/activate && uv pip freeze    # keep the output in the checkout
+```
+
+The freeze matters because `setup_pod.sh` pins Isaac Sim, Isaac Lab and torch
+and nothing beneath them, so a reinstall months later resolves newer versions
+of everything else, and the snapshot is the only record of what the policies
+were trained on. And once the volume is gone `exports/rl/` is the only copy of
+every checkpoint. Git ignores it and it was emptied by accident once, on
+2026-11-08, so copy it somewhere else first.
+
+**Making it again:**
+
+```
+runpodctl network-volume delete ysamdjew9w
+runpodctl network-volume create --name biped-isaaclab --size 60 --data-center-id EU-RO-1
+```
+
+Any datacenter that has the card will do; the pod has to be created in the same
+one. Put the new id in the pod command above and in `TRAINING_HISTORY.md`.
+Then, with a pod created over it as above, from the checkout:
+
+```
+tar --exclude=.git --exclude=exports --exclude=__pycache__ --exclude=.venv -czf - . \
+    | ssh <pod> 'mkdir -p /workspace/biped && tar -xzf - -C /workspace/biped'
+```
+
+and on the pod:
+
+```
+cd /workspace/biped
+sed -i 's/\r$//' simulation/isaaclab/runpod/*.sh  # a Windows checkout's line endings stop bash
+bash simulation/isaaclab/runpod/setup_pod.sh      # about fifteen minutes, writes the snapshot
+source /opt/isaac-venv/bin/activate && export OMNI_KIT_ACCEPT_EULA=YES
+python simulation/isaacsim/preflight.py
+python -u simulation/isaacsim/import_urdf.py      # the USD the task trains on
+python -u simulation/isaacsim/run.py --check
+```
+
+Last, copy up only the checkpoints the next run resumes from. A run kept here
+as `exports/rl/rough-<run>/` goes to
+`/workspace/runs/logs/rsl_rl/wheeled_biped_rough/<run>/`, `jump-<run>` to
+`wheeled_biped_jump/`, and one with no prefix to `wheeled_biped_balance/`. A
+three-iteration smoke run resumed from one of them proves the lot.
+
 ### The robot, rebuilt and checked
 
 The task trains on the USD that `../isaacsim/import_urdf.py` builds, not on a
