@@ -248,9 +248,9 @@ six: each motor switched as the pattern says, moved under 0.001 rad, reported un
 Pi mid-pattern put all six out at once, and the pattern did not come back. The
 robot's owner watched the LEDs the same day, reported them working, and pushed the
 legs by hand during it to feel for torque: that moved the knees about 0.2 rad, with
-under 0.08 Nm reported, and tripped the test's stop. Not yet tried: a real fault, and a first flash straight
-after a drive, when a motor may still hold the drive's last command for the moment
-between its enable and the no-torque command behind it.
+under 0.08 Nm reported, and tripped the test's stop. The first flash after a drive, when a motor may still
+hold the drive's last command, moved each under 0.001 rad as well. Not yet tried: a
+real fault.
 
 ## The controller's link, J5
 
