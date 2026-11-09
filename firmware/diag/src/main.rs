@@ -22,7 +22,9 @@
 //! Pi's to use. The battery bus is read every [`VBUS_PERIOD`] and goes out in
 //! the status the controller sends every [`STATUS_PERIOD`].
 //!
-//! It knows one thing about the motors, which is how to switch them off: a
+//! It knows how to switch the motors off, which is what a stop is, and, for
+//! their LEDs alone and only while the Pi is leaving them be ([`motor_flash`]),
+//! how to switch them on with no torque asked: a
 //! stop throws away every frame waiting to go and sends DAMIAO's disable to
 //! every motor ID the Pi has addressed and to 1 to 16, on all four modes' frame
 //! IDs, [`STOP_ROUNDS`] times, on all three buses. It stops when the Pi asks,
@@ -40,6 +42,7 @@
 #![no_main]
 
 mod health;
+mod motor_flash;
 
 use core::cell::RefCell;
 use core::fmt::Write as _;
@@ -68,6 +71,7 @@ use embedded_io_async::{Read, Write};
 use heapless::{String, Vec};
 
 use health::{Fault, Health};
+use motor_flash::{Action, EVERY_MOTOR, MotorFlash};
 
 // A healthy controller beats exactly as every other image does.
 const _: () = assert!(
@@ -174,11 +178,21 @@ const GIVE_UP_INA: u32 = 5;
 /// The most a raw I2C transaction from the Pi may write or read.
 const I2C_MOST: usize = 64;
 
-// ---- DAMIAO's disable, the one thing this knows about the motors -------------
+// ---- DAMIAO's disable, and what the motors' LEDs need ------------------------
 
 /// Seven 0xFF and the code, to the frame ID of any mode: a motor takes a frame
 /// whose low eight ID bits are its own, whatever mode it is in.
 const DISABLE: [u8; 8] = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD];
+const ENABLE: [u8; 8] = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC];
+/// MIT mode's five numbers with no gains and no torque: position and speed at the
+/// middle of their ranges, where they count for nothing with the gains at 0, and
+/// the torque at the nearest 12 bits have to 0, -0.0012 Nm with TMAX at 5.
+const NO_TORQUE: [u8; 8] = [0x7F, 0xFF, 0x7F, 0xF0, 0x00, 0x00, 0x07, 0xFF];
+/// The register CTRL_MODE is, and a read's and a write's codes in a register frame.
+const CTRL_MODE: u8 = 0x0A;
+const READ_REGISTER: u8 = 0x33;
+/// Each motor's bus, by its ID less one: sysid_robot.json's wiring.
+const MOTOR_BUS: [usize; 6] = [0, 0, 1, 1, 2, 2];
 const MODE_OFFSETS: [u16; 4] = [0x000, 0x100, 0x200, 0x300];
 /// The ID a motor's registers are reached on, with its own ID in the data.
 const CONFIG_ID: u32 = 0x7FF;
@@ -268,6 +282,7 @@ struct Shared {
     health_flags: u16,
     /// Until when the LED shows the fast speed mode, from the Pi's INDICATE.
     fast_until: Option<Instant>,
+    motor_flash: MotorFlash,
 }
 
 impl Shared {
@@ -299,6 +314,7 @@ impl Shared {
             health: Health::new(),
             health_flags: 0,
             fast_until: None,
+            motor_flash: MotorFlash::new(),
         }
     }
 
@@ -503,6 +519,7 @@ fn send_info(ctx: &Ctx<'_>) {
     let _ = writeln!(text, "imu_diagnostics=2");
     let _ = writeln!(text, "imu_bus=clean-boundaries-v1");
     let _ = writeln!(text, "health=1");
+    let _ = writeln!(text, "motor_flash=1");
     let _ = write!(text, "buses=");
     for (i, name) in BUS_NAMES.iter().enumerate() {
         let _ = write!(text, "{}{name}", if i == 0 { "" } else { "," });
@@ -596,10 +613,74 @@ fn handle(kind: u8, body: &[u8], ctx: &Ctx<'_>) {
                 .then(|| Instant::now() + Duration::from_millis(health::FAST_HOLD_MS));
             true
         }
+        host::MOTOR_FLASH if body.len() == 3 => motor_flash_test(body, ctx),
         _ => false,
     };
     if !ok {
         ctx.shared.borrow_mut().malformed += 1;
+    }
+}
+
+/// MOTOR_FLASH: fault u8, as HEALTH has it and 0 to end a test, motors u8, bit n
+/// being motor n + 1, and seconds u8.
+fn motor_flash_test(body: &[u8], ctx: &Ctx<'_>) -> bool {
+    let pattern = match body[0] {
+        0 => {
+            ctx.shared.borrow_mut().motor_flash.end_test();
+            ctx.out.log("motor flash: test ended by the Pi");
+            return true;
+        }
+        1 => Fault::Link.pattern(),
+        2 => Fault::Imu.pattern(),
+        3 => Fault::Hardware.pattern(),
+        _ => return false,
+    };
+    let started = ctx.shared.borrow_mut().motor_flash.start_test(
+        now_ms(),
+        pattern,
+        body[1],
+        body[2],
+        power::off_requested(),
+    );
+    ctx.out.log(if started {
+        "motor flash: test started, with no fault"
+    } else {
+        "motor flash: test refused: the Pi has used a motor in the last 3 s, or asked for none"
+    });
+    true
+}
+
+/// What the flash tells the motors in `mask`. Nothing here waits, so that it
+/// happens whole between the Pi's frames.
+fn flash_frames(ctx: &Ctx<'_>, s: &mut Shared, action: Action, mask: u8) {
+    if action == Action::AskMode {
+        for (n, &bus) in MOTOR_BUS.iter().enumerate() {
+            if mask & (1 << n) != 0 {
+                let asking = [n as u8 + 1, 0, READ_REGISTER, CTRL_MODE];
+                let frame = Frame::new_standard(CONFIG_ID as u16, &asking).unwrap();
+                if ctx.queues[bus].try_send(frame).is_err() {
+                    s.buses[bus].queue_drop += 1;
+                }
+            }
+        }
+        return;
+    }
+    let frames: &[&[u8; 8]] = match action {
+        Action::Nothing | Action::AskMode => return,
+        Action::Light => &[&NO_TORQUE, &ENABLE, &NO_TORQUE],
+        Action::Keep => &[&NO_TORQUE],
+        Action::Darken => &[&DISABLE, &DISABLE],
+    };
+    for (n, &bus) in MOTOR_BUS.iter().enumerate() {
+        if mask & (1 << n) == 0 {
+            continue;
+        }
+        for data in frames {
+            let frame = Frame::new_standard(n as u16 + 1, *data).unwrap();
+            if ctx.queues[bus].try_send(frame).is_err() {
+                s.buses[bus].queue_drop += 1;
+            }
+        }
     }
 }
 
@@ -638,6 +719,11 @@ fn can_send(body: &[u8], ctx: &Ctx<'_>) -> bool {
         if let Some(m) = motor {
             s.addressed[bus][m as usize / 32] |= 1 << (m % 32);
         }
+    }
+    // The motors are the Pi's from this frame on: any lit by the flash go out
+    // ahead of it, in the same queues, so that nothing disables what it enables.
+    if s.motor_flash.pi_frame(now_ms()) {
+        flash_frames(ctx, &mut s, Action::Darken, EVERY_MOTOR);
     }
     if ctx.queues[bus].try_send(frame).is_err() {
         s.buses[bus].queue_drop += 1;
@@ -691,7 +777,23 @@ async fn can_in(bus: usize, rx: &mut CanRx<'_>, ctx: &Ctx<'_>) -> ! {
             flags |= 2;
         }
         let t = envelope.ts.as_micros() as u32;
-        ctx.shared.borrow_mut().buses[bus].rx += 1;
+        {
+            let mut s = ctx.shared.borrow_mut();
+            s.buses[bus].rx += 1;
+            // A motor saying which mode it is in, on its own bus. A motor's report
+            // has its position's high byte where this has the ID's high byte, 0,
+            // which is the end of the position's range, never reached.
+            let d = frame.data();
+            if d.len() == 8
+                && d[1] == 0
+                && d[2] == READ_REGISTER
+                && d[3] == CTRL_MODE
+                && MOTOR_BUS.get((d[0] as usize).wrapping_sub(1)) == Some(&bus)
+            {
+                let mode = u32::from_le_bytes([d[4], d[5], d[6], d[7]]);
+                s.motor_flash.mode_heard(d[0], mode);
+            }
+        }
         let sent = ctx.out.send(
             mcu::CAN_RECV,
             &[
@@ -782,6 +884,8 @@ fn stop_all(ctx: &Ctx<'_>, why: Stop) {
         queue.clear();
         stop.signal(());
     }
+    let by_pi = matches!(why, Stop::Asked | Stop::Button);
+    ctx.shared.borrow_mut().motor_flash.stopped(now_ms(), by_pi);
     ctx.out.send(mcu::STOPPED, &[&[why as u8]]);
 }
 
@@ -798,6 +902,7 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
     let mut last_service = next_status;
     let mut told_off = false;
     let mut told_health = 0u16;
+    let mut told_flash = false;
     loop {
         ticker.next().await;
         let now = Instant::now();
@@ -836,6 +941,30 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
             s.health_flags = s.health.flags(ms, lost);
             s.health_flags
         };
+        let flashing = {
+            let fault = Some(Fault::of(flags))
+                .filter(|&fault| fault != Fault::Healthy)
+                .map(Fault::pattern);
+            let mut s = ctx.shared.borrow_mut();
+            let action = s
+                .motor_flash
+                .tick(now.as_millis(), fault, power::off_requested());
+            let mask = match action {
+                Action::Darken => EVERY_MOTOR,
+                Action::AskMode => s.motor_flash.target(),
+                _ => s.motor_flash.mask(),
+            };
+            flash_frames(ctx, &mut s, action, mask);
+            s.motor_flash.showing()
+        };
+        if flashing != told_flash {
+            told_flash = flashing;
+            ctx.out.log(if flashing {
+                "motor flash: the motors' LEDs are showing a fault's pattern"
+            } else {
+                "motor flash: the motors' LEDs are no longer showing one"
+            });
+        }
         if flags != told_health {
             told_health = flags;
             log_health(ctx, flags);

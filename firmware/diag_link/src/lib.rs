@@ -26,6 +26,9 @@ pub mod host {
     /// the LED shows for 2 s unless it is said again. An image that does not know
     /// it counts it as malformed and shows nothing.
     pub const INDICATE: u8 = 0x12;
+    /// Additive: fault u8, motors u8, seconds u8. Plays a fault's pattern on the
+    /// motors' LEDs with no fault there, to see it do no harm; fault 0 ends it.
+    pub const MOTOR_FLASH: u8 = 0x13;
     pub const IMU_WRITE: u8 = 0x20;
     pub const I2C: u8 = 0x21;
 }
