@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 372" width="960" height="372" role="img" aria-labelledby="title desc">
+  <title id="title">How the robot learned to balance</title>
+  <desc id="desc">The CAD model becomes a simulated robot. Thousands of simulated copies fall over and try again on a cloud GPU, which produces a trained neural network. The network is copied to the real robot. What is measured on the real robot, such as joint friction, leg weight, motor strength at speed and delays, goes back into the simulator for the next round of training.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#8C8371"/>
+    </marker>
+    <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#C8701E"/>
+    </marker>
+    <style>
+      text { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; }
+      .heading { font-size: 23px; font-weight: 600; fill: #232019; }
+      .label { font-size: 17px; font-weight: 600; fill: #232019; }
+      .body { font-size: 15px; fill: #514B40; }
+      .note { font-size: 13.5px; fill: #736B5D; }
+      .hot { font-size: 15px; font-weight: 600; fill: #A85A14; }
+      .hotbody { font-size: 15px; fill: #7C4A1A; }
+      .hardware { fill: #F2EFE8; stroke: #BEB6A4; stroke-dasharray: 4 3; }
+      .ours { fill: #EAF0F6; stroke: #9FB7CE; }
+      .brain { fill: #FBE9D3; stroke: #D98A3C; stroke-width: 1.6; }
+      .edge { fill: none; stroke: #8C8371; stroke-width: 1.5; marker-end: url(#arrow); }
+      .edge-hot { fill: none; stroke: #C8701E; stroke-width: 2.2; marker-end: url(#arrow-hot); }
+    </style>
+  </defs>
+  <rect width="960" height="372" rx="6" fill="#FCFAF6"/>
+  <text x="28" y="37" class="heading">How it learned to balance</text>
+
+  <rect x="28" y="70" width="170" height="150" rx="5" class="ours"/>
+  <text x="113" y="104" class="label" text-anchor="middle">CAD model</text>
+  <text x="113" y="134" class="body" text-anchor="middle">the same code that</text>
+  <text x="113" y="154" class="body" text-anchor="middle">makes the parts gives</text>
+  <text x="113" y="174" class="body" text-anchor="middle">the simulator its</text>
+  <text x="113" y="194" class="body" text-anchor="middle">shapes and masses</text>
+
+  <rect x="268" y="70" width="220" height="150" rx="5" class="ours"/>
+  <text x="378" y="104" class="label" text-anchor="middle">Thousands of robots</text>
+  <text x="378" y="134" class="body" text-anchor="middle">8,192 to 16,384 at once,</text>
+  <text x="378" y="154" class="body" text-anchor="middle">simulated on one cloud GPU.</text>
+  <text x="378" y="174" class="body" text-anchor="middle">They fall, get scored</text>
+  <text x="378" y="194" class="body" text-anchor="middle">and try again.</text>
+
+  <rect x="568" y="70" width="150" height="150" rx="5" class="brain"/>
+  <text x="643" y="104" class="label" text-anchor="middle">Trained</text>
+  <text x="643" y="125" class="label" text-anchor="middle">network</text>
+  <text x="643" y="154" class="body" text-anchor="middle">one to two</text>
+  <text x="643" y="174" class="body" text-anchor="middle">hours a run</text>
+
+  <rect x="788" y="70" width="144" height="150" rx="5" class="hardware"/>
+  <text x="860" y="104" class="label" text-anchor="middle">The real</text>
+  <text x="860" y="125" class="label" text-anchor="middle">robot</text>
+  <text x="860" y="154" class="body" text-anchor="middle">runs the same</text>
+  <text x="860" y="174" class="body" text-anchor="middle">network</text>
+
+  <path class="edge" d="M198 145H266"/>
+  <text x="233" y="135" class="note" text-anchor="middle">generated</text>
+  <path class="edge" d="M488 145H566"/>
+  <text x="528" y="120" class="note" text-anchor="middle">trial</text>
+  <text x="528" y="135" class="note" text-anchor="middle">and error</text>
+  <path class="edge" d="M718 145H786"/>
+  <text x="752" y="135" class="note" text-anchor="middle">copied</text>
+
+  <path class="edge-hot" d="M860 220V258H378V222"/>
+  <text x="619" y="284" class="hot" text-anchor="middle">Measured on the real robot, then fed back for the next round</text>
+  <text x="619" y="310" class="hotbody" text-anchor="middle">joint friction, leg weight, wheel inertia, motor strength at speed,</text>
+  <text x="619" y="331" class="hotbody" text-anchor="middle">and how late the sensors and motors really are</text>
+</svg>
