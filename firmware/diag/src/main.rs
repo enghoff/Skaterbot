@@ -592,8 +592,13 @@ fn handle(kind: u8, body: &[u8], ctx: &Ctx<'_>) {
             true
         }
         host::SHUTDOWN if body.is_empty() => {
+            let by_button = power::off_requested();
             power::request_shutdown();
             stop_all(ctx, Stop::Asked);
+            ctx.shared
+                .borrow_mut()
+                .motor_flash
+                .shutdown_accepted(by_button);
             true
         }
         host::CAN_SEND => can_send(body, ctx),
@@ -793,6 +798,12 @@ async fn can_in(bus: usize, rx: &mut CanRx<'_>, ctx: &Ctx<'_>) -> ! {
                 let mode = u32::from_le_bytes([d[4], d[5], d[6], d[7]]);
                 s.motor_flash.mode_heard(d[0], mode);
             }
+            // The state of a motor on its own bus, from anything it reports: an
+            // answer about a register has 0 where a report has the state.
+            if d.len() == 8 && MOTOR_BUS.get(((d[0] & 0x0F) as usize).wrapping_sub(1)) == Some(&bus)
+            {
+                s.motor_flash.motor_said(d[0] >> 4, now_ms());
+            }
         }
         let sent = ctx.out.send(
             mcu::CAN_RECV,
@@ -817,7 +828,11 @@ async fn can_out(bus: usize, tx: &mut CanTx<'_>, ctx: &Ctx<'_>) -> ! {
         match select(ctx.stops[bus].wait(), queue.receive()).await {
             Either::First(()) => stop_bus(bus, tx, ctx).await,
             Either::Second(frame) => {
-                if !power::off_requested() {
+                // Once shutdown is asked for, only the long press's blink is sent.
+                // The Pi's frames are refused on the way in, and those queued
+                // before it went with the stop.
+                let open = !power::off_requested() || ctx.shared.borrow().motor_flash.blinking();
+                if open {
                     send(bus, tx, &frame, ctx).await;
                 }
             }
@@ -930,8 +945,18 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
         }
         if power::off_requested() && !told_off {
             told_off = true;
+            // Before the stop, which is what would make them look the Pi's.
+            let blink = ctx
+                .shared
+                .borrow_mut()
+                .motor_flash
+                .long_press(now.as_millis());
             ctx.out
                 .log("power: button held; every motor stopped; waiting for Pi shutdown");
+            if blink {
+                ctx.out
+                    .log("motor flash: the motors were off, so they will blink green");
+            }
             stop_all(ctx, Stop::Button);
         }
         let flags = {
@@ -941,7 +966,7 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
             s.health_flags = s.health.flags(ms, lost);
             s.health_flags
         };
-        let flashing = {
+        let (flashing, action) = {
             let fault = Some(Fault::of(flags))
                 .filter(|&fault| fault != Fault::Healthy)
                 .map(Fault::pattern);
@@ -955,8 +980,15 @@ async fn supervise(ctx: &Ctx<'_>, properties: [&Properties; BUSES]) -> ! {
                 _ => s.motor_flash.mask(),
             };
             flash_frames(ctx, &mut s, action, mask);
-            s.motor_flash.showing()
+            (s.motor_flash.showing(), action)
         };
+        if power::off_requested() {
+            match action {
+                Action::Light => ctx.out.log("motor flash: green, for the long press"),
+                Action::Darken => ctx.out.log("motor flash: the green blink is over"),
+                _ => {}
+            }
+        }
         if flashing != told_flash {
             told_flash = flashing;
             ctx.out.log(if flashing {

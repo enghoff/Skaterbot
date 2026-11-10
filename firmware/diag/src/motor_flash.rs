@@ -29,7 +29,15 @@
 //!   command means no torque only there: a motor left in velocity mode, say by
 //!   the motor console, would read the same bytes as a speed far past its top.
 //!   Each showing begins by asking, and a motor that does not answer stays dark.
-//! - It stops for good once shutdown is asked for.
+//! - It stops for good once shutdown is asked for, but for the one blink below.
+//!
+//! A long press is answered on the LEDs. Every motor is stopped, as it always
+//! was, so one that was running goes from green to red. If none was, they would
+//! show nothing, so those that say MIT blink green once. The blink waits for
+//! Linux to accept the shutdown, or for [`BLINK_WAIT_MS`] if it does not, since
+//! the Pi's stops come in between and each one disables every motor. By then the
+//! controller is refusing everything the Pi sends a motor, so nothing can
+//! contend with it.
 
 /// A cycle of a pattern, as `health::Fault::pattern` has it: lit or dark, for so
 /// many milliseconds.
@@ -51,6 +59,20 @@ pub const MIT_MODE: u32 = 1;
 pub const TEST_MOST_S: u8 = 60;
 /// Bit n is motor n + 1.
 pub const EVERY_MOTOR: u8 = 0b11_1111;
+/// A motor that said it was enabled this recently counts as running. An enabled
+/// motor answers every command it hears, and its TIMEOUT register drops it after
+/// 200 ms of hearing none.
+pub const RUNNING_WITHIN_MS: u64 = 300;
+/// How long the Pi gets to accept the shutdown before a long press's blink goes
+/// anyway. Of the 83 long presses in diagd.log to 2026-11-10 it was accepted
+/// within 1 s, in the log's whole seconds, in all but one, which took 5 s. A blink
+/// begun before a late acceptance is lost to the stop that comes with it.
+pub const BLINK_WAIT_MS: u64 = 3_000;
+/// How long the blink is lit.
+pub const BLINK_LIT_MS: u64 = 500;
+/// How long past the blink the motors can still be told something, for the
+/// frames that disable them to reach the bus.
+pub const BLINK_CLOSE_MS: u64 = 100;
 
 /// What the motors are to be told at this tick.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -74,9 +96,35 @@ struct Test {
     until: u64,
 }
 
+/// Where the green blink that answers a long press has got to.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Blink {
+    /// No long press, or no answer decided.
+    None,
+    /// A long press with the motors off: waiting for the Pi to accept it.
+    Waiting {
+        since: u64,
+    },
+    Accepted,
+    Asked {
+        at: u64,
+    },
+    Lit {
+        until: u64,
+    },
+    Closing {
+        until: u64,
+    },
+    /// Over, or never to be.
+    Done,
+}
+
 pub struct MotorFlash {
     /// When the Pi last sent a motor anything, or stopped them.
     pi_at: Option<u64>,
+    /// When a motor last said it was enabled, if nothing has stopped them since.
+    enabled_at: Option<u64>,
+    blink: Blink,
     /// The fault that stands, and whether it began with the motors left alone.
     fault: Option<Pattern>,
     may_show: bool,
@@ -112,6 +160,8 @@ impl MotorFlash {
     pub const fn new() -> Self {
         Self {
             pi_at: None,
+            enabled_at: None,
+            blink: Blink::None,
             fault: None,
             may_show: false,
             test: None,
@@ -131,6 +181,9 @@ impl MotorFlash {
     /// must be told to disable ahead of that frame.
     pub fn pi_frame(&mut self, now: u64) -> bool {
         self.pi_at = Some(now);
+        if self.blink != Blink::None {
+            self.blink = Blink::Done;
+        }
         self.test = None;
         self.showing = false;
         self.asked_at = None;
@@ -145,8 +198,88 @@ impl MotorFlash {
         self.test = None;
         self.showing = false;
         self.asked_at = None;
+        self.enabled_at = None;
+        // One that has begun, by asking the motors anything, is over: a stop wins.
+        // One still to come is not, since the stops are what it is waiting out.
+        if self.blinking() {
+            self.blink = Blink::Done;
+        }
         if by_pi {
             self.pi_at = Some(now);
+        }
+    }
+
+    /// The button has been held long enough to turn the robot off. To be called
+    /// before the stop that follows. True if the motors were off, and will blink.
+    pub fn long_press(&mut self, now: u64) -> bool {
+        if self.blink != Blink::None {
+            return false;
+        }
+        let running = self.enabled_at.is_some_and(|t| now < t + RUNNING_WITHIN_MS);
+        self.blink = if running {
+            Blink::Done
+        } else {
+            Blink::Waiting { since: now }
+        };
+        !running
+    }
+
+    /// Linux has accepted the shutdown. `by_button` is whether a long press came
+    /// first: one the Pi started by itself is not answered by a blink.
+    pub fn shutdown_accepted(&mut self, by_button: bool) {
+        match (by_button, self.blink) {
+            (true, Blink::Waiting { .. }) => self.blink = Blink::Accepted,
+            (false, Blink::None) => self.blink = Blink::Done,
+            _ => {}
+        }
+    }
+
+    /// Whether the motors are being told something for the blink, which is all
+    /// that may reach them once shutdown has been asked for.
+    pub fn blinking(&self) -> bool {
+        matches!(
+            self.blink,
+            Blink::Asked { .. } | Blink::Lit { .. } | Blink::Closing { .. }
+        )
+    }
+
+    fn blink_tick(&mut self, now: u64) -> Action {
+        match self.blink {
+            Blink::Waiting { since } if now < since + BLINK_WAIT_MS => Action::Nothing,
+            Blink::Waiting { .. } | Blink::Accepted => {
+                self.blink = Blink::Asked { at: now };
+                self.mit = 0;
+                Action::AskMode
+            }
+            Blink::Asked { at } if now < at + MODE_WAIT_MS => Action::Nothing,
+            Blink::Asked { .. } if self.mit == 0 => {
+                self.blink = Blink::Done;
+                Action::Nothing
+            }
+            Blink::Asked { .. } => {
+                self.blink = Blink::Lit {
+                    until: now + BLINK_LIT_MS,
+                };
+                self.lit = true;
+                self.zero_at = now;
+                Action::Light
+            }
+            Blink::Lit { until } if now >= until => {
+                self.blink = Blink::Closing {
+                    until: now + BLINK_CLOSE_MS,
+                };
+                self.lit = false;
+                Action::Darken
+            }
+            Blink::Lit { .. } if now >= self.zero_at + KEEP_EVERY_MS => {
+                self.zero_at = now;
+                Action::Keep
+            }
+            Blink::Closing { until } if now >= until => {
+                self.blink = Blink::Done;
+                Action::Nothing
+            }
+            _ => Action::Nothing,
         }
     }
 
@@ -192,6 +325,16 @@ impl MotorFlash {
         self.target() & self.mit
     }
 
+    /// A motor has reported, with the state in the top of its first byte: 1 is
+    /// enabled. By what the motors say, since the Pi's frames do not tell: the motor
+    /// console asks disabled motors for their status twenty times a second. What
+    /// the flash has lit itself is not anybody running them.
+    pub fn motor_said(&mut self, state: u8, now: u64) {
+        if state == 1 && !self.showing && !self.blinking() {
+            self.enabled_at = Some(now);
+        }
+    }
+
     /// A motor, 1 to 6, has said which mode it is in.
     pub fn mode_heard(&mut self, motor: u8, mode: u32) {
         if (1..=6).contains(&motor) {
@@ -211,6 +354,9 @@ impl MotorFlash {
 
     /// One tick. `fault` is the pattern of the fault that stands, if one does.
     pub fn tick(&mut self, now: u64, fault: Option<Pattern>, shutting_down: bool) -> Action {
+        if shutting_down && !matches!(self.blink, Blink::None | Blink::Done) {
+            return self.blink_tick(now);
+        }
         if self.test.is_some_and(|t| now >= t.until) {
             self.test = None;
         }
@@ -575,6 +721,219 @@ mod tests {
             0,
             "what was said before the Pi had them counts for nothing"
         );
+    }
+
+    /// Every tick of a shutdown from `from` to `to`, the motors answering as they do.
+    fn off_ticks(f: &mut MotorFlash, from: u64, to: u64, said: u32) -> Vec<(u64, Action)> {
+        (from..to)
+            .step_by(TICK as usize)
+            .map(|t| {
+                let action = f.tick(t, None, true);
+                if action == Action::AskMode {
+                    for motor in 1..=6 {
+                        f.mode_heard(motor, said);
+                    }
+                }
+                (t, action)
+            })
+            .filter(|&(_, a)| a != Action::Nothing)
+            .collect()
+    }
+
+    fn pressed(f: &mut MotorFlash, now: u64) -> bool {
+        let blink = f.long_press(now);
+        f.stopped(now, true);
+        blink
+    }
+
+    #[test]
+    fn a_long_press_with_the_motors_off_blinks_once() {
+        let mut f = MotorFlash::new();
+        assert!(pressed(&mut f, 10_000));
+        f.shutdown_accepted(true);
+        let done = off_ticks(&mut f, 10_020, 40_000, MIT_MODE);
+        assert_eq!(done[0], (10_020, Action::AskMode), "{done:?}");
+        assert_eq!(done[1], (10_020 + MODE_WAIT_MS, Action::Light), "{done:?}");
+        assert_eq!(lights(&done), 1, "{done:?}");
+        assert_eq!(darks(&done), 1, "{done:?}");
+        let on = done[1].0;
+        let off = done.iter().find(|&&(_, a)| a == Action::Darken).unwrap().0;
+        assert_eq!(off, on + BLINK_LIT_MS, "{done:?}");
+        assert_eq!(done.last().unwrap().1, Action::Darken, "and nothing after");
+    }
+
+    #[test]
+    fn a_blink_is_never_left_near_its_timeout() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        f.shutdown_accepted(true);
+        let done = off_ticks(&mut f, 20, 2_000, MIT_MODE);
+        let held: Vec<u64> = done
+            .iter()
+            .filter(|&&(_, a)| a != Action::AskMode)
+            .map(|&(t, _)| t)
+            .collect();
+        assert!(held.len() >= 8, "lit, kept alive, and put out: {done:?}");
+        for pair in held.windows(2) {
+            assert!(pair[1] - pair[0] <= 80, "{held:?}");
+        }
+    }
+
+    #[test]
+    fn running_motors_only_stop() {
+        let mut f = MotorFlash::new();
+        driven(&mut f, 0, 2_000, None);
+        f.motor_said(1, 1_995);
+        assert!(!pressed(&mut f, 2_000));
+        f.shutdown_accepted(true);
+        assert!(off_ticks(&mut f, 2_020, 30_000, MIT_MODE).is_empty());
+        assert!(!f.blinking());
+    }
+
+    #[test]
+    fn motors_the_pi_stopped_just_now_are_off() {
+        let mut f = MotorFlash::new();
+        driven(&mut f, 0, 2_000, None);
+        f.motor_said(1, 1_995);
+        f.stopped(2_000, true);
+        assert!(pressed(&mut f, 2_010), "a tap's stop, then a long press");
+    }
+
+    #[test]
+    fn the_pi_asking_disabled_motors_is_not_running_them() {
+        let mut f = MotorFlash::new();
+        for t in (0..2_000).step_by(50) {
+            f.pi_frame(t);
+            f.motor_said(0, t + 1);
+        }
+        assert!(f.long_press(2_000), "a motor console tab left open");
+    }
+
+    #[test]
+    fn its_own_pattern_is_not_running_them() {
+        let mut f = MotorFlash::new();
+        run(&mut f, 0, 300, Some(LINK));
+        f.motor_said(1, 290);
+        assert!(f.long_press(300));
+    }
+
+    #[test]
+    fn motors_the_pi_left_alone_are_off_after_their_timeout() {
+        let mut f = MotorFlash::new();
+        f.motor_said(1, 1_000);
+        let mut g = MotorFlash::new();
+        g.motor_said(1, 1_000);
+        assert!(!f.long_press(1_000 + RUNNING_WITHIN_MS - 1));
+        assert!(g.long_press(1_000 + RUNNING_WITHIN_MS));
+    }
+
+    #[test]
+    fn it_waits_out_the_pis_stops_and_for_the_shutdown() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        for t in (20..500).step_by(20) {
+            assert_eq!(f.tick(t, None, true), Action::Nothing, "at {t}");
+        }
+        f.stopped(500, true);
+        assert!(off_ticks(&mut f, 500, 700, MIT_MODE).is_empty());
+        f.stopped(700, true);
+        f.shutdown_accepted(true);
+        assert_eq!(f.tick(720, None, true), Action::AskMode);
+    }
+
+    #[test]
+    fn a_pi_that_never_accepts_still_gets_a_blink() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        let done = off_ticks(&mut f, 20, 5_000, MIT_MODE);
+        assert_eq!(done[0], (BLINK_WAIT_MS, Action::AskMode), "{done:?}");
+        assert_eq!(lights(&done), 1, "{done:?}");
+    }
+
+    #[test]
+    fn a_stop_during_the_blink_ends_it() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        f.shutdown_accepted(true);
+        let done = off_ticks(&mut f, 20, 300, MIT_MODE);
+        assert_eq!(lights(&done), 1, "{done:?}");
+        assert!(f.blinking());
+        f.stopped(300, true);
+        assert!(!f.blinking());
+        assert!(off_ticks(&mut f, 300, 30_000, MIT_MODE).is_empty());
+    }
+
+    #[test]
+    fn a_stop_after_the_motors_are_asked_ends_it_too() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        f.shutdown_accepted(true);
+        assert_eq!(off_ticks(&mut f, 20, 40, MIT_MODE).len(), 1, "asked");
+        f.stopped(40, true);
+        assert!(off_ticks(&mut f, 40, 30_000, MIT_MODE).is_empty());
+    }
+
+    #[test]
+    fn a_blink_touches_only_motors_that_said_mit() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        f.shutdown_accepted(true);
+        assert_eq!(f.tick(20, None, true), Action::AskMode);
+        f.mode_heard(2, MIT_MODE);
+        f.mode_heard(3, 3);
+        assert_eq!(f.tick(20 + MODE_WAIT_MS, None, true), Action::Light);
+        assert_eq!(f.mask(), 0b10);
+    }
+
+    #[test]
+    fn no_motor_saying_mit_is_no_blink() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        f.shutdown_accepted(true);
+        let done = off_ticks(&mut f, 20, 5_000, 3);
+        assert_eq!(done, vec![(20, Action::AskMode)]);
+        assert!(!f.blinking());
+    }
+
+    #[test]
+    fn a_shutdown_the_pi_started_is_no_blink() {
+        let mut f = MotorFlash::new();
+        f.shutdown_accepted(false);
+        f.stopped(0, true);
+        assert!(!f.long_press(20), "the controller then sees it as off");
+        assert!(off_ticks(&mut f, 20, 30_000, MIT_MODE).is_empty());
+    }
+
+    #[test]
+    fn it_counts_as_blinking_until_the_last_frames_have_had_time() {
+        let mut f = MotorFlash::new();
+        pressed(&mut f, 0);
+        assert!(!f.blinking(), "nothing may go out while it waits");
+        f.shutdown_accepted(true);
+        let done = off_ticks(&mut f, 20, 1_000, MIT_MODE);
+        let off = done.iter().find(|&&(_, a)| a == Action::Darken).unwrap().0;
+        let mut g = MotorFlash::new();
+        pressed(&mut g, 0);
+        g.shutdown_accepted(true);
+        off_ticks(&mut g, 20, off + TICK, MIT_MODE);
+        assert!(
+            g.blinking(),
+            "the frames that disable them are still queued"
+        );
+        off_ticks(
+            &mut g,
+            off + TICK,
+            off + BLINK_CLOSE_MS + 2 * TICK,
+            MIT_MODE,
+        );
+        assert!(!g.blinking());
+    }
+
+    #[test]
+    fn only_the_first_long_press_counts() {
+        let mut f = MotorFlash::new();
+        assert!(f.long_press(0));
+        assert!(!f.long_press(100));
     }
 
     /// The INA226 missing at idle, which a run carries on past, then the IMU

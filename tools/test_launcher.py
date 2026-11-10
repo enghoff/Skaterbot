@@ -89,6 +89,38 @@ def ending() -> None:
         it.out.close()
 
 
+def spare() -> None:
+    """Loading one takes the Pi's time, which a run going may not have to give."""
+
+    class Child:
+        code = None
+        returncode = 0
+
+        def poll(self):
+            return self.code
+
+    with tempfile.TemporaryDirectory() as folder:
+        tmp = Path(folder)
+        it = launcher.Launcher(
+            SimpleNamespace(robot="", log=tmp / "log", phase_file=tmp / "phase"), []
+        )
+        loaded = []
+        it.warm = lambda: loaded.append(True) or Child()
+        long_ago = time.monotonic() - launcher.SPARE_AGAIN_S - 1
+        it.spare_at = long_ago
+        it.watch_child()
+        check("with no run going, a spare is loaded", len(loaded) == 1)
+        it.spare, it.spare_at = None, long_ago
+        child = it.child = Child()
+        it.started_at = time.monotonic() - 3600
+        it.watch_child()
+        check("however long a run has gone, none is loaded during it", len(loaded) == 1)
+        child.code = 0
+        it.watch_child()
+        check("once it has ended, one is", len(loaded) == 2)
+        it.out.close()
+
+
 def wait_until(good, seconds: float = 8.0) -> bool:
     end = time.monotonic() + seconds
     while time.monotonic() < end:
@@ -237,6 +269,7 @@ def against_diagd() -> None:
 
 rules()
 ending()
+spare()
 against_diagd()
 print("FAILED: " + ", ".join(failed) if failed else "passed")
 raise SystemExit(1 if failed else 0)

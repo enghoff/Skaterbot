@@ -47,9 +47,12 @@ ENDING_S = 5.0
 # Longer than getting ready takes, however many looks that needs. After this, one that
 # has not said what it is doing is treated as any other, and a tap stops it.
 STARTING_S = 10.0
-# A run takes a moment of the Pi's time to start, which is not for the moment it is
-# starting one of its own. And one failing to start must not be retried in a tight loop.
-SPARE_AFTER_S = 5.0
+# A spare is loaded only with no run going. Until 2026-11-10 one began 5 s into every run,
+# and in 13 of about 113 runs the motors' reports reached the program over 60 ms late just
+# then, up to 311 ms; twice the robot fell within a second of it, standing with nothing
+# asked of it. Loading one on a disarmed robot slowed nothing, so that it was the cause is
+# unproven, and this is the test of it. One failing to start must not be retried in a
+# tight loop.
 SPARE_AGAIN_S = 5.0
 LIMP = "limp"
 
@@ -191,8 +194,7 @@ class Launcher:
             self.child.kill()
             self.stopping_at = now
         wanted = self.spare is None or self.spare.poll() is not None
-        settled = self.child is None or now - self.started_at > SPARE_AFTER_S
-        if wanted and settled and now - self.spare_at > SPARE_AGAIN_S:
+        if wanted and self.child is None and now - self.spare_at > SPARE_AGAIN_S:
             try:
                 self.spare = self.warm()
             except OSError as error:

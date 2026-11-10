@@ -233,7 +233,18 @@ mode, and a motor that does not say MIT, or does not answer, is left alone.
   Pi's frame, and nothing shows again until the Pi has left them alone for 3 s.
 - A fault that begins while the Pi is using the motors is not shown at all until
   it has cleared and come back, and the run carries on as it always did.
-- It stops for good once shutdown is asked for.
+- It stops for good once shutdown is asked for, but for the blink below.
+
+A long press answers on these LEDs as well. Holding the button for 2 s stops every
+motor, as it always has, so a motor that was running goes from green to red. If none
+was, every motor that says it is in MIT mode blinks green once, for half a second, with
+no gains and no torque. A motor counts as running if it has reported itself enabled in
+the last 300 ms with no stop since, which is past the 200 ms its TIMEOUT register would
+hold it. The blink waits for Linux to accept the shutdown, or for 3 s if it does not,
+since each of the Pi's stops in between disables every motor, and any stop after it has
+begun ends it. A shutdown the Pi started by itself, such as the page's Power off, gets
+no blink. Flashed on 10 November 2026, and the robot's owner saw it work on a long press
+from disarmed the same day.
 
 It cannot show anything on a bus that has failed or from a controller that has
 stopped, and a motor in a fault of its own stays flashing red.
