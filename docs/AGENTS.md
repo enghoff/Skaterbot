@@ -1,4 +1,4 @@
-# Project Instructions — Torque-Controlled Biped
+# Project Instructions — Skaterbot
 
 Standing context for any agent working this CAD. Full reasoning lives in
 [`OPUS_HANDOFF.md`](OPUS_HANDOFF.md) beside this file; this file is the short,

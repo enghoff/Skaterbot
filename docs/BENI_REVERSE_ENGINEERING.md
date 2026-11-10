@@ -18,7 +18,7 @@ right: hip pitch -> knee pitch -> wheel
 
 The available public material is sufficient to reconstruct the broad mechanical and electrical architecture with reasonably high confidence, but not to reproduce the product exactly. No public CAD, PCB design, BOM, firmware, motor drawings or production URDF have been found. Mondo has stated that the product itself is closed-source, while an RL training framework and a developer interface/SDK are on the roadmap.
 
-The most interesting likely difference between Beni and the current Biped design is actuator packaging. A teardown posted in August 2026 prompted an experienced observer to note that both hip and knee actuators appear to be housed inside the main body with belt drives to the leg joints, reminiscent of the original MIT Mini Cheetah packaging. This is not yet confirmed by Mondo and should be treated as a **medium-confidence inference**, but it would explain Beni's unusually low moving-leg inertia and violent jump/self-righting performance.
+The most interesting likely difference between Beni and the current Skaterbot design is actuator packaging. A teardown posted in August 2026 prompted an experienced observer to note that both hip and knee actuators appear to be housed inside the main body with belt drives to the leg joints, reminiscent of the original MIT Mini Cheetah packaging. This is not yet confirmed by Mondo and should be treated as a **medium-confidence inference**, but it would explain Beni's unusually low moving-leg inertia and violent jump/self-righting performance.
 
 Mondo has directly disclosed much more about the control stack than about the mechanics. Their locomotion work began from Unitree's `unitree_rl_gym`/ETH `legged_gym`, uses Isaac Gym and PPO, validates sim-to-sim in MuJoCo, and runs an RL policy above conventional joint PD control. Inputs include IMU data, joint positions, joint velocities and command inputs. Mondo says there is no separate hard-coded balance controller. They also state that off-the-shelf actuators created a large sim-to-real gap and that they moved to custom actuators using a low-latency RS485 protocol with DMA-based communication.
 
@@ -52,7 +52,7 @@ Mondo currently publishes the following Beni specifications:
 | Tracking | on-device | High — manufacturer statement |
 | Internet required for core following/filming | No | High — manufacturer statement |
 
-The physical scale is particularly notable compared with this project. Beni is only about 180 mm tall but weighs roughly 1.75 kg; the current wheeled Biped branch is substantially taller while being in a similar mass class. Beni is therefore a very dense machine, with a large fraction of its mass concentrated in the central body.
+The physical scale is particularly notable compared with this project. Beni is only about 180 mm tall but weighs roughly 1.75 kg; the current wheeled Skaterbot branch is substantially taller while being in a similar mass class. Beni is therefore a very dense machine, with a large fraction of its mass concentrated in the central body.
 
 ### 2.2 Prototype timeline
 
@@ -118,7 +118,7 @@ body
               +-- wheel rotation
 ```
 
-This is effectively the same gross topology as the six-motor wheeled architecture already adopted on the current Biped branch.
+This is effectively the same gross topology as the six-motor wheeled architecture already adopted on the current Skaterbot branch.
 
 ## 3.2 Body-mounted joint actuators: leading hypothesis
 
@@ -209,7 +209,7 @@ Therefore a Beni-speed machine cannot simply use the present DAMIAO joint actuat
 - a separate high-speed BLDC + reduction stage;
 - a custom actuator family with separate wheel and joint variants.
 
-This does **not** invalidate the DM-J3507 wheel choice for the current Biped objectives. It only means the current design is a low-speed research platform rather than a Beni-speed camera robot.
+This does **not** invalidate the DM-J3507 wheel choice for the current Skaterbot objectives. It only means the current design is a low-speed research platform rather than a Beni-speed camera robot.
 
 ## 3.4 Jump energy
 
@@ -268,7 +268,7 @@ Their own sim-to-real account identifies the actuation system as one of the larg
 - close-to-linear current/torque behavior;
 - dynamics that resemble the simulation model.
 
-This is important for the Biped project because CAN versus RS485 is less important than the underlying engineering requirement: **the complete command-to-torque path must be characterized and deterministic enough that simulation can represent it.**
+This is important for the Skaterbot project because CAN versus RS485 is less important than the underlying engineering requirement: **the complete command-to-torque path must be characterized and deterministic enough that simulation can represent it.**
 
 A CAN actuator can still be suitable if its latency, update rate, internal filtering and torque response are understood and modeled. Conversely, merely choosing RS485 does not automatically produce Unitree-like performance.
 
@@ -564,13 +564,13 @@ This sequence mirrors Mondo's own published lesson: dynamic RL performance becam
 
 ---
 
-## 10. Specific implications for the current Biped design
+## 10. Specific implications for the current Skaterbot design
 
 The current wheeled branch already converges on Beni's apparent topology, which is significant independent validation of the architectural choice.
 
 ### 10.1 What aligns well
 
-Current Biped:
+Current Skaterbot:
 
 ```text
 hip pitch -> knee pitch -> wheel
@@ -586,7 +586,7 @@ Both eliminate hip roll and conventional feet, using differential wheel torque p
 
 ### 10.2 Main mechanical difference to investigate
 
-The current Biped places integrated actuators at the joints. Beni may centralize both hip and knee actuation in the body.
+The current Skaterbot places integrated actuators at the joints. Beni may centralize both hip and knee actuation in the body.
 
 That suggests a future design study:
 
@@ -641,7 +641,7 @@ rather than forcing one actuator family to satisfy both tasks.
 
 ## 11. Suggested next work
 
-The best immediate follow-up is **not** to redesign the Biped around guesses. It is to turn the public Beni footage into measurements.
+The best immediate follow-up is **not** to redesign the Skaterbot around guesses. It is to turn the public Beni footage into measurements.
 
 Recommended next deliverables:
 
@@ -652,7 +652,7 @@ Recommended next deliverables:
 5. a transmission diagram showing confirmed vs inferred belt/shaft paths;
 6. an actuator requirement sheet derived from observed joint/wheel speeds;
 7. a comparison against DM-J3507 capabilities;
-8. only after that, a separate proposal for any Biped architecture change.
+8. only after that, a separate proposal for any Skaterbot architecture change.
 
 A particularly valuable analysis would be to estimate Beni's actual hip/knee angular velocities from the self-righting and flip videos. Combined with approximate geometry and the known 1.75 kg mass, those measurements would provide a much more defensible actuator target than trying to infer motor models from appearance alone.
 

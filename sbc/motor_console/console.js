@@ -351,7 +351,7 @@ $("i2c-form").onsubmit=e=>{e.preventDefault();send("i2c",formValues(e.target));}
 $("reg-select").onchange=selectRegister;
 $("traffic-bus").onchange=renderLog;$("traffic-id").oninput=renderLog;$("pause").onchange=renderLog;
 $("clear-log").onclick=()=>{logs.length=0;renderLog();};
-$("export-log").onclick=()=>{const url=URL.createObjectURL(new Blob([logs.map(e=>JSON.stringify(e)).join("\n")],{type:"application/x-ndjson"}));const a=document.createElement("a");a.href=url;a.download="bipedal-diagnostics.jsonl";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$("export-log").onclick=()=>{const url=URL.createObjectURL(new Blob([logs.map(e=>JSON.stringify(e)).join("\n")],{type:"application/x-ndjson"}));const a=document.createElement("a");a.href=url;a.download="skaterbot-diagnostics.jsonl";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 document.addEventListener("visibilitychange",()=>{if(document.hidden){queuedCommand=queuedLimits=queuedZero=null;send("release");}else{autoControlAfter=0;autoDiscover();}});
 window.addEventListener("pagehide",()=>{if(ws?.readyState===WebSocket.OPEN){ws.send('{"op":"release"}');ws.close();}});
 setInterval(()=>{if(lastState && performance.now()-lastState>1500){notice("Console updates lost",true);ws.close();}},500);

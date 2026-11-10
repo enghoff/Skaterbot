@@ -115,7 +115,7 @@ pub const SYSCLK_HZ: u32 = 170_000_000;
 pub fn usb_config(product: &'static str) -> embassy_usb::Config<'static> {
     // 1209:0001 is pid.codes' ID for private testing, not a claimed product.
     let mut config = embassy_usb::Config::new(0x1209, 0x0001);
-    config.manufacturer = Some("Bipedal");
+    config.manufacturer = Some("Skaterbot");
     config.product = Some(product);
     config.serial_number = Some(uid::uid_hex());
     config
