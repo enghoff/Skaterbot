@@ -515,10 +515,12 @@ def legends(silk: Silk) -> str:
         else:
             missed.append(f"{part.refdes} ({choices[-1]})")
     # The board's own name, in the one clear strip: the rear edge, left of the
-    # IMU connector, where no part stands and no plug swings.
-    tx, ty = place(20.0, 2.0)
+    # IMU connector, where no part stands and no plug swings. Centred at 22.4
+    # and not at the strip's 20.0, because at 30.9 mm long the name would
+    # otherwise run onto the M3 hole in this corner; this keeps it 1.2 mm clear.
+    tx, ty = place(22.4, 2.0)
     out.append(
-        f'  (gr_text "BIPED CONTROLLER CARRIER" (at {tx:.4f} {ty:.4f})'
+        f'  (gr_text "SKATERBOT CONTROLLER CARRIER" (at {tx:.4f} {ty:.4f})'
         ' (layer "F.SilkS")'
         " (effects (font (size 1.2 1.2) (thickness 0.2))))"
     )

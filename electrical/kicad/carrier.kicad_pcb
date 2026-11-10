@@ -4765,8 +4765,8 @@
 			)
 		)
 	)
-	(gr_text "BIPED CONTROLLER CARRIER"
-		(at 45 69 0)
+	(gr_text "SKATERBOT CONTROLLER CARRIER"
+		(at 47.4 69 0)
 		(layer "F.SilkS")
 		(uuid "0cc30d32-4bc4-48e2-9c3c-008ae63b9f7d")
 		(effects

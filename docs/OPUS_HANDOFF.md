@@ -1,4 +1,4 @@
-# Torque-Controlled Biped — Opus Engineering Handoff
+# Skaterbot — Opus Engineering Handoff
 
 > **This is the original brief, not the current design state.** It has not been
 > maintained through the stressed-shell overhaul or the decision to run the robot

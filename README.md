@@ -1,6 +1,8 @@
-# Torque-Controlled Biped
+# Skaterbot
 
 A compact, approximately 340 mm, 3D-printable biped designed around low-ratio, backdrivable, torque-controlled actuators. On this branch it is a **wheeled** robot with **6 DOF** — hip pitch, knee pitch and a driven wheel on each leg. The walking robot it grew out of has 8 and stands 380 mm, and lives on the `walking` branch, still in KCL.
+
+The project was called Biped until November 2026. The old word survives in names that code or a running machine depends on: the training tasks (`Biped-Wheeled-Drive-…`), the `wheeled_biped` modules, and the install paths on the robot and the RunPod volume.
 
 The CAD is [build123d](https://build123d.readthedocs.io) — Python over OCCT — in [`cad/`](cad/). It was KCL executed on Zoo's engine until September 2026; [`docs/BUILD123D_MIGRATION.md`](docs/BUILD123D_MIGRATION.md) is the record of the move, and the practical consequence is that every check is now free, local and offline.
 
@@ -40,7 +42,7 @@ single facade. A Python module that defines functions builds nothing, and a scen
 assembles what it asks for by calling functions.
 
 ```text
-bipedal/
+Skaterbot/
 ├── cad/                   the CAD — build123d, one flat package
 │   ├── parameters.py      shared dimensions and joint angles, with provenance
 │   ├── wheeled_parameters.py  the donor wheel and the axis heights it implies
