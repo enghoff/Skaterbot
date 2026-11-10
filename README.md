@@ -56,9 +56,8 @@ each leg.
 | Two 3S LiPo packs in series | 1000 mAh at about 24 V, with a battery protection board. |
 
 On a scale, the finished robot weighs **2,086 g**. With its legs straight it stands
-363 mm tall. A rough planning figure for the parts is ₹80,000 to ₹110,000, before
-the shipping and import costs of the motors and any outside printing. That is an
-estimate and not a record of what was spent, and the motors are the largest part
+363 mm tall. A rough planning figure for the parts is US$850 to US$1,200. That is
+an estimate and not a record of what was spent, and the motors are the largest part
 of it.
 
 ## How it stays up
