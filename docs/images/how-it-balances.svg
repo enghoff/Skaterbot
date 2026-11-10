@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" width="960" height="590" role="img" aria-labelledby="title desc">
+  <title id="title">What happens 100 times a second</title>
+  <desc id="desc">Every 10 milliseconds the Banana Pi computer reads 25 numbers: tilt and spin from the motion sensor, leg and wheel readings from the six motors, the driver's wishes from an Xbox controller, and its own last commands. A neural network turns them into six numbers, four leg angles and two wheel torques. The controller board carries readings up and commands down. The motors move the robot, the robot tips and rolls, and the sensors feel it, which closes the loop.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#8C8371"/>
+    </marker>
+    <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#C8701E"/>
+    </marker>
+    <style>
+      text { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; }
+      .heading { font-size: 23px; font-weight: 600; fill: #232019; }
+      .label { font-size: 17px; font-weight: 600; fill: #232019; }
+      .body { font-size: 15px; fill: #514B40; }
+      .note { font-size: 13.5px; fill: #736B5D; }
+      .hot { font-size: 15px; font-weight: 600; fill: #A85A14; }
+      .hardware { fill: #F2EFE8; stroke: #BEB6A4; stroke-dasharray: 4 3; }
+      .ours { fill: #EAF0F6; stroke: #9FB7CE; }
+      .inner { fill: #FFFFFF; stroke: #C9D5E1; }
+      .brain { fill: #FBE9D3; stroke: #D98A3C; stroke-width: 1.6; }
+      .edge { fill: none; stroke: #8C8371; stroke-width: 1.5; marker-end: url(#arrow); }
+      .edge-hot { fill: none; stroke: #C8701E; stroke-width: 2.2; marker-end: url(#arrow-hot); }
+    </style>
+  </defs>
+  <rect width="960" height="590" rx="6" fill="#FCFAF6"/>
+  <text x="28" y="37" class="heading">What happens 100 times a second</text>
+
+  <rect x="44" y="52" width="256" height="52" rx="4" class="hardware"/>
+  <text x="172" y="74" class="label" text-anchor="middle">Xbox controller</text>
+  <text x="172" y="94" class="body" text-anchor="middle">speed, turn, height</text>
+
+  <rect x="28" y="122" width="904" height="176" rx="6" class="ours"/>
+  <text x="916" y="147" class="label" text-anchor="end">Banana Pi computer: a new decision every 10 ms</text>
+
+  <rect x="44" y="158" width="270" height="128" rx="4" class="inner"/>
+  <text x="60" y="182" class="label">25 numbers in</text>
+  <text x="60" y="206" class="body">tilt and spin</text><text x="298" y="206" class="note" text-anchor="end">6</text>
+  <text x="60" y="226" class="body">leg and wheel readings</text><text x="298" y="226" class="note" text-anchor="end">10</text>
+  <text x="60" y="246" class="body">what the driver wants</text><text x="298" y="246" class="note" text-anchor="end">3</text>
+  <text x="60" y="266" class="body">its own last commands</text><text x="298" y="266" class="note" text-anchor="end">6</text>
+
+  <rect x="366" y="158" width="222" height="128" rx="4" class="brain"/>
+  <text x="477" y="196" class="label" text-anchor="middle">Neural network</text>
+  <text x="477" y="222" class="body" text-anchor="middle">three layers: 256, 128, 64</text>
+  <text x="477" y="244" class="body" text-anchor="middle">about 48,000 numbers,</text>
+  <text x="477" y="264" class="body" text-anchor="middle">all set by training</text>
+
+  <rect x="640" y="158" width="276" height="128" rx="4" class="inner"/>
+  <text x="656" y="182" class="label">6 numbers out</text>
+  <text x="656" y="214" class="body">four leg angles</text>
+  <text x="656" y="238" class="body">two wheel torques</text>
+
+  <path class="edge" d="M314 222H364"/>
+  <path class="edge" d="M588 222H638"/>
+  <path class="edge" d="M172 104V156"/>
+  <text x="182" y="138" class="note">Bluetooth</text>
+
+  <path class="edge" d="M172 356V288"/>
+  <text x="182" y="333" class="note">readings</text>
+  <path class="edge" d="M778 286V354"/>
+  <text x="788" y="333" class="note">commands</text>
+  <text x="480" y="333" class="note" text-anchor="middle">serial link</text>
+
+  <rect x="28" y="356" width="904" height="64" rx="6" class="ours"/>
+  <text x="44" y="381" class="label">Controller board</text>
+  <text x="44" y="405" class="body">Our own circuit board and a small microcontroller. It passes readings up and commands down, and stops the motors if the link fails.</text>
+
+  <path class="edge" d="M172 480V422"/>
+  <text x="182" y="456" class="note">tilt and spin</text>
+  <path class="edge" d="M560 480V422"/>
+  <text x="570" y="456" class="note">angles and speeds</text>
+  <path class="edge" d="M778 420V478"/>
+  <text x="788" y="456" class="note">targets</text>
+
+  <rect x="44" y="480" width="256" height="64" rx="4" class="hardware"/>
+  <text x="172" y="506" class="label" text-anchor="middle">Motion sensor</text>
+  <text x="172" y="528" class="body" text-anchor="middle">knows which way is up</text>
+
+  <rect x="420" y="480" width="512" height="64" rx="4" class="hardware"/>
+  <text x="676" y="506" class="label" text-anchor="middle">Six motors</text>
+  <text x="676" y="528" class="body" text-anchor="middle">hips, knees and wheels, two on each of three CAN buses</text>
+
+  <path class="edge-hot" d="M676 544V574H172V546"/>
+  <text x="424" y="566" class="hot" text-anchor="middle">the robot tips and rolls, and the sensors feel it</text>
+</svg>
