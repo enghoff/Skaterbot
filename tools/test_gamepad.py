@@ -65,17 +65,18 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual((command["forward"], command["turn"]), (0.0, 0.0))
         self.assertEqual(operator.why_not(0.0), "")
 
-    def test_nor_by_the_left_stick_or_a_shoulder(self):
+    def test_nor_by_the_left_stick_up_or_a_shoulder(self):
         operator = ready()
         operator.event(gp.EV_KEY, gp.BTN_TL, 1, 0.0)
         operator.event(gp.EV_ABS, gp.ABS_Y, 0, 0.0)
-        self.assertEqual(operator.command(0.0)["forward"], 0.0)
+        command = operator.command(0.0)
+        self.assertEqual((command["forward"], command["turn"]), (0.0, 0.0))
 
     def test_gas_is_forward_brake_is_back_and_left_is_a_positive_turn(self):
         # POLICY_INTERFACE.md: index 6 forward, index 7 positive to the left.
         operator = ready()
         operator.event(gp.EV_ABS, GAS, 255, 0.0)
-        operator.event(gp.EV_ABS, gp.ABS_RX, 0, 0.0)
+        operator.event(gp.EV_ABS, gp.ABS_X, 0, 0.0)
         command = operator.command(0.0)
         self.assertAlmostEqual(command["forward"], gp.START_SPEED_M_S)
         self.assertAlmostEqual(command["turn"], gp.START_TURN_RAD_S)
@@ -116,12 +117,12 @@ class OperatorTests(unittest.TestCase):
         self.assertAlmostEqual(operator.command(0.2)["forward"], gp.START_SPEED_M_S)
 
     def test_a_stick_already_pushed_asks_for_nothing_until_it_has_been_centred(self):
-        operator = gp.Operator(PLAYSTATION, 0.0, values={gp.ABS_RX: 0})
+        operator = gp.Operator(PLAYSTATION, 0.0, values={gp.ABS_X: 0})
         self.assertEqual(operator.command(0.0)["turn"], 0.0)
         self.assertIn("rest", operator.why_not(0.0))
-        operator.event(gp.EV_ABS, gp.ABS_RX, 128, 0.1)
+        operator.event(gp.EV_ABS, gp.ABS_X, 128, 0.1)
         operator.command(0.1)
-        operator.event(gp.EV_ABS, gp.ABS_RX, 0, 0.2)
+        operator.event(gp.EV_ABS, gp.ABS_X, 0, 0.2)
         self.assertAlmostEqual(operator.command(0.2)["turn"], gp.START_TURN_RAD_S)
 
     def test_a_quick_pull_after_a_long_idle_counts(self):
@@ -134,23 +135,27 @@ class OperatorTests(unittest.TestCase):
 
     def test_a_trigger_taken_for_a_stick_cannot_drive(self):
         # Where this kernel's generic driver would have put a PlayStation
-        # controller's left trigger, read as a right stick: at rest it reads as
-        # that stick pushed hard over, and that must not spin the robot.
+        # controller's left trigger, which a driver of its own has as the right
+        # stick: at rest it reads as that stick pushed hard over, and that must not
+        # spin the robot.
         operator = gp.Operator(
             {gp.ABS_Y: (0, 255), gp.ABS_RX: (0, 255)},
             0.0,
             values={gp.ABS_Y: 128, gp.ABS_RX: 0},
         )
-        self.assertEqual(operator.layout.turn, gp.ABS_RX)
         self.assertEqual(operator.command(0.0)["turn"], 0.0)
         self.assertEqual(operator.command(0.1)["turn"], 0.0)
 
-    def test_the_right_stick_is_found_on_either_layout(self):
-        self.assertEqual(gp.Operator(PLAYSTATION, 0).layout.turn, gp.ABS_RX)
-        operator = ready(ON_GENERIC_HID)
-        self.assertEqual(operator.layout.turn, gp.ABS_Z)
-        operator.event(gp.EV_ABS, gp.ABS_Z, 65535, 0.0)
-        self.assertAlmostEqual(operator.command(0.0)["turn"], -gp.START_TURN_RAD_S)
+    def test_the_left_stick_turns_on_either_layout_and_the_right_does_not(self):
+        for ranges, right in ((PLAYSTATION, gp.ABS_RX), (ON_GENERIC_HID, gp.ABS_Z)):
+            operator = ready(ranges)
+            self.assertEqual(operator.layout.turn, gp.ABS_X)
+            high = ranges[gp.ABS_X][1]
+            operator.event(gp.EV_ABS, right, high, 0.0)
+            self.assertEqual(operator.command(0.0)["turn"], 0.0)
+            operator.event(gp.EV_ABS, gp.ABS_X, high, 0.0)
+            want = -gp.START_TURN_RAD_S
+            self.assertAlmostEqual(operator.command(0.0)["turn"], want)
 
     def test_a_trigger_is_not_taken_for_the_turn(self):
         operator = ready()
@@ -160,10 +165,10 @@ class OperatorTests(unittest.TestCase):
     def test_the_dead_zone_matches_the_simulator(self):
         operator = ready()
         # 0.1 of the way: inside the driver's 0.12.
-        operator.event(gp.EV_ABS, gp.ABS_RX, round(127.5 - 12.75), 0.0)
+        operator.event(gp.EV_ABS, gp.ABS_X, round(127.5 - 12.75), 0.0)
         self.assertEqual(operator.command(0.0)["turn"], 0.0)
         # Half way: rescaled from the zone's edge, as drive.py's axis() does.
-        operator.event(gp.EV_ABS, gp.ABS_RX, round(127.5 - 63.75), 0.0)
+        operator.event(gp.EV_ABS, gp.ABS_X, round(127.5 - 63.75), 0.0)
         want = (0.5 - 0.12) / (1 - 0.12)
         turn = operator.command(0.0)["turn"] / gp.START_TURN_RAD_S
         self.assertAlmostEqual(turn, want, places=2)
@@ -173,7 +178,7 @@ class OperatorTests(unittest.TestCase):
         for gas, stick in ((255, 0), (128, 64)):
             operator = ready(now=0.0)
             operator.event(gp.EV_ABS, GAS, gas, 0.0)
-            operator.event(gp.EV_ABS, gp.ABS_RX, stick, 0.0)
+            operator.event(gp.EV_ABS, gp.ABS_X, stick, 0.0)
             first = operator.command(0.0)
             command = operator.command(600.0)
             self.assertTrue(command["live"])
@@ -258,7 +263,7 @@ class OperatorTests(unittest.TestCase):
         operator = ready()
         operator.speed_limit, operator.turn_limit = gp.TOP_SPEED_M_S, gp.TOP_TURN_RAD_S
         operator.event(gp.EV_ABS, GAS, 255, 0.0)
-        operator.event(gp.EV_ABS, gp.ABS_RX, 0, 0.0)
+        operator.event(gp.EV_ABS, gp.ABS_X, 0, 0.0)
         return operator.command(0.0)
 
     def test_select_is_counted_as_the_speed_mode(self):
@@ -357,7 +362,7 @@ class LayoutTests(unittest.TestCase):
         layout = gp.layout_of(
             PLAYSTATION, [gp.BTN_SOUTH, gp.BTN_EAST, gp.BTN_TL], 0x054C
         )
-        self.assertEqual(layout.turn, gp.ABS_RX)
+        self.assertEqual(layout.turn, gp.ABS_X)
         self.assertEqual((layout.gas, layout.brake), (gp.ABS_RZ, gp.ABS_Z))
         self.assertEqual(layout.jump, gp.BTN_SOUTH)
 
@@ -368,17 +373,25 @@ class LayoutTests(unittest.TestCase):
         layout = gp.layout_of(PLAYSTATION, keys, gp.SONY)
         self.assertEqual(layout.jump, gp.BTN_EAST)  # Cross
         self.assertEqual((layout.gas, layout.brake), (gp.ABS_RY, gp.ABS_RX))
-        self.assertEqual(layout.turn, gp.ABS_Z)
+        self.assertEqual(layout.turn, gp.ABS_X)
         operator = gp.Operator(
             PLAYSTATION,
             0.0,
             layout,
-            values={gp.ABS_Y: 128, gp.ABS_Z: 128, gp.ABS_RX: 0, gp.ABS_RZ: 128},
+            values={
+                gp.ABS_X: 128,
+                gp.ABS_Y: 128,
+                gp.ABS_Z: 128,
+                gp.ABS_RX: 0,
+                gp.ABS_RZ: 128,
+            },
         )
         self.assertEqual(operator.command(0.0)["turn"], 0.0)
         operator.event(gp.EV_ABS, gp.ABS_RX, 255, 0.1)  # L2 pulled
         self.assertEqual(operator.command(0.1)["turn"], 0.0)
         operator.event(gp.EV_ABS, gp.ABS_Z, 0, 0.2)  # right stick, left
+        self.assertEqual(operator.command(0.2)["turn"], 0.0)
+        operator.event(gp.EV_ABS, gp.ABS_X, 0, 0.2)  # left stick, left
         self.assertAlmostEqual(operator.command(0.2)["turn"], gp.START_TURN_RAD_S)
         operator.event(gp.EV_KEY, gp.BTN_EAST, 1, 0.3)  # Cross
         self.assertEqual(operator.jump, 1)
@@ -393,7 +406,7 @@ class LayoutTests(unittest.TestCase):
         rest = {gp.ABS_X: 31700, gp.ABS_Y: 33379, gp.ABS_Z: 31034, gp.ABS_RZ: 30605}
         layout = gp.layout_of(ranges, [*range(0x130, 0x13F), 167], gp.MICROSOFT)
         self.assertEqual((layout.gas, layout.brake), (9, 10))
-        self.assertEqual(layout.turn, gp.ABS_Z)
+        self.assertEqual(layout.turn, gp.ABS_X)
         self.assertEqual(layout.jump, 0x130)
         operator = gp.Operator(ranges, 0.0, layout, rest | {9: 0, 10: 0})
         # Its sticks at rest are in the dead zone, so they count from the start.
@@ -403,7 +416,7 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(operator.command(0.1)["forward"], 0.0)
         operator.event(gp.EV_KEY, 0x136, 0, 0.1)
         operator.event(gp.EV_ABS, 9, 1023, 0.2)
-        operator.event(gp.EV_ABS, gp.ABS_Z, 0, 0.2)
+        operator.event(gp.EV_ABS, gp.ABS_X, 0, 0.2)
         command = operator.command(0.2)
         self.assertAlmostEqual(command["forward"], gp.TOP_SPEED_M_S)
         self.assertAlmostEqual(command["turn"], gp.TOP_TURN_RAD_S)
@@ -633,7 +646,7 @@ class PathToThePolicy(unittest.TestCase):
         pad = ScriptedPad()
         manager = self.manager(where, pad)
         self.hold(manager, pad)
-        pad.events = [(gp.EV_ABS, GAS, 255), (gp.EV_ABS, gp.ABS_RX, 255)]
+        pad.events = [(gp.EV_ABS, GAS, 255), (gp.EV_ABS, gp.ABS_X, 255)]
         self.assertTrue(
             until(lambda: controller.drive and controller.drive["forward"] > 0),
             controller.drive,
@@ -644,7 +657,7 @@ class PathToThePolicy(unittest.TestCase):
         self.assertAlmostEqual(controller.drive["height"], gp.HEIGHT_RANGE_M[1])
         self.assertTrue(until(lambda: manager.snapshot()["taken"] is True))
         # Letting go is seen at the controller as speed and turn of nothing.
-        pad.events = [(gp.EV_ABS, GAS, 0), (gp.EV_ABS, gp.ABS_RX, 128)]
+        pad.events = [(gp.EV_ABS, GAS, 0), (gp.EV_ABS, gp.ABS_X, 128)]
         self.assertTrue(until(lambda: controller.drive["forward"] == 0.0))
         self.assertTrue(until(lambda: controller.drive["turn"] == 0.0))
         self.assertEqual(controller.malformed, 0)
