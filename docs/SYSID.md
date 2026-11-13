@@ -556,7 +556,7 @@ its wheels at 47 rad/s. In MuJoCo all of it works (`launch_check.py`, 11 to 13).
 not yet run on the robot.
 
 It always takes speed and turn from the controller: the right trigger forward, the
-left back, as far as each is pulled, and the right stick turning. A full pull means
+left back, as far as each is pulled, and the left stick turning. A full pull means
 `balance.py`'s `--max-speed`, 0.5 m/s unless told otherwise, and a stick's end
 `--max-turn`, 1.5 rad/s, the most the policy trained on. Stopping it
 means letting it fall, so it should only run with something to catch it: sitting down

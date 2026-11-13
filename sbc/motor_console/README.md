@@ -169,11 +169,13 @@ drop the robot: letting go only stops the driving.
 |---|---|
 | Right trigger | Forward, as far as it is pulled: letting go brings the speed to zero |
 | Left trigger | Back, the same |
-| Right stick, left and right | Turn |
+| Left stick, left and right | Turn |
 | D-pad, up and down | Leg height |
 | Bottom face button (A, Cross) | Jump |
 
-The turn, D-pad and jump are the MuJoCo driver's. The speed limits start at the
+The turn is on the left stick so that the right thumb can hold the jump button while
+the left one steers (13 November 2026); the MuJoCo driver still turns on the right
+stick. The D-pad and jump are the MuJoCo driver's. The speed limits start at the
 top of what the robot's driving policy was trained on, 0.5 m/s and 1.5 rad/s. The
 page can lower them, and a restart puts them back rather than keeping what somebody
 last set. That policy cannot jump, so the jump button only counts for now. A controller stops counting as soon as Linux removes it,
@@ -197,7 +199,7 @@ driving input work without this.
 The Pi's kernel has no drivers for particular controllers, so most reach it
 through the generic one, which reports buttons in a different order and has a
 PlayStation controller's triggers where its own driver has the right stick.
-`gamepad.py`'s `layout_of` allows for that. A stick also counts only once it has
+`gamepad.py`'s `layout_of` allows for that; the left stick is the same on all of them. A stick also counts only once it has
 been seen in its middle since driving began, so a stick already pushed, or a
 trigger taken for one, asks for nothing.
 
@@ -262,7 +264,7 @@ Still to be seen:
 
 - that a pairing stays beyond the few minutes it has been watched;
 - which way the controls go on a real controller: the right trigger should be forward
-  and the right stick to the left a positive turn, read off the Forward and Turn readings;
+  and the left stick to the left a positive turn, read off the Forward and Turn readings;
 - whether a paired controller reconnects by itself when switched on, which it did
   once, 5 s after dropping;
 - why the link dropped by itself that once, and how long a controller carried out

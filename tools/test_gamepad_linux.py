@@ -153,7 +153,7 @@ class RealInputDevice(unittest.TestCase):
         self.addCleanup(manager.close)
         self.assertTrue(until(lambda: manager.snapshot()["name"]), "never attached")
         self.assertTrue(until(lambda: sent and sent[-1]["live"]), "never live")
-        device.press((gp.EV_ABS, gp.ABS_GAS, 255), (gp.EV_ABS, gp.ABS_RX, 255))
+        device.press((gp.EV_ABS, gp.ABS_GAS, 255), (gp.EV_ABS, gp.ABS_X, 255))
         self.assertTrue(until(lambda: sent[-1]["forward"] > 0), "never moved")
         self.assertTrue(until(lambda: sent[-1]["turn"] < 0), "never turned")
         self.assertAlmostEqual(sent[-1]["forward"], gp.START_SPEED_M_S)
@@ -174,16 +174,16 @@ class RealInputDevice(unittest.TestCase):
         time.sleep(0.1)
         self.assertEqual(sent[-1]["forward"], 0.0)
 
-    def test_the_right_stick_on_a_controller_without_rx(self):
+    def test_the_left_stick_on_a_controller_without_rx(self):
         device = self.controller(right=(gp.ABS_Z, gp.ABS_RZ))
         pad = gp.find_evdev_pad()
         self.addCleanup(pad.close)
         operator = gp.Operator(pad.ranges, time.monotonic(), pad.layout, pad.values)
-        self.assertEqual(pad.layout.turn, gp.ABS_Z)
+        self.assertEqual(pad.layout.turn, gp.ABS_X)
         operator.command(time.monotonic())
-        device.press((gp.EV_ABS, gp.ABS_Z, 0))
+        device.press((gp.EV_ABS, gp.ABS_X, 0))
         deadline = time.monotonic() + 2
-        while time.monotonic() < deadline and operator.position(gp.ABS_Z) > -0.9:
+        while time.monotonic() < deadline and operator.position(gp.ABS_X) > -0.9:
             for event in pad.read(0.1):
                 operator.event(*event, time.monotonic())
         self.assertAlmostEqual(
@@ -209,7 +209,7 @@ class RealInputDevice(unittest.TestCase):
         self.addCleanup(device.close)
         pad = gp.find_evdev_pad()
         self.addCleanup(pad.close)
-        self.assertEqual(pad.layout.turn, gp.ABS_Z)
+        self.assertEqual(pad.layout.turn, gp.ABS_X)
         self.assertEqual((pad.layout.gas, pad.layout.brake), (ABS_RY, gp.ABS_RX))
         self.assertEqual(pad.layout.jump, gp.BTN_EAST)
         self.assertEqual(pad.values[gp.ABS_RX], 0)

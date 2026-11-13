@@ -392,6 +392,38 @@ class Presses(unittest.TestCase):
             steps * 0.01, (1.8 - 0.9) / op.STOP_RAMP_M_S2, delta=0.03
         )
 
+    def test_the_turn_cap_brings_the_turn_down_and_back_at_the_ramps(self):
+        """The scripted jump's: a spin let go of at A's let-go, and given back after the
+        landing, both at the rates a stick moved does."""
+        op = self.operator()
+        op.reset()
+        op.set_fast(True)
+
+        def turn_at(t: float) -> float:
+            op.last = (t, {"forward": 0.0, "turn": 15.0, "live": True, "jump": 0})
+            return op.ask(t)[1]
+
+        t, turn = 0.0, 0.0
+        while t < 6.0:
+            turn = turn_at(t)
+            t += 0.01
+        self.assertAlmostEqual(turn, 15.0)
+        for cap, want, rate in (
+            (0.0, 0.0, op.TURN_STOP_RAD_S2),
+            (None, 15.0, op.TURN_RAMP_RAD_S2),
+        ):
+            op.turn_cap = cap
+            steps = 0
+            while abs(turn - want) > 1e-9:
+                turn = turn_at(t)
+                t += 0.01
+                steps += 1
+                self.assertLess(steps, 1000)
+            self.assertAlmostEqual(steps * 0.01, 15.0 / rate, delta=0.03)
+        op.turn_cap = 0.0
+        op.reset()
+        self.assertIsNone(op.turn_cap)
+
 
 if __name__ == "__main__":
     unittest.main()

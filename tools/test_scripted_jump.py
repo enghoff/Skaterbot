@@ -592,21 +592,60 @@ class Button(unittest.TestCase):
             heard(two, legs(SCRIPT.crouch_m), None)
         self.assertEqual(two.phase, "push")
 
-    def test_steered_while_held_and_straight_on_once_let_go(self):
+    def test_steered_while_held_and_brought_straight_once_let_go(self):
+        """THE TURN: held, the turn asked is the driving policy's; let go, it is capped at
+        nought, which the operator's ramp comes down to, and the push waits for that,
+        however long, before its own time to give up starts."""
         two, answers = jumper()
         two.press(UP, 0.4, True, held=True)
         rolling = 0.4 / 0.04
+        fb = legs(SCRIPT.crouch_m, wheel_v=rolling)
         for _ in range(seconds(1.0)):
-            heard(
-                two, legs(SCRIPT.crouch_m, wheel_v=rolling), True, speed=0.4, turn=1.0
-            )
+            heard(two, fb, True, speed=0.4, turn=1.0)
+            self.assertIsNone(two.turn_cap)
             self.assertEqual(float(answers.seen[-1][6]), np.float32(0.4))
             self.assertEqual(float(answers.seen[-1][7]), 1.0)
-        # Let go, a little unsteady, so that it holds on and asks the driving policy.
-        fb = legs(SCRIPT.crouch_m, wheel_v=rolling + 5.0)
         heard(two, fb, False, speed=0.4, turn=1.0)
-        self.assertEqual(two.phase, "hold")
+        self.assertEqual(two.turn_cap, 0.0)
+        # Not passed on as a step to nought: what is asked comes down as it is asked.
+        for _ in range(seconds(2.0 * SCRIPT.hold_most_s)):
+            heard(two, fb, False, speed=0.4, turn=0.5)
+            self.assertEqual(float(answers.seen[-1][7]), 0.5)
+        self.assertEqual((two.state, two.phase), ("crouch", "hold"), two.events)
+        n = 0
+        while two.phase == "hold":
+            heard(two, fb, False, speed=0.4, turn=0.0)
+            n += 1
+            self.assertLess(n, 20, two.events)
+        self.assertEqual(two.phase, "push")
         self.assertEqual(float(answers.seen[-1][7]), 0.0)
+
+    def test_the_turn_is_capped_from_the_let_go_or_braking_until_the_hand_back(self):
+        two, _ = jumper()
+        self.assertIsNone(two.turn_cap)
+        two.press(UP, pl.JUMP_RUN_BRAKE_M_S + 0.3, True, held=True)
+        self.assertEqual(two.state, "braking")
+        self.assertEqual(two.turn_cap, 0.0)
+        two, _ = self.held_in_the_crouch(1.0)
+        self.assertIsNone(two.turn_cap)
+        heard(two, legs(SCRIPT.crouch_m), False)
+        self.assertEqual((two.phase, two.turn_cap), ("push", 0.0))
+        # A press without the bit, from the press, through the push to the flight.
+        two, _ = jumper()
+        two.press(UP, 0.0, True)
+        self.assertEqual(two.turn_cap, 0.0)
+        two, _ = jumper()
+        to_flight(two)
+        self.assertEqual(two.turn_cap, 0.0)
+        # Back, it is the operator's again, from where the cap left it, at the ramp.
+        two._hand_back(": landed")
+        self.assertIsNone(two.turn_cap)
+
+    def test_a_jump_policy_is_never_capped_in_its_turn(self):
+        two, _, _ = pair()
+        two.press(UP, 0.0, True)
+        self.assertEqual(two.state, "crouch")
+        self.assertIsNone(two.turn_cap)
 
     def test_let_go_it_waits_for_the_turn_to_die_away_and_both_wheels_down(self):
         turning = np.array([0.0, 0.0, 1.0])

@@ -12,8 +12,11 @@ that would drop the robot: letting go stops the driving and leaves it standing, 
 stopping the motors is the robot's own power button.
 
 Speed is on the analog triggers, the right (gas) forward and the left (brake) back:
-how far one is pulled asks for that much, and letting go asks for none. The turn,
-D-pad and jump are the MuJoCo driver's (simulation/mujoco/drive.py, Input.poll_pad).
+how far one is pulled asks for that much, and letting go asks for none. The turn is
+on the left stick, left and right: the owner's, 13 November 2026, so that the right
+thumb can hold the jump button while the left one steers. It had been on the right
+stick, as the MuJoCo driver still has it (simulation/mujoco/drive.py, Input.poll_pad),
+whose D-pad and jump these are.
 Select is the speed mode: each press is counted and sent, and what runs the policy
 toggles between its slow limit and its fast one, starting slow each time it takes over.
 Once the daemon says the policy has changed it, the controller rumbles twice going
@@ -124,13 +127,13 @@ class Layout:
     mode: int = BTN_SELECT
 
 
-def triggers_of(axes, turn: int) -> tuple[int | None, int | None]:
+def triggers_of(axes) -> tuple[int | None, int | None]:
     """Which axes are the right and left triggers: GAS and BRAKE where the controller
     says so, or Z and RZ with the right stick on RX. Otherwise it has none to drive
     with, and can only turn."""
     if {ABS_GAS, ABS_BRAKE} <= set(axes):
         return ABS_GAS, ABS_BRAKE
-    if turn == ABS_RX and {ABS_Z, ABS_RZ} <= set(axes):
+    if ABS_RX in axes and {ABS_Z, ABS_RZ} <= set(axes):
         return ABS_RZ, ABS_Z
     return None, None
 
@@ -154,11 +157,13 @@ def layout_of(axes, keys, vendor: int = 0) -> Layout:
     has its triggers on RX and RY, with Z and RZ its right stick. That is from what
     the drivers and the controllers' reports are documented to do, not from
     watching one.
+
+    The left stick is X and Y on every one of these, which is what makes a device a
+    controller at all (game_controller), so the turn is X whatever the driver.
     """
-    turn = ABS_RX if ABS_RX in axes else ABS_Z
     if vendor == SONY and {BTN_C, BTN_Z} & set(keys):
-        return Layout(ABS_Z, ABS_RY, ABS_RX, BTN_EAST, BTN_TL2)
-    return Layout(turn, *triggers_of(axes, turn), BTN_SOUTH)
+        return Layout(ABS_X, ABS_RY, ABS_RX, BTN_EAST, BTN_TL2)
+    return Layout(ABS_X, *triggers_of(axes), BTN_SOUTH)
 
 
 class Operator:
@@ -512,7 +517,7 @@ class SimPad:
         events = []
         for code, value in (
             (ABS_GAS, 127 * (1 - math.cos(t / 2))),
-            (ABS_RX, 128 - 60 * math.sin(t / 3)),
+            (ABS_X, 128 - 60 * math.sin(t / 3)),
         ):
             if round(value) != self.axes[code]:
                 self.axes[code] = round(value)
