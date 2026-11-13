@@ -532,6 +532,11 @@ class TwoPolicies:
         return None if self.state == "drive" else self.cap_m_s
 
     @property
+    def turn_cap(self) -> float | None:
+        """None: a jump policy was trained to jump at whatever turn it is driven at."""
+        return None
+
+    @property
     def jump_meta(self) -> dict:
         """What jumps, for the run's log."""
         return self.jumping.meta
@@ -773,8 +778,9 @@ class JumpScript:
     # the end of a sway, where it is still. Pushing as soon as it was down, the legs still
     # settling, it left the floor turning nose-down at 23-36 mNm s, which no estimate of
     # the robot's angular momentum from the gyro and the joints, 16 ms apart, foretold.
-    # Held in the crouch the operator may steer, and letting go straightens the turn asked
-    # (THE BUTTON, below), so it also waits for the torso to turn about the vertical slower
+    # Held in the crouch the operator may steer, and letting go brings the turn asked down
+    # to nought (THE TURN, below), which it waits for, and its time to give up only starts
+    # once it has; so it also waits for the torso to turn about the vertical slower
     # than `calm_yaw_rad_s` and for both knees to carry weight, as a press is refused
     # without (JUMP_KNEE_LOADED_NM): turning at 0.5 rad/s and 0.5 m/s MuJoCo's inner knee
     # goes light. Standing, the turn rate stays under 0.2 rad/s (Hold). Let go still
@@ -1056,6 +1062,25 @@ JUMP_BRAKE_LEAST_S = 1.0
 # 2026) held 2-3 s, standing or driving and steering, it had landed and was handed back
 # 0.19-0.22 s after the let-go and stood, on the worst rig as well; let go still
 # steering, 0.30-0.36 s; picked up held, it was taken for lifted.
+#
+# THE TURN. From the press, or with A held from its let-go, until the hand-back, the turn
+# asked is capped at nought (turn_cap), which balance.py's Operator meets at the rate it
+# meets a stick let go of, TURN_STOP_RAD_S2, and once the cap is lifted climbs back
+# from at TURN_RAMP_RAD_S2, as from a standstill. Until 13 November 2026 it was nought
+# at once from the let-go, and the operator's whole turn again at the hand-back. On the
+# robot that day at 12:27, let go spinning at 12-14 rad/s in fast mode, the driving
+# policy stopped the spin in 0.25-0.4 s, both wheels at their torque, pitching 12-15
+# degrees nose-up, and once past JUMP_TILT_DEG, so that the jump was given up; given
+# 9-15 rad/s back as it landed, crouched and the knees folding, it went 13-24 degrees
+# nose-up, 4-12 nose-down and rolled 9-15, overshot to 18-24 rad/s and ran its wheels
+# into their ceiling, at 52-56 rad/s, standing within a second (session scratchpad
+# run_1226/). Standing at 200 mm that run, a 14 rad/s spin let go of at that rate had
+# stopped within 3 degrees of level, three times. On launch_check.py's rig, which holds
+# no spin that fast (case 17's SPIN_RAD_S), held 3 s spinning at 4-5 rad/s and let go
+# still steering: it stopped within 4.2 degrees, pushed 0.6-0.7 s after the let-go
+# against 0.1, and rolled 1.1-2.0 degrees after the hand-back against 6.5-7.2, the turn
+# no longer overshooting (spin_jump/). Driving the jump straight still matters: the
+# push, and the legs both sent the same, have nothing with which to answer a turn.
 
 
 class ScriptedJump(TwoPolicies):
@@ -1109,6 +1134,16 @@ class ScriptedJump(TwoPolicies):
         return None
 
     @property
+    def turn_cap(self) -> float | None:
+        """Nought from the press, braking, or from the let-go of A, until the hand-back
+        (THE TURN, above)."""
+        if self.state == "braking" or (
+            self.state in ("crouch", "jump") and not self.waiting
+        ):
+            return 0.0
+        return None
+
+    @property
     def busy(self) -> bool:
         """TwoPolicies', but for a crouch held in the hold past JUMP_SETTLE_S, which a
         lift is told from as it is driving."""
@@ -1146,6 +1181,8 @@ class ScriptedJump(TwoPolicies):
         self.waiting = False
         self.held_s = 0.0
         self.loaded: bool | None = None
+        # The turn the operator asks for this step, after turn_cap.
+        self.turn_asked = 0.0
 
     def press(
         self, g, speed: float, loaded: bool | None, held: bool = False
@@ -1243,19 +1280,22 @@ class ScriptedJump(TwoPolicies):
         self.t += PERIOD_S
         self.since_back += PERIOD_S
         self.asked = height
+        self.turn_asked = turn
         if self.state == "braking":
-            turn = 0.0
             self._braking(fb, w)
         if self.state in ("crouch", "jump"):
             self._script(fb, np.asarray(w, dtype=float), np.asarray(g, dtype=float))
         lo, hi = self.driving.meta["height_range"]
         if self.state in ("crouch", "jump"):
             # Driving, it goes on at the operator's speed until the push, no faster than
-            # the cap, and is told the speed it pushed at until it lands; straight
-            # on, whatever turn is asked, but for the turn asked while the button is held.
+            # the cap, and is told the speed it pushed at until it lands; and at the turn
+            # asked until the push, which turn_cap has brought down to nought by then
+            # (THE TURN), and none from then on.
             if self.phase in ("crouch", "hold"):
                 self.speed_jump = min(max(speed, -self.cap_m_s), self.cap_m_s)
-            speed, turn = self.speed_jump, turn if self.waiting else 0.0
+            else:
+                turn = 0.0
+            speed = self.speed_jump
             height = min(max(self.height, lo), hi)
         elif self.since_back < (hi - lo) / self.script.rise_m_s:
             rose = self.back_from + self.script.rise_m_s * self.since_back
@@ -1301,19 +1341,23 @@ class ScriptedJump(TwoPolicies):
             self.rolls.append(rolling)
             over = off_balance(hip, knee, up)
             yaw = float(np.dot(w, g)) / max(float(np.linalg.norm(g)), 1e-6)
+            straight = abs(self.turn_asked) < 1e-6
             ready = (
                 abs(w[1]) < s.calm_rad_s
                 and abs(yaw) < s.calm_yaw_rad_s
+                and straight
                 and self.loaded is not False
                 and max(self.rolls) - min(self.rolls) < s.steady_m_s
                 and abs(over) < s.over_m
                 and abs(rolling) < self._push_top()
             )
             self.ready_for = self.ready_for + PERIOD_S if ready else 0.0
-            # Held, it waits however long; let go of, hold_most_s from then at most.
+            # Held, it waits however long; let go of, hold_most_s at most from when the
+            # turn asked has come down (THE TURN).
             if self.waiting:
                 return
-            self.free_s += PERIOD_S
+            if straight:
+                self.free_s += PERIOD_S
             if self.pt >= s.hold_s and self.ready_for >= s.ready_s:
                 self._plan(fb, w, hip, knee, rolling)
             elif self.free_s >= s.hold_most_s:

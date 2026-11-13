@@ -400,7 +400,7 @@ def run(
         stepper.trim.recall(kept, kept["policy"])
     args = SimpleNamespace(
         mode=mode, seconds=seconds, touch_wait=wait, height=None, max_speed=0.5, max_turn=1.5,
-        fast_speed=getattr(ctx, "fast_speed", None),
+        fast_speed=getattr(ctx, "fast_speed", None), fast_turn=getattr(ctx, "fast_turn", None),
         fast_reverse=getattr(ctx, "fast_reverse", None), drive=False, rearm=rearm, tilt=30.0,
         woken=threading.Event() if woken else None,
     )  # fmt: skip
@@ -604,6 +604,12 @@ def main() -> int:
         "launcher passes 1.8, which balance.py holds to the policy's top (default: the top)",
     )
     ap.add_argument(
+        "--fast-turn",
+        type=float,
+        help="rad/s at a stick's end in fast mode, as balance.py's --fast-turn: the "
+        "robot's launcher passes 15 (default: the policy's top)",
+    )
+    ap.add_argument(
         "--lean-per-m-s",
         type=float,
         default=0.0,
@@ -632,6 +638,7 @@ def main() -> int:
         net=pl.Net(args.run / "exported" / "policy.npz"),
         robot_file=json.loads(bc.ROBOT_FILE.read_text()),
         fast_speed=args.fast_speed,
+        fast_turn=args.fast_turn,
         fast_reverse=args.fast_reverse,
         fast_mark=args.fast_mark,
         lean_per_m_s=args.lean_per_m_s,
@@ -1449,14 +1456,30 @@ JUMP_RUN = ROOT / "exports" / "rl" / "jump-2026-11-06_19-35-39_jl_lag"
 # November 2026). Braking to a stop would still be none.
 LANDED_S = 0.5
 LANDED_SHARE = 0.65
+# A held while spinning, and let go still steering, as on the robot on 13 November 2026
+# at 12:27 at 12-14 rad/s in fast mode, the launcher's --fast-turn 15 (policy_loop.py's
+# THE TURN). This rig holds no spin that fast: asked 14 its wheels reach their ceiling
+# and it is taken for lifted before the press, and at 3, 6, 7 and 10 the spin had a
+# knee light as A was pressed, which refuses it. At 4 and 5, given the turn back at once
+# as it landed, it rolled 6.5-7.2 degrees and overshot to 8 rad/s asked 5; climbing back
+# at the ramp, 1.1-2.0, and its pitch was a straight jump's, 25 degrees nose-up here.
+SPIN_RAD_S = 5.0
+SPIN_ROLL_DEG = 4.0
 
 
 def jumps(
-    ctx, jump_run: Path, imu_ms: float = 4.0, cmd_ms: float = 2.0, push=None, level=None
+    ctx,
+    jump_run: Path,
+    imu_ms: float = 4.0,
+    cmd_ms: float = 2.0,
+    push=None,
+    level=None,
+    only: str | None = None,
 ) -> bool:
     """Case 17, on a jump policy's run, or with `jump_run` "scripted" on
     sbc/policy_loop.py's ScriptedJump pushing `push` Nm, its level push `level` Nm if
-    given (balance.py's --jump-level-nm)."""
+    given (balance.py's --jump-level-nm). With `only`, just the cases whose names have
+    it in them."""
     scripted = str(jump_run) == balance.SCRIPTED
     what = (
         f"the scripted jump, pushing {pl.JUMP_PUSH_NM if push is None else push:g} Nm, "
@@ -1499,6 +1522,11 @@ def jumps(
         that long after it, and put down again."""
         seen = {"clear": 0.0, "low": 1.0, "tilt": 0.0, "press": None, "after": None}
         seen |= {"heading": None, "turned": 0.0, "lifted": None}
+        # From the let-go of A on: the fastest the body turned about the vertical, and the
+        # wheels' fastest; the most it tilted from then to the push; and the most it
+        # tilted, and rolled, from the hand-back on.
+        seen |= {"yaw": 0.0, "spin": 0.0, "tilt_go": 0.0}
+        seen |= {"tilt_back": 0.0, "roll_back": 0.0}
 
         def script(rig):
             if rig.first_touch is None:
@@ -1520,6 +1548,12 @@ def jumps(
                 seen["heading"] = seen["heading"] or heading
                 turned = math.remainder(heading - seen["heading"], 2 * math.pi)
                 seen["turned"] = max(seen["turned"], abs(math.degrees(turned)))
+                if held is not None and t >= at + held:
+                    seen["yaw"] = max(seen["yaw"], abs(rig.yaw_rate()))
+                    spin = max(abs(rig.latest[j].v) for j in st.WHEELS)
+                    seen["spin"] = max(seen["spin"], spin)
+                    if "pushed" not in seen:
+                        seen["tilt_go"] = max(seen["tilt_go"], rig.tilt_deg())
             if lift is not None and t >= at + lift and seen["lifted"] is None:
                 # As case 11 picks it up, and put down again 3 s later.
                 seen["lifted"] = lowers(begin=rig.t + 3.0)
@@ -1537,6 +1571,13 @@ def jumps(
             )
             if seen["after"] is None and back is not None and rig.t >= back + LANDED_S:
                 seen["after"] = rig.forward_speed()
+            if back is not None:
+                seen["tilt_back"] = max(seen["tilt_back"], rig.tilt_deg())
+                rot = rig.d.xmat[rig.ctl.base].reshape(3, 3)
+                g = rot.T @ np.array([0.0, 0.0, -1.0])
+                seen["roll_back"] = max(
+                    seen["roll_back"], abs(math.degrees(pl.right_down(g)))
+                )
             if t >= at - 0.1:
                 clear = float(np.min(rig.ctl.clearance_now(rig.d)))
                 seen["clear"] = max(seen["clear"], clear)
@@ -1580,6 +1621,8 @@ def jumps(
         ("pressed twice", dict(at=5.0, forward=0.0, again=0.4)),
     ]
     if scripted:
+        # A stick's end in fast mode, for steer's share of it.
+        fast_turn = getattr(ctx, "fast_turn", None) or top_turn
         # 1 m/s asked in fast mode, where on the robot a jump fell.
         at_1 = 1.0 * top / (getattr(ctx, "fast_speed", None) or top)
         cases.insert(2, ("at 1 m/s", dict(at=8.0, forward=at_1, fast=True)))
@@ -1613,11 +1656,31 @@ def jumps(
                 "picked up 2 s into holding A, and put down",
                 dict(at=5.0, forward=0.0, held=8.0, lift=2.0),
             ),
+            (
+                f"A held 3 s spinning at {SPIN_RAD_S:g} rad/s in fast mode, let go and "
+                "landing still steering",
+                dict(
+                    at=8.0,
+                    forward=0.0,
+                    fast=True,
+                    held=3.0,
+                    steer=(-6.0, 7.0, SPIN_RAD_S / fast_turn),
+                    must_jump=True,
+                    roll_most=SPIN_ROLL_DEG,
+                    seconds=20.0,
+                ),
+            ),
         ]
     for name, k in cases:
+        if only is not None and only not in name:
+            continue
+        k = dict(k)
+        seconds = k.pop("seconds", 14.0)
+        roll_most = k.pop("roll_most", None)
+        forced = k.pop("must_jump", None)
         script, seen, hand = pressing(**k)
         why, rig = run(
-            "launch", hand, ctx, seconds=14.0, rearm=True, script=script,
+            "launch", hand, ctx, seconds=seconds, rearm=True, script=script,
             jump_net=jump_net, imu_ms=imu_ms, cmd_ms=cmd_ms, jump_push=push,
             jump_script=balance.jump_script(level) if scripted else None,
         )  # fmt: skip
@@ -1633,6 +1696,8 @@ def jumps(
         lifting = k.get("lift") is not None
         turning = k.get("steer") is not None and k["steer"][1] > (held or 0.0)
         must_jump = None if turning else k.get("quiet") is None and not lifting
+        if forced is not None:
+            must_jump = forced
         fine = (
             why == "stood"
             and n.fell is None
@@ -1679,6 +1744,15 @@ def jumps(
             fine &= any("braking first" in w for w in said)
         if k.get("steer") is not None:
             going += f"turned {seen['turned']:.0f} deg; "
+        if roll_most is not None:
+            fine &= seen["roll_back"] <= roll_most
+        if held is not None:
+            going += (
+                f"from the let-go turning {seen['yaw']:.1f} rad/s at most, the wheels to "
+                f"{seen['spin']:.0f}, tilted to {seen['tilt_go']:.1f} deg before the push "
+                f"and {seen['tilt_back']:.1f} after the hand-back, rolling "
+                f"{seen['roll_back']:.1f}; "
+            )
         good &= fine
         print(
             f"   {'ok' if fine else 'FAILED'}: {name}: {why}; {going}legs down to "

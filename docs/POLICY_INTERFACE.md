@@ -277,8 +277,12 @@ after the policy has taken over count, each once. In `sbc/policy_loop.py`,
   `sbc/policy_loop.py`, since 8 November 2026). `gamepad.py` sets bit 8 over the count
   while A is held. Held, it waits in the crouch however long, driving and steering at
   the operator's speed under 1.5 m/s, with Trim and Hold on and, 0.5 s into the crouch,
-  the lift detector too; let go, it jumps as soon as it is calm, steady, balanced, turning
-  under 0.3 rad/s and on both wheels, or stands up again if it is not within 2 s. A press
+  the lift detector too; let go, the turn asked comes down to nought at the rate a stick
+  let go of brings it, 8 rad/s², and it jumps as soon as that has and it is calm, steady,
+  balanced, turning under 0.3 rad/s and on both wheels, or stands up again if it is not
+  within 2 s more. After the landing the turn climbs back at 3 rad/s², as from a
+  standstill (THE TURN, since 13 November 2026; before, it was cut and given back at
+  once, which a 14 rad/s spin answered with 15-25 degrees of pitch and roll). A press
   and let-go inside one 50 Hz frame comes without the bit and jumps at once. The
   controller's stream stale or not live while A is held stands it up, and never jumps. A
   `balance.py` from before counts the change of the whole number modulo 256, so it jumps

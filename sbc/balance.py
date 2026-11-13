@@ -382,11 +382,13 @@ class Operator:
         self.max_speed, self.max_turn = self.slow
         # The jump button, counted as select is: presses since taking over, for the
         # loop to take; whether it is held now, None if the controller's stream is stale
-        # or not live; and a cap on the speed asked for while a jump is under way.
+        # or not live; and caps on the speed and the turn asked for while a jump is under
+        # way, which what is asked meets at the ramps' rates as it would a stick let go.
         self.jumps: int | None = None
         self.jump_presses = 0
         self.jump_held: bool | None = None
         self.speed_cap: float | None = None
+        self.turn_cap: float | None = None
         self.last: tuple[float, dict] | None = None
         self.speed = self.turn = 0.0
         self.stepped: float | None = None
@@ -402,6 +404,10 @@ class Operator:
         if self.speed_cap is not None:
             # Under the cap at the braking rate, being a fall towards nought.
             speed = min(max(speed, -self.speed_cap), self.speed_cap)
+        if self.turn_cap is not None:
+            # The same for the turn: down at TURN_STOP_RAD_S2, and once the cap is lifted,
+            # up again at TURN_RAMP_RAD_S2, as from a standstill.
+            turn = min(max(turn, -self.turn_cap), self.turn_cap)
         if abs(spin * speed) > self.SPINNING_M_S2:
             # Before the ramp, so the speed falls at the braking rate as well.
             speed = math.copysign(self.SPINNING_M_S2 / abs(spin), speed)
@@ -447,7 +453,7 @@ class Operator:
         self.jumps = None if jumps is None else int(jumps) & JUMP_COUNT
         self.jump_presses = 0
         self.jump_held = None
-        self.speed_cap = None
+        self.speed_cap = self.turn_cap = None
 
     def take_jumps(self) -> int:
         """The jump button's presses since this was last asked."""
@@ -1183,6 +1189,7 @@ def powered(rig, stepper, bal, op, view: View, args, go, stop, touch=None) -> st
             cmds = None
             if jumper is not None:
                 op.speed_cap = jumper.speed_cap
+                op.turn_cap = jumper.turn_cap
             last = view.step
             yawing = 0.0 if last is None else abs(float(np.dot(last["w"], last["g"])))
             speed, turn, height = op.ask(now, yawing)
