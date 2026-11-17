@@ -11,11 +11,15 @@
 # it came up, and does nothing if one is already running. It holds UART4 until
 # it is stopped, so stop it before flash_mcu.py or wheel_check.py.
 #
-# Installing it, once, with the files beside it in the admin account's home:
+# Installing it, once, from the console's checkout, beside the diagd.py it starts:
 #
 #     chmod +x start_diagd.sh stop_diagd.sh
-#     sudo ln -sf ~/start_diagd.sh /usr/local/bin/start_diagd
-#     sudo ln -sf ~/stop_diagd.sh /usr/local/bin/stop_diagd
+#     sudo ln -sf ~/bipedal-console/sbc/start_diagd.sh /usr/local/bin/start_diagd
+#     sudo ln -sf ~/bipedal-console/sbc/stop_diagd.sh /usr/local/bin/stop_diagd
+#
+# It runs whatever diagd.py is beside it. Until 13 November 2026 it was installed from
+# the admin account's home, beside a diagd.py copied there on 4 November, which it
+# would have started in place of the one the diagd service runs.
 #
 # /usr/local/bin because it is on the PATH that SSH gives a command, where
 # ~/bin is not. No sudo to run it: admin is in dialout, which is all UART4 needs.
