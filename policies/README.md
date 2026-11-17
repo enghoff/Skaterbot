@@ -7,7 +7,7 @@ whole -- checkpoints, TensorBoard logs, videos, 13-19 MB each -- live in
 
 | | Run | On the robot | What it is |
 |---|---|---|---|
-| D2 | `rough-2026-11-04_09-01-34_measured_fix` | 2026-11-04 to 2026-11-06, kept on the Pi as `sbc/policy_d2.npz` | the first policy trained on the measured robot; 0.5 m/s and 1.5 rad/s |
+| D2 | `rough-2026-11-04_09-01-34_measured_fix` | 2026-11-04 to 2026-11-06, kept on the Pi as `sbc/policy_d2.npz` until 2026-11-13 | the first policy trained on the measured robot; 0.5 m/s and 1.5 rad/s |
 | D3 | `rough-2026-11-05_10-37-59_fresh2_18` | from 2026-11-06 07:18, as `sbc/policy.npz` | trained from scratch to 1.8 m/s and 15 rad/s inside a diamond envelope, ride height 170-207 mm |
 
 How each was trained and what it measured is in
